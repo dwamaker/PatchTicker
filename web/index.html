@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vuln-radar</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 48rem; margin: 0 auto; padding: 1rem; }
+    #board { list-style: none; padding: 0; }
+    #board li { border-bottom: 1px solid #ddd; padding: 0.75rem 0; }
+    #board p { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+    time, #status { color: #666; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <h1>vuln-radar</h1>
+  <p id="status">Loading…</p>
+  <ul id="board"></ul>
+  <script type="module" src="app.mjs"></script>
+</body>
+</html>
