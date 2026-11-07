@@ -18,6 +18,8 @@ MENTION_SOURCES = {
     "https://hn.algolia.com/": ("hn", b'{"hits": [], "nbPages": 0}'),
     "https://seclists.org/": ("oss-security", b"<rss><channel></channel></rss>"),
     "https://api.github.com/": ("github", b'{"items": []}'),
+    "https://www.cisa.gov/": ("kev", b'{"vulnerabilities": []}'),
+    "https://rss.beehiiv.com/": ("curators", b"<rss><channel></channel></rss>"),
 }
 
 KEYCLOAK_TEXT = (
@@ -36,14 +38,15 @@ WPTRAVELLY_TEXT = (
 )
 
 
-def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=None, hn=None, oss=None, github=None):
+def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=None, hn=None, oss=None, github=None,
+             kev=None, curators=None):
     """An http_get that answers from fixtures and fails on anything not recorded.
 
     NVD pages are trimmed real responses, keyed by the startIndex they answer.
     delta_log=None serves an empty delta log; a Mention source given no fixture answers empty.
     """
     pages = {json.loads((NVD_FIXTURES / p).read_bytes())["startIndex"]: p for p in nvd_pages}
-    names = {"hn": hn, "oss-security": oss, "github": github}
+    names = {"hn": hn, "oss-security": oss, "github": github, "kev": kev, "curators": curators}
 
     def get(url, headers=None):
         if url.startswith(nvd.API_URL):

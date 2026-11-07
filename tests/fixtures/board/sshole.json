@@ -1,0 +1,49 @@
+{
+  "id": "https://news.ycombinator.com/item?id=50378228",
+  "cves": [
+    "CVE-2026-123158"
+  ],
+  "first_seen": "2026-11-05T12:30:00Z",
+  "mentions": [
+    {
+      "kind": "discussion",
+      "url": "https://news.ycombinator.com/item?id=50378228",
+      "title": "sshole",
+      "points": 2935
+    },
+    {
+      "kind": "writeup",
+      "url": "https://sshhole.com"
+    },
+    {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-123158"
+    },
+    {
+      "kind": "advisory",
+      "url": "https://www.openssh.com/txt/release-10.6p2"
+    },
+    {
+      "kind": "repo",
+      "url": "https://github.com/oz9un/sshole",
+      "title": "oz9un/sshole"
+    },
+    {
+      "kind": "repo",
+      "url": "https://github.com/gabrielunknown/CVE-2026-123158_SSHole",
+      "title": "gabrielunknown/CVE-2026-123158_SSHole"
+    }
+  ],
+  "urls": [
+    "cve.org/CVERecord?id=CVE-2026-123158",
+    "github.com/gabrielunknown/CVE-2026-123158_SSHole",
+    "github.com/oz9un/sshole",
+    "news.ycombinator.com/item?id=50378228",
+    "openssh.com/txt/release-10.6p2",
+    "sshhole.com"
+  ],
+  "brief": {
+    "text": "sshd in OpenSSH before 10.6p2, when built against musl libc without PAM and with PasswordAuthentication enabled, accepts a password with a length between 256 and 1024 characters for an account that has no valid password hash.",
+    "lead": "https://www.openssh.com/txt/release-10.6p2"
+  }
+}

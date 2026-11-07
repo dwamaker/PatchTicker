@@ -4,11 +4,12 @@ import json
 import sys
 import time
 
-from collector import cvelist, github, hn, nvd, osssec
-from collector.incidents import enrich, link
+from collector import curators, cvelist, github, hn, kev, nvd, osssec
+from collector.incidents import cite, enrich, link
 
 
-def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None):
+def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
+              curator_feeds=()):
     stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
@@ -31,11 +32,17 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         # NVD is often down; Briefs still go out and the next cycle retries the same range.
         print(f"nvd: skipped this cycle: {err!r}", file=sys.stderr)
         enriched = {}
+    exploited = kev.fetch(http_get)
+    citations, checkpoints["curators"] = curators.fetch(checkpoints.get("curators"), http_get, curator_feeds)
     for incident in incidents:
         before = json.dumps(incident)
         for cve in incident["cves"]:
             if cve in enriched:
                 enrich(incident, enriched[cve])
+        if exploited & set(incident["cves"]):
+            incident["kev"] = True
+        for c in citations:
+            cite(incident, c)
         if json.dumps(incident) != before:
             changed.add(incident["first_seen"][:7])
 

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>tl;dr sec</title>
+    <description>The best way to keep up with cybersecurity research. Join &gt;90,000 security professionals getting the best tools, talks, and resources right in their inbox for free.</description>
+    
+    <link>https://tldrsec.com/</link>
+    <atom:link href="https://rss.beehiiv.com/feeds/xgTKUmMmUm.xml" rel="self"/>
+    
+    <lastBuildDate>Sat, 7 Nov 2026 03:25:09 +0000</lastBuildDate>
+    <pubDate>Thu, 05 Nov 2026 15:30:00 +0000</pubDate>
+    <atom:published>2026-11-05T15:30:00Z</atom:published>
+    <atom:updated>2026-11-07T03:25:09Z</atom:updated>
+    
+      <category>Software Engineering</category>
+      <category>Artificial Intelligence</category>
+      <category>Cybersecurity</category>
+    <copyright>Copyright 2026, tl;dr sec</copyright>
+    
+    <image>
+      <url>https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/publication/logo/080a561f-2435-4477-a549-ab9f115e047c/tldrsec_robot_nowords.png</url>
+      <title>tl;dr sec</title>
+      <link>https://tldrsec.com/</link>
+    </image>
+    
+    <docs>https://www.rssboard.org/rss-specification</docs>
+    <generator>beehiiv</generator>
+    <language>en-us</language>
+    <webMaster>support@beehiiv.com (Beehiiv Support)</webMaster>
+
+            <item>
+  <title>[tl;dr sec] #353 - A Thousand Fewer Paths to Root, Kubernetes Security Logging, Post-AI Security Floor</title>
+  <description>OpenAI&#39;s pipeline found 948 LPEs in Linux, how to build a comprehensive security logging platform for k8s clusters, 3 security priorities in a world with powerful AI</description>
+  <link>https://tldrsec.com/p/tldr-sec-353</link>
+  <guid isPermaLink="true">https://tldrsec.com/p/tldr-sec-353</guid>
+  <pubDate>Thu, 05 Nov 2026 15:30:00 +0000</pubDate>
+  <atom:published>2026-11-05T15:30:00Z</atom:published>
+    <dc:creator>Clint Gibler</dc:creator>
+    <category><![CDATA[Newsletter]]></category>
+  <content:encoded><![CDATA[
+<div class='beehiiv'><p class="paragraph" style="text-align:left;">Hey there,</p></div>
+]]></content:encoded>
+</item>
+      <item>
+  <title>[tl;dr sec] #351 - PHP2Shell, Autopatching Skills, AWS Pathrunner</title>
+  <description>My experience with PHP2Shell + related resources, two new OSS skills from Trail of Bits, new tool that automates exploitation of AWS IAM privilege escalation paths  </description>
+  <link>https://tldrsec.com/p/tldr-sec-351</link>
+  <guid isPermaLink="true">https://tldrsec.com/p/tldr-sec-351</guid>
+  <pubDate>Thu, 22 Oct 2026 14:30:00 +0000</pubDate>
+  <atom:published>2026-10-22T14:30:00Z</atom:published>
+    <dc:creator>Clint Gibler</dc:creator>
+    <category><![CDATA[Newsletter]]></category>
+  <content:encoded><![CDATA[
+<div class='beehiiv'><p class="paragraph" style="text-align:left;">Check out Calif’s <a class="link" href="https://calif.io/php2shell/?utm_source=tldrsec.com&utm_medium=newsletter&utm_campaign=tl-dr-sec-351-php2shell-autopatching-skills-aws-pathrunner" target="_blank" rel="noopener noreferrer nofollow">blog post</a>.</p></div>
+]]></content:encoded>
+</item>
+      <item>
+  <title>[tl;dr sec] #346 - Can AI Do Novel Security Research?, Anthropic&#39;s Threat Intel Report, How Cloudflare Enforces Engineering Standards</title>
+  <description>Portswigger&#39;s James Kettle&#39;s HTTP Terminator, pretty crazy report about how threat actors were abusing Claude, how Cloudflare enforces code quality at scale</description>
+  <link>https://tldrsec.com/p/tldr-sec-346</link>
+  <guid isPermaLink="true">https://tldrsec.com/p/tldr-sec-346</guid>
+  <pubDate>Thu, 17 Sep 2026 14:30:00 +0000</pubDate>
+  <atom:published>2026-09-17T14:30:00Z</atom:published>
+    <dc:creator>Clint Gibler</dc:creator>
+    <category><![CDATA[Newsletter]]></category>
+  <content:encoded><![CDATA[
+<div class='beehiiv'><p class="paragraph" style="text-align:left;"><a class="link" href="https://www.sysdig.com/blog/machine-speed-hold-the-ai-hand-rolled-marimo-cve-2026-39987-exploit?utm_source=tldrsec.com&utm_medium=newsletter&utm_campaign=tl-dr-sec-346-can-ai-do-novel-security-research-anthropic-s-threat-intel-report-how-cloudflare-enforces-engineering-standards" target="_blank" rel="noopener noreferrer nofollow">Machine speed, hold the AI: Hand-rolled marimo CVE-2026-39987 exploit</a></p></div>
+]]></content:encoded>
+</item>
+  </channel>
+</rss>

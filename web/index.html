@@ -6,13 +6,16 @@
   <title>vuln-radar</title>
   <style>
     body { font: 16px/1.5 system-ui, sans-serif; max-width: 48rem; margin: 0 auto; padding: 1rem; }
-    #board { list-style: none; padding: 0; }
-    #board li { border-bottom: 1px solid #ddd; padding: 0.75rem 0; }
-    #board p { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+    .incidents { list-style: none; padding: 0; }
+    .incidents li { border-bottom: 1px solid #ddd; padding: 0.75rem 0; }
+    .incidents p { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+    h2 { font-size: 1.125rem; margin: 1rem 0 0; }
+    #highlights-section { background: #fff8e1; padding: 0 0.75rem; border-left: 4px solid #e0a800; }
     time, #status, .cvss, .products, footer { color: #666; font-size: 0.875rem; }
-    #board .lead { font-weight: 600; }
-    #board .mentions { list-style: none; padding: 0; margin: 0.25rem 0 0; font-size: 0.875rem; color: #444; }
-    #board .mentions li { border: 0; padding: 0; overflow-wrap: anywhere; }
+    .kev { color: #a00; font-weight: 600; font-size: 0.875rem; }
+    .incidents .lead { font-weight: 600; }
+    .incidents .mentions { list-style: none; padding: 0; margin: 0.25rem 0 0; font-size: 0.875rem; color: #444; }
+    .incidents .mentions li { border: 0; padding: 0; overflow-wrap: anywhere; }
     #filter { display: grid; gap: 0.5rem; }
     #filter input { font: inherit; padding: 0.5rem; min-height: 44px; box-sizing: border-box; width: 100%; }
     #picks { display: flex; flex-wrap: wrap; gap: 0.25rem; }
@@ -31,9 +34,15 @@
     <input id="search" type="search" placeholder="Keyword, CVE ID, version" autocomplete="off">
   </div>
   <p id="status" aria-live="polite">Loading…</p>
-  <ul id="board"></ul>
+  <section id="highlights-section" aria-labelledby="highlights-title" hidden>
+    <h2 id="highlights-title">Highlights this week</h2>
+    <ol id="highlights" class="incidents"></ol>
+  </section>
+  <h2>All incidents, newest first</h2>
+  <ul id="board" class="incidents"></ul>
   <footer>
     <p>This product uses data from the NVD API but is not endorsed or certified by the NVD.</p>
+    <p>Exploited-in-the-wild flags come from the CISA Known Exploited Vulnerabilities catalog.</p>
   </footer>
   <script type="module" src="app.mjs"></script>
 </body>

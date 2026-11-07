@@ -10,8 +10,8 @@ import re
 from urllib.parse import urlsplit
 
 # Lead mention order (CONTEXT.md): official advisory or release note, discoverer write-up,
-# CVE record, discussion. Repositories are listed but come last.
-LEAD_ORDER = ["advisory", "writeup", "cve_record", "discussion", "repo"]
+# CVE record, discussion (a curator's newsletter is discussion too). Repositories are listed but come last.
+LEAD_ORDER = ["advisory", "writeup", "cve_record", "discussion", "curator", "repo"]
 
 CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
@@ -30,10 +30,11 @@ def is_http(url):
 
 
 def url_key(url):
-    """The same page however it is written: no scheme, www., fragment or trailing slash."""
+    """The same page however it is written: no scheme, www., fragment, trailing slash or utm_ tracking."""
     parts = urlsplit(url.strip())
     host = parts.netloc.lower().removeprefix("www.")
-    return host + parts.path.rstrip("/") + (f"?{parts.query}" if parts.query else "")
+    query = "&".join(p for p in parts.query.split("&") if p and not p.lower().startswith("utm_"))
+    return host + parts.path.rstrip("/") + (f"?{query}" if query else "")
 
 
 def link(incidents, group, stamp):
@@ -89,6 +90,14 @@ def absorb(target, other):
     target["urls"] = sorted(set(target["urls"]) | set(other["urls"]) | seen)
     target["brief"]["lead"] = lead(target["mentions"])
     enrich(target, {"cvss": other.get("cvss"), "products": other.get("products", [])})
+
+
+def cite(incident, citation):
+    """Add a curator's Mention to an Incident it cites by CVE or URL. Its own address is not made a
+    key: one newsletter issue cites many Incidents and must not tie them together."""
+    if set(incident["cves"]) & set(citation["cves"]) or set(incident["urls"]) & {url_key(u) for u in citation["urls"]}:
+        if all(m["url"] != citation["mention"]["url"] for m in incident["mentions"]):
+            incident["mentions"].append(citation["mention"])
 
 
 def enrich(incident, data):

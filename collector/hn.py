@@ -39,7 +39,10 @@ def fetch(checkpoint, http_get):
 def mention_group(hit):
     title = " ".join((hit.get("title") or "").split())
     link = hit.get("url")
-    mentions = [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={hit['objectID']}", "title": title}]
+    # shortcut: points as first seen (a story is read once), so a story that climbs later keeps its
+    # early count; re-read recent stories' points if Highlights miss HN buzz.
+    mentions = [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={hit['objectID']}",
+                 "title": title, "points": hit.get("points") or 0}]
     if is_http(link):
         mentions.append({"kind": "repo" if is_repo(link) else "writeup", "url": link})
     text = f"{title} {link or ''}"

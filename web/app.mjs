@@ -53,7 +53,14 @@ async function main() {
   }
 }
 
-const MENTION_LABEL = { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', repo: 'Repository' };
+const MENTION_LABEL = { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', repo: 'Repository' };
+
+// CVSS v3 qualitative ratings.
+function severity(cvss) {
+  if (cvss == null) return 'Severity not rated yet';
+  const rating = cvss >= 9 ? 'Critical' : cvss >= 7 ? 'High' : cvss >= 4 ? 'Medium' : cvss > 0 ? 'Low' : 'None';
+  return `CVSS ${cvss} ${rating}`;
+}
 
 // Source URLs are untrusted too: only http(s) ever becomes a link target.
 function anchor(url, label) {
@@ -69,10 +76,12 @@ const host = (url) => URL.canParse(url) ? new URL(url).host.replace(/^www\./, ''
 const label = (p) => `${p.name} (${p.id.split(':')[0]})`;
 
 function render() {
-  const shown = filterBoard(incidents, filter.picks, filter.query);
-  $('status').textContent = `Last updated ${updated} · ${shown.length} of ${incidents.length} incidents`;
+  const { highlights, list } = filterBoard(incidents, filter.picks, filter.query, Date.now());
+  $('status').textContent = `Last updated ${updated} · ${list.length} of ${incidents.length} incidents`;
   // CVE text is untrusted input, so it only ever goes in through textContent.
-  $('board').replaceChildren(...shown.map(row));
+  $('highlights').replaceChildren(...highlights.map(row));
+  $('highlights-section').hidden = !highlights.length;
+  $('board').replaceChildren(...list.map(row));
   $('picks').replaceChildren(...filter.picks.map(chip));
 }
 
@@ -113,7 +122,8 @@ function row(incident) {
   time.dateTime = incident.first_seen;
   time.textContent = incident.first_seen.replace('T', ' ').replace('Z', ' UTC');
   head.append(name, ' ', time);
-  if (incident.cvss != null) head.append(' ', Object.assign(document.createElement('span'), { className: 'cvss', textContent: `CVSS ${incident.cvss}` }));
+  head.append(' ', Object.assign(document.createElement('span'), { className: 'cvss', textContent: severity(incident.cvss) }));
+  if (incident.kev) head.append(' ', Object.assign(document.createElement('span'), { className: 'kev', textContent: 'Exploited in the wild (CISA KEV)' }));
   const text = document.createElement('p');
   text.textContent = incident.brief.text;
   li.append(head, text);

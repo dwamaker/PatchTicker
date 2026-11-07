@@ -10,7 +10,7 @@ import unittest
 
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
-from test_cycle import at, recorded
+from test_cycle import FIXTURES, at, recorded
 
 HN_STORY = "https://news.ycombinator.com/item?id=50378228"
 RELEASE_NOTE = "https://www.openssh.com/txt/release-10.6p2"
@@ -37,7 +37,7 @@ class SsholeReplayTest(unittest.TestCase):
                 "cves": [],
                 "first_seen": "2026-11-05T12:30:00Z",
                 "mentions": [
-                    {"kind": "discussion", "url": HN_STORY, "title": "sshole"},
+                    {"kind": "discussion", "url": HN_STORY, "title": "sshole", "points": 2935},
                     {"kind": "writeup", "url": "https://sshhole.com"},
                 ],
                 "urls": ["news.ycombinator.com/item?id=50378228", "sshhole.com"],
@@ -56,7 +56,7 @@ class SsholeReplayTest(unittest.TestCase):
         self.assertEqual(
             incident["mentions"],
             [
-                {"kind": "discussion", "url": HN_STORY, "title": "sshole"},
+                {"kind": "discussion", "url": HN_STORY, "title": "sshole", "points": 2935},
                 {"kind": "writeup", "url": "https://sshhole.com"},
                 {"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-123158"},
                 {"kind": "advisory", "url": RELEASE_NOTE},
@@ -84,6 +84,8 @@ class SsholeReplayTest(unittest.TestCase):
             ],
         )  # leonjza/sshhole-lab cites neither a CVE nor a known URL, so it is not listed
         self.assertEqual(incident["brief"]["lead"], RELEASE_NOTE)
+        # The Board test (seam 2) reads this same row to check that sshole becomes a Highlight.
+        self.assertEqual(incident, json.loads((FIXTURES / "board" / "sshole.json").read_bytes()))
 
 
 class LinkingTest(unittest.TestCase):

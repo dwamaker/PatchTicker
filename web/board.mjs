@@ -22,8 +22,18 @@ export function productList(incidents, now) {
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
+// Highlight score. Exploited in the wild (CISA KEV) outranks everything; then discussion (HN points,
+// up to 50 at 500 points; a curator's newsletter, 25 each for up to two); CVSS (up to 20) and the
+// number of Mentions order the rest.
+export function highlightScore(i) {
+  const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
+  const curated = i.mentions.filter((m) => m.kind === 'curator').length;
+  return (i.kev ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
+}
+
 // Search: every word of the query must appear somewhere in the Incident's text, CVE IDs or Products.
-export function filterBoard(incidents, picks = [], query = '') {
+// Returns the visible Incidents newest first, and the top ten of those first seen in the seven days before `now`.
+export function filterBoard(incidents, picks = [], query = '', now = Date.now()) {
   const picked = new Set(picks);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = incidents.filter((i) => {
@@ -31,5 +41,9 @@ export function filterBoard(incidents, picks = [], query = '') {
     const text = [i.brief.text, ...i.cves, ...(i.products || []).flatMap((p) => [p.name, p.id])].join('\n').toLowerCase();
     return words.every((w) => text.includes(w));
   });
-  return shown.sort((a, b) => (a.first_seen < b.first_seen ? 1 : a.first_seen > b.first_seen ? -1 : 0));
+  const list = shown.sort((a, b) => (a.first_seen < b.first_seen ? 1 : a.first_seen > b.first_seen ? -1 : 0));
+  const since = new Date(now - 7 * DAY_MS).toISOString();
+  // A stable sort keeps newest first among equal scores.
+  const highlights = list.filter((i) => i.first_seen >= since).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, 10);
+  return { highlights, list };
 }

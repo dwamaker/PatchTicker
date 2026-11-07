@@ -6,11 +6,12 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from collector import curators
 from collector.cycle import run_cycle
 from collector.store import FolderStore
 
 REQUIRED = ("VR_STORE_DIR", "VR_COLLECTOR_ID", "VR_CONTACT")
-OPTIONAL = ("VR_NVD_API_KEY", "VR_GITHUB_TOKEN")
+OPTIONAL = ("VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS")
 
 
 def load_settings(path):
@@ -44,6 +45,8 @@ def main():
         settings["VR_COLLECTOR_ID"],
         nvd_api_key=settings.get("VR_NVD_API_KEY", ""),
         github_token=settings.get("VR_GITHUB_TOKEN") or None,
+        curator_feeds=[u.strip() for u in settings["VR_CURATOR_FEEDS"].split(",") if u.strip()]
+        if "VR_CURATOR_FEEDS" in settings else curators.FEEDS,
     )
 
 
