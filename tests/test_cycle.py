@@ -1,4 +1,4 @@
-"""Seam 1: one collection cycle, replayed against recorded cvelistV5 responses."""
+"""Seam 1: one collection cycle, replayed against recorded source responses."""
 
 import unittest
 from datetime import datetime, timezone
@@ -8,7 +8,13 @@ from collector.cycle import run_cycle
 from collector.cvelist import DELTA_LOG_URL
 from collector.store import MemoryStore
 
-FIXTURES = Path(__file__).parent / "fixtures" / "cvelist"
+FIXTURES = Path(__file__).parent / "fixtures"
+# Mention sources by URL prefix: (fixture folder, answer when the test gives no fixture).
+MENTION_SOURCES = {
+    "https://hn.algolia.com/": ("hn", b'{"hits": [], "nbPages": 0}'),
+    "https://seclists.org/": ("oss-security", b"<rss><channel></channel></rss>"),
+    "https://api.github.com/": ("github", b'{"items": []}'),
+}
 
 KEYCLOAK_TEXT = (
     "A flaw was found in the Keycloak server's client management component. When a client is "
@@ -26,12 +32,20 @@ WPTRAVELLY_TEXT = (
 )
 
 
-def recorded(delta_log="deltaLog.json"):
-    """An http_get that answers from fixtures and fails on anything not recorded."""
+def recorded(delta_log="deltaLog.json", hn=None, oss=None, github=None):
+    """An http_get that answers from fixtures and fails on anything not recorded.
 
-    def get(url):
-        name = delta_log if url == DELTA_LOG_URL else url.rsplit("/", 1)[-1]
-        return (FIXTURES / name).read_bytes()
+    delta_log=None serves an empty delta log; a Mention source given no fixture answers empty.
+    """
+    names = {"hn": hn, "oss-security": oss, "github": github}
+
+    def get(url, headers=None):
+        if url == DELTA_LOG_URL:
+            return (FIXTURES / "cvelist" / delta_log).read_bytes() if delta_log else b"[]"
+        for prefix, (folder, empty) in MENTION_SOURCES.items():
+            if url.startswith(prefix):
+                return (FIXTURES / folder / names[folder]).read_bytes() if names[folder] else empty
+        return (FIXTURES / "cvelist" / url.rsplit("/", 1)[-1]).read_bytes()
 
     return get
 
@@ -47,6 +61,7 @@ def incident(cve, text, first_seen):
         "cves": [cve],
         "first_seen": first_seen,
         "mentions": [{"kind": "cve_record", "url": url}],
+        "urls": [f"cve.org/CVERecord?id={cve}"],
         "brief": {"text": text, "lead": url},
     }
 

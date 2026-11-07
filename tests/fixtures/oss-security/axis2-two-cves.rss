@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Open Source Security</title>
+    <link>https://seclists.org/#oss-sec</link>
+    <description>Hand-built in the real feed's shape: one advisory naming two CVEs.</description>
+    <pubDate>Fri, 06 Nov 2026 10:00:04 GMT</pubDate>
+  <item>
+    <title>Apache Axis2/Java 2.0.1: CVE-2026-123770 and CVE-2026-123766</title>
+    <link>https://seclists.org/oss-sec/2026/q4/540</link>
+    <description>&lt;p&gt;Posted by Apache Security Team on Nov 06&lt;/p&gt;Apache Axis2/Java 2.0.1 fixes two issues:&lt;br&gt;
+&lt;br&gt;
+CVE-2026-123770: Unbounded multipart and form-encoded request bodies&lt;br&gt;
+CVE-2026-123766: Cross-site scripting in the OpenAPI module&amp;apos;s Swagger UI page&lt;br&gt;</description>
+    <pubDate>Fri, 06 Nov 2026 09:55:00 GMT</pubDate>
+    <guid isPermaLink="true">https://seclists.org/oss-sec/2026/q4/540</guid>
+  </item>
+  </channel>
+</rss>

@@ -1,38 +1,32 @@
-"""One collection cycle: read the store, fetch new CVEs, write changed monthly files and status."""
+"""One collection cycle: read the store, fetch each source, link Mentions, write changed files."""
 
-from collector import cvelist
+import time
+
+from collector import cvelist, github, hn, osssec
+from collector.incidents import link
 
 
-def run_cycle(store, http_get, now, collector_id):
+def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, github_token=None):
     stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
-    # shortcut: loads every month to find known CVEs; fine for v1 volumes, revisit past a year.
-    months = {m: store.read(f"months/{m}.json") for m in index["months"]}
-    known = {cve for doc in months.values() for i in doc["incidents"] for cve in i["cves"]}
+    # shortcut: loads every month to link against; fine for v1 volumes, revisit past a year.
+    incidents = [i for m in index["months"] for i in store.read(f"months/{m}.json")["incidents"]]
 
     records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get)
+    posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get)
+    stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
+    repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
 
     changed = set()
-    month = now.strftime("%Y-%m")
-    for record in records:
-        cve = record["cveMetadata"]["cveId"]
-        if cve in known:
-            continue
-        known.add(cve)
-        url = f"https://www.cve.org/CVERecord?id={cve}"
-        months.setdefault(month, {"month": month, "incidents": []})["incidents"].append({
-            "id": cve,
-            "cves": [cve],
-            "first_seen": stamp,
-            "mentions": [{"kind": "cve_record", "url": url}],
-            "brief": {"text": cvelist.one_line_description(record), "lead": url},
-        })
-        changed.add(month)
+    # Join-only repos go last, so they can join Incidents that started this cycle.
+    for group in [cvelist.mention_group(r) for r in records] + posts + stories + repos:
+        changed |= link(incidents, group, stamp)
 
     for m in changed:
-        store.write(f"months/{m}.json", months[m])
+        # Incidents stay in the month they were first seen; a merge can empty an older month's row.
+        store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if i["first_seen"][:7] == m]})
     if changed - set(index["months"]):
-        store.write("index.json", {"months": sorted(months)})
+        store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)
     store.write("status.json", {"updated": stamp, "collector": collector_id})

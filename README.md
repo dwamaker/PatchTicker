@@ -8,12 +8,16 @@ Needs Python 3.13 and Node 24. No dependencies, no build step.
 
 ```sh
 cp .env.example .env        # then set VR_STORE_DIR=web/data, VR_COLLECTOR_ID, VR_CONTACT
-python -m collector         # one cycle: cvelistV5 delta log -> web/data/
+python -m collector         # one cycle: cvelistV5, oss-security, HN, GitHub -> web/data/
 python -m http.server 8000 -d web
 ```
 
 Open http://localhost:8000/ to see the Board. The first cycle with an empty store reads only the
 newest delta log entry; later cycles pick up everything since the last checkpoint.
+`VR_GITHUB_TOKEN` (optional, no scopes) lets GitHub search run at 30 instead of 10 requests a minute.
+
+Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
+of its URLs (`collector/incidents.py`, ADR 0001).
 
 `python -m collector other.env` reads a different environment file. Real environment variables
 override the file.

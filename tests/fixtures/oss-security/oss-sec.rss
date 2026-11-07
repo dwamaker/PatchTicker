@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Open Source Security</title>
+    <link>https://seclists.org/#oss-sec</link>
+    <atom:link href="https://seclists.org/rss/oss-sec.rss" rel="self" type="application/rss+xml" />
+    <language>en-us</language>
+    <description>Discussion of security flaws, concepts, and practices in the Open Source community</description>
+    <pubDate>Sat, 07 Nov 2026 06:00:04 GMT</pubDate>
+    <lastBuildDate>Sat, 07 Nov 2026 06:00:04 GMT</lastBuildDate>
+<!-- MHonArc v2.6.19 -->
+
+  <item>
+    <title>Re: &quot;sshole&quot;: password authentication bypass: OpenSSH + musl libc</title>
+    <link>https://seclists.org/oss-sec/2026/q4/571</link>
+    <description>&lt;p&gt;Posted by theknell on Nov 06&lt;/p&gt;Jacob — you asked whether it even entirely works when there&lt;br&gt;
+is no salt to borrow. The rigs were still up, so I built&lt;br&gt;
+the box. OpenSSH 10.6p2 --without-pam, shadow file with no&lt;br&gt;
+valid password in it anywhere...&lt;br&gt;</description>
+    <pubDate>Sat, 07 Nov 2026 05:53:35 GMT</pubDate>
+    <guid isPermaLink="true">https://seclists.org/oss-sec/2026/q4/571</guid>
+  </item>
+  <item>
+    <title>CVE-2026-118196: Apache Allura: OAuth1 rebinding</title>
+    <link>https://seclists.org/oss-sec/2026/q4/565</link>
+    <description>&lt;p&gt;Posted by Dave Brondsema on Nov 06&lt;/p&gt;Severity: critical&lt;br&gt;
+&lt;br&gt;
+OAuth 1 rebinding vulnerability in Apache Allura.&lt;br&gt;
+&lt;br&gt;
+Users are recommended to upgrade to version 1.22.1, which fixes the issue.&lt;br&gt;
+&lt;br&gt;
+References:&lt;br&gt;
+&lt;br&gt;
+&lt;a  rel=&quot;nofollow&quot; href=&quot;https://allura.apache.org/&quot;&gt;https://allura.apache.org/&lt;/a&gt;&lt;br&gt;
+&lt;a  rel=&quot;nofollow&quot; href=&quot;https://www.cve.org/CVERecord?id=CVE-2026-118196&quot;&gt;https://www.cve.org/CVERecord?id=CVE-2026-118196&lt;/a&gt;&lt;br&gt;</description>
+    <pubDate>Sat, 07 Nov 2026 01:29:55 GMT</pubDate>
+    <guid isPermaLink="true">https://seclists.org/oss-sec/2026/q4/565</guid>
+  </item>
+  <item>
+    <title>InfiniteWP Client: the NOSSL signing key has 31 bits of secret — recovered live in 291.9 seconds</title>
+    <link>https://seclists.org/oss-sec/2026/q4/563</link>
+    <description>&lt;p&gt;Posted by theknell on Nov 06&lt;/p&gt;InfiniteWP Client 1.13.10 — a WordPress management plugin on roughly&lt;br&gt;
+200,000 installs — speaks to its management panel through two&lt;br&gt;
+authentication branches...&lt;br&gt;</description>
+    <pubDate>Fri, 06 Nov 2026 18:32:40 GMT</pubDate>
+    <guid isPermaLink="true">https://seclists.org/oss-sec/2026/q4/563</guid>
+  </item>
+  </channel>
+</rss>

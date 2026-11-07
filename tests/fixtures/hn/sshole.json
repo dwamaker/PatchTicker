@@ -1,0 +1,30 @@
+{
+  "hits": [
+    {
+      "author": "josemrb",
+      "created_at": "2026-11-05T12:19:02Z",
+      "created_at_i": 1793881142,
+      "num_comments": 738,
+      "objectID": "50378228",
+      "points": 2935,
+      "story_id": 50378228,
+      "title": "sshole",
+      "url": "https://sshhole.com"
+    },
+    {
+      "author": "example",
+      "created_at": "2026-11-05T12:21:40Z",
+      "created_at_i": 1793881300,
+      "num_comments": 3,
+      "objectID": "50378250",
+      "points": 4,
+      "story_id": 50378250,
+      "title": "Show HN: A static site generator in 200 lines of Go",
+      "url": "https://example.org/tiny-ssg"
+    }
+  ],
+  "nbHits": 2,
+  "page": 0,
+  "nbPages": 1,
+  "hitsPerPage": 100
+}

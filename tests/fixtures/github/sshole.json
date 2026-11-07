@@ -1,0 +1,42 @@
+{
+  "total_count": 3,
+  "incomplete_results": false,
+  "items": [
+    {
+      "id": 1447370946,
+      "name": "sshole",
+      "full_name": "oz9un/sshole",
+      "html_url": "https://github.com/oz9un/sshole",
+      "description": "openssh on musl accepted any 257+ char password for accounts with no password. since 2016. check.sh, poc, patch.",
+      "homepage": "https://sshhole.com",
+      "topics": [],
+      "created_at": "2026-11-05T18:32:15Z",
+      "updated_at": "2026-11-07T13:01:28Z",
+      "pushed_at": "2026-11-05T18:36:48Z"
+    },
+    {
+      "id": 1447595972,
+      "name": "CVE-2026-123158_SSHole",
+      "full_name": "gabrielunknown/CVE-2026-123158_SSHole",
+      "html_url": "https://github.com/gabrielunknown/CVE-2026-123158_SSHole",
+      "description": "CVE-2026-123158 SSHole — OpenSSH authentication bypass via musl crypt() overflow on Alpine Linux (Exploit PoC)",
+      "homepage": null,
+      "topics": [],
+      "created_at": "2026-11-05T22:51:12Z",
+      "updated_at": "2026-11-07T05:20:47Z",
+      "pushed_at": "2026-11-06T05:48:20Z"
+    },
+    {
+      "id": 1447119154,
+      "name": "sshhole-lab",
+      "full_name": "leonjza/sshhole-lab",
+      "html_url": "https://github.com/leonjza/sshhole-lab",
+      "description": "An sshhole lab to play and learn",
+      "homepage": "",
+      "topics": ["lab", "sshhole", "sshole"],
+      "created_at": "2026-11-05T14:41:50Z",
+      "updated_at": "2026-11-06T20:08:34Z",
+      "pushed_at": "2026-11-05T15:00:49Z"
+    }
+  ]
+}

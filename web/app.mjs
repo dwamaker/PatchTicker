@@ -24,20 +24,41 @@ async function main() {
   }
 }
 
+const MENTION_LABEL = { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', repo: 'Repository' };
+
+// Source URLs are untrusted too: only http(s) ever becomes a link target.
+function anchor(url, label) {
+  const a = document.createElement('a');
+  a.href = /^https?:\/\//i.test(url) ? url : '#';
+  a.rel = 'noopener';
+  a.textContent = label;
+  return a;
+}
+
+const host = (url) => URL.canParse(url) ? new URL(url).host.replace(/^www\./, '') : url;
+
 function row(incident) {
   const li = document.createElement('li');
   const head = document.createElement('div');
-  const link = document.createElement('a');
-  link.href = incident.brief.lead;
-  link.rel = 'noopener';
-  link.textContent = incident.cves.join(', ') || incident.id;
+  const name = document.createElement('strong');
+  name.textContent = incident.cves.join(', ') || 'No CVE yet';
   const time = document.createElement('time');
   time.dateTime = incident.first_seen;
   time.textContent = incident.first_seen.replace('T', ' ').replace('Z', ' UTC');
-  head.append(link, ' ', time);
+  head.append(name, ' ', time);
   const text = document.createElement('p');
   text.textContent = incident.brief.text;
-  li.append(head, text);
+  const lead = document.createElement('p');
+  lead.className = 'lead';
+  lead.append(anchor(incident.brief.lead, `Read at ${host(incident.brief.lead)} →`));
+  const mentions = document.createElement('ul');
+  mentions.className = 'mentions';
+  for (const m of incident.mentions) {
+    const item = document.createElement('li');
+    item.append(`${MENTION_LABEL[m.kind] ?? m.kind}: `, anchor(m.url, m.title || host(m.url)));
+    mentions.append(item);
+  }
+  li.append(head, text, lead, mentions);
   return li;
 }
 
