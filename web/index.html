@@ -9,13 +9,29 @@
     #board { list-style: none; padding: 0; }
     #board li { border-bottom: 1px solid #ddd; padding: 0.75rem 0; }
     #board p { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
-    time, #status { color: #666; font-size: 0.875rem; }
+    time, #status, .cvss, .products, footer { color: #666; font-size: 0.875rem; }
+    #filter { display: grid; gap: 0.5rem; }
+    #filter input { font: inherit; padding: 0.5rem; min-height: 44px; box-sizing: border-box; width: 100%; }
+    #picks { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+    #picks button { font: inherit; min-height: 44px; padding: 0 0.75rem; }
+    footer { border-top: 1px solid #ddd; margin-top: 1rem; padding-top: 0.5rem; }
   </style>
 </head>
 <body>
   <h1>vuln-radar</h1>
-  <p id="status">Loading…</p>
+  <div id="filter">
+    <label for="product-pick">Products you run</label>
+    <input id="product-pick" list="product-options" placeholder="Type to find a Product" autocomplete="off">
+    <datalist id="product-options"></datalist>
+    <div id="picks" aria-label="Picked Products"></div>
+    <label for="search">Search</label>
+    <input id="search" type="search" placeholder="Keyword, CVE ID, version" autocomplete="off">
+  </div>
+  <p id="status" aria-live="polite">Loading…</p>
   <ul id="board"></ul>
+  <footer>
+    <p>This product uses data from the NVD API but is not endorsed or certified by the NVD.</p>
+  </footer>
   <script type="module" src="app.mjs"></script>
 </body>
 </html>
