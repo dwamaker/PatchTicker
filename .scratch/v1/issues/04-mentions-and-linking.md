@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved (8cb0ec5)
 
 - [ ] sshole replay (seam 1): the HN story, sshhole.com, the oz9un/sshole repo and CVE-2026-123158, fed over several cycles in their real order, end as exactly one Incident.
 - [ ] Before the CVE arrives that Incident is an Unassigned incident and is on the Board; after, it carries the CVE with no duplicate row.
@@ -12,3 +12,7 @@
 - [ ] An Incident with two CVEs named in one advisory stays one row.
 - [ ] Each adapter respects its source's documented limit (HN 10,000/h per IP, GitHub search 30/min with a token).
 - [ ] The Board shows the Mentions list and the Lead mention link for each Incident.
+
+## Comments
+
+- 2026-11-07: done in 8cb0ec5 on `v1`. Limits: HN security filter is a word regex (includes "hole", will misfire); GitHub search only finds repos mentioning "CVE"; a failing Mention source still aborts the cycle (only NVD failures are skipped).
