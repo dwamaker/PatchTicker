@@ -12,3 +12,7 @@
 - [ ] A malformed model reply leaves the Brief in place and is retried on a later cycle.
 - [ ] One manual live run on a handful of real Incidents confirms output shape and cost close to the 2026-11-07 measurement ($0.0004 per Incident).
 - [ ] The API key comes from the environment file only.
+- [ ] The Summary is requested with a JSON schema (structured output), so missing fields or broken JSON cannot occur.
+- [ ] The instructions say: when sources disagree on a number, follow the official advisory or the discoverer's write-up; when unsure, leave the field empty.
+- [ ] A code check rejects a Summary whose versions or numbers do not appear in the input text, whose Lead mention is not one of the input URLs, or whose Korean and English numbers differ; the Brief stays and the Summary is retried or flagged.
+- [ ] A small comparison on real Incidents (sshole among them) of effort `low` vs `medium` for Highlight candidates decides the effort for that path; the result and cost are recorded in the plan.

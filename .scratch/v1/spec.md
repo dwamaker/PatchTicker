@@ -82,6 +82,13 @@ Incidents get theirs at once. Every Incident links out to its best Mention so re
 51. As the operator, I want the homelab and the proxy VM never on the public request path, so that the site's traffic and attacks cannot reach them.
 52. As a contributor, I want the source code in a public repository, so that anyone can check how Incidents are matched and summarized.
 53. As a contributor, I want tests that replay recorded source responses, so that I can change the collector without calling live sources.
+54. As a non-expert visitor, I want an Easy view tab next to the normal view, so that I can understand an Incident without security jargon.
+55. As a non-expert visitor, I want a big Risk banner (for example "고위험!") instead of a CVE number at the top of the Easy view, so that I grasp the urgency at a glance.
+56. As a non-expert visitor, I want one or two plain sentences on what the problem means for me, so that I am not lost in technical detail.
+57. As a non-expert visitor, I want the single action to take now, such as "run this command to update", with a copy button, so that I can fix it right away.
+58. As a device owner, I want a device Incident to say "update these devices now!" with the device list, so that I know whether my router or camera is on it.
+59. As a visitor, I want the Easy view's command shown only when a source states it, and otherwise a plain "update to version X", so that I never run a made-up command.
+60. As a returning visitor, I want my choice of normal or Easy view remembered, so that the Board opens the way I like it.
 
 ## Implementation Decisions
 
@@ -106,6 +113,13 @@ Incidents get theirs at once. Every Incident links out to its best Mention so re
   (titles, summaries, conditions, Mitigation, Products, Lead mention). Input is the CVE record's
   relevant fields plus text from the best Mentions, so stopgaps and exact boundaries from write-ups
   reach the model. Effort low; generous max tokens because thinking counts toward it.
+- **Easy view.** The same Summary request also returns, per language, a plain one-to-two
+  sentence explanation and one action: a command (only if it appears verbatim in a source), or the
+  list of affected devices with "update now", or "update to version X". The Risk banner is set by
+  rules, not the model: exploited in the wild or CVSS 9.0+ → highest ("고위험!"), CVSS 7.0+ → high,
+  otherwise notice. The page has a normal/Easy tab per Incident and a remembered default (normal).
+  The code check that guards numbers also rejects an Easy command not found in the input text.
+  Expected cost: more output per Incident (estimate, not measured), still well within the credit.
 - **Summary routing.** Highlight candidates (new KEV entry, HN or curator buzz, CVSS 9.0+, or an
   Unassigned incident seen in discussion) go to the regular API at once; everything else goes into
   one Batch per cycle, collected on later cycles. Re-summarize only on: new official advisory or
