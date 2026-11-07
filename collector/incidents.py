@@ -88,6 +88,17 @@ def absorb(target, other):
             target["mentions"].append(m)
     target["urls"] = sorted(set(target["urls"]) | set(other["urls"]) | seen)
     target["brief"]["lead"] = lead(target["mentions"])
+    enrich(target, {"cvss": other.get("cvss"), "products": other.get("products", [])})
+
+
+def enrich(incident, data):
+    """Fold one CVE's NVD data into its Incident; an Incident with several CVEs keeps the union."""
+    if data["cvss"] is not None:
+        # shortcut: keeps the highest score, so a downward NVD revision is not applied; store per-CVE scores if that matters.
+        incident["cvss"] = max(incident.get("cvss", 0), data["cvss"])
+    merged = {p["id"]: p for p in incident.get("products", []) + data["products"]}
+    if merged:
+        incident["products"] = sorted(merged.values(), key=lambda p: p["id"])
 
 
 def lead(mentions):

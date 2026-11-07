@@ -10,7 +10,7 @@ from collector.cycle import run_cycle
 from collector.store import FolderStore
 
 REQUIRED = ("VR_STORE_DIR", "VR_COLLECTOR_ID", "VR_CONTACT")
-OPTIONAL = ("VR_GITHUB_TOKEN",)
+OPTIONAL = ("VR_NVD_API_KEY", "VR_GITHUB_TOKEN")
 
 
 def load_settings(path):
@@ -42,6 +42,7 @@ def main():
         http_get,
         datetime.now(timezone.utc),
         settings["VR_COLLECTOR_ID"],
+        nvd_api_key=settings.get("VR_NVD_API_KEY", ""),
         github_token=settings.get("VR_GITHUB_TOKEN") or None,
     )
 

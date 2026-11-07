@@ -107,6 +107,19 @@ class LinkingTest(unittest.TestCase):
             [m["kind"] for m in incident["mentions"]], ["cve_record", "cve_record", "discussion"]
         )
 
+    def test_merged_rows_keep_the_highest_cvss_and_all_products(self):
+        run_cycle(self.store, recorded("deltaLog-axis2.json"), at("2026-11-06T09:15:00"), "test-box")
+        month = self.store.read("months/2026-11.json")
+        month["incidents"][0] |= {"cvss": 5.3, "products": [{"id": "apache:axis2", "name": "Axis2"}]}
+        month["incidents"][1] |= {"cvss": 6.1, "products": [{"id": "apache:axis2_openapi", "name": "Axis2 Openapi"}]}
+        self.store.write("months/2026-11.json", month)
+
+        run_cycle(self.store, recorded(None, oss="axis2-two-cves.rss"), at("2026-11-06T10:00:00"), "test-box")
+
+        [incident] = self.incidents()
+        self.assertEqual(incident["cvss"], 6.1)
+        self.assertEqual([p["id"] for p in incident["products"]], ["apache:axis2", "apache:axis2_openapi"])
+
     def test_oss_security_posts_start_incidents_and_unmatched_replies_do_not(self):
         run_cycle(self.store, recorded(None, oss="oss-sec.rss"), at("2026-11-07T06:00:00"), "test-box")
 
