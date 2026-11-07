@@ -4,12 +4,15 @@ import json
 import sys
 import time
 
-from collector import curators, cvelist, github, hn, kev, nvd, osssec
+import anthropic
+
+from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
 from collector.incidents import cite, enrich, link
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=()):
+              curator_feeds=(), claude=None):
+    """claude: an anthropic.Anthropic client, or None for Briefs only."""
     stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
@@ -44,6 +47,17 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         for c in citations:
             cite(incident, c)
         if json.dumps(incident) != before:
+            changed.add(incident["first_seen"][:7])
+
+    if claude:
+        due = [i for i in incidents if summaries.is_candidate(i, now) and summaries.needs_summary(i)]
+        for incident in due[:summaries.MAX_PER_CYCLE]:
+            try:
+                summaries.summarize(incident, claude, http_get, stamp)
+            except anthropic.APIError as err:
+                # Briefs still go out; the next cycle asks again (ticket 07 adds the 'paused' status).
+                print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
+                break
             changed.add(incident["first_seen"][:7])
 
     for m in changed:

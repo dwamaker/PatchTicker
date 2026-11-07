@@ -1,0 +1,30 @@
+Portable OpenSSH 10.6p2 was released on 2026-11-05. It will be available
+from the mirrors listed at https://www.openssh.com/.
+
+OpenSSH is a 100% complete SSH protocol 2.0 implementation and
+includes sftp client and server support.
+
+[...]
+
+Changes since OpenSSH 10.6p1
+============================
+
+This release contains a critical security workaround that affects
+Linux systems that use the musl libc and PAM disabled.
+
+This release also includes a number of bugfixes that had already
+been committed on the portable OpenSSH V_10_6 stable branch.
+
+Security
+========
+
+ * sshd(8): avoid password authentication bypass that is exploitable
+   through sshd(8) that affects some Linux systems when built and run
+   with PAM support disabled. We consider the root cause of this bug
+   to be outside sshd, but it is exploitable via sshd and can be
+   avoided there.
+
+   This bug was reported by Özgün Kültekin of Wakefield
+   (wakefield.co)
+
+[...]

@@ -51,6 +51,19 @@ test('search matches title text, CVE ID, Product and version text, ignoring case
   assert.deepEqual(ids(filterBoard(board, [], 'nothing matches this').list), []);
 });
 
+test('search matches the Summary in Korean and in English', () => {
+  const summary = {
+    ko: { title: '무슬 기반 OpenSSH 인증 우회', summary: '비밀번호 없는 계정이 257~1024자 비밀번호를 받아들입니다.', conditions: ['PAM 미사용'], mitigation: '10.6p2로 업데이트하세요.' },
+    en: { title: 'OpenSSH on musl auth bypass', summary: 'Password-less accounts accept 257 to 1024 characters.', conditions: ['PAM not used'], mitigation: 'Update to 10.6p2.' },
+    products: ['Alpine Linux'],
+    lead: '',
+  };
+  const summarized = [...board, { ...incident('https://sshhole.com', '2026-11-05T12:30:00Z'), cves: [], brief: { text: 'sshole', lead: '' }, summary }];
+  for (const query of ['비밀번호 없는', 'password-less', 'PAM 미사용', 'pam not used', '업데이트하세요', '1024', 'alpine linux']) {
+    assert.deepEqual(ids(filterBoard(summarized, [], query).list), ['https://sshhole.com'], query);
+  }
+});
+
 test('search and Product picks narrow together', () => {
   assert.deepEqual(ids(filterBoard(board, [openssh.id], 'race').list), ['CVE-2024-6387']);
   assert.deepEqual(ids(filterBoard(board, [keycloak.id], 'race').list), []);

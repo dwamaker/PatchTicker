@@ -1,0 +1,185 @@
+"""Seam 1: instant Summaries for Highlight candidates, with a fake Claude client.
+
+pages/sshhole.com.html and pages/release-10.6p2.txt are the real pages (2026-11-07), trimmed.
+"""
+
+import json
+import unittest
+from types import SimpleNamespace
+
+from collector.cycle import run_cycle
+from collector.store import MemoryStore
+from test_cycle import at, recorded
+
+PAGES = {"https://sshhole.com": "sshhole.com.html", "https://www.openssh.com/txt/release-10.6p2": "release-10.6p2.txt"}
+
+SSHOLE_SUMMARY = {
+    "ko": {
+        "title": "musl 기반 OpenSSH, 비밀번호 없는 계정에 긴 비밀번호로 로그인 허용",
+        "summary": "musl libc로 빌드되고 PAM을 쓰지 않는 OpenSSH sshd에서 비밀번호가 `*`인 계정이 "
+                   "257~1024자 비밀번호를 받아들입니다. Alpine, OpenWrt 같은 musl 시스템이 해당합니다.",
+        "conditions": ["musl libc", "PAM 미사용", "비밀번호 로그인 켜짐", "비밀번호가 `*`인 계정"],
+        "mitigation": "OpenSSH 10.6p2로 업데이트하세요. 당장 못 하면 PasswordAuthentication no로 비밀번호 로그인을 끄세요.",
+    },
+    "en": {
+        "title": "OpenSSH on musl lets password-less accounts in with a long password",
+        "summary": "sshd built against musl libc without PAM accepts any password of 257 to 1024 characters "
+                   "for accounts whose password is `*`. musl systems such as Alpine and OpenWrt are affected.",
+        "conditions": ["musl libc", "PAM not used", "password logins on", "an account whose password is `*`"],
+        "mitigation": "Update to OpenSSH 10.6p2. Until then, set PasswordAuthentication no to turn password logins off.",
+    },
+    "products": ["OpenSSH"],
+    "lead": "https://sshhole.com",
+}
+
+
+class FakeClaude:
+    """Stands in for anthropic.Anthropic: answers messages.create with the given replies in turn
+    (a dict is sent as JSON, a string as is) and records what each request sent."""
+
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.sent = []
+        self.messages = SimpleNamespace(create=self.create)
+
+    def create(self, **params):
+        self.sent.append(params)
+        reply = self.replies.pop(0)
+        text = reply if isinstance(reply, str) else json.dumps(reply, ensure_ascii=False)
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], stop_reason="end_turn",
+                               usage=SimpleNamespace(input_tokens=0, output_tokens=0))
+
+    def user_text(self, n=0):
+        return self.sent[n]["messages"][0]["content"]
+
+
+def board(store):
+    return {i["id"]: i for i in store.read("months/2026-11.json")["incidents"]}
+
+
+HN_STORY = "https://news.ycombinator.com/item?id=50378228"
+
+
+class InstantSummaryTest(unittest.TestCase):
+    def setUp(self):
+        self.store = MemoryStore()
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-07T12:00:00.000Z"})
+
+    def run_at(self, when, claude, **sources):
+        sources.setdefault("delta_log", None)
+        run_cycle(self.store, recorded(web=PAGES, **sources), at(when), "test-box", claude=claude)
+
+    def test_a_highlight_candidate_is_summarized_in_its_first_cycle_and_others_are_not(self):
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        # sshole (an Unassigned incident seen on HN) arrives with two ordinary CVEs (no CVSS, no buzz).
+        self.run_at("2026-11-07T12:30:00", claude, delta_log="deltaLog.json", hn="sshole.json")
+
+        incidents = board(self.store)
+        self.assertEqual(incidents[HN_STORY]["summary"], SSHOLE_SUMMARY | {"at": "2026-11-07T12:30:00Z"})
+        self.assertEqual(len(claude.sent), 1)
+        self.assertNotIn("summary", incidents["CVE-2026-120984"])
+        self.assertNotIn("summary", incidents["CVE-2026-120839"])
+
+    def test_the_sshole_summary_input_carries_the_write_up_text(self):
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+
+        sent = claude.user_text()
+        self.assertIn("between 257 and 1024 characters", sent)
+        self.assertIn('echo "PasswordAuthentication no"', sent)
+        self.assertNotIn("<span", sent)  # page text, not markup
+        self.assertNotIn("CVE-2099-0001", sent)  # nor its scripts
+
+    def merged_sshole(self, claude):
+        """sshole's real order: the HN cycle runs without an API key, the Summary is asked once the CVE
+        has merged in."""
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-05T12:00:00.000Z"})
+        self.run_at("2026-11-05T12:30:00", None, hn="sshole.json")
+        self.run_at("2026-11-05T16:00:00", claude, delta_log="deltaLog-sshole.json")
+
+    def test_the_cve_record_and_release_note_join_the_input_once_known(self):
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        self.merged_sshole(claude)
+
+        sent = claude.user_text()
+        self.assertIn('"defaultStatus"', sent)  # the CVE record's affected list, not only its description
+        self.assertIn("musl libc and PAM disabled", sent)  # the release note's text
+        self.assertIn("between 257 and 1024 characters", sent)  # and still the write-up's
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["at"], "2026-11-05T16:00:00Z")
+
+    def test_the_request_asks_for_a_json_schema_with_cached_instructions(self):
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+
+        [sent] = claude.sent
+        self.assertEqual(sent["model"], "claude-haiku-5-5")
+        self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead"])
+        [instructions] = sent["system"]
+        self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
+        # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
+        self.assertGreater(len(instructions["text"]), 4 * 512)
+        self.assertIn("follow the official advisory or the discoverer's write-up", instructions["text"])
+        self.assertIn("leave it empty", instructions["text"])
+
+    def test_a_malformed_reply_leaves_the_brief_and_a_later_cycle_retries(self):
+        claude = FakeClaude('{"ko": {"title": "musl', SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.assertNotIn("summary", board(self.store)[HN_STORY])
+        self.assertEqual(board(self.store)[HN_STORY]["brief"]["text"], "sshole")
+
+        self.run_at("2026-11-07T12:45:00", claude)
+
+        incident = board(self.store)[HN_STORY]
+        self.assertEqual(incident["summary"]["at"], "2026-11-07T12:45:00Z")
+        self.assertNotIn("summary_error", incident)
+
+    def test_the_code_check_rejects_made_up_numbers_foreign_links_and_mismatched_languages(self):
+        en, ko = SSHOLE_SUMMARY["en"], SSHOLE_SUMMARY["ko"]
+        bad = {
+            "a version not in the input": SSHOLE_SUMMARY | {"en": en | {"mitigation": "Update to OpenSSH 10.7p1."},
+                                                            "ko": ko | {"mitigation": "OpenSSH 10.7p1로 업데이트하세요."}},
+            "a boundary not in the input": SSHOLE_SUMMARY | {"en": en | {"summary": "Passwords over 300 characters work."},
+                                                             "ko": ko | {"summary": "300자를 넘는 비밀번호가 통합니다."}},
+            "a Lead that is not an input URL": SSHOLE_SUMMARY | {"lead": "https://example.com/sshole"},
+            "Korean and English numbers that differ": SSHOLE_SUMMARY | {"ko": ko | {"summary": "256자 이상 비밀번호를 받아들입니다."}},
+            "a missing field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "lead"},
+            "a field of the wrong type": SSHOLE_SUMMARY | {"products": "OpenSSH"},
+        }
+        for case, reply in bad.items():
+            with self.subTest(case):
+                self.setUp()
+                self.run_at("2026-11-07T12:30:00", FakeClaude(reply), hn="sshole.json")
+                incident = board(self.store)[HN_STORY]
+                self.assertNotIn("summary", incident)
+                self.assertEqual(incident["summary_error"]["tries"], 1)
+
+    def test_numbers_written_differently_in_the_source_still_pass(self):
+        # "1,024" and "1024" are one number; so are "05" and "5".
+        reply = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"summary": "Any password of 257 to 1,024 characters; fixed 2026-11-05."},
+                                  "ko": SSHOLE_SUMMARY["ko"] | {"summary": "257~1024자 비밀번호가 통합니다. 2026-11-5 수정."}}
+        self.merged_sshole(FakeClaude(reply))
+        self.assertIn("summary", board(self.store)[HN_STORY])
+
+    def test_after_three_failed_replies_the_incident_is_flagged_and_not_asked_again(self):
+        claude = FakeClaude("not json", "not json", "not json")
+        for when in ("2026-11-07T12:30:00", "2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00"):
+            self.run_at(when, claude, hn="sshole.json" if when.endswith("12:30:00") else None)
+
+        self.assertEqual(len(claude.sent), 3)
+        incident = board(self.store)[HN_STORY]
+        self.assertEqual(incident["summary_error"]["tries"], 3)
+        self.assertEqual(incident["brief"]["text"], "sshole")
+
+    def test_only_the_last_seven_days_are_summarized_at_once(self):
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        self.run_at("2026-11-05T12:30:00", None, hn="sshole.json")  # no API key: Briefs only
+
+        self.run_at("2026-11-12T12:31:00", claude)
+
+        self.assertEqual(claude.sent, [])
+        self.assertNotIn("summary", board(self.store)[HN_STORY])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -13,7 +13,10 @@
     #highlights-section { background: #fff8e1; padding: 0 0.75rem; border-left: 4px solid #e0a800; }
     time, #status, .cvss, .products, footer { color: #666; font-size: 0.875rem; }
     .kev { color: #a00; font-weight: 600; font-size: 0.875rem; }
-    .incidents .lead { font-weight: 600; }
+    .incidents .lead, .incidents .title { font-weight: 600; }
+    .incidents .preparing { color: #666; font-size: 0.875rem; font-style: italic; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    #lang { font: inherit; min-height: 44px; padding: 0 0.75rem; }
     .incidents .mentions { list-style: none; padding: 0; margin: 0.25rem 0 0; font-size: 0.875rem; color: #444; }
     .incidents .mentions li { border: 0; padding: 0; overflow-wrap: anywhere; }
     #filter { display: grid; gap: 0.5rem; }
@@ -24,7 +27,7 @@
   </style>
 </head>
 <body>
-  <h1>vuln-radar</h1>
+  <header><h1>vuln-radar</h1> <button id="lang" type="button">English</button></header>
   <div id="filter">
     <label for="product-pick">Products you run</label>
     <input id="product-pick" list="product-options" placeholder="Type to find a Product" autocomplete="off">

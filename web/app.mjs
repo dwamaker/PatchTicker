@@ -3,6 +3,23 @@ import { filterBoard, filterFromQuery, filterToQuery, productList } from './boar
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
 const SAVED = 'vr-filter';
+const SAVED_LANG = 'vr-lang';
+// The Summary's language: the visitor's toggle, else the browser's language.
+const TEXT = {
+  ko: { other: 'English', preparing: '요약 준비 중', conditions: '해당 조건', mitigation: '대처법' },
+  en: { other: '한국어', preparing: 'Summary in preparation', conditions: 'Affected when', mitigation: 'Mitigation' },
+};
+let lang = loadLang();
+
+function loadLang() {
+  try {
+    const saved = localStorage.getItem(SAVED_LANG);
+    if (saved in TEXT) return saved;
+  } catch {
+    // storage blocked: fall back to the browser's language
+  }
+  return (navigator.language || '').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+}
 
 const getJson = async (name) => {
   const res = await fetch(DATA_URL + name, { cache: 'no-cache' });
@@ -83,6 +100,8 @@ function render() {
   $('highlights-section').hidden = !highlights.length;
   $('board').replaceChildren(...list.map(row));
   $('picks').replaceChildren(...filter.picks.map(chip));
+  $('lang').textContent = TEXT[lang].other;
+  $('lang').lang = lang === 'ko' ? 'en' : 'ko';
 }
 
 function chip(id) {
@@ -106,12 +125,36 @@ $('product-pick').addEventListener('change', (event) => {
   event.target.value = '';
   if (picked && !filter.picks.includes(picked.id)) update({ picks: [...filter.picks, picked.id] });
 });
+$('lang').addEventListener('click', () => {
+  lang = lang === 'ko' ? 'en' : 'ko';
+  try {
+    localStorage.setItem(SAVED_LANG, lang);
+  } catch {
+    // storage blocked: the choice lasts until reload
+  }
+  render();
+});
 $('search').addEventListener('input', (event) => update({ query: event.target.value }));
 window.addEventListener('hashchange', () => {
   filter = loadFilter();
   $('search').value = filter.query;
   render();
 });
+
+// The rest of the page is English, so each Summary line carries its own language for screen readers.
+const para = (className, textContent, language = lang) => Object.assign(document.createElement('p'), { className, textContent, lang: language });
+
+function summary(s) {
+  const parts = [para('title', s.title), para('summary', s.summary)];
+  if (s.conditions.length) parts.push(para('conditions', `${TEXT[lang].conditions}: ${s.conditions.join(' · ')}`));
+  if (s.mitigation) parts.push(para('mitigation', `${TEXT[lang].mitigation}: ${s.mitigation}`));
+  return parts;
+}
+
+// A Brief is the source's own one line (English) until the Summary arrives.
+function brief(b) {
+  return [para('brief', b.text, 'en'), para('preparing', TEXT[lang].preparing)];
+}
 
 function row(incident) {
   const li = document.createElement('li');
@@ -124,15 +167,14 @@ function row(incident) {
   head.append(name, ' ', time);
   head.append(' ', Object.assign(document.createElement('span'), { className: 'cvss', textContent: severity(incident.cvss) }));
   if (incident.kev) head.append(' ', Object.assign(document.createElement('span'), { className: 'kev', textContent: 'Exploited in the wild (CISA KEV)' }));
-  const text = document.createElement('p');
-  text.textContent = incident.brief.text;
-  li.append(head, text);
+  li.append(head, ...(incident.summary ? summary(incident.summary[lang]) : brief(incident.brief)));
   if (incident.products?.length) {
     li.append(Object.assign(document.createElement('p'), { className: 'products', textContent: incident.products.map((p) => p.name).join(' · ') }));
   }
   const lead = document.createElement('p');
   lead.className = 'lead';
-  lead.append(anchor(incident.brief.lead, `Read at ${host(incident.brief.lead)} →`));
+  const leadUrl = incident.summary?.lead || incident.brief.lead;
+  lead.append(anchor(leadUrl, `Read at ${host(leadUrl)} →`));
   const mentions = document.createElement('ul');
   mentions.className = 'mentions';
   for (const m of incident.mentions) {

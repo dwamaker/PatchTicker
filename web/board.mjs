@@ -31,14 +31,17 @@ export function highlightScore(i) {
   return (i.kev ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
 }
 
-// Search: every word of the query must appear somewhere in the Incident's text, CVE IDs or Products.
+// The Summary's text in both languages, so either language finds the Incident.
+const summaryText = (s) => (s ? [...['ko', 'en'].flatMap((l) => [s[l].title, s[l].summary, ...s[l].conditions, s[l].mitigation]), ...s.products] : []);
+
+// Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
 // Returns the visible Incidents newest first, and the top ten of those first seen in the seven days before `now`.
 export function filterBoard(incidents, picks = [], query = '', now = Date.now()) {
   const picked = new Set(picks);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = incidents.filter((i) => {
     if (picked.size && !(i.products || []).some((p) => picked.has(p.id))) return false;
-    const text = [i.brief.text, ...i.cves, ...(i.products || []).flatMap((p) => [p.name, p.id])].join('\n').toLowerCase();
+    const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, ...(i.products || []).flatMap((p) => [p.name, p.id])].join('\n').toLowerCase();
     return words.every((w) => text.includes(w));
   });
   const list = shown.sort((a, b) => (a.first_seen < b.first_seen ? 1 : a.first_seen > b.first_seen ? -1 : 0));

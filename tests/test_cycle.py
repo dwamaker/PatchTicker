@@ -39,16 +39,19 @@ WPTRAVELLY_TEXT = (
 
 
 def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=None, hn=None, oss=None, github=None,
-             kev=None, curators=None):
+             kev=None, curators=None, web=None):
     """An http_get that answers from fixtures and fails on anything not recorded.
 
     NVD pages are trimmed real responses, keyed by the startIndex they answer.
     delta_log=None serves an empty delta log; a Mention source given no fixture answers empty.
+    web maps a Mention's URL to its page in fixtures/pages/ (what a Summary reads).
     """
     pages = {json.loads((NVD_FIXTURES / p).read_bytes())["startIndex"]: p for p in nvd_pages}
     names = {"hn": hn, "oss-security": oss, "github": github, "kev": kev, "curators": curators}
 
     def get(url, headers=None):
+        if url in (web or {}):
+            return (FIXTURES / "pages" / web[url]).read_bytes()
         if url.startswith(nvd.API_URL):
             query = {k: v[0] for k, v in parse_qs(urlsplit(url).query).items()}
             if nvd_range:

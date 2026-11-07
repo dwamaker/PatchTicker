@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>*sshole · sshhole.com</title>
+<meta name="description" content="openssh on musl linux has been letting people into password-less accounts since 2016.">
+<link rel="stylesheet" href="style.css">
+<style>.star { color: #f5c518; }</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-text">
+    <h1 aria-label="sshhole"><span class="star">*</span>ss<span class="echo">h</span>ole</h1>
+    <p class="lede">so openssh on musl linux (alpine, openwrt, buildroot, yocto, and a lot of the docker images you've pulled) has had a little problem since 2016.</p>
+    <p class="lede">accounts that should never take a password at all (root, your key-only deploy user, ldap users, the default user on alpine's aws and azure images) take any password longer than 256 characters.</p>
+  </div>
+</header>
+<main>
+
+<section id="exposure">
+  <h2>are you affected?</h2>
+  <ul class="checks" id="checks">
+    <li><span class="tick"></span><span>is your sshd running on <strong>musl</strong>? (alpine, openwrt, buildroot, yocto)</span></li>
+    <li><span class="tick"></span><span>is it <strong>not using pam</strong>? alpine's <code>openssh-server</code> doesn't by default, or maybe you set <code>UsePAM no</code></span></li>
+    <li><span class="tick"></span><span>are <strong>password logins</strong> still on? they are by default</span></li>
+    <li><span class="tick"></span><span>is there an account with just <code>*</code> as its password? key-only users, ldap users, root on alpine</span></li>
+    <li><span class="tick"></span><span>and some <em>other</em> account with a real password?</span></li>
+    <li class="res"><span class="tick"></span><span>then that <code>*</code> account takes any password between 257 and 1024 characters</span></li>
+  </ul>
+  <p class="aff">on alpine's official aws and azure images that's the default <code>alpine</code> user, and it has passwordless <code>doas</code>. so it's root</p>
+  <p class="aff ok">on debian, ubuntu, fedora or anything else with glibc? going through pam? dropbear? openbsd? you're fine</p>
+</section>
+
+<section id="fix">
+  <h2>what now</h2>
+  <figure class="log fixlog">
+    <div class="term-bar"><span></span><span></span><span></span><em>you</em></div>
+    <pre class="log-body"><span class="dim"># update. openssh 10.6p2 fixes it.</span>
+<span class="p">$</span> apk upgrade openssh
+
+<span class="dim"># can't update yet? turn password logins off.</span>
+<span class="p">$</span> echo "PasswordAuthentication no" > /etc/ssh/sshd_config.d/00-no-passwords.conf
+<span class="p">$</span> rc-service sshd restart</pre>
+  </figure>
+</section>
+
+</main>
+<script>document.querySelector('.star').title = 'CVE-2099-0001 version 99.9';</script>
+</body>
+</html>
