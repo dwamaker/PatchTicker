@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved (5a2343e)
 
 - [ ] A cycle run against recorded cvelistV5 responses writes the expected Incidents into the right monthly file (seam 1).
 - [ ] A second cycle with no new records changes nothing; a record seen again does not create a second Incident.
@@ -13,3 +13,7 @@
 - [ ] The Board's filter function returns Incidents newest first (seam 2).
 - [ ] Opening the page against a local-folder store shows the Incidents newest first.
 - [ ] The collector reads its settings from an environment file that git ignores; no secret is committed.
+
+## Comments
+
+- 2026-11-07: done in 5a2343e on `v1`. Open: first run reads only the newest delta entry (shortcut in code); deltaLog.json is 36 MB and is downloaded in full every cycle, fix before going live; REJECTED-record skip has no test.
