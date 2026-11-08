@@ -1,0 +1,12 @@
+{
+  "title": "Hand-built in the real catalog's shape: sshole listed as exploited",
+  "count": 1,
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-123158",
+      "vendorProject": "OpenBSD",
+      "product": "OpenSSH",
+      "dateAdded": "2026-11-06"
+    }
+  ]
+}

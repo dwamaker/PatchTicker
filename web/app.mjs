@@ -12,12 +12,14 @@ const TEXT = {
     normal: '기본', easy: '쉬운 설명', highest: '고위험!', high: '위험', notice: '참고',
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '아직 나온 대처법이 없습니다. 아래 링크를 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
+    paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 속보로만 보입니다.',
   },
   en: {
     other: '한국어', preparing: 'Summary in preparation', conditions: 'Affected when', mitigation: 'Mitigation',
     normal: 'Normal', easy: 'Easy', highest: 'High risk!', high: 'Risk', notice: 'Notice',
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'No fix is out yet. Check the link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
+    paused: 'Summaries are paused for now; new Incidents show their Brief only.',
   },
 };
 let lang = loadLang();
@@ -64,6 +66,7 @@ const $ = (id) => document.getElementById(id);
 let incidents = [];
 let products = [];
 let updated = '';
+let paused = false;
 // The filter lives in the address hash, not the query, so opening a shared link never sends it to a server.
 let filter = loadFilter();
 
@@ -94,6 +97,7 @@ async function main() {
     incidents = months.flatMap((m) => m.incidents);
     products = productList(incidents, Date.now());
     updated = st.updated;
+    paused = st.summaries === 'paused'; // the collector hit its AI budget (ticket 07)
     $('product-options').replaceChildren(...products.map((p) => new Option(label(p), label(p))));
     $('search').value = filter.query;
     saveFilter();
@@ -127,7 +131,8 @@ const label = (p) => `${p.name} (${p.id.split(':')[0]})`;
 
 function render() {
   const { highlights, list } = filterBoard(incidents, filter.picks, filter.query, Date.now());
-  $('status').textContent = `Last updated ${updated} · ${list.length} of ${incidents.length} incidents`;
+  $('status').textContent = `Last updated ${updated} · ${list.length} of ${incidents.length} incidents`
+    + (paused ? ` · ${TEXT[lang].paused}` : '');
   // CVE text is untrusted input, so it only ever goes in through textContent.
   $('highlights').replaceChildren(...highlights.map(row));
   $('highlights-section').hidden = !highlights.length;

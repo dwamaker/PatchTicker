@@ -31,6 +31,13 @@ the text of up to two advisory or write-up pages; a reply whose numbers, version
 in that input, or whose Korean and English numbers differ, is rejected and retried (three tries).
 The collector refuses to fetch non-public addresses, since Mentions name the pages it reads.
 
+Every other Incident (first seen in the last 30 days) goes into one Message Batch per cycle with the
+same request and a one-hour prompt cache; a later cycle collects the results (`batches.json` in the
+store holds the pending batches and their inputs). Expired or errored requests are sent again. A new
+official advisory, a new KEV listing or a newly attached CVE brings a new Summary, at most three per
+Incident. A credit-exhausted or spend-limit error stops Summaries for the cycle and sets
+`"summaries": "paused"` in `status.json`, which the page shows as a short notice; Briefs keep flowing.
+
 The same request fills the Easy view (a tab on each Incident, normal by default, remembered per
 Incident): one or two plain sentences per language, the fixed version, a device list, and an update
 command and stopgap that are kept only when they appear verbatim in the input. The Risk banner comes
@@ -42,7 +49,7 @@ override the file.
 ## Tests
 
 ```sh
-python -m unittest discover tests   # collector: cycle (seam 1) and store contract
+python -m unittest discover tests   # collector: cycle (seam 1), fake Claude client, store contract
 node --test                         # page: the Board's filter function (seam 2)
 ```
 

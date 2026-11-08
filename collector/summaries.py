@@ -1,8 +1,9 @@
 """Summaries (CONTEXT.md): one Claude Haiku 5.5 request per Incident, Korean and English together.
 
-Highlight candidates are summarized at once in their cycle (ticket 06); the rest wait for the
-batch path (ticket 07), which reuses `params` and `parse`. The model's reply is checked against
-its input, so a number, version or link it made up never reaches the Board.
+Highlight candidates are summarized at once in their cycle (ticket 06); the rest go into one
+Message Batch per cycle, collected on a later cycle (ticket 07), with the same `params` and `parse`.
+The model's reply is checked against its input, so a number, version or link it made up never
+reaches the Board.
 """
 
 import html.parser
@@ -12,14 +13,21 @@ import sys
 from datetime import timedelta
 from urllib.parse import urlsplit
 
+from anthropic.types.messages.batch_create_params import Request
+
 MODEL = "claude-haiku-5-5"
 # Decided by the 2026-11-07 low vs medium comparison (plan.md).
 EFFORT = "low"
 # Thinking counts toward max_tokens on Haiku 5.5; replies measured 500-900 tokens.
 MAX_TOKENS = 4000
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
+MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
 # shortcut: at most this many instant Summaries per cycle, so a backlog cannot burst the budget.
 MAX_PER_CYCLE = 10
+# shortcut: at most this many batch requests per cycle (each fetches up to three pages for its input),
+# and only Incidents first seen in the last BATCH_DAYS; raise both if a backlog after a pause clears too slowly.
+MAX_PER_BATCH = 200
+BATCH_DAYS = 30
 PAGE_CHARS = 8000  # shortcut: page text past this is cut; sshhole.com's Mitigation sits at ~7,000.
 MAX_PAGES = 2
 PAGE_KINDS = ("advisory", "writeup", "discussion")  # in Lead order; repos and newsletters are not read
@@ -113,29 +121,95 @@ def is_candidate(incident, now):
                 or (not incident["cves"] and "discussion" in kinds))
 
 
+def basis(incident):
+    """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing)."""
+    return {"cves": sorted(incident["cves"]), "kev": bool(incident.get("kev")),
+            "advisories": sorted(m["url"] for m in incident["mentions"] if m["kind"] == "advisory")}
+
+
 def needs_summary(incident):
-    return "summary" not in incident and incident.get("summary_error", {}).get("tries", 0) < MAX_TRIES
+    """No Summary yet, or a re-summary trigger since the last one: a new official advisory, a new
+    KEV listing or a newly attached CVE, at most MAX_SUMMARIES in all."""
+    if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
+        return False
+    if "summary" not in incident:
+        return True
+    seen = incident.get("summary_basis")  # Summaries from before ticket 07 have none: never re-summarized
+    if not seen or seen["n"] >= MAX_SUMMARIES:
+        return False
+    now = basis(incident)
+    return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
+                or set(now["advisories"]) - set(seen["advisories"]))
+
+
+def is_budget_error(err):
+    """Credit exhausted (402 billing_error) or the workspace spend limit (a 400 that names it)."""
+    status = getattr(err, "status_code", None)
+    return status == 402 or status == 400 and bool(re.search(r"credit balance|usage limit|spend limit", err.message, re.I))
 
 
 def summarize(incident, claude, http_get, stamp):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets API errors through."""
-    text = summary_input(incident, http_get)
-    reply = claude.messages.create(**params(text))
+    text, seen = summary_input(incident, http_get), basis(incident)
+    save_reply(incident, claude.messages.create(**params(text)), text, seen, stamp)
+
+
+def save_reply(incident, reply, text, seen, stamp):
     try:
         incident["summary"] = parse(reply, text, [m["url"] for m in incident["mentions"]]) | {"at": stamp}
-        incident.pop("summary_error", None)
     except Rejected as err:
-        tries = incident.get("summary_error", {}).get("tries", 0) + 1
-        incident["summary_error"] = {"tries": tries, "reason": str(err)[:200]}
+        failed(incident, str(err))
+        return
+    incident.pop("summary_error", None)
+    incident["summary_basis"] = seen | {"n": incident.get("summary_basis", {}).get("n", 0) + 1}
 
 
-def params(text, effort=EFFORT):
-    """messages.create parameters; the batch path sends the same."""
+def failed(incident, reason):
+    tries = incident.get("summary_error", {}).get("tries", 0) + 1
+    incident["summary_error"] = {"tries": tries, "reason": reason[:200]}
+
+
+def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):
+    """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
+    The input is kept so the reply can be checked against it when the result comes in."""
+    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
+                for n, i in enumerate(incidents[:limit])}
+    if not requests:
+        return None
+    batch = claude.messages.batches.create(requests=[
+        Request(custom_id=cid, params=params(r["input"], ttl="1h")) for cid, r in requests.items()])
+    return {"id": batch.id, "requests": requests}
+
+
+def collect_batch(pending, incidents, claude, stamp):
+    """Store the results of an ended batch; return the Incidents it touched, or None while it runs.
+    A request that errored counts as a failed try; an expired or canceled one is simply sent again."""
+    if claude.messages.batches.retrieve(pending["id"]).processing_status != "ended":
+        return None
+    by_id = {i["id"]: i for i in incidents}
+    touched = []
+    for item in claude.messages.batches.results(pending["id"]):
+        sent = pending["requests"].get(item.custom_id)
+        incident = by_id.get(sent["incident"]) if sent else None  # gone if merged into another meanwhile
+        if incident is None:
+            continue
+        if item.result.type == "succeeded":
+            save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp)
+        elif item.result.type == "errored":
+            failed(incident, f"batch request errored: {item.result.error.error.type}")
+        touched.append(incident)
+    return touched
+
+
+def params(text, effort=EFFORT, ttl=None):
+    """messages.create parameters; the batch path sends the same with ttl="1h"."""
     return {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
         # Fixed instructions first with a cache breakpoint; they exceed Haiku 5.5's 512-token minimum.
-        "system": [{"type": "text", "text": INSTRUCTIONS, "cache_control": {"type": "ephemeral"}}],
+        # Batches use the one-hour TTL: their requests run over minutes to hours, past the default five.
+        "system": [{"type": "text", "text": INSTRUCTIONS,
+                    "cache_control": {"type": "ephemeral"} | ({"ttl": ttl} if ttl else {})}],
         "output_config": {"effort": effort, "format": {"type": "json_schema", "schema": SCHEMA}},
         "messages": [{"role": "user", "content": text}],
     }

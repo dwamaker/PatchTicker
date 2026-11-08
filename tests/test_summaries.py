@@ -41,22 +41,68 @@ SSHOLE_SUMMARY = {
 
 class FakeClaude:
     """Stands in for anthropic.Anthropic: answers messages.create with the given replies in turn
-    (a dict is sent as JSON, a string as is) and records what each request sent."""
+    (a dict is sent as JSON, a string as is) and records what each request sent.
+
+    Message batches stay in progress until the test calls end_batch. Setting `error` makes every
+    messages.create and batch submit raise it (a credit-exhausted error, say)."""
 
     def __init__(self, *replies):
         self.replies = list(replies)
         self.sent = []
-        self.messages = SimpleNamespace(create=self.create)
+        self.batches = []  # each {"id", "requests", "results": None while in progress}
+        self.error = None
+        self.messages = SimpleNamespace(create=self.create, batches=SimpleNamespace(
+            create=self.batch_create, retrieve=self.batch_retrieve, results=self.batch_results))
 
     def create(self, **params):
+        if self.error:
+            raise self.error
         self.sent.append(params)
-        reply = self.replies.pop(0)
+        return self.message(self.replies.pop(0))
+
+    @staticmethod
+    def message(reply):
         text = reply if isinstance(reply, str) else json.dumps(reply, ensure_ascii=False)
         return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], stop_reason="end_turn",
                                usage=SimpleNamespace(input_tokens=0, output_tokens=0))
 
     def user_text(self, n=0):
         return self.sent[n]["messages"][0]["content"]
+
+    def batch_create(self, requests):
+        if self.error:
+            raise self.error
+        self.batches.append({"id": f"msgbatch_{len(self.batches)}", "requests": list(requests), "results": None})
+        return SimpleNamespace(id=self.batches[-1]["id"], processing_status="in_progress")
+
+    def batch(self, batch_id):
+        return next(b for b in self.batches if b["id"] == batch_id)
+
+    def batch_retrieve(self, batch_id):
+        return SimpleNamespace(id=batch_id, processing_status="in_progress" if self.batch(batch_id)["results"] is None else "ended")
+
+    def batch_results(self, batch_id):
+        return iter(self.batch(batch_id)["results"])
+
+    def batch_inputs(self, n=-1):
+        return [r["params"]["messages"][0]["content"] for r in self.batches[n]["requests"]]
+
+    def end_batch(self, answers, n=-1):
+        """Ends batch n. Each request gets the answer whose key (a CVE ID or URL) its input names:
+        a reply, "errored" or "expired"."""
+        batch = self.batches[n]
+        batch["results"] = []
+        for request in batch["requests"]:
+            text = request["params"]["messages"][0]["content"]
+            [answer] = [a for key, a in answers.items() if f"Incident: {key}" in text]
+            if answer == "errored":
+                result = SimpleNamespace(type="errored", error=SimpleNamespace(
+                    type="error", error=SimpleNamespace(type="api_error", message="Internal server error")))
+            elif answer == "expired":
+                result = SimpleNamespace(type="expired")
+            else:
+                result = SimpleNamespace(type="succeeded", message=self.message(answer))
+            batch["results"].append(SimpleNamespace(custom_id=request["custom_id"], result=result))
 
 
 def board(store):

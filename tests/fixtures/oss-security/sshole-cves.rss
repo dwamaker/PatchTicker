@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Open Source Security</title>
+    <link>https://seclists.org/#oss-sec</link>
+    <description>Hand-built in the real feed's shape: a post naming sshole's CVE and a follow-up CVE.</description>
+    <pubDate>Thu, 05 Nov 2026 14:00:04 GMT</pubDate>
+  <item>
+    <title>OpenSSH on musl: CVE-2026-123158 and CVE-2026-123999</title>
+    <link>https://seclists.org/oss-sec/2026/q4/530</link>
+    <description>&lt;p&gt;Posted by Example Researcher on Nov 05&lt;/p&gt;CVE-2026-123158: password check on musl without PAM&lt;br&gt;
+CVE-2026-123999: a related issue in the same code path&lt;br&gt;</description>
+    <pubDate>Thu, 05 Nov 2026 13:55:00 GMT</pubDate>
+    <guid isPermaLink="true">https://seclists.org/oss-sec/2026/q4/530</guid>
+  </item>
+  </channel>
+</rss>

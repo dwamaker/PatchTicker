@@ -3,6 +3,7 @@
 import json
 import sys
 import time
+from datetime import timedelta
 
 import anthropic
 
@@ -49,16 +50,18 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         if json.dumps(incident) != before:
             changed.add(incident["first_seen"][:7])
 
+    status = {"updated": stamp, "collector": collector_id}
+    batches = store.read("batches.json") or []
     if claude:
-        due = [i for i in incidents if summaries.is_candidate(i, now) and summaries.needs_summary(i)]
-        for incident in due[:summaries.MAX_PER_CYCLE]:
-            try:
-                summaries.summarize(incident, claude, http_get, stamp)
-            except anthropic.APIError as err:
-                # Briefs still go out; the next cycle asks again (ticket 07 adds the 'paused' status).
-                print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
-                break
-            changed.add(incident["first_seen"][:7])
+        was_paused = (store.read("status.json") or {}).get("summaries") == "paused"
+        try:
+            summarize(incidents, batches, claude, http_get, now, stamp, changed, probe=was_paused)
+        except anthropic.APIError as err:
+            # Briefs still go out; the next cycle asks again.
+            print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
+            if summaries.is_budget_error(err):
+                status["summaries"] = "paused"
+        store.write("batches.json", batches)
 
     for m in changed:
         # Incidents stay in the month they were first seen; a merge can empty an older month's row.
@@ -66,4 +69,26 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     if changed - set(index["months"]):
         store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)
-    store.write("status.json", {"updated": stamp, "collector": collector_id})
+    store.write("status.json", status)
+
+
+def summarize(incidents, batches, claude, http_get, now, stamp, changed, probe):
+    """Collect ended batches, summarize Highlight candidates at once, batch the rest. Lets API errors
+    through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
+    instead of building a full one that would likely fail."""
+    for pending in list(batches):
+        touched = summaries.collect_batch(pending, incidents, claude, stamp)
+        if touched is not None:
+            batches.remove(pending)
+            changed.update(i["first_seen"][:7] for i in touched)
+    waiting = {r["incident"] for b in batches for r in b["requests"].values()}
+    due = [i for i in incidents if i["id"] not in waiting and summaries.needs_summary(i)]
+    instant = [i for i in due if summaries.is_candidate(i, now)]
+    for incident in instant[:summaries.MAX_PER_CYCLE]:
+        summaries.summarize(incident, claude, http_get, stamp)
+        changed.add(incident["first_seen"][:7])
+    since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rest = [i for i in due if i not in instant and i["first_seen"] >= since]
+    pending = summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
+    if pending:
+        batches.append(pending)
