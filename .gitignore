@@ -4,3 +4,4 @@ __pycache__/
 *.sqlite
 web/data/
 .impeccable/mocks/
+.impeccable/review/
