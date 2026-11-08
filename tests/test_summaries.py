@@ -8,6 +8,7 @@ import unittest
 import urllib.error
 from types import SimpleNamespace
 
+from collector import summaries
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 from test_cycle import FIXTURES, at, incident, recorded
@@ -23,6 +24,7 @@ SSHOLE_SUMMARY = {
         "mitigation": "OpenSSH 10.6p2로 업데이트하세요. 당장 못 하면 PasswordAuthentication no로 비밀번호 로그인을 끄세요.",
         "easy": "Alpine이나 OpenWrt 서버에 아무 긴 비밀번호로 남이 로그인할 수 있습니다.",
         "easy_title": "Alpine·OpenWrt SSH 로그인 뚫림 위험 발견",
+        "easy_action": "OpenSSH를 새 버전으로 업데이트하고, 그 전에는 비밀번호 로그인을 끄세요.",
         "names": ["OpenSSH"],
     },
     "en": {
@@ -33,6 +35,7 @@ SSHOLE_SUMMARY = {
         "mitigation": "Update to OpenSSH 10.6p2. Until then, set PasswordAuthentication no to turn password logins off.",
         "easy": "Anyone can log in to an Alpine or OpenWrt server with any long password.",
         "easy_title": "Alpine and OpenWrt SSH logins open to anyone",
+        "easy_action": "Update OpenSSH, and turn password logins off until then.",
         "names": ["OpenSSH"],
     },
     "products": ["OpenSSH"],
@@ -41,6 +44,7 @@ SSHOLE_SUMMARY = {
     "command": "apk upgrade openssh",
     "stopgap": "PasswordAuthentication no",
     "devices": [],
+    "fixes": [],
     "incident": True,
     "platforms": ["Linux"],
 }
@@ -174,7 +178,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "incident", "platforms"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -205,6 +209,11 @@ class InstantSummaryTest(unittest.TestCase):
             "Korean and English numbers that differ": SSHOLE_SUMMARY | {"ko": ko | {"summary": "256자 이상 비밀번호를 받아들입니다."}},
             "a fixed version not in the input": SSHOLE_SUMMARY | {"fixed": "10.7p1"},
             "Easy text whose numbers differ": SSHOLE_SUMMARY | {"en": en | {"easy": "Any password over 256 characters works."}},
+            "a per-line fix naming a version not in the input": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.7p1"}]},
+            "a per-line fix that is not an object": SSHOLE_SUMMARY | {"fixes": ["10.6p2"]},
+            "a per-line fix without a version": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH"}]},
+            "an Easy action naming a version not in the input": SSHOLE_SUMMARY | {"en": en | {"easy_action": "Update to 10.7p1."},
+                                                                                 "ko": ko | {"easy_action": "10.7p1로 업데이트하세요."}},
             "a missing field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "lead"},
             "a missing Easy field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "command"},
             "a field of the wrong type": SSHOLE_SUMMARY | {"products": "OpenSSH"},
@@ -245,6 +254,23 @@ class InstantSummaryTest(unittest.TestCase):
         summary = board(self.store)[HN_STORY]["summary"]
         self.assertEqual((summary["ko"]["easy_title"], summary["ko"]["title"]), ("", SSHOLE_SUMMARY["ko"]["title"]))
 
+    def test_fixed_versions_per_product_line_are_kept_and_old_replies_have_none(self):
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH portable", "version": "10.6p2"}]}))
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["fixes"], [{"for": "OpenSSH portable", "version": "10.6p2"}])
+        self.setUp()
+        self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k != "fixes"}))  # a reply from before
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["fixes"], [])
+
+    def test_the_easy_view_gets_its_own_plain_action_sentence(self):
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY))
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual(summary["ko"]["easy_action"], SSHOLE_SUMMARY["ko"]["easy_action"])
+
+    def test_a_reply_from_before_easy_action_still_passes_with_it_empty(self):
+        old = SSHOLE_SUMMARY | {lang: {k: v for k, v in SSHOLE_SUMMARY[lang].items() if k != "easy_action"} for lang in ("ko", "en")}
+        self.merged_sshole(FakeClaude(old))
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["en"]["easy_action"], "")
+
     def test_a_cve_id_the_model_puts_in_a_title_is_taken_out(self):
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"title": SSHOLE_SUMMARY["ko"]["title"] + " (CVE-2026-123158)"},
                                   "en": SSHOLE_SUMMARY["en"] | {"title": "[CVE-2026-123158] " + SSHOLE_SUMMARY["en"]["title"]}}
@@ -266,6 +292,15 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertIn("as the source writes", text)
         self.assertNotIn("YYYY-MM-DD", text)
         self.assertNotIn("with digits", text)
+
+    def test_the_instructions_cover_a_flaw_already_fixed_by_unnamed_companies(self):
+        # The ForgeRock story (samcurry.net/forgerock): two automakers asked not to be named and fixed it within hours.
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+
+        text = claude.sent[0]["system"][0]["text"]
+        self.assertIn("already fixed it on its own servers", text)
+        self.assertIn("never guess them from other names on the page", text)
 
     def test_after_three_failed_replies_the_incident_is_flagged_and_not_asked_again(self):
         claude = FakeClaude("not json", "not json", "not json")
@@ -363,9 +398,9 @@ HEIST = "https://www.bleepingcomputer.com/news/security/hackers-pull-off-133-mil
 
 def news_reply(ko, en):
     """A Summary reply for general news: no product, no fix, only the sentence under test."""
-    fields = {"title": "", "summary": "", "conditions": [], "mitigation": "", "easy": "", "easy_title": "", "names": []}
+    fields = {"title": "", "summary": "", "conditions": [], "mitigation": "", "easy": "", "easy_title": "", "easy_action": "", "names": []}
     return {"ko": fields | {"summary": ko}, "en": fields | {"summary": en},
-            "products": [], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "incident": True, "platforms": []}
+            "products": [], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": []}
 
 
 class NumberCheckTest(unittest.TestCase):
@@ -400,6 +435,29 @@ class NumberCheckTest(unittest.TestCase):
             "최대 1억 3,400만 달러가 빠져나갔습니다.", "Up to $133 million was taken."))
         self.assertNotIn("summary", incident)
         self.assertIn("numbers not in the input", incident["summary_error"]["reason"])
+
+
+class ScriptPageTest(unittest.TestCase):
+    """SonicWall's advisory page draws its text with script; the input reads the JSON the page itself loads."""
+
+    def test_a_sonicwall_advisory_is_read_from_its_api_with_the_fixed_versions(self):
+        asked = []
+        api = (FIXTURES / "pages" / "sonicwall-SNWLID-2026-0014.json").read_bytes()
+
+        def http_get(url):
+            asked.append(url)
+            return api
+
+        text = summaries.page_text(summaries.fetch_page(http_get, "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014"))
+        self.assertEqual(asked, ["https://psirtapi.global.sonicwall.com/api/v1/vulndetail/?advisory_id=SNWLID-2026-0014"])
+        for words in ("7.3.4-7013 and higher", "8.2.3-8015 and higher", "TZ 270", "7.3.3-7015 and older"):
+            self.assertIn(words, text)
+
+    def test_the_fixed_versions_come_before_the_long_detail_so_the_page_cut_keeps_them(self):
+        data = json.loads((FIXTURES / "pages" / "sonicwall-SNWLID-2026-0014.json").read_text(encoding="utf-8"))
+        data["detail"] = "<p>" + "Long technical detail. " * 1000 + "</p>"
+        page = summaries.fetch_page(lambda url: json.dumps(data).encode(), "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014")
+        self.assertIn("7.3.4-7013 and higher", summaries.page_text(page)[:summaries.PAGE_CHARS])
 
 
 if __name__ == "__main__":

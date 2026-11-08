@@ -48,9 +48,10 @@ LANG_FIELDS = {
         "mitigation": {"type": "string"},
         "easy": {"type": "string"},
         "easy_title": {"type": "string"},
+        "easy_action": {"type": "string"},
         "names": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["title", "summary", "conditions", "mitigation", "easy", "easy_title", "names"],
+    "required": ["title", "summary", "conditions", "mitigation", "easy", "easy_title", "easy_action", "names"],
     "additionalProperties": False,
 }
 # Operating systems a row can be tagged and filtered by (the Board shows them as Products).
@@ -69,10 +70,12 @@ SCHEMA = {
         "command": {"type": "string"},
         "stopgap": {"type": "string"},
         "devices": {"type": "array", "items": {"type": "string"}},
+        "fixes": {"type": "array", "items": {"type": "object", "properties": {"for": {"type": "string"}, "version": {"type": "string"}},
+                                             "required": ["for", "version"], "additionalProperties": False}},
         "incident": {"type": "boolean"},
         "platforms": {"type": "array", "items": {"type": "string", "enum": PLATFORMS}},
     },
-    "required": ["ko", "en", *SHARED_FIELDS, "incident", "platforms"],
+    "required": ["ko", "en", *SHARED_FIELDS, "fixes", "incident", "platforms"],
     "additionalProperties": False,
 }
 
@@ -80,16 +83,18 @@ INSTRUCTIONS = """You write entries for vuln-radar, a free public board of secur
 
 Return one JSON object with the same content in Korean ("ko") and English ("en"):
 - title: one short line naming the product and the problem. No CVE ID, no severity words.
-- summary: at most two sentences. What the problem is and who is affected. Plain words, no hype.
+- summary: at most two sentences. What the problem is and who is affected. Plain words, no hype. When a source withholds the names of the affected companies ("two automakers, which we'll call Automaker #1 and #2"), say they were not named; never guess them from other names on the page (a list of earlier targets is not this one).
 - conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). Empty list when the text names none.
-- mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. Empty string when no source says anything a reader can act on.
+- mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Empty string when no source says anything a reader can act on.
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
 - easy_title: a headline of at most 5 words for the same reader, ending in the plain danger ("Windows 그림판 해킹 위험", "SonicWall VPN 장비 뚫림 위험"): the product as its users call it, with what it is when that is unclear, then the danger in everyday words ("OpenSSH 원격 접속 서버 장악 위험", "Home routers open to anyone"). No versions, no CVE ID, and the same ban on technical terms.
+- easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전이 나오면 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Never a path, a setting name, a command, a version range or a product version; the page shows the fixed version and any command itself. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). Empty string when mitigation is empty.
 - names: the products in "products", in the same order, as readers of this language know them: in Korean the name Korean Windows, macOS or the vendor's Korean site uses ("Windows 그림판" for Microsoft Paint, "Windows 메모장" for Notepad), else the original name ("OpenSSH"); in English the original names.
 Also:
 - products: the affected product names without versions, with the vendor in front when the name alone does not say whose it is ("OpenSSH", "OpenWrt", "SonicWall SonicOS", "Apache Axis2").
 - lead: the one Mention URL a reader should open first, copied exactly from the Mentions list. Prefer the product's official advisory or release note, then the discoverer's write-up, then the CVE record, then discussion. Empty string if none fits.
-- fixed: the fixed version number alone ("10.6p2"), as a source states it. Empty string when no source names one.
+- fixed: the fixed version number alone ("10.6p2"), as a source states it. Empty string when no source names one. When product lines have different fixed versions, the first line's.
+- fixes: when the sources give different fixed versions for different product lines or models, one entry per line, in the source's order: "for" is the line with its vendor in front, as short as the source allows ("SonicWall Gen7", "SonicWall Gen8"), "version" is that line's fixed version alone ("7.3.4-7013"). Empty list when there is a single fixed version or none.
 - command: the one shell command a source gives to update, copied character for character ("apk upgrade openssh"). Empty string when no source prints one; never write a command yourself.
 - stopgap: the setting or command a source gives as a stopgap until the update, copied character for character. Empty string when none.
 - devices: when the affected products are device firmware (routers, cameras, NAS, printers), the affected device models as the sources name them, each with its vendor in front ("Synology DiskStation", "TP-Link Archer"), so a model name never stands alone. Empty list otherwise.
@@ -121,7 +126,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "names": ["OpenSSH"]}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "names": ["OpenSSH"]}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "incident": true, "platforms": ["Linux"]}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"]}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"]}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "incident": true, "platforms": ["Linux"]}"""
 
 
 class Rejected(ValueError):
@@ -280,14 +285,40 @@ def summary_input(incident, http_get):
     return "\n".join(lines)
 
 
+# Pages that draw their text with script hold nothing in their HTML; read the JSON the page itself loads instead.
+# SonicWall's PSIRT page is the first such source (SNWLID-2026-0014: the fixed versions were only in its API).
+SONICWALL_ADVISORY = re.compile(r"^https://psirt\.global\.sonicwall\.com/vuln-detail/(SNWLID-\d{4}-\d{4})")
+SONICWALL_API = "https://psirtapi.global.sonicwall.com/api/v1/vulndetail/?advisory_id={}"
+# The short tables first: the input keeps only PAGE_CHARS of a page, and a multi-CVE summary or detail can fill that
+# before the fixed versions (SNWLID-2026-0014's summary lists seven CVEs).
+SONICWALL_FIELDS = (("title", "Title"), ("affected_products", "Affected products"), ("fixed_software", "Fixed software"),
+                    ("workaround", "Workaround"), ("summary", "Summary"), ("detail", "Detail"))
+
+
 def fetch_page(http_get, url):
     """A page or record for the input, or None: a dead link must not stop the Summary."""
+    advisory = SONICWALL_ADVISORY.match(url)
+    if advisory:
+        return sonicwall_advisory(http_get, advisory.group(1))
     try:
         raw = http_get(url)
     except (OSError, ValueError) as err:
         print(f"summaries: skipped {url}: {err!r}", file=sys.stderr)
         return None
     return None if b"\0" in raw[:1024] else raw.decode("utf-8", errors="replace")  # binary: not text
+
+
+def sonicwall_advisory(http_get, advisory_id):
+    """The advisory's own fields (already HTML) under plain headings, so page_text reads it like any page."""
+    raw = fetch_page(http_get, SONICWALL_API.format(advisory_id))
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return "<html><body>" + "".join(f"<h2>{label}</h2><div>{data.get(key) or ''}</div>"
+                                    for key, label in SONICWALL_FIELDS) + "</body></html>"
 
 
 def cve_record_url(cve):
@@ -359,7 +390,7 @@ def plain(value):
 
 
 def lang_text(fields):
-    return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"], fields["easy"], fields["easy_title"]])
+    return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"], fields["easy"], fields["easy_title"], fields["easy_action"]])
 
 
 def parse(reply, input_text, urls):
@@ -371,26 +402,32 @@ def parse(reply, input_text, urls):
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
         data = json.loads(next(b.text for b in reply.content if b.type == "text"))
-        # easy_title came on 11-08: a batch sent before then answers without it, and the page falls back to title.
-        # easy_title and names came on 11-08; replies sent before then lack them and the page falls back.
-        late = {"easy_title": "", "names": []}
+        # easy_title and names came on 11-08, easy_action later that day; replies sent before then lack them and
+        # the page falls back (title; the normal mitigation).
+        late = {"easy_title": "", "easy_action": "", "names": []}
         summary = {lang: {k: data[lang].get(k, late[k]) if k in late else data[lang][k] for k in LANG_FIELDS["required"]}
                    for lang in ("ko", "en")}
         summary |= {k: data[k] for k in SHARED_FIELDS}
+        summary["fixes"] = data.get("fixes", [])  # came later on 11-08; older replies have one fixed version only
         summary["incident"] = data.get("incident", True)  # replies from before 11-08 lack it: keep them shown
         summary["platforms"] = [p for p in data.get("platforms", []) if p in PLATFORMS]
-        lists = [summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"],
+        if not all(isinstance(f, dict) and isinstance(f.get("for"), str) and isinstance(f.get("version"), str)
+                   for f in summary["fixes"] if isinstance(summary["fixes"], list)):
+            raise Rejected("malformed reply: a per-line fix is not {for, version}")
+        lists = [summary["fixes"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"],
                  summary["ko"]["names"], summary["en"]["names"]]
         strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], *summary["products"],
+                   *(f[k] for f in summary["fixes"] for k in ("for", "version")),
                    *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"],
-                                           *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy", "easy_title")))]
+                                           *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy", "easy_title", "easy_action")))]
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None
     if not all(isinstance(v, list) for v in lists) or not all(isinstance(s, str) for s in strings) \
             or not isinstance(summary["incident"], bool):
         raise Rejected("malformed reply: a field is not text")
     ko, en = numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
-    unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"]]))) - numbers(input_text)
+    unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"], *(f["version"] for f in summary["fixes"])]))) \
+        - numbers(input_text)
     if unknown:
         raise Rejected(f"numbers not in the input: {sorted(unknown)}")
     # Dotted versions ("10.6p2") may sit in one language only; whole numbers (the 256/257 kind) must match.

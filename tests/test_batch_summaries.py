@@ -16,9 +16,9 @@ KEYCLOAK, WPTRAVELLY = "CVE-2026-120984", "CVE-2026-120839"
 def plain(name):
     """A Summary reply with no numbers in it, so it passes the code check for any input."""
     fields = {"title": f"{name} flaw", "summary": f"A flaw in {name}.", "conditions": [],
-              "mitigation": "", "easy": f"Someone could misuse {name}.", "easy_title": f"{name} risk found", "names": [name]}
+              "mitigation": "", "easy": f"Someone could misuse {name}.", "easy_title": f"{name} risk found", "easy_action": f"Update {name}.", "names": [name]}
     return {"ko": fields | {"title": f"{name} 취약점", "summary": f"{name}의 취약점입니다."}, "en": fields,
-            "products": [name], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "incident": True, "platforms": []}
+            "products": [name], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": []}
 
 
 class BatchSummaryTest(unittest.TestCase):
