@@ -15,6 +15,8 @@ from urllib.parse import urlsplit
 
 from anthropic.types.messages.batch_create_params import Request
 
+from collector.incidents import STAMP
+
 MODEL = "claude-haiku-5-5"
 # Decided by the 2026-11-07 low vs medium comparison (plan.md).
 EFFORT = "low"
@@ -112,8 +114,12 @@ class Rejected(ValueError):
 
 def is_candidate(incident, now):
     """Highlight candidates (spec): newly KEV-listed, HN or curator buzz, CVSS 9.0 or higher, or an
-    Unassigned incident seen in discussion. Only the Highlight window (seven days) counts."""
-    if incident["first_seen"] < (now - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ"):
+    Unassigned incident seen in discussion. A KEV listing no Summary has covered yet counts however
+    old the Incident; the rest only within the Highlight window (seven days)."""
+    if incident.get("kev") and not incident.get("summary_basis", {}).get("kev"):
+        return True
+    # The seven days and the 9.0 cutoff are repeated in web/board.mjs (filterBoard, riskLevel).
+    if incident["first_seen"] < (now - timedelta(days=7)).strftime(STAMP):
         return False
     kinds = {m["kind"] for m in incident["mentions"]}
     on_hn = any(is_hn(m["url"]) for m in incident["mentions"])

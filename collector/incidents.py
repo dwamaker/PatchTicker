@@ -9,6 +9,8 @@ import json
 import re
 from urllib.parse import urlsplit
 
+STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
+
 # Lead mention order (CONTEXT.md): official advisory or release note, discoverer write-up,
 # CVE record, discussion (a curator's newsletter is discussion too). Repositories are listed but come last.
 LEAD_ORDER = ["advisory", "writeup", "cve_record", "discussion", "curator", "repo"]

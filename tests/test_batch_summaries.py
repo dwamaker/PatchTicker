@@ -167,6 +167,22 @@ class ReSummaryTest(unittest.TestCase):
         self.assertEqual(len(claude.sent), 3)
         self.assertEqual(claude.batches, [])
 
+    def test_a_new_kev_listing_is_summarized_at_once_however_old_the_incident(self):
+        for summarized_before in (False, True):
+            with self.subTest(summarized_before=summarized_before):
+                self.setUp()
+                claude = FakeClaude(SSHOLE_SUMMARY, SSHOLE_SUMMARY)
+                self.run_at("2026-11-05T12:30:00", None, hn="sshole.json")  # no API key: Briefs only
+                self.run_at("2026-11-05T16:00:00", claude if summarized_before else None, delta_log="deltaLog-sshole.json")
+                sent = len(claude.sent)
+
+                # Listed in KEV six weeks later: past both the seven-day and the 30-day windows.
+                self.run_at("2026-12-17T10:00:00", claude, kev="kev-sshole.json")
+
+                self.assertEqual(len(claude.sent), sent + 1)
+                self.assertEqual(claude.batches, [])
+                self.assertEqual(board(self.store)[HN_STORY]["summary"]["at"], "2026-12-17T10:00:00Z")
+
     def test_a_new_official_advisory_brings_a_new_summary_through_the_batch(self):
         claude = FakeClaude()
         # An oss-security post names the CVEs before the record (with the release note) is published.
