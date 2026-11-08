@@ -27,7 +27,6 @@ SSHOLE_SUMMARY = {
         "easy_action": "OpenSSH를 새 버전으로 업데이트하고, 그 전에는 비밀번호 로그인을 끄세요.",
         "names": ["OpenSSH"],
         "command_for": "",
-        "use_question": "",
         "stopgap_then": "",
     },
     "en": {
@@ -41,7 +40,6 @@ SSHOLE_SUMMARY = {
         "easy_action": "Update OpenSSH, and turn password logins off until then.",
         "names": ["OpenSSH"],
         "command_for": "",
-        "use_question": "",
         "stopgap_then": "",
     },
     "products": ["OpenSSH"],
@@ -223,7 +221,6 @@ class InstantSummaryTest(unittest.TestCase):
             "a per-line fix without a version": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH"}]},
             "a per-line model with a number not in the input": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.6p2", "devices": ["Router X9000"]}]},
             "a per-line model list that is not a list": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.6p2", "devices": "all"}]},
-            "a use question with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"use_question": "Do you run OpenSSH 9.9?"}},
             "a stopgap step with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"stopgap_then": "Wait 30 seconds."}},
             "a command context with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"command_for": "On Alpine 3.99"}},
             "an Easy action naming a version not in the input": SSHOLE_SUMMARY | {"en": en | {"easy_action": "Update to 10.7p1."},
@@ -291,12 +288,6 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertEqual((summary["ko"]["command_for"], summary["en"]["command_for"]), ("Alpine 리눅스라면", "On Alpine Linux"))
         self.assertEqual(summary["stopgap_file"], "/etc/ssh/sshd_config.d/00-no-passwords.conf")
 
-    def test_the_easy_first_step_asks_about_the_condition_that_makes_a_reader_affected(self):
-        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"use_question": "Alpine 리눅스에서 OpenSSH 서버를 돌리나요?"},
-                                  "en": SSHOLE_SUMMARY["en"] | {"use_question": "Do you run an OpenSSH server on Alpine Linux?"}}
-        self.merged_sshole(FakeClaude(reply))
-        self.assertEqual(board(self.store)[HN_STORY]["summary"]["ko"]["use_question"], "Alpine 리눅스에서 OpenSSH 서버를 돌리나요?")
-
     def test_a_summary_says_whether_the_sources_report_attacks_and_old_replies_say_no(self):
         self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"exploited": True}))
         self.assertIs(board(self.store)[HN_STORY]["summary"]["exploited"], True)
@@ -310,11 +301,7 @@ class InstantSummaryTest(unittest.TestCase):
         self.merged_sshole(FakeClaude(reply))
         self.assertEqual(board(self.store)[HN_STORY]["summary"]["en"]["stopgap_then"], "Then restart sshd.")
 
-    def test_the_easy_question_never_narrows_the_conditions(self):
-        self.assertIn("every system or condition the sources name", summaries.INSTRUCTIONS)
-
     def test_the_instructions_keep_the_condition_in_the_easy_headline(self):
-        self.assertIn("use_question", summaries.INSTRUCTIONS)
         self.assertIn("never widen it to every user of the product", summaries.INSTRUCTIONS)
 
     def test_a_stopgap_file_not_in_the_input_is_dropped_and_old_replies_have_none(self):

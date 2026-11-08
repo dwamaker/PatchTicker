@@ -52,11 +52,10 @@ LANG_FIELDS = {
         "easy_action": {"type": "string"},
         "names": {"type": "array", "items": {"type": "string"}},
         "command_for": {"type": "string"},
-        "use_question": {"type": "string"},
         "stopgap_then": {"type": "string"},
     },
     "required": ["title", "summary", "conditions", "mitigation", "easy", "easy_title", "easy_action", "names", "command_for",
-                 "use_question", "stopgap_then"],
+                 "stopgap_then"],
     "additionalProperties": False,
 }
 # Operating systems a row can be tagged and filtered by (the Board shows them as Products).
@@ -102,7 +101,6 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
 - easy_title: a headline of at most 5 words for the same reader, ending in the plain danger ("Windows 그림판 해킹 위험", "SonicWall VPN 장비 뚫림 위험"): the product as its users call it, with what it is when that is unclear, then the danger in everyday words ("OpenSSH 원격 접속 서버 장악 위험", "Home routers open to anyone"). No versions, no CVE ID, and the same ban on technical terms.
 - easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전이 나오면 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Never a path, a setting name, a command, a version range or a product version; the page shows the fixed version and any command itself. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). Empty string when mitigation is empty.
 - command_for: when "command" is not empty, the system it is for as a short phrase the page shows before it ("Alpine 리눅스라면", "On Alpine Linux"; "Debian·Ubuntu라면", "On Debian or Ubuntu"), from what a source says or the package tool itself (apk is Alpine's, apt Debian's and Ubuntu's, dnf Fedora's and RHEL's). Empty string when command is empty or nothing tells.
-- use_question: the Easy view's first step, one yes/no question of at most 12 words a reader can answer about their own setup, covering every system or condition the sources name (when they say "musl-based Linux such as Alpine or OpenWrt", ask about both, never Alpine alone; a narrower question makes an affected reader answer no and hides the alarm), and when that does not fit in 12 words, ask about the product alone ("Alpine 리눅스에서 OpenSSH 서버를 돌리나요?", "Do you run an OpenSSH server on Alpine Linux?"), else the product alone ("Windows 그림판을 쓰나요?"). The same ban on technical terms as easy; say a setting in everyday words ("회사 계정으로 VPN에 로그인하나요?"). Empty string when the vendor already fixed it for everyone.
 - names: the products in "products", in the same order, as readers of this language know them: in Korean the name Korean Windows, macOS or the vendor's Korean site uses ("Windows 그림판" for Microsoft Paint, "Windows 메모장" for Notepad), else the original name ("OpenSSH"); in English the original names.
 Also:
 - products: the affected product names without versions, with the vendor in front when the name alone does not say whose it is ("OpenSSH", "OpenWrt", "SonicWall SonicOS", "Apache Axis2").
@@ -144,7 +142,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "use_question": "리눅스 서버에서 OpenSSH로 원격 접속을 받나요?", "stopgap_then": ""}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "use_question": "Do you accept remote logins with OpenSSH on a Linux server?", "stopgap_then": ""}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": ""}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": ""}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false}"""
 
 
 # Words the prompt bans from the Easy view (easy, easy_title, easy_action), checked in code because the model still
@@ -152,7 +150,7 @@ Output:
 EASY_BANNED = ("OAuth", "SAML", "MFA", "WSDL", "CGI", "FIPS", "SQL", "API", "hash", "root", "RCE", "SSRF", "injection",
                "buffer", "protocol", "코드 실행", "임의 코드", "권한 상승", "인증 우회", "서비스 거부", "주입", "역직렬화",
                "버퍼 오버플로", "경로 조작", "세션", "토큰", "자격 증명", "취약점 악용")
-EASY_FIELDS = ("easy", "easy_title", "easy_action", "use_question")
+EASY_FIELDS = ("easy", "easy_title", "easy_action")
 
 
 def easy_jargon(summary):
@@ -454,7 +452,7 @@ def plain(value):
 
 def lang_text(fields):
     return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"], fields["easy"], fields["easy_title"],
-                      fields["easy_action"], fields["command_for"], fields["use_question"], fields["stopgap_then"]])
+                      fields["easy_action"], fields["command_for"], fields["stopgap_then"]])
 
 
 def parse(reply, input_text, urls):
@@ -468,7 +466,7 @@ def parse(reply, input_text, urls):
         data = json.loads(next(b.text for b in reply.content if b.type == "text"))
         # easy_title and names came on 11-08, easy_action later that day; replies sent before then lack them and
         # the page falls back (title; the normal mitigation).
-        late = {"easy_title": "", "easy_action": "", "names": [], "command_for": "", "use_question": "", "stopgap_then": ""}
+        late = {"easy_title": "", "easy_action": "", "names": [], "command_for": "", "stopgap_then": ""}
         summary = {lang: {k: data[lang].get(k, late[k]) if k in late else data[lang][k] for k in LANG_FIELDS["required"]}
                    for lang in ("ko", "en")}
         summary |= {k: data[k] for k in SHARED_FIELDS}
@@ -488,7 +486,7 @@ def parse(reply, input_text, urls):
         strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], summary["stopgap_file"], *summary["products"],
                    *(f[k] for f in summary["fixes"] for k in ("for", "version")), *(d for f in summary["fixes"] for d in f["devices"]),
                    *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"],
-                                           *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy", "easy_title", "easy_action", "command_for", "use_question", "stopgap_then")))]
+                                           *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy", "easy_title", "easy_action", "command_for", "stopgap_then")))]
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None
     if not all(isinstance(v, list) for v in lists) or not all(isinstance(s, str) for s in strings) \

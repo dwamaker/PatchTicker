@@ -212,8 +212,8 @@ for Products only.
 - **Wayfinding Blue** (`wayfinding-blue`): links, the focus ring, the caret, and the text selection
   wash (32% mix). Never a fill.
 - **Clear Green** (`clear-green`, `--ok`): "done" and "nothing found", like a board's 정상 운행: the all-clear
-  check, the visitor's 조치함 / 해당 없음, finished to-do steps and their ring, the closing line, the copy stamp.
-  Text and icons only (one exception: the small finished-step disc); never a risk colour, never a line-badge fill.
+  check and the copy stamp.
+  Text and icons only; never a risk colour, never a line-badge fill.
   4.6:1 or more on every surface in both themes.
 
 ### Neutral
@@ -397,35 +397,33 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Style:** the command in the code face on Recessed Panel with a 1px Rail border and 6px radius,
   followed by an outlined copy button. Only commands a source states verbatim appear here.
 
-### Easy view to-do list (overdrive)
-- **Shape:** inside an opened Easy row, the action becomes "지금 할 일" on Recessed Panel with a Rail border and 10px
-  radius: a small progress ring and "2단계 중 N단계" on the right, then numbered steps. 1 "이 제품을 쓰고 있나요?"
-  with the product badges (operating systems in small print, "Windows·macOS·Linux에서 돌아가요", never as badges) and 써요 / 안 써요 / 몰라요 (몰라요 counts as in use: when unsure, show the risk; its step shows a neutral "?" and a hint on where to look); 2 "할 일" with the Easy action (version, command, devices or the
-  plain action sentence and any stopgap) and a "다 했어요" checkbox; step 2 stays fully readable, only the checkbox waits for step 1 and says so.
-- **Product lines and models:** when product lines have their own fixed versions, step 2 lists them one per
-  line ("SonicWall Gen7 7.3.4-7013 이상"); past four device models the row shows the product alone and step 1
+### Easy view risk sign (bolder, after critique 6)
+- On closed Easy rows the risk word is a sign: 심각! a filled pill in Signal Red with background-coloured text (the
+  dot steps aside), 경계 a 1.5px ring in the brighter gold mark with gold text, 주의 plain in Slate; all 15px/800.
+  The Normal view keeps the dot and word. Contrast: 5.3:1 (심각! by day) and above in both themes.
+
+### Easy view panel
+- **Shape:** an opened Easy row shows the plain action (version, command, devices or the plain action sentence and any
+  stopgap) with no question, checklist or tick; the to-do list ("지금 할 일", 써요 / 안 써요 / 몰라요, 다 했어요) was
+  removed at the user's request on 2026-11-08 after critique 6.
+- **Product lines and models:** when product lines have their own fixed versions, the panel lists them one per
+  line ("SonicWall Gen7 7.3.4-7013 이상"); past four device models the row shows the product alone and the panel
   folds the models under "해당 모델 보기 (N개)", where the reader looks for their own. When the Summary says which
-  models each line has (`fixes[].devices`), the fold groups them under the line's name in Ink, models no line names last; inside a group a model drops the vendor the line already names. The fold sits after
-  the answer buttons, so opening it never moves them away from the question.
-- **Step 1 question:** the Summary's `use_question` names the condition that makes a reader affected ("Alpine 리눅스에서
-  원격 접속 서버를 돌리나요?"); older Summaries ask "이 제품을 쓰고 있나요?". The answer buttons are a group named by it.
+  models each line has (`fixes[].devices`), the fold groups them under the line's name in Ink, models no line names last; inside a group a model drops the vendor the line already names.
 - **Caution line:** the config caution is Secondary Ink with a drawn warning mark, never the 위험 amber (Two Alphabets).
 - **Stopgap follow-up:** when a source says what a stopgap needs ("바꾼 뒤 sshd를 다시 시작하세요."), it follows the stopgap line.
 - **Context lines:** a command says which system it is for when a source or its package tool tells ("Alpine 리눅스라면
   이 명령으로 업데이트하세요:"); a config line names its file when a source does ("설정 파일 /etc/ssh/sshd_config에 이 줄을
   넣으세요:"). On the Korean page an English source title reads as the Summary's Korean line; the original is its tooltip.
-- **Finishing:** 다 했어요 ends with "조치 완료! 이 브라우저에 기억해 둘게요."; 안 써요 ends at once with "해당 없음으로
-  표시했어요.". The row then carries "✓ 조치함" or "✓ 해당 없음" under its risk word in both views. 다시 고르기 clears it.
-- **Answered rows:** once the visitor says 안 써요 or 다 했어요, the row's alarm steps back (risk word and dot in Hint
-  Ink, the Highlight edge in Rail, no wash or lift) while the score, title and badges stay as they are; the 주목 heading
-  adds "| N건 처리" in Clear Green. From the next visit those rows sit at the bottom of 주목; a row answered now stays
-  where it is, so nothing jumps away under the pointer.
-- **Motion:** the step number turns into a check that draws itself, the ring fills to the new share, the closing line
-  and the row's chip pop in; focus stays on the control just used; screen readers hear the closing line.
-- **Truth:** answers live in this browser only (`vr-done`, at most 500, shared live between open tabs), never sent anywhere; "조치함" is the visitor's own word,
-  not a check the Board ran. An Incident with nothing to act on gets no list.
 
 ### Small moments (delight)
+- **Empty state names every narrowing:** with Products picked and a search, it says both ("고른 제품(OpenSSH) 가운데
+  'zzqq'에 맞는 사건이 없습니다."), never "nothing for OpenSSH" while the search hid an OpenSSH row; its recovery
+  buttons say what they bring back ("검색 지우기 · 1건 보기"). Counts appear only in the empty state.
+- **Stale data notice:** an hour without an update (four missed 15-minute runs) puts a notice under the status line:
+  Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "마지막
+  업데이트가 8시간 전입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." It is a status region (heard once) and is
+  rechecked every minute, as is the status line's age, so a tab left open goes stale visibly.
 - **All-clear sign:** when only Products are picked and none is on the Board, the empty state is a sign, not a
   sentence: a drawn check, the picked Products as line badges, "최근 7일 동안 게시된 사건이 없습니다" (or 3개월 once
   older months are loaded) and that the picks live in the address, so a bookmark brings them back. It never says
@@ -459,7 +457,8 @@ Restrained outlined buttons for theme, language and copying a command.
 
 ### Do:
 - **Do** open every source link in a new tab (`target=_blank`, `noopener noreferrer`, a hidden "새 탭에서 열림"
-  for screen readers), so the Board, its filters and to-do ticks stay put.
+  for screen readers), so the Board, its filters and opened rows stay put.
+- **Do** draw the focus ring inside a framed 주목 row (`outline-offset: -3px`): the frame clips anything outside it.
 - **Do** use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
   `--fs-small`) and the shared `.btn` for any new outlined button.
 - **Do** keep every interactive target at least 44 px.

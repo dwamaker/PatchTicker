@@ -14,18 +14,19 @@ const TEXT = {
   ko: {
     other: 'English', otherShort: 'EN', title: 'vuln-radar · 보안 취약점 게시판', loading: '불러오는 중…',
     notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았어요: ${text}`,
-    loadError: (msg) => `게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요. (${msg})`, retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '조건', has: { advisory: '공식 공지 있음', repo: '공격 코드(PoC) 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주목 더 보기 (${n})`, pinLess: '주목 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주목 건너뛰고 최신순으로', skipTop: '게시판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`,
+    loadError: (msg) => `게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요. (${msg})`, retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주목 더 보기 (${n})`, pinLess: '주목 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주목 건너뛰고 최신순으로', skipTop: '게시판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', remove: (name) => `${name} 빼기`,
     search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', theme: '어두운 화면',
     pin: '주목', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', unrated: '점수 아직 없음', kevReason: '악용 발생', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
-    noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, scopeWeek: '최근 7일 안에서 찾았습니다.', scopeMonths: '최근 3개월 안에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
+    noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: (a) => `마지막 업데이트가 ${a}입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다.`, scopeWeek: '최근 7일 안에서 찾았습니다.', scopeMonths: '최근 3개월 안에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
     clearWeek: '최근 7일 동안 게시된 사건이 없습니다', clearMonths: '최근 3개월 동안 게시된 사건이 없습니다', clearNote: '고른 제품은 주소에 저장됩니다. 즐겨찾기해 두면 다음에도 바로 확인할 수 있습니다.', searchOlderMonths: '이전 사건에서도 찾기 (최근 3개월)',
     noIncidents: '아직 게시된 사건이 없습니다.', loadOlder: '이전 사건 불러오기 (최근 3개월)', showMore: (n) => `더 보기 (${n}건 남음)`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     original: '원문', readAt: (site) => `${site}에서 읽기 →`,
     mentions: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', repo: '저장소' },
+    refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요.',
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
@@ -34,8 +35,8 @@ const TEXT = {
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
-    todo: { title: '지금 할 일', use: '이 제품을 쓰고 있나요?', yes: '써요', no: '안 써요', unsure: '몰라요', usedYes: '쓰고 있어요.', usedNo: '안 써요. 할 일이 없어요.', usedUnsure: '잘 모르겠어요. 쓰는 걸로 보고 아래 할 일을 확인하세요.', findDevice: '모델 이름은 기기 뒷면 라벨이나 관리 화면에서 볼 수 있어요.', versionHelp: (cve) => (cve ? `내 버전을 모르겠으면 제조사 사이트에서 찾거나, AI 도우미에게 ${cve} 번호로 물어보세요.` : '내 버전을 모르겠으면 제조사 사이트에서 제품 이름으로 찾아보세요.'), findApp: '설치된 프로그램 목록이나 앱 정보에서 이름과 버전을 볼 수 있어요.', runsOn: (os) => `${os}에서 돌아가요`, locked: '1번에 먼저 답하면 체크할 수 있어요.', finishedCount: '완료', change: '처음부터 다시', act: '할 일', doneLabel: '다 했어요', allDone: '조치 완료! 이 브라우저에 기억해 둘게요.', notUsed: '해당 없음으로 표시했어요.', markDone: '조치함', markNo: '해당 없음', count: (a, b) => `${b}단계 중 ${a}단계`, note: '체크는 이 브라우저에만 저장돼요.' },
-    newTab: ' (새 탭에서 열림)', pinDone: (n) => `${n}건 처리`, fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
+    versionHelp: (cve) => (cve ? `내 버전을 모르겠으면 제조사 사이트에서 찾거나, AI 도우미에게 ${cve} 번호로 물어보세요.` : '내 버전을 모르겠으면 제조사 사이트에서 제품 이름으로 찾아보세요.'),
+    newTab: ' (새 탭에서 열림)', fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
     guideBtn: '읽는 법',
     guide: {
       title: '이 게시판 읽는 법', close: '닫기',
@@ -54,18 +55,19 @@ const TEXT = {
   en: {
     other: '한국어', otherShort: '한', title: 'vuln-radar · vulnerability board', loading: 'Loading…',
     notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`,
-    loadError: (msg) => `Could not load the Board. Check your connection and try again. (${msg})`, retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Conditions', has: { advisory: 'Official advisory', repo: 'Attack code (PoC) public' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`,
+    loadError: (msg) => `Could not load the Board. Check your connection and try again. (${msg})`, retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`,
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', remove: (name) => `Remove ${name}`,
     search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', theme: 'Dark theme',
     pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` +${n}`, published: 'First published', unrated: 'Not rated yet', kevReason: 'Exploited', kevEasy: 'Attackers are using this right now!',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
-    noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, scopeWeek: 'Searched the last 7 days.', scopeMonths: 'Searched the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
+    noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: (a) => `The last update was ${a}. Collection may have stopped, so recent Incidents can be missing.`, scopeWeek: 'Searched the last 7 days.', scopeMonths: 'Searched the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
     clearWeek: 'No Incident posted in the last 7 days', clearMonths: 'No Incident posted in the last 3 months', clearNote: 'Your picks are saved in the address. Bookmark it to check again next time.', searchOlderMonths: 'Search older Incidents too (last 3 months)',
     noIncidents: 'No Incidents have been posted yet.', loadOlder: 'Load older Incidents (last 3 months)', showMore: (n) => `Show more (${n} left)`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     original: '', readAt: (site) => `Read at ${site} →`,
     mentions: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', repo: 'Repository' },
+    refNote: "This Board is for reference only. Check each Incident's source advisory before you act.",
     nvd: '',
     kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
@@ -74,8 +76,8 @@ const TEXT = {
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
-    todo: { title: 'What to do now', use: 'Do you use this?', yes: 'Yes', no: 'No', unsure: 'Not sure', usedYes: 'I use it.', usedNo: 'Not used. Nothing to do.', usedUnsure: 'Not sure. Treat it as in use and check the step below.', findDevice: 'The model name is on the label under the device or in its admin page.', versionHelp: (cve) => (cve ? `Not sure of your version? Look on the vendor's site, or ask an AI assistant about ${cve}.` : 'Not sure of your version? Look the product up on the vendor\'s site.'), findApp: 'Your list of installed programs or the app\'s About page shows its name and version.', runsOn: (os) => `Runs on ${os}`, locked: 'Answer step 1 first to tick this.', finishedCount: 'Done', change: 'Start over', act: 'To do', doneLabel: "I've done it", allDone: 'All done! This browser will remember it.', notUsed: 'Marked as not used.', markDone: 'Done', markNo: 'Not used', count: (a, b) => `Step ${a} of ${b}`, note: 'Checks are saved in this browser only.' },
-    newTab: ' (opens in a new tab)', pinDone: (n) => `${n} handled`, fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
+    versionHelp: (cve) => (cve ? `Not sure of your version? Look on the vendor's site, or ask an AI assistant about ${cve}.` : 'Not sure of your version? Look the product up on the vendor\'s site.'),
+    newTab: ' (opens in a new tab)', fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
     guideBtn: 'How to read',
     guide: {
       title: 'How to read this Board', close: 'Close',
@@ -112,6 +114,7 @@ function setDefaultView(view) {
     // storage blocked: the choice lasts until reload
   }
   render();
+  if (!$('filters').hidden) filterPanel(); // risk words differ between the views
 }
 
 function loadLang() {
@@ -357,6 +360,25 @@ function placePill() {
   }
 }
 
+// The collector runs every 15 minutes; an hour without an update (four missed runs) is said out loud, not left to
+// the small status line. Checked every minute too, so a tab left open goes stale where the visitor can see it.
+const STALE_MS = 60 * 60 * 1000;
+const WARN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14.5 13.5h-13Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.5v3.3M8 11.6v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+function staleNote() {
+  const note = $('stale');
+  const stale = Boolean(updated) && !loadError && Date.now() - Date.parse(updated) > STALE_MS;
+  const text = stale ? TEXT[lang].stale(ago(updated)) : '';
+  if (note.textContent === text) return; // unchanged: screen readers hear it once (role=status)
+  note.hidden = !stale;
+  note.innerHTML = stale ? WARN : '';
+  if (stale) note.append(el('span', '', text));
+}
+let shownList = [];
+setInterval(() => {
+  $('status').textContent = statusLine(shownList);
+  staleNote();
+}, 60_000);
+
 function statusLine(list) {
   const t = TEXT[lang];
   if (loadError) return ''; // the message and its retry button sit in the empty-state block
@@ -480,9 +502,10 @@ function render() {
   // 주목 더 보기 adds only Highlights worth a notice: 위험 or above, or a reason the row cannot show (newsletter, HN).
   const extra = chosen.slice(PINNED).filter((i) => riskLevel(i) !== 'notice' || pinReason(i));
   // Which Incidents are pinned is decided by importance (highlightScore); the order they show in is the visitor's sort.
-  const highlights = (pinAll ? [...chosen.slice(0, PINNED), ...extra] : chosen.slice(0, PINNED)).sort(orderBy(filter.sort))
-    .sort((a, b) => Boolean(answeredAtLoad[a.id]) - Boolean(answeredAtLoad[b.id])); // stable: the rest keep their order
+  const highlights = (pinAll ? [...chosen.slice(0, PINNED), ...extra] : chosen.slice(0, PINNED)).sort(orderBy(filter.sort));
+  shownList = list;
   $('status').textContent = statusLine(list);
+  staleNote();
   guide();
   $('skip').hidden = !highlights.length;
   announce(list.length);
@@ -493,8 +516,6 @@ function render() {
   $('highlights').replaceChildren(...highlights.map((i) => row(i, true)));
   $('pinned').hidden = !highlights.length;
   $('pinned-head').replaceChildren(`${TEXT[lang].pin} `, el('span', 'n', String(highlights.length)));
-  const handled = highlights.filter((i) => finished(i.id)).length;
-  if (handled) $('pinned-head').append(el('span', 'handled', TEXT[lang].pinDone(handled)));
   $('pinned-head').hidden = !highlights.length;
   $('pin-more').replaceChildren(...(extra.length ? [pinToggle(extra.length)] : []));
   const count = panelCount();
@@ -525,179 +546,17 @@ function render() {
   const check = $('empty').querySelector('.allclear .mark path');
   if (check && !hadAllClear) draw(check, 420, 120);
   hadAllClear = Boolean(check);
-  if (changed) afterTodo();
 }
 let shownCount = 0;
 
-// The Easy view's to-do list: 1 do you use it, 2 the action, then "조치함" on the row. The visitor's answers stay in
-// this browser (nothing leaves it, PRODUCT.md principle 5); "조치함" is their own word, not a check we ran.
-const SAVED_DONE = 'vr-done';
-const MAX_DONE = 500; // oldest answers go first; ~40 bytes each
-function readProgress() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SAVED_DONE));
-    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : saved === null ? {} : null;
-  } catch {
-    return null; // storage blocked or broken: answers live in this page until reload
-  }
-}
-let progress = readProgress() ?? {};
-const answeredAtLoad = Object.fromEntries(Object.keys(progress).filter((id) => progress[id]?.used === false || progress[id]?.done).map((id) => [id, true]));
-// Another tab ticked something: show it here too.
-window.addEventListener('storage', (event) => {
-  if (event.key !== SAVED_DONE) return;
-  progress = readProgress() ?? progress;
-  render();
-});
-let changed = null; // {id, key, finished}: the to-do control just used, so the redraw can refocus and confirm it
-const stateOf = (id) => progress[id] || {};
-const fillOf = (id) => {
-  const st = stateOf(id);
-  return st.used === false ? 1 : ((st.used !== undefined ? 1 : 0) + (st.done ? 1 : 0)) / 2;
-};
-const finished = (id) => (stateOf(id).used === false ? 'no' : stateOf(id).done ? 'done' : null);
-
-function setTodo(id, next, key) {
-  const before = finished(id);
-  const fromFill = fillOf(id);
-  progress = readProgress() ?? progress; // storage is the truth: another tab may have saved meanwhile
-  delete progress[id]; // re-added last, so the oldest answers are the ones dropped past MAX_DONE
-  if (next) progress[id] = next;
-  for (const old of Object.keys(progress).slice(0, -MAX_DONE)) delete progress[old];
-  try {
-    localStorage.setItem(SAVED_DONE, JSON.stringify(progress));
-  } catch {
-    // storage blocked: the answers last until reload
-  }
-  changed = { id, key, fromFill, finished: !before && finished(id) };
-  render();
-}
-
-const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.3 2.8 2.8 6.2-6.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-function markChip(mine) {
-  const chip = el('small', `why mine ${mine}`);
-  chip.innerHTML = CHECK;
-  chip.append(TEXT[lang].todo[mine === 'done' ? 'markDone' : 'markNo']);
-  return chip;
-}
-
-function todoList(incident) {
+// The Easy view: the plain answer, then the affected models when there are too many to list inline.
+function easyPanel(incident) {
   const s = incident.summary;
   const parts = easyAnswer(s, riskLevel(incident), incident.cves?.[0]);
-  // Nothing a reader can do yet (no version, command, devices or advice): no list to tick, just say so.
-  if (easyAction(s).kind === 'none' && !s[lang].easy_action && !s[lang].mitigation) return parts;
-  const c = TEXT[lang].todo;
-  const id = incident.id;
-  const st = stateOf(id);
-  const box = el('section', 'todo');
-  box.dataset.todo = id;
-  box.setAttribute('aria-label', c.title);
-  const total = st.used === false ? 1 : 2;
-  const count = (st.used !== undefined ? 1 : 0) + (st.done ? 1 : 0);
-  const head = el('div', 'todo-head');
-  const meter = el('span', 'todo-count');
-  meter.style.setProperty('--fill', count / total);
-  meter.classList.toggle('zero', !count); // a round cap would leave a dot at 0
-  meter.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="track" cx="12" cy="12" r="9.5" pathLength="1"/><circle class="arc" cx="12" cy="12" r="9.5" pathLength="1"/></svg>';
-  meter.append(finished(id) ? c.finishedCount : c.count(count, total));
-  head.append(el('strong', '', c.title), meter);
-
-  const steps = el('ol', 'todo-steps');
-  const step = (n, done, off, ...content) => {
-    const li = el('li', `step${done ? ' done' : ''}${done === 'unsure' ? ' unsure' : ''}${off ? ' off' : ''}`);
-    const num = el('span', 'num');
-    if (done === 'unsure') num.append('?'); // answered, but not a sure yes
-    else if (done) num.innerHTML = CHECK;
-    else num.append(String(n));
-    const body = el('div', 'body');
-    body.append(...content);
-    li.append(num, body);
-    return li;
-  };
-  const button = (text, key, onClick, cls = 'btn') => {
-    const b = Object.assign(el('button', cls, text), { type: 'button' });
-    b.dataset.k = key;
-    b.addEventListener('click', onClick);
-    return b;
-  };
-  // 1: do you use it? The badges say which Products the question is about.
-  const tags = el('span', 'c-tags');
-  const os = new Set(Array.isArray(s.platforms) ? s.platforms : []);
-  const keys = lineKeys(incident, lang);
-  tags.append(...rowTags(incident, lang).filter((name) => !os.has(name)).map((name) => lineBadge(name, keys.get(name))));
-  // The Summary's own question names the condition that makes a reader affected ("Alpine 리눅스에서 OpenSSH 서버를
-  // 돌리나요?"), so only those who are say 써요; Summaries without one ask about the product.
-  const question = Object.assign(el('p', 'q', s[lang].use_question || c.use), { id: `todo-q-${++rowCount}` });
-  const first = [question, ...(tags.childElementCount ? [tags] : [])];
-  if (os.size) first.push(el('p', 'runs', c.runsOn([...os].join('·'))));
-  if (st.used === undefined) {
-    const choices = el('div', 'choices');
-    choices.setAttribute('role', 'group');
-    choices.setAttribute('aria-labelledby', question.id); // screen readers hear the question with 써요 / 안 써요 / 몰라요
-    // 몰라요 counts as in use: when unsure, the Board shows the risk rather than hiding it (PRODUCT.md principle 2).
-    choices.append(button(c.yes, 'yes', () => setTodo(id, { used: true }, 'act')),
-                   button(c.no, 'no', () => setTodo(id, { used: false }, 'change')),
-                   button(c.unsure, 'unsure', () => setTodo(id, { used: 'unsure' }, 'act')));
-    first.push(choices);
-  } else {
-    const answer = el('p', 'answer', st.used === 'unsure' ? c.usedUnsure : st.used ? c.usedYes : c.usedNo);
-    answer.append(' ', button(c.change, 'change', () => setTodo(id, null, 'yes'), 'linkish'));
-    first.push(answer);
-    if (st.used === 'unsure') first.push(el('p', 'hint', (s.devices || []).length ? c.findDevice : c.findApp));
-  }
-  // The long model list comes after the answer, so opening it never pushes 써요 / 안 써요 / 몰라요 away from the question.
-  if (Array.isArray(s.devices) && s.devices.length > MANY_DEVICES) first.push(modelList(s.devices, fixLines(s)));
-  steps.append(step(1, st.used === 'unsure' ? 'unsure' : st.used !== undefined, false, ...first));
-  // 2: the action itself, then the visitor's own tick.
-  if (st.used !== false) {
-    const tick = el('label', 'check');
-    const using = st.used === true || st.used === 'unsure';
-    const input = Object.assign(document.createElement('input'), { type: 'checkbox', checked: Boolean(st.done), disabled: !using });
-    input.dataset.k = 'act';
-    input.addEventListener('change', () => setTodo(id, { used: st.used, ...(input.checked ? { done: true } : {}) }, 'act'));
-    tick.append(input, el('span', '', c.doneLabel));
-    const after = [tick];
-    if (!using) {
-      const why = Object.assign(el('p', 'hint', c.locked), { id: `todo-lock-${++rowCount}` });
-      input.setAttribute('aria-describedby', why.id);
-      after.push(why);
-    }
-    steps.append(step(2, Boolean(st.done), false, el('p', 'q', c.act), ...parts, ...after));
-  }
-  box.append(head, steps);
-  const mine = finished(id);
-  if (mine === 'done') {
-    const done = el('p', 'todo-done');
-    done.innerHTML = CHECK;
-    done.append(c.allDone);
-    box.append(done);
-  } else if (!mine) box.append(el('p', 'todo-note', c.note)); // 안 써요 already said "할 일이 없어요"
-
-  return [box];
+  if ((s.devices || []).length > MANY_DEVICES) parts.push(modelList(s.devices, fixLines(s)));
+  return parts;
 }
 
-// After a redraw caused by the to-do list: focus returns to the same control, and a finished list confirms itself.
-function afterTodo() {
-  const { id, key, fromFill, finished: justFinished } = changed;
-  changed = null;
-  const box = [...document.querySelectorAll('.todo')].find((b) => b.dataset.todo === id);
-  if (!box) return;
-  box.querySelector(`[data-k="${key}"]`)?.focus();
-  const meter = box.querySelector('.todo-count .arc');
-  if (meter && !reducedMotion.matches) meter.animate([{ strokeDasharray: `${fromFill} 1` }, { strokeDasharray: `${fillOf(id)} 1` }], { duration: 450, easing: EASE_OUT });
-  for (const path of box.querySelectorAll('.step.done .num path')) draw(path, 260);
-  if (justFinished) {
-    const doneLine = box.querySelector('.todo-done');
-    if (doneLine) {
-      pop(doneLine, 'translateY(4px)', 260);
-      draw(doneLine.querySelector('path'), 360, 80);
-    }
-    const chip = box.closest('li')?.querySelector('.why.mine');
-    if (chip) pop(chip, 'scale(0.6)', 260);
-    $('announce').textContent = finished(id) === 'done' ? TEXT[lang].todo.allDone : TEXT[lang].todo.notUsed;
-  }
-}
 let hadAllClear = false;
 
 // Nothing to show: say so plainly. With products picked this is the good news, "not affected".
@@ -726,7 +585,10 @@ function emptyState() {
   const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || id).join(', ');
   // Only Products picked: name them ("not affected"); any quick filter in play: speak of conditions instead.
   const quick = panelCount() > 0;
-  const message = filter.picks.length && !quick ? t.noneForPicks(names) : filter.query && !quick ? t.noneForQuery(filter.query)
+  // Picks and a search together: the search is named first, so "nothing for OpenSSH" never hides an OpenSSH row the
+  // search left out (PRODUCT.md principle 2).
+  const message = filter.picks.length && filter.query && !quick ? t.noneForBoth(names, filter.query)
+    : filter.picks.length && !quick ? t.noneForPicks(names) : filter.query && !quick ? t.noneForQuery(filter.query)
     : quick ? t.noneForFilters : t.noIncidents;
   const buttons = el('p', 'actions');
   // Say how far back this looked: "nothing" in one week is not "nothing" in three months.
@@ -736,9 +598,9 @@ function emptyState() {
     older.addEventListener('click', loadOlder);
     buttons.append(older);
   }
-  if (filter.query) buttons.append(clearButton(t.clearSearch, { query: '' }));
+  if (filter.query) buttons.append(clearButton(t.clearSearch, { query: '' }, true));
   // 모두 지우기 only when something besides the search is set; with a search alone it would repeat 검색 지우기.
-  if (activeFilters() - (filter.query ? 1 : 0) > 0) buttons.append(clearButton(t.clearAll, NO_FILTER));
+  if (activeFilters() - (filter.query ? 1 : 0) > 0) buttons.append(clearButton(t.clearAll, NO_FILTER, true));
   const actions = buttons.childElementCount ? [buttons] : [];
   // Only Products picked and none on the Board: the visitor's good news, said as a sign, never as "safe".
   if (filter.picks.length && !quick && !filter.query) return [allClear(), ...actions];
@@ -759,8 +621,11 @@ function allClear() {
   return sign;
 }
 
-function clearButton(text, change) {
-  const button = Object.assign(el('button', 'btn', text), { type: 'button' });
+// In the empty state the button says how many Incidents it brings back, so the visitor sees which narrowing hid them.
+function clearButton(text, change, counted = false) {
+  const next = { ...filter, ...change };
+  const n = counted ? filterBoard(incidents, next.picks, next.query, Date.now(), next).list.length : 0;
+  const button = Object.assign(el('button', 'btn', n ? TEXT[lang].restore(text, n) : text), { type: 'button' });
   button.addEventListener('click', () => {
     if ('query' in change) $('search').value = change.query;
     update(change);
@@ -935,6 +800,7 @@ $('lang').addEventListener('click', () => crossFade(() => {
   }
   refreshProducts();
   render();
+  if (!$('filters').hidden) filterPanel(); // an open panel speaks the new language (an unapplied choice there resets)
 }));
 $('view-normal').addEventListener('click', () => setDefaultView('normal'));
 $('view-easy').addEventListener('click', () => setDefaultView('easy'));
@@ -1113,7 +979,7 @@ function settingLine(text, file = '') {
   const p = el('p', 'command');
   p.append(el('code', '', text));
   const caution = para('caution', '');
-  caution.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14.5 13.5h-13Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.5v3.3M8 11.6v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  caution.innerHTML = WARN;
   caution.append(el('span', '', t.caution));
   return [para('action', typeof file === 'string' && file ? t.settingIn(file) : t.setting), p, caution];
 }
@@ -1149,7 +1015,7 @@ function easyAnswer(s, level, cve = '') {
     }
   }
   // A version to compare with: one line on where to look, not a how-to (user, 11-08: readers ask the vendor or an AI).
-  if (fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)) parts.push(para('hint', t.todo.versionHelp(cve)));
+  if (fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)) parts.push(para('hint', t.versionHelp(cve)));
   if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file)));
   // The step the stopgap needs to take effect ("바꾼 뒤 sshd를 다시 시작하세요."), when a source says it.
   if (action.stopgap && s[lang].stopgap_then) parts.push(para('action', s[lang].stopgap_then));
@@ -1200,12 +1066,15 @@ function modelList(models, lines = []) {
 // The row's start: a dot in the rule-based Risk colour and its word (loud in the Easy view).
 function riskCell(incident) {
   const level = riskLevel(incident);
-  const cell = el('span', `c-risk risk-${level}`);
+  const easy = defaultView === 'easy';
+  // The Easy view is loud on closed rows too: the risk word becomes a sign (index.html, .loud).
+  const cell = el('span', `c-risk risk-${level}${easy ? ' loud' : ''}`);
   const dot = el('i', 'dot');
   dot.setAttribute('aria-hidden', 'true');
-  cell.append(dot, defaultView === 'easy' ? TEXT[lang][level] : TEXT[lang].levels[level]);
+  cell.append(dot, el('b', 'word', easy ? TEXT[lang][level] : TEXT[lang].levels[level]));
   // Why it is this high when the score alone would not say so: exploited (KEV, or attacks its sources report) lifts it to the top level.
-  if (isExploited(incident)) cell.append(el('small', 'why kev', TEXT[lang].kevReason));
+  // The space keeps screen readers from running the two words together ("심각!악용 발생"); flex hides it on screen.
+  if (isExploited(incident)) cell.append(' ', el('small', 'why kev', TEXT[lang].kevReason));
   return cell;
 }
 
@@ -1321,7 +1190,7 @@ function dateCell(incident) {
 function details(incident) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
-  const parts = !incident.summary ? briefNote(incident) : easy ? todoList(incident) : summary(incident.summary[lang]);
+  const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang]);
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
   if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   if (easy && incident.cves.length) parts.unshift(para('cve-line', incident.cves.join(', ')));
@@ -1347,7 +1216,6 @@ let rowCount = 0;
 // alert edged in its Risk colour, with the details inside the frame.
 function row(incident, pinned) {
   const li = el('li', pinned ? `alert risk-${riskLevel(incident)}` : '');
-  if (finished(incident.id)) li.classList.add('answered');
   const body = Object.assign(el('div', 'details'), { id: `details-${++rowCount}`, hidden: !open.has(incident.id) });
   const button = Object.assign(el('button', 'row'), { type: 'button' });
   button.setAttribute('aria-controls', body.id);
@@ -1357,8 +1225,6 @@ function row(incident, pinned) {
   const risk = riskCell(incident);
   const why = pinned && pinReason(incident);
   if (why) risk.append(el('small', 'why', TEXT[lang].why[why]));
-  const mine = finished(incident.id);
-  if (mine) risk.append(markChip(mine));
   const cells = { risk, title: titleCell(incident), score: scoreCell(incident), tags: tagsCell(incident), date: dateCell(incident) };
   for (const [k, cell] of Object.entries(cells)) cell.id = `${body.id}-${k}`;
   cells.title.querySelector('.title').id = `${body.id}-name`;

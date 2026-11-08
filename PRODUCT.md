@@ -44,9 +44,8 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
   Normal|Easy switch at the top; language toggle.
 - Risk banner set by rules: exploited (a CISA KEV listing, or a Summary whose sources report attacks; user, 2026-11-08)
   or CVSS 9.0+ is the top level, 7.0+ the next, else notice. The model only reports what sources say, never the level.
-- Easy view to-do per Incident: does the visitor use it (써요 / 안 써요 / 몰라요), then the action and their own
-  tick. Answers stay in the visitor's browser (shared between open tabs, never sent); answered rows step back.
-  "조치함" is the visitor's word, never a check the Board ran.
+- The Easy view shows the action only: no question to answer and no tick to keep (the to-do list was removed,
+  user, 2026-11-08, after critique 6). The Board stores nothing about which Incidents a visitor uses or handled.
 - Judgments are the AI's first (Summary text, Incident or not, reported attacks); corrections come from readers through
   public GitHub issues, not a hand-kept override list (user, 2026-11-08).
 - Required notices: the NVD sentence verbatim in English; reference-only note.
