@@ -16,6 +16,7 @@ colors:
   notice-slate: "light-dark(#5f6b76, #9aa3ad)"
   wayfinding-blue: "light-dark(#1a5fb4, #7cc4ff)"
   clear-green: "light-dark(#1d7a45, #4fc48c)"
+  scrim: "rgb(0 0 0 / 0.45)"
   line-01: "#0052a4"
   line-02: "#00a84d"
   line-03: "#00a5de"
@@ -202,7 +203,8 @@ for Products only.
   0.13 apart in OKLab, so no two lines look alike at badge size (a test checks it). Operating systems are not
   lines: they get an outline badge (Secondary Ink text, Control Edge inset ring). Light
   hues carry `line-ink-dark` text, deep hues carry `line-ink-light`. The source is `LINES` in
-  `web/board.mjs`, which assigns each Product a colour by an FNV-1a hash of its name.
+  `web/board.mjs`, which assigns each Product a colour by an FNV-1a hash of its Product id ("openbsd:openssh"; a device model by its
+  name), mixed before the remainder so Products spread over the eight lines.
 
 ### Tertiary
 - **Wayfinding Blue** (`wayfinding-blue`): links, the focus ring, the caret, and the text selection
@@ -229,7 +231,7 @@ separate alphabet for "done", never for risk), and the same severity
 is always the same colour; Product lines never use a red, orange, amber or grey hue, and a line colour
 never signals risk. Adding a line colour means checking it against all three first.
 
-**The Fixed Line Rule.** A Product's line colour is a function of its name, the same on every row and
+**The Fixed Line Rule.** A Product's line colour is a function of its Product id, never its translated name, the same on every row and
 every visit. Never pick a line colour per page or per row.
 
 ## Typography
@@ -297,7 +299,7 @@ The one exception is the Highlight frame, which lifts slightly to read as a stac
 
 ### Named Rules
 **The One Lift Rule.** Only the "주목" frames cast a shadow. Plain rows, fields, buttons and opened
-details stay flat.
+details stay flat. The phone filter sheet is set apart by the Scrim (`--scrim`, 45% black over the Board), not by a lift.
 
 ## Shapes
 
@@ -398,7 +400,10 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Product lines and models:** when product lines have their own fixed versions, step 2 lists them one per
   line ("SonicWall Gen7 7.3.4-7013 이상"); past four device models the row shows the product alone and step 1
   folds the models under "해당 모델 보기 (N개)", where the reader looks for their own. When the Summary says which
-  models each line has (`fixes[].devices`), the fold groups them under the line's name in Ink, models no line names last.
+  models each line has (`fixes[].devices`), the fold groups them under the line's name in Ink, models no line names last; inside a group a model drops the vendor the line already names. The fold sits after
+  the answer buttons, so opening it never moves them away from the question.
+- **Step 1 question:** the Summary's `use_question` names the condition that makes a reader affected ("Alpine 리눅스에서
+  원격 접속 서버를 돌리나요?"); older Summaries ask "이 제품을 쓰고 있나요?". The answer buttons are a group named by it.
 - **Context lines:** a command says which system it is for when a source or its package tool tells ("Alpine 리눅스라면
   이 명령으로 업데이트하세요:"); a config line names its file when a source does ("설정 파일 /etc/ssh/sshd_config에 이 줄을
   넣으세요:"). On the Korean page an English source title reads as the Summary's Korean line; the original is its tooltip.
@@ -432,7 +437,8 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Folding:** an opened row's details and a folded model list grow from 0 to their height (220ms, ease-out) and
   shrink back faster (160ms) when closed, so the rows below glide; a click mid-way turns them round.
 - **Opening:** the reading guide and the filter panel ease in over 200ms (a 6px drop
-  and a fade); the phone's filter sheet rises from the bottom over 300ms. Closing is instant. The chevron turns
+  and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
+  it) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
 - **Micro-feedback (100-250ms):** buttons, chips and the switch press in to 96% and tint in 120ms; the 기본|쉬운
   설명 pill slides under the pressed side (240ms); a copied command's check draws itself and "복사됨" slides in; the

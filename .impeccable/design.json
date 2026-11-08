@@ -528,7 +528,7 @@
       },
       {
         "name": "The Fixed Line Rule",
-        "body": "A Product's line colour is a function of its name, the same on every row and every visit. Never pick a line colour per page or per row.",
+        "body": "A Product's line colour is a function of its Product id (never its translated name), the same on every row, language and visit. Never pick a line colour per page or per row.",
         "section": "colors"
       },
       {

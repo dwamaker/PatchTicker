@@ -1,4 +1,4 @@
-import { LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
+import { LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, lineKeys, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
 
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
@@ -13,7 +13,7 @@ const SAVED_THEME = 'vr-theme';
 const TEXT = {
   ko: {
     other: 'English', otherShort: 'EN', title: 'vuln-radar · 보안 취약점 게시판', loading: '불러오는 중…',
-    loadError: (msg) => `게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요. (${msg})`, retry: '다시 시도', filterBtn: '필터', fp: { title: '고급 필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '조건', has: { advisory: '공식 공지 있음', repo: '공격 코드(PoC) 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주목 더 보기 (${n})`, pinLess: '주목 접기', qfRisk: '위험 단계', qfKev: '실제 악용 중만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주목 건너뛰고 최신순으로', found: (n) => `${n}건이 보입니다.`,
+    loadError: (msg) => `게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요. (${msg})`, retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '조건', has: { advisory: '공식 공지 있음', repo: '공격 코드(PoC) 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주목 더 보기 (${n})`, pinLess: '주목 접기', qfRisk: '위험 단계', qfKev: '실제 악용 중만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주목 건너뛰고 최신순으로', found: (n) => `${n}건이 보입니다.`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', picked: '고른 제품', remove: (name) => `${name} 빼기`,
     search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', theme: '어두운 화면',
@@ -34,7 +34,7 @@ const TEXT = {
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
     todo: { title: '지금 할 일', use: '이 제품을 쓰고 있나요?', yes: '써요', no: '안 써요', unsure: '몰라요', usedYes: '쓰고 있어요.', usedNo: '안 써요. 할 일이 없어요.', usedUnsure: '잘 모르겠어요. 쓰는 걸로 보고 아래 할 일을 확인하세요.', findDevice: '모델 이름은 기기 뒷면 라벨이나 관리 화면에서 볼 수 있어요.', findApp: '설치된 프로그램 목록이나 앱 정보에서 이름과 버전을 볼 수 있어요.', runsOn: (os) => `${os}에서 돌아가요`, locked: '1번에 먼저 답하면 체크할 수 있어요.', finishedCount: '완료', change: '처음부터 다시', act: '할 일', doneLabel: '다 했어요', allDone: '조치 완료! 이 브라우저에 기억해 둘게요.', notUsed: '해당 없음으로 표시했어요.', markDone: '조치함', markNo: '해당 없음', count: (a, b) => `${b}단계 중 ${a}단계`, note: '체크는 이 브라우저에만 저장돼요.' },
-    newTab: ' (새 탭에서 열림)', pinDone: (n) => `${n}건 처리`, fixesIntro: '내 제품에 해당하는 줄의 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v} 이상`, models: (n) => `해당 모델 보기 (${n}개)`,
+    newTab: ' (새 탭에서 열림)', pinDone: (n) => `${n}건 처리`, fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
     guideBtn: '읽는 법',
     guide: {
       title: '이 게시판 읽는 법', close: '닫기',
@@ -52,7 +52,7 @@ const TEXT = {
   },
   en: {
     other: '한국어', otherShort: '한', title: 'vuln-radar · vulnerability board', loading: 'Loading…',
-    loadError: (msg) => `Could not load the Board. Check your connection and try again. (${msg})`, retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Advanced filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Conditions', has: { advisory: 'Official advisory', repo: 'Attack code (PoC) public' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', found: (n) => `${n} Incidents shown.`,
+    loadError: (msg) => `Could not load the Board. Check your connection and try again. (${msg})`, retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Conditions', has: { advisory: 'Official advisory', repo: 'Attack code (PoC) public' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', found: (n) => `${n} Incidents shown.`,
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', picked: 'Picked Products', remove: (name) => `Remove ${name}`,
     search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', theme: 'Dark theme',
@@ -73,7 +73,7 @@ const TEXT = {
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
     todo: { title: 'What to do now', use: 'Do you use this?', yes: 'Yes', no: 'No', unsure: 'Not sure', usedYes: 'I use it.', usedNo: 'Not used. Nothing to do.', usedUnsure: 'Not sure. Treat it as in use and check the step below.', findDevice: 'The model name is on the label under the device or in its admin page.', findApp: 'Your list of installed programs or the app\'s About page shows its name and version.', runsOn: (os) => `Runs on ${os}`, locked: 'Answer step 1 first to tick this.', finishedCount: 'Done', change: 'Start over', act: 'To do', doneLabel: "I've done it", allDone: 'All done! This browser will remember it.', notUsed: 'Marked as not used.', markDone: 'Done', markNo: 'Not used', count: (a, b) => `Step ${a} of ${b}`, note: 'Checks are saved in this browser only.' },
-    newTab: ' (opens in a new tab)', pinDone: (n) => `${n} handled`, fixesIntro: 'Update to at least the version on your product\'s line:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v} or later`, models: (n) => `Affected models (${n})`,
+    newTab: ' (opens in a new tab)', pinDone: (n) => `${n} handled`, fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
     guideBtn: 'How to read',
     guide: {
       title: 'How to read this Board', close: 'Close',
@@ -193,11 +193,14 @@ const open = new Set();
 // The filter lives in the address hash, not the query, so opening a shared link never sends it to a server.
 let filter = loadFilter();
 
+// A link's own filter wins whole (a shared "#r=highest" is not mixed with this browser's picks). Otherwise the saved
+// picks and panel conditions come back, shown as chips; a search word never does: an old search silently narrowing a
+// later visit would hide Incidents by mistake (critique 4).
 function loadFilter() {
   const fromAddress = filterFromQuery(location.hash.slice(1));
-  if (fromAddress.picks.length || fromAddress.query) return fromAddress;
+  if (location.hash.length > 1) return fromAddress;
   try {
-    return filterFromQuery(localStorage.getItem(SAVED) || '');
+    return { ...filterFromQuery(localStorage.getItem(SAVED) || ''), query: '' }; // saved before 11-08 late: may hold q
   } catch {
     return fromAddress; // storage blocked (private window, cleared site data)
   }
@@ -206,7 +209,7 @@ function loadFilter() {
 function saveFilter() {
   const encoded = filterToQuery(filter);
   try {
-    localStorage.setItem(SAVED, encoded);
+    localStorage.setItem(SAVED, filterToQuery({ ...filter, query: '' }));
   } catch {
     // storage blocked: the address still carries the filter
   }
@@ -601,12 +604,17 @@ function todoList(incident) {
   // 1: do you use it? The badges say which Products the question is about.
   const tags = el('span', 'c-tags');
   const os = new Set(Array.isArray(s.platforms) ? s.platforms : []);
-  tags.append(...rowTags(incident, lang).filter((name) => !os.has(name)).map(lineBadge));
-  const first = [el('p', 'q', c.use), ...(tags.childElementCount ? [tags] : [])];
+  const keys = lineKeys(incident, lang);
+  tags.append(...rowTags(incident, lang).filter((name) => !os.has(name)).map((name) => lineBadge(name, keys.get(name))));
+  // The Summary's own question names the condition that makes a reader affected ("Alpine 리눅스에서 OpenSSH 서버를
+  // 돌리나요?"), so only those who are say 써요; Summaries without one ask about the product.
+  const question = Object.assign(el('p', 'q', s[lang].use_question || c.use), { id: `todo-q-${++rowCount}` });
+  const first = [question, ...(tags.childElementCount ? [tags] : [])];
   if (os.size) first.push(el('p', 'runs', c.runsOn([...os].join('·'))));
-  if (Array.isArray(s.devices) && s.devices.length > MANY_DEVICES) first.push(modelList(s.devices, fixLines(s)));
   if (st.used === undefined) {
     const choices = el('div', 'choices');
+    choices.setAttribute('role', 'group');
+    choices.setAttribute('aria-labelledby', question.id); // screen readers hear the question with 써요 / 안 써요 / 몰라요
     // 몰라요 counts as in use: when unsure, the Board shows the risk rather than hiding it (PRODUCT.md principle 2).
     choices.append(button(c.yes, 'yes', () => setTodo(id, { used: true }, 'act')),
                    button(c.no, 'no', () => setTodo(id, { used: false }, 'change')),
@@ -618,6 +626,8 @@ function todoList(incident) {
     first.push(answer);
     if (st.used === 'unsure') first.push(el('p', 'hint', (s.devices || []).length ? c.findDevice : c.findApp));
   }
+  // The long model list comes after the answer, so opening it never pushes 써요 / 안 써요 / 몰라요 away from the question.
+  if (Array.isArray(s.devices) && s.devices.length > MANY_DEVICES) first.push(modelList(s.devices, fixLines(s)));
   steps.append(step(1, st.used === 'unsure' ? 'unsure' : st.used !== undefined, false, ...first));
   // 2: the action itself, then the visitor's own tick.
   if (st.used !== false) {
@@ -722,7 +732,7 @@ function allClear() {
   mark.setAttribute('aria-hidden', 'true');
   mark.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m7.5 12.3 3 3 6-6.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const tags = el('span', 'c-tags');
-  tags.append(...filter.picks.map((id) => lineBadge(products.find((p) => p.id === id)?.name || id.replace(/^os:/, ''))));
+  tags.append(...filter.picks.map((id) => lineBadge(products.find((p) => p.id === id)?.name || id.replace(/^os:/, ''), id)));
   const lines = el('span', 'lines');
   lines.append(tags, el('strong', '', olderMonths.length ? t.clearWeek : t.clearMonths), el('span', 'note', t.clearNote));
   sign.append(mark, lines);
@@ -742,7 +752,7 @@ function clearButton(text, change) {
 function chip(id) {
   const name = products.find((p) => p.id === id)?.name || id;
   const button = Object.assign(el('button', 'chip'), { type: 'button' });
-  const badge = lineBadge(name);
+  const badge = lineBadge(name, id);
   badge.append(el('span', 'x'));
   button.append(badge);
   button.setAttribute('aria-label', TEXT[lang].remove(name));
@@ -801,22 +811,29 @@ function filterPanel() {
   const words = defaultView === 'easy' ? t.easyLevels : t.levels;
   const form = $('filters');
   const grid = el('div', 'fp-grid');
+  // The conditions most visitors use come first (risk, exploited, OS); dates, which few set, come last, so a phone sheet
+  // opens on what matters instead of two date pickers.
   grid.append(
-    field(f.from, input('date', 'from', filter.from)),
-    field(f.to, input('date', 'to', filter.to)),
-    field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
-    field(f.cve, select('cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve)),
     checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)),
     checks(f.flags, 'flag', [['kev', t.qfKev], ...LINK_KINDS.map((k) => [k, f.has[k]])], (v) => (v === 'kev' ? filter.kev : filter.has.includes(v))),
     checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)),
+    field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
+    field(f.cve, select('cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve)),
     field(f.sort, select('sort', SORTS.map((s) => [s, f.sorts[s]]), filter.sort)),
+    field(f.from, input('date', 'from', filter.from)),
+    field(f.to, input('date', 'to', filter.to)),
   );
   const actions = el('div', 'fp-actions');
   const reset = Object.assign(el('button', 'btn', f.reset), { type: 'button' });
   reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()); filterPanel(); });
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
-  form.replaceChildren(el('h3', 'fp-title', f.title), grid, actions);
+  // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
+  const close = Object.assign(el('button', 'btn', f.close), { type: 'button' });
+  close.addEventListener('click', closePanel);
+  const head = el('div', 'g-head fp-head');
+  head.append(el('h3', 'fp-title', f.title), close);
+  form.replaceChildren(head, grid, actions);
 }
 
 // Reset clears the panel only; Products picked at the top and the search stay.
@@ -900,6 +917,12 @@ $('view-normal').addEventListener('click', () => setDefaultView('normal'));
 $('view-easy').addEventListener('click', () => setDefaultView('easy'));
 $('theme').addEventListener('click', toggleTheme);
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('filters').hidden) closePanel(); });
+// The phone sheet dims the Board behind it (CSS); a tap on the dimmed Board closes it, as a sheet does.
+document.addEventListener('pointerdown', (event) => {
+  const form = $('filters');
+  if (form.hidden || !matchMedia('(max-width: 599px)').matches) return;
+  if (!form.contains(event.target) && !$('filter-btn').contains(event.target)) closePanel();
+});
 $('filters').addEventListener('submit', applyPanel);
 // '/' jumps to the search box, as on many sites; not while typing somewhere.
 document.addEventListener('keydown', (event) => {
@@ -1055,7 +1078,9 @@ function modelList(models, lines = []) {
     for (const f of lines) {
       const li = el('li', '');
       const sub = el('ul', '');
-      sub.append(...plain(f.devices));
+      // Under "SonicWall Gen7" the models drop the vendor they share with it: "TZ 270", not "SonicWall TZ 270" 22 times.
+      const vendor = `${f.for.split(' ')[0]} `;
+      sub.append(...plain(f.devices.map((d) => (d.startsWith(vendor) && d.length > vendor.length ? d.slice(vendor.length) : d))));
       li.append(el('strong', '', f.for), sub);
       list.append(li);
     }
@@ -1157,9 +1182,10 @@ function titleCell(incident) {
 }
 
 // A Product's line badge, in that Product's fixed colour.
-function lineBadge(name) {
+// key: the Product id (language-free), so a Product keeps its line in both languages; else the name itself.
+function lineBadge(name, key = name) {
   const badge = el('span', 'ln', name);
-  const { bg, ink } = productLine(name);
+  const { bg, ink } = productLine(key);
   badge.style.setProperty('--line', bg);
   badge.style.setProperty('--line-ink', ink);
   return badge;
@@ -1171,7 +1197,8 @@ const osBadge = (name) => el('span', 'ln os', name);
 function tagsCell(incident) {
   const cell = el('span', 'c-tags');
   const os = new Set(Array.isArray(incident.summary?.platforms) ? incident.summary.platforms : []);
-  cell.append(...rowTags(incident, lang).map((name) => (os.has(name) ? osBadge(name) : lineBadge(name))));
+  const keys = lineKeys(incident, lang);
+  cell.append(...rowTags(incident, lang).map((name) => (os.has(name) ? osBadge(name) : lineBadge(name, keys.get(name)))));
   return cell;
 }
 

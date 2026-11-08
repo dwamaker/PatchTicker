@@ -209,11 +209,20 @@ export const LINES = [
   { bg: '#00828f', ink: '#ffffff' }, { bg: '#c25bb8', ink: '#0d0f12' },
 ];
 
-// A Product's line: FNV-1a of its name picks the colour, so it is the same on every visit and every row.
-export function productLine(name) {
+// A Product's line from its language-free key (the Product id, "openbsd:openssh"), so it is the same on every visit,
+// row and language. FNV-1a, then a final mix: plain FNV-1a mod 8 put six of ten real Products on one line (critique 4).
+export function productLine(key) {
   let h = 0x811c9dc5;
-  for (const ch of name) h = Math.imul(h ^ ch.codePointAt(0), 0x01000193) >>> 0;
-  return LINES[h % LINES.length];
+  for (const ch of key) h = Math.imul(h ^ ch.codePointAt(0), 0x01000193);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return LINES[((h ^ (h >>> 16)) >>> 0) % LINES.length];
+}
+
+// Each row badge's line key: the Product id behind a shown name (a Summary name in either language, an NVD name);
+// a name with no Product (a device model) has none and keys by itself.
+export function lineKeys(i, lang = 'en') {
+  return new Map(productsOf(i, lang).map((p) => [p.name, p.id]));
 }
 
 // How long ago, as a value and unit for Intl.RelativeTimeFormat; null from 30 days on (the date is shown instead).

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINES, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { LINES, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -348,10 +348,28 @@ test('the sshole replay Incident becomes a Highlight ahead of ten CVSS 9.8 Incid
 });
 
 test('a Product keeps its line colour, and Products spread over the lines', () => {
-  assert.equal(productLine('OpenSSH'), productLine('OpenSSH'));
-  const names = ['OpenSSH', 'OpenWrt', 'Alpine', 'Windows', 'Perl', 'Python', 'SonicOS', 'Keycloak', 'Dropbear', 'WordPress'];
-  assert.ok(new Set(names.map(productLine)).size >= 5);
+  assert.equal(productLine('openbsd:openssh'), productLine('openbsd:openssh'));
   assert.ok(LINES.includes(productLine('')));
+  // Critique 4: six of ten real Products shared one mint line. Ids as the Board keys them (CPE, CVE record, Summary name).
+  const ids = ['openbsd:openssh', 'sonicwall:sonicos', 'name:microsoft paint', 'name:cpython', 'apache:allura', 'apache:axis2',
+    'forgerock:access_management', 'infinitewp:infinitewp_client', 'name:hotta studio tower of fantasy', 'name:rrd::cgi::image',
+    'name:perl sql::abstract', 'openwrt:openwrt', 'alpinelinux:alpine_linux', 'microsoft:windows', 'python:python',
+    'redhat:keycloak', 'dropbear_ssh_project:dropbear_ssh', 'wordpress:wordpress', 'google:chrome', 'mozilla:firefox',
+    'apple:safari', 'linux:linux_kernel', 'synology:diskstation_manager', 'tp-link:archer_c6', 'iptime:firmware',
+    'fortinet:fortios', 'paloaltonetworks:pan-os', 'cisco:ios_xe', 'ivanti:connect_secure', 'citrix:netscaler',
+    'atlassian:confluence', 'gitlab:gitlab', 'jenkins:jenkins', 'apache:tomcat', 'nginx:nginx', 'php:php', 'nodejs:node.js',
+    'oracle:java', 'vmware:esxi', 'zyxel:firmware'];
+  const per = LINES.map((line) => ids.filter((id) => productLine(id) === line).length);
+  assert.ok(Math.max(...per) <= ids.length / 4, `lines hold ${per}`);
+});
+
+test('a Product\'s line follows its id, so Korean and English pages colour it the same', () => {
+  const paint = { products: [], summary: { products: ['Microsoft Paint'], platforms: ['Windows'],
+    ko: { names: ['Windows 그림판'] }, en: { names: ['Microsoft Paint'] }, devices: ['TP-Link Archer'] } };
+  const [ko, en] = ['ko', 'en'].map((lang) => lineKeys(paint, lang));
+  assert.equal(ko.get('Windows 그림판'), 'name:microsoft paint');
+  assert.equal(ko.get('Windows 그림판'), en.get('Microsoft Paint'));
+  assert.equal(ko.get('TP-Link Archer'), undefined); // devices have no id: the badge keys by the model name itself
 });
 
 // WCAG relative luminance and contrast of two #rrggbb colours.
