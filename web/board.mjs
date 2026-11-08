@@ -81,3 +81,12 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now())
   const highlights = list.filter((i) => i.first_seen >= since && !quietHnStory(i)).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, 10);
   return { highlights, list };
 }
+
+// CVSS v3 qualitative rating, as a key the page words per language; null while NVD has not rated it.
+export function cvssRating(cvss) {
+  if (cvss == null) return null;
+  return cvss >= 9 ? 'critical' : cvss >= 7 ? 'high' : cvss >= 4 ? 'medium' : cvss > 0 ? 'low' : 'none';
+}
+
+// The row's 대상 column: the Incident's Products, then the Summary's devices, each name once.
+export const rowTags = (i) => [...new Set([...(i.products || []).map((p) => p.name), ...(i.summary?.devices || [])])];

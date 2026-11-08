@@ -2,9 +2,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { briefMarker, easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel, viewFromStorage } from '../web/board.mjs';
+import { briefMarker, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
+
+test('the CVSS rating follows the v3 bands, and an unrated Incident has none', () => {
+  assert.deepEqual([9, 8.9, 7, 6.9, 4, 3.9, 0.1, 0, null, undefined].map(cvssRating),
+    ['critical', 'high', 'high', 'medium', 'medium', 'low', 'low', 'none', null, null]);
+});
+
+test('a row\'s tags are its Products, then the Summary\'s devices, each name once', () => {
+  const i = { products: [{ id: 'a:x', name: 'OpenSSH' }, { id: 'b:x', name: 'Router' }], summary: { devices: ['Router', 'NAS'] } };
+  assert.deepEqual(rowTags(i), ['OpenSSH', 'Router', 'NAS']);
+  assert.deepEqual(rowTags({}), []);
+});
 
 test('returns Incidents newest first', () => {
   const incidents = [
