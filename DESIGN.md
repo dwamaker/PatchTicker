@@ -12,7 +12,8 @@ colors:
   rail: "light-dark(#c4c9cf, #3a4048)"
   control-edge: "light-dark(#858e97, #6b737c)"
   emergency-red: "light-dark(#c4231c, #ff6b62)"
-  caution-amber: "light-dark(#b54a00, #f5b400)"
+  caution-amber: "light-dark(#8a6100, #f5b400)"
+  caution-amber-mark: "light-dark(#a87700, #f5b400)"
   notice-slate: "light-dark(#5f6b76, #9aa3ad)"
   wayfinding-blue: "light-dark(#1a5fb4, #7cc4ff)"
   clear-green: "light-dark(#1d7a45, #4fc48c)"
@@ -191,8 +192,9 @@ for Products only.
 ### Primary
 - **Emergency Red** (`emergency-red`): the 고위험 risk dot and word, the KEV marker, the left edge
   and faint wash of a 고위험 Highlight frame. Used only for risk.
-- **Caution Amber** (`caution-amber`): the 위험 risk dot and word and the left edge of a 위험
-  Highlight frame.
+- **Caution Amber** (`caution-amber`, text) and **Caution Amber Mark** (`caution-amber-mark`, marks): the 위험 word is
+  the dark gold (#8a6100 by day, 4.77:1+); its dot, ring arc, frame edge and wash are the brighter gold (#a87700 by day,
+  non-text, 3.4:1+), so 위험 reads gold and never as the red of 고위험 (user, 11-08). By night both are #f5b400.
 - **Notice Slate** (`notice-slate`): the 참고 risk dot and word, the default Highlight edge, and the
   CVSS ring below 7.0.
 - The CVSS ring uses the same three: Emergency Red at 9.0+, Caution Amber at 7.0+, Notice Slate below.

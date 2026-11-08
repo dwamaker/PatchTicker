@@ -20,7 +20,8 @@
       --rule-2: light-dark(#c4c9cf, #3a4048);
       --edge: light-dark(#858e97, #6b737c);
       --high: light-dark(#c4231c, #ff6b62);
-      --mid: light-dark(#b54a00, #f5b400);
+      --mid: light-dark(#8a6100, #f5b400); /* 위험 text: dark gold, 4.77:1+ by day */
+      --mid-mark: light-dark(#a87700, #f5b400); /* 위험 marks (dot, ring, frame edge): brighter gold, 3.4:1+ (non-text) */
       --note: light-dark(#5f6b76, #9aa3ad);
       --focus: light-dark(#1a5fb4, #7cc4ff);
       --ok: light-dark(#1d7a45, #4fc48c); /* done / nothing found: a state, never a risk and never a badge fill */
@@ -216,6 +217,7 @@
     .dot { flex: none; width: 0.875rem; height: 0.875rem; border-radius: 50%; background: currentColor; }
     .risk-highest .c-risk, .risk-highest.c-risk { color: var(--high); }
     .risk-high .c-risk, .risk-high.c-risk { color: var(--mid); }
+    .risk-high .dot { background: var(--mid-mark); }
     .risk-notice .c-risk, .risk-notice.c-risk { color: var(--note); }
     .c-title { grid-area: t; min-width: 0; }
     .title { display: block; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; overflow-wrap: anywhere; text-wrap: pretty; }
@@ -236,7 +238,7 @@
     .num { position: relative; font-size: var(--fs-meta); /* fixed: the ring is a graphic and does not grow, so its number must not either */ font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
     /* the ring speaks the Risk alphabet: same severity, same colour as the dot (a separate orange read as the amber dot) */
     .sev-critical { color: var(--high); }
-    .sev-high { color: var(--mid); }
+    .sev-high { color: var(--mid-mark); }
     .sev-medium, .sev-low, .sev-none { color: var(--note); }
     .sev.unrated { color: var(--ink-3); }
     .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
@@ -252,7 +254,7 @@
     .stack { display: grid; gap: 0.5rem; }
     .alert { background: var(--panel); border: 1px solid var(--rule-2); border-left: 3px solid var(--note); border-radius: var(--r-frame); box-shadow: 0 6px 18px -8px var(--shadow); overflow: hidden; }
     .alert.risk-highest { border-left-color: var(--high); background: linear-gradient(90deg, color-mix(in srgb, var(--high) 7%, transparent), transparent 40%), var(--panel); }
-    .alert.risk-high { border-left-color: var(--mid); background: linear-gradient(90deg, color-mix(in srgb, var(--mid) 5%, transparent), transparent 40%), var(--panel); }
+    .alert.risk-high { border-left-color: var(--mid-mark); background: linear-gradient(90deg, color-mix(in srgb, var(--mid-mark) 5%, transparent), transparent 40%), var(--panel); }
     .alert .row { padding-left: calc(0.75rem - 2px); }
     /* answered by the visitor (조치함 / 해당 없음): the alarm steps back, the green chip says why; the facts stay */
     .answered .c-risk, .answered .why.kev { color: var(--ink-3); }

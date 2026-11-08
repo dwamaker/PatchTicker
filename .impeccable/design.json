@@ -177,7 +177,7 @@
       "caution-amber": {
         "role": "primary",
         "displayName": "Caution Amber",
-        "canonical": "light-dark(#b54a00, #f5b400)",
+        "canonical": "light-dark(#8a6100, #f5b400)",
         "tonalRamp": [
           "oklch(15% 0.036 82)",
           "oklch(26% 0.082 82)",
@@ -188,7 +188,7 @@
           "oklch(84% 0.082 82)",
           "oklch(95% 0.036 82)"
         ],
-        "light": "#b54a00",
+        "light": "#8a6100",
         "dark": "#f5b400"
       },
       "notice-slate": {
