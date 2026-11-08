@@ -58,9 +58,11 @@ export function productsOf(i, lang = 'en') {
   return [...found.values()];
 }
 
-export function productList(incidents, now, lang = 'en') {
+// seen: the collector's board/products.json entries ({id, ko, en}, same 90 days), so a Product with no Incident in
+// the loaded week can still be picked and show the all-clear sign; loaded Incidents name the ones they share.
+export function productList(incidents, now, lang = 'en', seen = []) {
   const since = new Date(now - 90 * DAY_MS).toISOString();
-  const found = new Map();
+  const found = new Map(seen.map((p) => [p.id, { id: p.id, name: p[lang] || p.en }]));
   for (const i of incidents) if (i.first_seen >= since) for (const p of productsOf(i, lang)) found.set(p.id, p);
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }

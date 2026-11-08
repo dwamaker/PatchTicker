@@ -37,6 +37,45 @@ def board_view(incident):
     return view
 
 
+PICKER_DAYS = 90  # the picker lists Products of these days (board/products.json), as productList in board.mjs does
+
+
+def on_board(incident):
+    """A port of onBoard in web/board.mjs: a CVE-less HN story shows only once its Summary calls it an Incident."""
+    if incident["cves"] or not incident["id"].startswith("https://news.ycombinator.com/"):
+        return True
+    if incident.get("summary"):
+        return incident["summary"].get("incident") is not False
+    return bool(incident.get("summary_error", {}).get("final"))
+
+
+def products_of(incident, lang):
+    """A port of productsOf in web/board.mjs (tests/fixtures/board/products-case.json keeps the two in step)."""
+    found = {p["id"]: p for p in incident.get("products") or []}
+    summary = incident.get("summary") or {}
+    local = (summary.get(lang) or {}).get("names") or []
+    for k, name in enumerate(summary.get("products") or []):
+        shown = (local[k] if k < len(local) else "") or name
+        same = next((p for p in found.values() if p["name"].lower() in name.lower()), None)
+        key = same["id"] if same else f"name:{name.lower()}"
+        found[key] = {**(same or {"id": key}), "name": shown}
+    for os_name in summary.get("platforms") or []:
+        found.pop(f"name:{os_name.lower()}", None)  # "Android" as a product and as a platform is one entry
+        found[f"os:{os_name.lower()}"] = {"id": f"os:{os_name.lower()}", "name": os_name}
+    return list(found.values())
+
+
+def product_list(incidents, since):
+    """Every Product of Board Incidents first seen since `since`, with its Korean and English names, by id."""
+    found = {}
+    for incident in incidents:
+        if incident["first_seen"] >= since and on_board(incident):
+            for lang in ("ko", "en"):
+                for p in products_of(incident, lang):
+                    found.setdefault(p["id"], {"id": p["id"]})[lang] = p["name"]
+    return sorted(found.values(), key=lambda p: p["id"])
+
+
 def to_stamp(value):
     """A source's ISO-8601 time ("2026-11-07T12:43:21.399Z", no zone = UTC) as a STAMP; None if unreadable."""
     try:

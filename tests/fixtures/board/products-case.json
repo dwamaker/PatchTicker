@@ -1,0 +1,27 @@
+{
+  "now": "2026-11-07T00:00:00Z",
+  "incidents": [
+    {"id": "CVE-2026-10", "cves": ["CVE-2026-10"], "first_seen": "2026-11-01T00:00:00Z",
+     "products": [{"id": "openbsd:openssh", "name": "Openssh"}]},
+    {"id": "CVE-2026-11", "cves": ["CVE-2026-11"], "first_seen": "2026-11-02T00:00:00Z",
+     "products": [{"id": "openbsd:openssh", "name": "Openssh"}],
+     "summary": {"products": ["OpenSSH", "musl"], "platforms": ["Linux"], "ko": {"names": ["OpenSSH", "musl 라이브러리"]}}},
+    {"id": "CVE-2026-12", "cves": ["CVE-2026-12"], "first_seen": "2026-11-03T00:00:00Z",
+     "products": [{"id": "sonicwall:sonicos", "name": "SonicOS"}], "summary": {"products": ["SonicWall SonicOS"]}},
+    {"id": "CVE-2026-13", "cves": ["CVE-2026-13"], "first_seen": "2026-11-04T00:00:00Z",
+     "summary": {"products": ["Microsoft Paint"], "platforms": ["Windows"],
+                 "ko": {"names": ["Windows 그림판"]}, "en": {"names": ["Microsoft Paint"]}}},
+    {"id": "https://news.ycombinator.com/item?id=1", "cves": [], "first_seen": "2026-11-05T00:00:00Z",
+     "summary": {"incident": false, "products": ["Not An Incident"]}},
+    {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-08-01T00:00:00Z",
+     "products": [{"id": "old:only", "name": "Old Only"}]}
+  ],
+  "expected": [
+    {"id": "name:microsoft paint", "ko": "Windows 그림판", "en": "Microsoft Paint"},
+    {"id": "name:musl", "ko": "musl 라이브러리", "en": "musl"},
+    {"id": "openbsd:openssh", "ko": "OpenSSH", "en": "OpenSSH"},
+    {"id": "os:linux", "ko": "Linux", "en": "Linux"},
+    {"id": "os:windows", "ko": "Windows", "en": "Windows"},
+    {"id": "sonicwall:sonicos", "ko": "SonicWall SonicOS", "en": "SonicWall SonicOS"}
+  ]
+}

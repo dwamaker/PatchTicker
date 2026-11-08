@@ -178,6 +178,7 @@ const getJson = async (name) => {
 const $ = (id) => document.getElementById(id);
 let incidents = [];
 let products = [];
+let seenProducts = []; // board/products.json: every Product of 90 days, so one with no loaded Incident can be picked
 let updated = '';
 let paused = false;
 let loadError = null; // null while loading or once loaded; the error message if loading failed
@@ -215,8 +216,11 @@ function saveFilter() {
 async function main() {
   render();
   try {
-    const [index, st, recent] = await Promise.all([getJson('index.json'), getJson('status.json'), getJson('board/recent.json')]);
+    // A missing Product list (data from before it existed) only narrows the picker; it must not stop the Board.
+    const [index, st, recent, seen] = await Promise.all([getJson('index.json'), getJson('status.json'),
+      getJson('board/recent.json'), getJson('board/products.json').catch(() => ({ products: [] }))]);
     incidents = recent.incidents.filter(onBoard);
+    seenProducts = seen.products;
     olderMonths = index.months.slice(-3);
     updated = st.updated;
     paused = st.summaries === 'paused'; // the collector hit its AI budget (ticket 07)
@@ -296,7 +300,7 @@ const host = (url) => URL.canParse(url) ? new URL(url).host.replace(/^www\./, ''
 // The picker's label: the vendor in brackets only when the name does not already say it; "Windows (OS)".
 // The picker in the page's language, rebuilt when the data or the language changes.
 function refreshProducts() {
-  products = productList(incidents, Date.now(), lang);
+  products = productList(incidents, Date.now(), lang, seenProducts);
   $('product-options').replaceChildren(...products.map((p) => new Option(label(p), label(p))));
 }
 

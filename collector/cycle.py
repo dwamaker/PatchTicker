@@ -8,7 +8,8 @@ from datetime import timedelta
 import anthropic
 
 from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
-from collector.incidents import STAMP, board_view, cite, enrich, link, month_of, page_keys, rejoin
+from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, link, month_of, page_keys,
+                                 product_list, rejoin)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 
@@ -85,6 +86,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
     store.write("board/recent.json", {"since": recent_since,
                                       "incidents": [board_view(i) for i in incidents if i["first_seen"] >= recent_since]})
+    picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
+    store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     if changed - set(index["months"]):
         store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)

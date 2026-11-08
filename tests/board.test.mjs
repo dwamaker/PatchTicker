@@ -258,6 +258,22 @@ test('the Product list holds each Product seen in the last 90 days once, by name
   assert.deepEqual(productList([...board, old], now), [dropbear, keycloak, openssh]);
 });
 
+// The collector's board/products.json (collector.incidents.product_list) must name Products as the page does.
+test('the collector\'s Product list matches the page\'s for the same Incidents, in both languages', () => {
+  const kase = JSON.parse(readFileSync(new URL('./fixtures/board/products-case.json', import.meta.url), 'utf8'));
+  const byId = (a, b) => (a.id < b.id ? -1 : 1);
+  for (const lang of ['ko', 'en']) {
+    assert.deepEqual(productList(kase.incidents.filter(onBoard), new Date(kase.now), lang).sort(byId),
+      kase.expected.map((p) => ({ id: p.id, name: p[lang] })));
+  }
+});
+
+test('the picker also lists Products with no Incident loaded, and loaded Incidents name the shared ones', () => {
+  const seen = [{ id: 'iptime:firmware', ko: 'ipTIME 공유기', en: 'ipTIME router' }, { id: openssh.id, ko: 'x', en: 'x' }];
+  const list = productList(board, new Date('2026-11-07T00:00:00Z'), 'ko', seen);
+  assert.deepEqual(list.map((p) => p.name), ['Dropbear Ssh', 'ipTIME 공유기', 'Keycloak', 'Openssh']);
+});
+
 test('a filter written to the page address reads back the same', () => {
   const filter = { picks: [openssh.id, 'vendor:a,b&c'], query: 'heap overflow 9.8p1', risk: [], kev: false, from: '', to: '', cvssMin: 0, cve: '', has: [], sort: 'new' };
   assert.deepEqual(filterFromQuery(filterToQuery(filter)), filter);

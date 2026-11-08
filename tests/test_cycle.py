@@ -123,6 +123,8 @@ class CycleTest(unittest.TestCase):
         # A month the page has no file for yet is written too, without its citations.
         self.assertEqual([i["id"] for i in self.store.read("board/2026-10.json")["incidents"]], ["CVE-2026-1"])
         self.assertNotIn("urls", self.store.read("board/2026-10.json")["incidents"][0])
+        # The picker's Product list covers 90 days, so it is written every cycle beside recent.json.
+        self.assertIn("products", self.store.read("board/products.json"))
 
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")

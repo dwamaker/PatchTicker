@@ -15,3 +15,10 @@ its linking keys (`board/recent.json` for the last 7 days of first-seen Incident
 per month); the page loads only the week, draws 100 rows at a time, and loads the last three months'
 board files when the visitor asks ("이전 사건 불러오기"). Search and the Product filter cover what is
 loaded. The collector's own `months/` files are unchanged.
+
+## Revision (2026-11-08, late): the picker's Product list covers 90 days
+
+With only the week loaded, the Product picker could not offer a Product whose Incidents are older, so the
+"no Incident" all-clear sign was out of reach. Each cycle also writes `board/products.json`: every Product of
+Board Incidents first seen in the last 90 days, with its Korean and English names. The page adds it to the
+picker; the Board rows themselves still come only from what is loaded.
