@@ -113,6 +113,14 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
         changed.add(month_of(incident["first_seen"]))
     since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
-    pending = summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
+    # Below 위험: titles now, several Incidents a request; the Summaries wait to go out together (summaries.BATCH_MIN).
+    untitled = [i for i in rest if summaries.needs_title(i)]
+    for n in range(0, len(untitled), summaries.TITLES_PER_CALL):
+        summaries.title_now(untitled[n:n + summaries.TITLES_PER_CALL], claude, stamp)
+        changed.update(month_of(i["first_seen"]) for i in untitled[n:n + summaries.TITLES_PER_CALL])
+    oldest = min((i["first_seen"] for i in rest), default=None)
+    ready = probe or len(rest) >= summaries.BATCH_MIN or (
+        oldest is not None and oldest <= (now - timedelta(hours=summaries.BATCH_WAIT_HOURS)).strftime(STAMP))
+    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
     if pending:
         batches.append(pending)

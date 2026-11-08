@@ -1,5 +1,6 @@
 """Source adapter: new CVE records from the cvelistV5 delta log, and updates to CVEs already on the Board."""
 
+import re
 import json
 
 from collector.hn import is_repo
@@ -67,6 +68,13 @@ def record_fix_keys(record):
             continue
         key = f"{vendor}:{product}".lower().replace(" ", "_")
         keys |= {f"{key}<{v['lessThan']}" for v in a.get("versions", []) if v.get("status") == "affected" and v.get("lessThan")}
+        # No range given (VulDB lists every affected version): the last affected one stands for the fix that follows it.
+        # "0 up to 1.2.11" (lessThanOrEqual, Wordfence and IBM records) counts as 1.2.11.
+        listed = [v.get("lessThanOrEqual") or v["version"] for v in a.get("versions", [])
+                  if v.get("status") == "affected" and v.get("version") and not v.get("lessThan")]
+        if listed and not any(k.startswith(f"{key}<") for k in keys):
+            top = max(listed, key=lambda v: [int(p) if p.isdigit() else -1 for p in re.split(r"[.\-]", v)])
+            keys.add(f"{key}<={top}")
     return sorted(keys)
 
 

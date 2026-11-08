@@ -1041,7 +1041,8 @@ const briefNote = (incident) => {
   if (defaultView !== 'easy' || marker !== 'preparing') return [para('preparing', TEXT[lang][marker])];
   // Easy: the closed row shows only a frame, so the panel carries the source's own sentence in full.
   const source = para('brief-src', '');
-  source.append(...describe(incident));
+  if (TEXT[lang].original) source.append(el('span', 'orig', TEXT[lang].original), ' ');
+  source.append(Object.assign(el('span', '', incident.brief.text), { lang: 'en' })); // the source's own words, not the quick title
   return [para('preparing', TEXT[lang].easyPreparing), source];
 };
 
@@ -1226,6 +1227,7 @@ function scoreCell(incident) {
 function describe(incident) {
   const t = TEXT[lang];
   if (incident.summary?.[lang].title) return [incident.summary[lang].title]; // empty for some news replies
+  if (incident.quick_title?.[lang]?.title) return [incident.quick_title[lang].title]; // titles first, Summary later (collector)
   const brief = Object.assign(el('span', '', incident.brief.text), { lang: 'en' });
   return t.original ? [el('span', 'orig', t.original), ' ', brief] : [brief];
 }
@@ -1252,7 +1254,7 @@ function titleCell(incident) {
     line.classList.add('say');
   } else if (defaultView === 'easy' && !s?.title) {
     const product = rowTags(incident, lang).find((n) => !OSES.includes(n));
-    name.append(t.easyBrief(product));
+    name.append(incident.quick_title?.[lang]?.easy_title || t.easyBrief(product));
     line.append(el('span', 'orig', t.easyPrepTag));
   } else if (head && defaultView !== 'easy') {
     name.append(id);

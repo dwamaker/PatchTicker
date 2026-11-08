@@ -11,6 +11,10 @@ from collector.cycle import run_cycle
 from collector.cvelist import DELTA_LOG_URL
 from collector.store import MemoryStore
 
+# The older seam tests predate quick titles and gathered batches (2026-11-09): every waiting Summary goes out at once.
+from collector import summaries as _summaries  # noqa: E402
+_summaries.QUICK_TITLES, _summaries.BATCH_MIN = False, 1
+
 FIXTURES = Path(__file__).parent / "fixtures"
 NVD_FIXTURES = FIXTURES / "nvd"
 # Mention sources by URL prefix: (fixture folder, answer when the test gives no fixture).

@@ -385,7 +385,17 @@ class ReleaseGroupTest(unittest.TestCase):
     def test_the_fix_key_is_the_product_and_the_first_unaffected_version(self):
         from collector.cvelist import record_fix_keys
         self.assertEqual(record_fix_keys(self.record()), ["openemr:openemr<8.3.0"])
-        self.assertEqual(record_fix_keys({"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [{"version": "1.0", "status": "affected"}]}]}}}), [])
+        self.assertEqual(record_fix_keys({"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [{"version": "1.0", "status": "affected"}]}]}}}), ["a:b<=1.0"])  # no range: the listed version
+
+    def test_a_record_listing_each_affected_version_keys_on_the_last_one(self):
+        # 11-09: VulDB records list 1.23.0 ... 1.23.49 one by one, with no lessThan, so FlowCI's three CVEs never grouped.
+        from collector.cvelist import record_fix_keys
+        listed = {"containers": {"cna": {"affected": [{"vendor": "FlowCI", "product": "flow-core-x", "versions":
+                  [{"version": f"1.23.{n}", "status": "affected"} for n in (0, 2, 10, 9)]}]}}}
+        self.assertEqual(record_fix_keys(listed), ["flowci:flow-core-x<=1.23.10"])
+        ranged = {"containers": {"cna": {"affected": [{"vendor": "wpvibes", "product": "anywhere_elementor", "versions":
+                  [{"version": "0", "lessThanOrEqual": "1.2.11", "status": "affected"}]}]}}}
+        self.assertEqual(record_fix_keys(ranged), ["wpvibes:anywhere_elementor<=1.2.11"])
 
     def test_two_stay_apart_and_a_third_joins_them_into_one_incident(self):
         from collector.incidents import group_releases

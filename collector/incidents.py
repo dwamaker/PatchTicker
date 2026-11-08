@@ -27,7 +27,7 @@ URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 # What the Board page reads. Linking keys (urls, cites) and Summary bookkeeping stay in the collector's files:
 # at about 650 Incidents a day they were over half of each Incident's bytes.
 PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "products", "summary", "cve_texts",
-               "cve_links")
+               "cve_links", "quick_title")
 
 
 def board_view(incident):
