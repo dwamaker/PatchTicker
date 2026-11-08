@@ -5,11 +5,12 @@ pages/sshhole.com.html and pages/release-10.6p2.txt are the real pages (2026-11-
 
 import json
 import unittest
+import urllib.error
 from types import SimpleNamespace
 
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
-from test_cycle import at, incident, recorded
+from test_cycle import FIXTURES, at, incident, recorded
 
 PAGES = {"https://sshhole.com": "sshhole.com.html", "https://www.openssh.com/txt/release-10.6p2": "release-10.6p2.txt"}
 
@@ -317,6 +318,24 @@ class InstantOrderTest(unittest.TestCase):
         self.assertEqual(len(claude.sent), 1)
         self.assertIn(HN_STORY, claude.user_text())
         self.assertEqual(len(claude.batch_inputs()), 2)  # the other two still get a Summary, through the batch
+
+    def test_a_cve_record_not_yet_on_the_raw_path_is_read_from_the_cve_services_api(self):
+        # The real run: three fresh records answered 404 on raw.githubusercontent.com.
+        sonicwall = incident("CVE-2026-19868", "SonicOS SSLVPN ...", REAL_RUN) | {"cvss": 7.5, "kev": True}
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [sonicwall]})
+        answer = recorded(None)
+
+        def get(url, headers=None):
+            if url.startswith("https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/"):
+                raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+            if url == "https://cveawg.mitre.org/api/cve/CVE-2026-19868":
+                return (FIXTURES / "cvelist" / "cveawg-CVE-2026-19868.json").read_bytes()
+            return answer(url, headers)
+
+        claude = FakeClaude("not json")
+        run_cycle(self.store, get, at("2026-11-08T03:45:00"), "test-box", claude=claude)
+
+        self.assertIn("7.3.3-7015 and older versions", claude.user_text())
 
 
 NHS = "https://www.theregister.com/security/2026/11/07/nhs-breach-helpline-left-staff-carrying-a-significant-emotional-burden/5308201"

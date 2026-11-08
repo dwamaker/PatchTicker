@@ -36,6 +36,8 @@ PAGE_CHARS = 8000  # shortcut: page text past this is cut; sshhole.com's Mitigat
 MAX_PAGES = 2
 PAGE_KINDS = ("advisory", "writeup", "discussion")  # in Lead order; repos and newsletters are not read
 CVELIST_RECORD = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"
+# The same CVE JSON 5 record, for one too fresh for the raw path (three 404s in the 2026-11-08 run).
+CVE_API_RECORD = "https://cveawg.mitre.org/api/cve/{cve}"
 
 LANG_FIELDS = {
     "type": "object",
@@ -117,8 +119,8 @@ class Rejected(ValueError):
 
 
 def is_candidate(incident, now):
-    """Highlight candidates (spec): newly KEV-listed, HN or curator buzz, CVSS 9.0 or higher, or an
-    Unassigned incident seen in discussion. A KEV listing no Summary has covered yet counts however
+    """Highlight candidates (spec): newly KEV-listed, HN buzz (hn.BUZZ_POINTS) or a curator pick, CVSS
+    9.0 or higher, or an Unassigned incident seen in discussion off HN. A KEV listing no Summary has covered yet counts however
     old the Incident; the rest only within the Highlight window (seven days)."""
     if incident.get("kev") and not incident.get("summary_basis", {}).get("kev"):
         return True
@@ -251,7 +253,7 @@ def summary_input(incident, http_get):
         *(f"- {m['kind']} {m['url']}" + (f" ({m['title']})" if m.get("title") else "") for m in incident["mentions"]),
     ]
     for cve in incident["cves"]:
-        record = fetch_page(http_get, cve_record_url(cve))
+        record = fetch_page(http_get, cve_record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
             lines += [f"CVE record {cve}:", cve_fields(record)]
     readable = [m for m in sorted(incident["mentions"], key=lambda m: PAGE_KINDS.index(m["kind"]) if m["kind"] in PAGE_KINDS else 99)
