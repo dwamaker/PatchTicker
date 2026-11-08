@@ -1114,15 +1114,13 @@ function modelList(models, lines = []) {
   return box;
 }
 
-// The row's start: a dot in the rule-based Risk colour and its word (a ring sign in both views).
+// The row's start: the rule-based Risk word as a ring sign in its colour (both views, all three levels).
 function riskCell(incident) {
   const level = riskLevel(incident);
   const easy = defaultView === 'easy';
   // In both views the risk word is a sign (index.html, .loud); only the words differ.
   const cell = el('span', `c-risk risk-${level} loud`);
-  const dot = el('i', 'dot');
-  dot.setAttribute('aria-hidden', 'true');
-  cell.append(dot, el('b', 'word', easy ? TEXT[lang][level] : TEXT[lang].levels[level]));
+  cell.append(el('b', 'word', easy ? TEXT[lang][level] : TEXT[lang].levels[level]));
   // Why it is this high when the score alone would not say so: exploited (KEV, or attacks its sources report) lifts it to the top level.
   // The space keeps screen readers from running the two words together ("심각!악용 발생"); flex hides it on screen.
   if (isExploited(incident)) cell.append(' ', el('small', 'why kev', TEXT[lang].kevReason));

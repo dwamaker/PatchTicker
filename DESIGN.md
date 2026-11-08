@@ -398,9 +398,9 @@ Restrained outlined buttons for theme, language and copying a command.
   followed by an outlined copy button. Only commands a source states verbatim appear here.
 
 ### Risk sign (bolder after critique 6; both views since 11-09)
-- In both views the risk word is a sign: the top level (고위험 / 심각!) a 1.5px ring in Signal Red with red text, the
-  next (위험 / 경계) a 1.5px ring in the brighter gold mark with gold text, both with the dot stepping aside; the last
-  (참고 / 주의) plain in Slate with its dot; all 15px/800. Rings are never filled (user, 11-09).
+- In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (고위험 / 심각!) in
+  Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
+  15px/800. Rings are never filled (user, 11-09).
 
 ### Easy view panel
 - **Shape:** an opened Easy row shows the plain action (version, command, devices or the plain action sentence and any
