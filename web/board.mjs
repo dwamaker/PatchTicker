@@ -79,7 +79,7 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 // up to 50 at 500 points; a curator's newsletter, 25 each for up to two); CVSS (up to 20) and the
 // number of Mentions order the rest.
 // Highlights: up to ten are chosen, four are pinned at first so the newest list starts on the first screens of a
-// phone (ten frames ran past 1,900px); 주목 더 보기 pins the rest. Unpinned ones stay in 최신순.
+// phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순.
 export const HIGHLIGHTS = 10;
 export const PINNED = 4;
 
@@ -97,12 +97,9 @@ export function highlightScore(i) {
   return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
 }
 
-// A story seen only on HN (no CVE, no other discussion or curator pick) is a Highlight only from this
-// many points, or general security news fills the pinned area. Also in collector/hn.py (BUZZ_POINTS).
+// HN points from which a story is buzz (pinReason's "HN 화제"). Also in collector/hn.py (BUZZ_POINTS). A quiet HN-only
+// story is never a Highlight now: with no score it is 참고, and 주요 사건 holds 위험 and above only.
 const HN_BUZZ = 100;
-const isHn = (url) => url.startsWith('https://news.ycombinator.com/');
-const quietHnStory = (i) => !isExploited(i) && !i.cves.length && i.mentions.every((m) => !['discussion', 'curator'].includes(m.kind) || isHn(m.url))
-  && Math.max(0, ...i.mentions.map((m) => m.points || 0)) < HN_BUZZ;
 
 // The Summary's text in both languages, Easy view included, so either language finds the Incident.
 // Summaries written before the Easy view have no easy, command or stopgap.
@@ -135,7 +132,7 @@ export function easyAction(s) {
   return { kind: 'none', stopgap };
 }
 
-// The Board's one order, for 주목 and the rest alike (user, 11-08): newest first, or by risk level, or by CVSS score,
+// The Board's one order, for 주요 사건 and the rest alike (user, 11-08): newest first, or by risk level, or by CVSS score,
 // each falling back to newest.
 const newest = (a, b) => (publishedAt(a) < publishedAt(b) ? 1 : publishedAt(a) > publishedAt(b) ? -1 : 0);
 export function orderBy(sort) {
@@ -166,7 +163,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // A stable sort keeps newest first among equal scores.
-  const highlights = list.filter((i) => publishedAt(i) >= since && !quietHnStory(i)).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
+  const highlights = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice').sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
   return { highlights, list };
 }
 

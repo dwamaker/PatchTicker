@@ -28,7 +28,7 @@ risk, title and line badges in one glance, opens a row to get summary, condition
 Lead mention, and leaves knowing whether to act.
 
 FIRST VIEWPORT: Top bar: name left, segmented 기본|쉬운 설명 centred, theme and language right. One
-line below: product picker and search. Status line with last update and count. Then a "주목 N" group
+line below: product picker and search. Status line with last update and count. Then a "주요 사건 N" group
 of framed rows (thin outline, left accent bar in the risk colour, expanded panel attached inside the
 frame, taken from the 재난문자 sketch), then a "최신순" group of plain rows: risk dot + word, bold
 CVE ID with the Korean title under it (the Easy view and CVE-less Incidents lead with the title),
@@ -37,8 +37,8 @@ in the name, published date over time, chevron. Changed 2026-11-08 at the user's
 line left the row. Easy view (same day): plain headline over one plain sentence, CVSS ring kept, every
 Mention listed in the details. Evening of 11-08: operating systems are outline badges, not lines (eight
 distinct line hues); a "읽는 법" legend sits on
-the status line. Late 11-08: 필터 joins the picker and search row (its panel opens under it); 정렬 and 모두 펼치기 sit on the 주목
-line and one order serves 주목 and the list; 악용 발생 (KEV or reported attacks) is the top level; light-theme 위험 is gold. After critique 6 the Easy to-do list was removed: the panel shows the action only. 11-09: the risk dot is gone; every level is an unfilled ring sign.
+the status line. Late 11-08: 필터 joins the picker and search row (its panel opens under it); 정렬 and 모두 펼치기 sit on the 주요 사건
+line and one order serves 주요 사건 and the list; 악용 발생 (KEV or reported attacks) is the top level; light-theme 위험 is gold. After critique 6 the Easy to-do list was removed: the panel shows the action only. 11-09: the risk dot is gone; every level is an unfilled ring sign.
 
 FORM: user-pinned combination: 지하철 안내 (pick, rank 1 of the re-rolled list) with the grouping
 and framed-Highlight UI of 재난문자 (assigned). Signature move: Product line badges with fixed

@@ -167,7 +167,7 @@ and "how dangerous" never share a colour.
 Density is that of a departure board: rows of 72 px minimum, one hairline between them, generous
 column gaps, nothing decorative. The ground is graphite at night and pale concourse paper by day; the
 visitor's system setting picks one and a remembered toggle overrides it. The only thing that lifts off
-the ground is the "주목" group, stacked like emergency alerts in thin framed rows with a risk-coloured
+the ground is the "주요 사건" group, stacked like emergency alerts in thin framed rows with a risk-coloured
 edge.
 
 The Normal view is restrained: calm type, quiet colour, the facts. The Easy view is the same board
@@ -252,7 +252,7 @@ jumps, like signage lettering.
 - **Body** (400, 15px, 1.55): base text; `word-break: keep-all` keeps Korean words whole.
 - **Body detail** (400, 0.9375rem, 1.7): the Summary and Easy text inside an opened row, measure
   capped at 46rem.
-- **Label** (700, 0.875rem): group headings ("주목 N", "최신순"), field labels, button text (500).
+- **Label** (700, 0.875rem): group headings ("주요 사건 N", "최신순"), field labels, button text (500).
 - **Description** (400, 0.875rem, 1.45, -0.01em): the Incident title under the CVE ID, Secondary
   Ink, at most two lines.
 - **Meta** (400, 0.8125rem, tabular numerals): the published date and time ("처음 확인 12:38" when no source gave a time), status line, CVSS number (700) and
@@ -300,7 +300,7 @@ The one exception is the Highlight frame, which lifts slightly to read as a stac
   by night): Highlight frames only.
 
 ### Named Rules
-**The One Lift Rule.** Only the "주목" frames cast a shadow. Plain rows, fields, buttons and opened
+**The One Lift Rule.** Only the "주요 사건" frames cast a shadow. Plain rows, fields, buttons and opened
 details stay flat. The phone filter sheet is set apart by the Scrim (`--scrim`, 45% black over the Board), not by a lift.
 
 ## Shapes
@@ -330,8 +330,8 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
   (on phones, under the product field next to search); the panel opens right under that row.
-- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주목 line; one order
-  serves 주목 and the list (주목 is still chosen by importance), and the list heading names it.
+- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line; one order
+  serves 주요 사건 and the list (주요 사건 is still chosen by importance), and the list heading names it.
 - **Panel:** opens under that line in Kiosk Panel with a Rail border: 게시일 시작/끝, 최소 CVSS, CVE, then chip rows
   for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS, then 정렬. Nothing changes until 필터 적용;
   필터 초기화 clears the panel only (Products picked at the top and the search stay). Everything lives in the hash.
@@ -383,7 +383,7 @@ Restrained outlined buttons for theme, language and copying a command.
   With storage blocked it waits for the button.
 - **Content:** each mark drawn with the row's own parts beside one plain line: the three risk levels
   (words follow the current view) with their rules, the CVSS ring, line badges, the published date,
-  then 주목, an opened row, the Easy switch and the product picker and filters; hairlines split the
+  then 주요 사건, an opened row, the Easy switch and the product picker and filters; hairlines split the
   three groups; a closing note says Summaries are written by AI and to check the source links.
 - **Rule:** the guide never invents a mark; anything it shows comes from the same render functions as
   the rows, so it cannot drift.
@@ -400,7 +400,8 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Risk sign (bolder after critique 6; both views since 11-09)
 - In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (고위험 / 심각!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
-  15px/800. Rings are never filled (user, 11-09).
+  15px/800. Rings are never filled (user, 11-09). 악용 발생 sits centred under the ring (beside it on phones), and a
+  row with no CVSS shows its dash centred where a score ring would be.
 
 ### Easy view panel
 - **Shape:** an opened Easy row shows the plain action (version, command, devices or the plain action sentence and any
@@ -446,7 +447,7 @@ Restrained outlined buttons for theme, language and copying a command.
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
 - **Board continuity:** a redraw the visitor asked for (필터 적용, a chip's ×, clear buttons, a picked Product, 정렬,
-  주목 더 보기 / 접기, 더 보기, 모두 펼치기 / 접기) keeps each row's identity through a View Transition: rows that stay
+  주요 사건 더 보기 / 접기, 더 보기, 모두 펼치기 / 접기) keeps each row's identity through a View Transition: rows that stay
   glide to their new place (260ms ease-out), new rows fade in, gone ones leave faster (140ms). Only rows on or within
   200px of the screen are named, so a long Board stays cheap; typing in search redraws plainly. Reduced motion: rows
   do not move, the change only cross-fades.
@@ -463,7 +464,9 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Do:
 - **Do** open every source link in a new tab (`target=_blank`, `noopener noreferrer`, a hidden "새 탭에서 열림"
   for screen readers), so the Board, its filters and opened rows stay put.
-- **Do** draw the focus ring inside a framed 주목 row (`outline-offset: -3px`): the frame clips anything outside it.
+- **Do** keep a line badge on one line: a long name ends in "…" inside the pill, whole in its tooltip and to screen readers.
+- **Do** list several 해당 조건 one per line; never join them with " · " (a condition may hold its own dot, "팩스·SMS").
+- **Do** draw the focus ring inside a framed 주요 사건 row (`outline-offset: -3px`): the frame clips anything outside it.
 - **Do** use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
   `--fs-small`) and the shared `.btn` for any new outlined button.
 - **Do** keep every interactive target at least 44 px.

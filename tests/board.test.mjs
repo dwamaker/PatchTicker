@@ -290,24 +290,25 @@ test('does not reorder the caller\'s array', () => {
 const NOW = new Date('2026-11-07T12:00:00Z').getTime();
 const daysAgo = (d) => new Date(NOW - d * 24 * 60 * 60 * 1000).toISOString().replace('.000Z', 'Z');
 
-test('Highlights are at most ten, all first seen in the last seven days, highest score first', () => {
+test('Highlights are at most ten, 위험 or above from the last seven days, highest score first', () => {
   // Twelve recent Incidents, CVSS 4.5 to 10.0, newest has the lowest score; one older Incident scores highest.
   const recent = Array.from({ length: 12 }, (_, n) => ({ ...incident(`CVE-2026-${100 + n}`, daysAgo(6 - n / 2)), cvss: 10 - n / 2 }));
   const old = { ...incident('CVE-2026-1', daysAgo(8)), cvss: 10, kev: true };
   const { highlights, list } = filterBoard([...recent, old], [], '', NOW);
+  // CVSS 6.5 and below (CVE-2026-107 on) are 참고 and stay in the list only (user, 2026-11-09).
   assert.deepEqual(ids(highlights), ['CVE-2026-100', 'CVE-2026-101', 'CVE-2026-102', 'CVE-2026-103', 'CVE-2026-104',
-    'CVE-2026-105', 'CVE-2026-106', 'CVE-2026-107', 'CVE-2026-108', 'CVE-2026-109']);
+    'CVE-2026-105', 'CVE-2026-106']);
   assert.equal(list.length, 13);
 });
 
 test('exploited in the wild outranks HN buzz, which outranks a curator pick, which outranks CVSS 9.8 alone', () => {
   const kev = { ...incident('CVE-2026-201', daysAgo(1)), cvss: 5.3, kev: true };
-  const hn = { ...incident('CVE-2026-202', daysAgo(1)), mentions: [{ kind: 'discussion', url: '', points: 640 }] };
-  const curated = { ...incident('CVE-2026-203', daysAgo(1)), mentions: [{ kind: 'cve_record', url: '' }, { kind: 'curator', url: '' }] };
+  const hn = { ...incident('CVE-2026-202', daysAgo(1)), cvss: 7.5, mentions: [{ kind: 'discussion', url: '', points: 640 }] };
+  const curated = { ...incident('CVE-2026-203', daysAgo(1)), cvss: 7.5, mentions: [{ kind: 'cve_record', url: '' }, { kind: 'curator', url: '' }] };
   const critical = { ...incident('CVE-2026-204', daysAgo(1)), cvss: 9.8 };
   const plain = incident('CVE-2026-205', daysAgo(1));
   assert.deepEqual(ids(filterBoard([plain, critical, curated, hn, kev], [], '', NOW).highlights),
-    ['CVE-2026-201', 'CVE-2026-202', 'CVE-2026-203', 'CVE-2026-204', 'CVE-2026-205']);
+    ['CVE-2026-201', 'CVE-2026-202', 'CVE-2026-203', 'CVE-2026-204']); // the plain 참고 row is not one
 });
 
 test('an Incident older than seven days leaves the Highlights and stays in the list', () => {
@@ -335,14 +336,22 @@ test('Product picks and search narrow the Highlights too', () => {
   assert.deepEqual(ids(filterBoard(recent, [keycloak.id], 'race', NOW).highlights), []);
 });
 
-test('a story seen only on HN is a Highlight only from 100 points, and stays in the list either way', () => {
+test('주요 사건 holds only 위험 or above: a 참고 row stays in the list (user, 2026-11-09)', () => {
+  const notice = { ...incident('CVE-2026-601', daysAgo(1)), cvss: 5.3 };
+  const high = { ...incident('CVE-2026-602', daysAgo(1)), cvss: 7.1 };
+  const { highlights, list } = filterBoard([notice, high], [], '', NOW);
+  assert.deepEqual(ids(highlights), ['CVE-2026-602']);
+  assert.equal(list.length, 2);
+});
+
+test('a story seen only on HN, with no score, is never a Highlight however many points, and stays in the list', () => {
   // The real 2026-11-08 run: general security news with no CVE and no Product filled the Highlights.
   const story = (item, points) => ({ id: `https://news.ycombinator.com/item?id=${item}`, cves: [], first_seen: daysAgo(1),
     mentions: [{ kind: 'discussion', url: `https://news.ycombinator.com/item?id=${item}`, points }, { kind: 'writeup', url: `https://example.com/${item}` }],
     brief: { text: `story ${item}`, lead: '' } });
   const plain = incident('CVE-2026-501', daysAgo(2));
   const { highlights, list } = filterBoard([story(1, 23), story(2, 99), story(3, 100), plain], [], '', NOW);
-  assert.deepEqual(ids(highlights), [story(3, 100).id, 'CVE-2026-501']);
+  assert.deepEqual(ids(highlights), []); // 참고 level: 주요 사건 holds 위험 and above only (user, 2026-11-09)
   assert.equal(list.length, 4);
 });
 
@@ -350,7 +359,7 @@ test('the sshole replay Incident becomes a Highlight ahead of ten CVSS 9.8 Incid
   // Written by the sshole replay in tests/test_mentions.py (seam 1), which asserts it matches.
   const sshole = JSON.parse(readFileSync(new URL('./fixtures/board/sshole.json', import.meta.url)));
   const critical = Array.from({ length: 10 }, (_, n) => ({ ...incident(`CVE-2026-40${n}`, daysAgo(1)), cvss: 9.8 }));
-  const { highlights } = filterBoard([...critical, sshole], [], '', NOW);
+  const { highlights } = filterBoard([...critical, { ...sshole, cvss: 8.1 }], [], '', NOW); // its NVD score; the fixture is a Brief
   assert.equal(highlights.length, 10);
   assert.equal(highlights[0].id, sshole.id);
 });
