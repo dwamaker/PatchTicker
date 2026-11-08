@@ -2,7 +2,7 @@
 
 import json
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode, urlsplit
 
 from collector.incidents import STAMP, cves_in, is_http, month_of
@@ -77,7 +77,8 @@ def mention_group(hit):
     if is_http(link):
         mentions.append({"kind": "repo" if is_repo(link) else "writeup", "url": link})
     text = f"{title} {link or ''}"
-    return {"mentions": mentions, "cves": cves_in(text), "urls": [], "text": title, "join_only": not SECURITY_RE.search(text)}
+    return {"mentions": mentions, "cves": cves_in(text), "urls": [], "text": title, "join_only": not SECURITY_RE.search(text),
+            "published": datetime.fromtimestamp(hit["created_at_i"], timezone.utc).strftime(STAMP)}
 
 
 def is_repo(url):

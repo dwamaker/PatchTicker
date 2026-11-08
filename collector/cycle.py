@@ -8,7 +8,9 @@ from datetime import timedelta
 import anthropic
 
 from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
-from collector.incidents import STAMP, cite, enrich, link, month_of
+from collector.incidents import STAMP, board_view, cite, enrich, link, month_of, page_keys, rejoin
+
+RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
@@ -20,15 +22,25 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # shortcut: loads every month to link against; fine for v1 volumes, revisit past a year.
     incidents = [i for m in index["months"] for i in store.read(f"months/{m}.json")["incidents"]]
 
-    records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get)
+    on_board = {cve for i in incidents for cve in i["cves"]}
+    records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get, on_board)
     posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get)
     stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
     repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
+
+    for story in stories:
+        # A story with no CVE in its title may still be about a known Incident; its linked page says which.
+        writeup = next((m["url"] for m in story["mentions"] if m["kind"] == "writeup"), None)
+        if writeup and not story["cves"] and not story["join_only"]:
+            page = summaries.fetch_page(http_get, writeup)
+            if page:
+                story["page"] = page_keys(page, writeup)
 
     changed = set()
     # Join-only repos go last, so they can join Incidents that started this cycle.
     for group in [cvelist.mention_group(r) for r in records] + posts + stories + repos:
         changed |= link(incidents, group, stamp)
+    changed |= rejoin(incidents, (now - timedelta(days=7)).strftime(STAMP))
     changed |= hn.refresh_points(incidents, now, http_get)
 
     try:
@@ -67,6 +79,12 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     for m in changed:
         # Incidents stay in the month they were first seen; a merge can empty an older month's row.
         store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if month_of(i["first_seen"]) == m]})
+    # The page's slim files: changed months, any month not written yet, and the last week every cycle.
+    for m in changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}:
+        store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
+    recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
+    store.write("board/recent.json", {"since": recent_since,
+                                      "incidents": [board_view(i) for i in incidents if i["first_seen"] >= recent_since]})
     if changed - set(index["months"]):
         store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)

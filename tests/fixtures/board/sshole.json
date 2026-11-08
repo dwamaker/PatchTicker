@@ -4,6 +4,7 @@
     "CVE-2026-123158"
   ],
   "first_seen": "2026-11-05T12:30:00Z",
+  "published": "2026-11-05T12:19:02Z",
   "mentions": [
     {
       "kind": "discussion",
@@ -45,5 +46,6 @@
   "brief": {
     "text": "sshd in OpenSSH before 10.6p2, when built against musl libc without PAM and with PasswordAuthentication enabled, accepts a password with a length between 256 and 1024 characters for an account that has no valid password hash.",
     "lead": "https://www.openssh.com/txt/release-10.6p2"
-  }
+  },
+  "products": [{"id": "openbsd:openssh", "name": "OpenSSH"}]
 }

@@ -22,6 +22,8 @@ SSHOLE_SUMMARY = {
         "conditions": ["musl libc", "PAM 미사용", "비밀번호 로그인 켜짐", "비밀번호가 `*`인 계정"],
         "mitigation": "OpenSSH 10.6p2로 업데이트하세요. 당장 못 하면 PasswordAuthentication no로 비밀번호 로그인을 끄세요.",
         "easy": "Alpine이나 OpenWrt 서버에 아무 긴 비밀번호로 남이 로그인할 수 있습니다.",
+        "easy_title": "Alpine·OpenWrt SSH 로그인 뚫림 위험 발견",
+        "names": ["OpenSSH"],
     },
     "en": {
         "title": "OpenSSH on musl lets password-less accounts in with a long password",
@@ -30,6 +32,8 @@ SSHOLE_SUMMARY = {
         "conditions": ["musl libc", "PAM not used", "password logins on", "an account whose password is `*`"],
         "mitigation": "Update to OpenSSH 10.6p2. Until then, set PasswordAuthentication no to turn password logins off.",
         "easy": "Anyone can log in to an Alpine or OpenWrt server with any long password.",
+        "easy_title": "Alpine and OpenWrt SSH logins open to anyone",
+        "names": ["OpenSSH"],
     },
     "products": ["OpenSSH"],
     "lead": "https://sshhole.com",
@@ -37,6 +41,8 @@ SSHOLE_SUMMARY = {
     "command": "apk upgrade openssh",
     "stopgap": "PasswordAuthentication no",
     "devices": [],
+    "incident": True,
+    "platforms": ["Linux"],
 }
 
 
@@ -168,12 +174,12 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "incident", "platforms"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
         self.assertGreater(len(instructions["text"]), 4 * 512)
-        self.assertIn("follow the official advisory or the discoverer's write-up", instructions["text"])
+        self.assertIn("use the one in the text marked as the Lead", instructions["text"])
         self.assertIn("leave it empty", instructions["text"])
 
     def test_a_malformed_reply_leaves_the_brief_and_a_later_cycle_retries(self):
@@ -232,6 +238,19 @@ class InstantSummaryTest(unittest.TestCase):
                                   "ko": SSHOLE_SUMMARY["ko"] | {"summary": "257~1024자 비밀번호가 통합니다. 2026-11-5 수정."}}
         self.merged_sshole(FakeClaude(reply))
         self.assertIn("summary", board(self.store)[HN_STORY])
+
+    def test_a_reply_from_before_easy_title_still_passes_with_it_empty(self):
+        old = SSHOLE_SUMMARY | {lang: {k: v for k, v in SSHOLE_SUMMARY[lang].items() if k != "easy_title"} for lang in ("ko", "en")}
+        self.merged_sshole(FakeClaude(old))
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["ko"]["easy_title"], summary["ko"]["title"]), ("", SSHOLE_SUMMARY["ko"]["title"]))
+
+    def test_a_cve_id_the_model_puts_in_a_title_is_taken_out(self):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"title": SSHOLE_SUMMARY["ko"]["title"] + " (CVE-2026-123158)"},
+                                  "en": SSHOLE_SUMMARY["en"] | {"title": "[CVE-2026-123158] " + SSHOLE_SUMMARY["en"]["title"]}}
+        self.merged_sshole(FakeClaude(reply))
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["ko"]["title"], summary["en"]["title"]), (SSHOLE_SUMMARY["ko"]["title"], SSHOLE_SUMMARY["en"]["title"]))
 
     def test_a_version_named_in_one_language_only_passes_but_whole_numbers_must_match(self):
         # Versions must still appear in the input; only whole numbers are compared across languages.
@@ -344,9 +363,9 @@ HEIST = "https://www.bleepingcomputer.com/news/security/hackers-pull-off-133-mil
 
 def news_reply(ko, en):
     """A Summary reply for general news: no product, no fix, only the sentence under test."""
-    fields = {"title": "", "summary": "", "conditions": [], "mitigation": "", "easy": ""}
+    fields = {"title": "", "summary": "", "conditions": [], "mitigation": "", "easy": "", "easy_title": "", "names": []}
     return {"ko": fields | {"summary": ko}, "en": fields | {"summary": en},
-            "products": [], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": []}
+            "products": [], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "incident": True, "platforms": []}
 
 
 class NumberCheckTest(unittest.TestCase):

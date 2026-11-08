@@ -31,6 +31,7 @@ def mention_group(item):
         "cves": cves_in(f"{title} {body}"),
         "urls": urls_in(body),
         "text": title,
+        "published": rss.posted(item),
         # A reply that cites nothing known is thread chatter, not an Incident of its own.
         "join_only": title.lower().startswith("re:"),
     }

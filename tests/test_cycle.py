@@ -74,12 +74,13 @@ def at(text):
     return datetime.fromisoformat(text).replace(tzinfo=timezone.utc)
 
 
-def incident(cve, text, first_seen):
+def incident(cve, text, first_seen, published=None):
     url = f"https://www.cve.org/CVERecord?id={cve}"
     return {
         "id": cve,
         "cves": [cve],
         "first_seen": first_seen,
+        **({"published": published} if published else {}),
         "mentions": [{"kind": "cve_record", "url": url}],
         "urls": [f"cve.org/CVERecord?id={cve}"],
         "brief": {"text": text, "lead": url},
@@ -102,11 +103,26 @@ class CycleTest(unittest.TestCase):
         self.assertCountEqual(
             month["incidents"],
             [
-                incident("CVE-2026-120984", KEYCLOAK_TEXT, "2026-11-07T13:30:00Z"),
-                incident("CVE-2026-120839", WPTRAVELLY_TEXT, "2026-11-07T13:30:00Z"),
+                # published: each record's datePublished, not the cycle time
+                incident("CVE-2026-120984", KEYCLOAK_TEXT, "2026-11-07T13:30:00Z", "2026-11-07T13:22:00Z"),
+                incident("CVE-2026-120839", WPTRAVELLY_TEXT, "2026-11-07T13:30:00Z", "2026-11-07T12:43:21Z"),
             ],
         )
         self.assertEqual(self.store.read("index.json"), {"months": ["2026-11"]})
+
+    def test_the_page_gets_slim_board_files_for_the_last_week_and_each_month(self):
+        self.store.write("months/2026-10.json", {"month": "2026-10", "incidents": [
+            incident("CVE-2026-1", "old", "2026-10-20T00:00:00Z") | {"cites": {"cves": [], "urls": ["x.org"]}}]})
+        self.store.write("index.json", {"months": ["2026-10"]})
+        run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        recent = self.store.read("board/recent.json")
+        self.assertEqual(recent["since"], "2026-10-31T13:30:00Z")
+        self.assertCountEqual([i["id"] for i in recent["incidents"]], ["CVE-2026-120984", "CVE-2026-120839"])
+        self.assertNotIn("urls", recent["incidents"][0])  # linking keys stay in the collector's files
+        # A month the page has no file for yet is written too, without its citations.
+        self.assertEqual([i["id"] for i in self.store.read("board/2026-10.json")["incidents"]], ["CVE-2026-1"])
+        self.assertNotIn("urls", self.store.read("board/2026-10.json")["incidents"][0])
 
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
@@ -131,11 +147,11 @@ class CycleTest(unittest.TestCase):
 
         self.assertEqual(
             self.store.read("months/2026-11.json")["incidents"],
-            [incident("CVE-2026-120839", WPTRAVELLY_TEXT, "2026-11-30T23:50:00Z")],
+            [incident("CVE-2026-120839", WPTRAVELLY_TEXT, "2026-11-30T23:50:00Z", "2026-11-07T12:43:21Z")],
         )
         self.assertEqual(
             self.store.read("months/2026-12.json")["incidents"],
-            [incident("CVE-2026-120984", KEYCLOAK_TEXT, "2026-12-01T00:05:00Z")],
+            [incident("CVE-2026-120984", KEYCLOAK_TEXT, "2026-12-01T00:05:00Z", "2026-11-07T13:22:00Z")],
         )
         self.assertEqual(self.store.read("index.json"), {"months": ["2026-11", "2026-12"]})
 

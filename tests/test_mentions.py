@@ -36,6 +36,7 @@ class SsholeReplayTest(unittest.TestCase):
                 "id": HN_STORY,
                 "cves": [],
                 "first_seen": "2026-11-05T12:30:00Z",
+                "published": "2026-11-05T12:19:02Z",  # the HN post time, before the cycle saw it
                 "mentions": [
                     {"kind": "discussion", "url": HN_STORY, "title": "sshole", "points": 2935},
                     {"kind": "writeup", "url": "https://sshhole.com"},
@@ -86,6 +87,118 @@ class SsholeReplayTest(unittest.TestCase):
         self.assertEqual(incident["brief"]["lead"], RELEASE_NOTE)
         # The Board test (seam 2) reads this same row to check that sshole becomes a Highlight.
         self.assertEqual(incident, json.loads((FIXTURES / "board" / "sshole.json").read_bytes()))
+
+
+class PublishedTest(unittest.TestCase):
+    def test_published_is_the_earliest_post_and_a_late_joiner_does_not_move_it(self):
+        from collector.incidents import link
+        incidents = []
+        story = {"mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=1"}], "cves": ["CVE-2026-1"],
+                 "urls": [], "text": "story", "published": "2026-11-05T12:00:00Z"}
+        record = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-1"}], "cves": ["CVE-2026-1"],
+                  "urls": [], "text": "record", "published": "2026-11-05T15:00:00Z"}
+        old_repo = {"mentions": [{"kind": "repo", "url": "https://github.com/a/b"}], "cves": ["CVE-2026-1"],
+                    "urls": [], "text": "repo", "join_only": True, "published": "2019-01-01T00:00:00Z"}
+        link(incidents, record, "2026-11-05T16:00:00Z")
+        link(incidents, story, "2026-11-05T16:15:00Z")
+        link(incidents, old_repo, "2026-11-05T16:30:00Z")
+        [incident] = incidents
+        self.assertEqual((incident["first_seen"], incident["published"]), ("2026-11-05T16:00:00Z", "2026-11-05T12:00:00Z"))
+
+    def test_a_source_time_reads_as_utc_and_a_bad_one_is_none(self):
+        from collector.incidents import to_stamp
+        self.assertEqual(to_stamp("2026-11-07T12:43:21.399Z"), "2026-11-07T12:43:21Z")
+        self.assertEqual(to_stamp("2026-11-07T21:43:21+09:00"), "2026-11-07T12:43:21Z")
+        self.assertEqual(to_stamp("2026-11-07T12:43:21"), "2026-11-07T12:43:21Z")
+        self.assertIsNone(to_stamp(None))
+        self.assertIsNone(to_stamp("soon"))
+
+
+class StoryPageTest(unittest.TestCase):
+    """A CVE-less story joins the one Incident its linked page cites (the sunshowers.io post on sshole, 11-08)."""
+
+    def setUp(self):
+        from collector.incidents import link
+        self.link, self.incidents = link, []
+        for cve, writeup in (("CVE-2026-123158", "https://sshhole.com"), ("CVE-2026-9999", "https://other.example/post")):
+            self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"},
+                                                    {"kind": "writeup", "url": writeup}],
+                                       "cves": [cve], "urls": [], "text": cve}, "2026-11-05T16:00:00Z")
+
+    def story(self, page):
+        from collector.incidents import page_keys
+        url = "https://sunshowers.io/posts/sshole/"
+        return {"mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=50399400"},
+                             {"kind": "writeup", "url": url}],
+                "cves": [], "urls": [], "text": "*sshole, or when are we going to get rid of C?", "join_only": False,
+                "page": page_keys(page, url)}
+
+    def rejoin(self):
+        from collector.incidents import rejoin
+        return rejoin(self.incidents, "2026-11-01T00:00:00Z")
+
+    def test_a_page_linking_one_incidents_write_up_joins_it(self):
+        page = '<a href="https://sunshowers.io/">home</a> <a href="https://sshhole.com/">yet</a>'
+        self.link(self.incidents, self.story(page), "2026-11-08T03:00:00Z")
+        self.assertEqual(self.incidents[2]["cites"]["urls"], ["sshhole.com"])  # its own site is navigation
+        self.assertEqual(self.rejoin(), {"2026-11"})
+        self.assertEqual(len(self.incidents), 2)
+        self.assertIn("https://sunshowers.io/posts/sshole/", [m["url"] for m in self.incidents[0]["mentions"]])
+        self.assertNotIn("cites", self.incidents[0])
+
+    def test_a_story_that_came_first_joins_when_its_incident_arrives(self):
+        early = []
+        self.link(early, self.story('<a href="https://sshhole.com/">yet</a>'), "2026-11-05T12:00:00Z")
+        self.incidents = early + self.incidents
+        self.rejoin()
+        self.assertEqual([i["id"] for i in self.incidents], ["CVE-2026-123158", "CVE-2026-9999"])
+
+    def test_a_page_citing_two_incidents_or_none_stands_alone(self):
+        self.link(self.incidents, self.story("CVE-2026-123158 and CVE-2026-9999"), "2026-11-08T03:00:00Z")
+        self.assertEqual(self.rejoin(), set())
+        self.assertEqual(len(self.incidents), 3)
+
+    def test_citations_are_dropped_after_a_week(self):
+        from collector.incidents import rejoin
+        self.link(self.incidents, self.story("CVE-2026-123158 and CVE-2026-9999"), "2026-11-08T03:00:00Z")
+        rejoin(self.incidents, "2026-11-09T00:00:00Z")
+        self.assertNotIn("cites", self.incidents[2])
+
+    def test_tagged_references_in_cna_and_adp_become_mentions(self):
+        from collector import cvelist
+        record = {"cveMetadata": {"cveId": "CVE-2026-123158", "datePublished": "2026-11-05T15:46:00Z"},
+                  "containers": {"cna": {"references": [{"url": "https://www.openssh.org/releasenotes.html#10.6p2"},
+                                                        {"url": "https://example.org/a", "tags": ["vendor-advisory"]}]},
+                                 "adp": [{"references": [{"url": "https://sshhole.com", "tags": ["exploit"]},
+                                                         {"url": "https://github.com/x/poc", "tags": ["exploit"]}]}]}}
+        group = cvelist.mention_group(record)
+        self.assertEqual([(m["kind"], m["url"]) for m in group["mentions"][1:]],
+                         [("advisory", "https://example.org/a"), ("writeup", "https://sshhole.com"), ("repo", "https://github.com/x/poc")])
+        self.assertIn("https://www.openssh.org/releasenotes.html#10.6p2", group["urls"])  # untagged: a key only
+
+    def test_the_records_own_cvss_is_used_cna_first_then_adp_and_v3_before_v4(self):
+        from collector.cvelist import record_cvss
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}, {}]), 8.1)  # sshole's CNA score
+        self.assertEqual(record_cvss([{}, {"metrics": [{"cvssV3_1": {"baseScore": 7.5}}]}]), 7.5)  # CISA ADP only
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3}}, {"cvssV3_1": {"baseScore": 8.8}}]}]), 8.8)
+        self.assertIsNone(record_cvss([{"metrics": [{"other": {"content": {}}}]}]))
+
+    def test_an_updated_record_is_read_only_for_a_cve_on_the_board(self):
+        from collector import cvelist
+        log = [{"fetchTime": "2026-11-08T04:00:00Z", "new": [], "updated": [
+            {"cveId": "CVE-2026-123158", "githubLink": "https://raw.example/CVE-2026-123158.json"},
+            {"cveId": "CVE-2019-1", "githubLink": "https://raw.example/CVE-2019-1.json"}]}]
+        asked = []
+
+        def get(url):
+            asked.append(url)
+            if url == cvelist.DELTA_LOG_URL:
+                return json.dumps(log).encode()
+            return (FIXTURES / "cvelist" / "CVE-2026-123158.json").read_bytes()
+
+        records, _ = cvelist.fetch("2026-11-08T03:00:00Z", get, {"CVE-2026-123158"})
+        self.assertEqual(asked[1:], ["https://raw.example/CVE-2026-123158.json"])
+        self.assertEqual([r["cveMetadata"]["cveId"] for r in records], ["CVE-2026-123158"])
 
 
 class LinkingTest(unittest.TestCase):
