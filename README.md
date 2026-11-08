@@ -31,6 +31,11 @@ the text of up to two advisory or write-up pages; a reply whose numbers, version
 in that input, or whose Korean and English numbers differ, is rejected and retried (three tries).
 The collector refuses to fetch non-public addresses, since Mentions name the pages it reads.
 
+The same request fills the Easy view (a tab on each Incident, normal by default, remembered per
+Incident): one or two plain sentences per language, the fixed version, a device list, and an update
+command and stopgap that are kept only when they appear verbatim in the input. The Risk banner comes
+from rules in `riskLevel` (`web/board.mjs`), not from the model.
+
 `python -m collector other.env` reads a different environment file. Real environment variables
 override the file.
 

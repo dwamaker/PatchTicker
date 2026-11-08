@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { filterBoard, filterFromQuery, filterToQuery, productList } from '../web/board.mjs';
+import { easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -62,6 +62,46 @@ test('search matches the Summary in Korean and in English', () => {
   for (const query of ['비밀번호 없는', 'password-less', 'PAM 미사용', 'pam not used', '업데이트하세요', '1024', 'alpine linux']) {
     assert.deepEqual(ids(filterBoard(summarized, [], query).list), ['https://sshhole.com'], query);
   }
+});
+
+const easySummary = {
+  ko: { title: 'OpenSSH 인증 우회', summary: '긴 비밀번호가 통합니다.', conditions: [], mitigation: '10.6p2로 업데이트하세요.', easy: '남이 아무 긴 비밀번호로 서버에 들어올 수 있습니다.' },
+  en: { title: 'OpenSSH auth bypass', summary: 'Long passwords work.', conditions: [], mitigation: 'Update to 10.6p2.', easy: 'Strangers can get into your server with any long password.' },
+  products: ['OpenSSH'], lead: '', fixed: '10.6p2', command: 'apk upgrade openssh', stopgap: 'PasswordAuthentication no', devices: [],
+};
+
+test('search matches the Easy text in both languages, and the normal text still', () => {
+  const summarized = [...board, { ...incident('https://sshhole.com', '2026-11-05T12:30:00Z'), cves: [], summary: easySummary }];
+  for (const query of ['남이 아무', 'strangers can', 'apk upgrade', '긴 비밀번호가 통합니다', 'long passwords work']) {
+    assert.deepEqual(ids(filterBoard(summarized, [], query).list), ['https://sshhole.com'], query);
+  }
+});
+
+test('a Summary written before the Easy view still shows and searches', () => {
+  const { ko, en } = easySummary;
+  const old = { ko: { ...ko, easy: undefined }, en: { ...en, easy: undefined }, products: [], lead: '' };
+  const list = [{ ...incident('CVE-2026-1', '2026-11-05T12:30:00Z'), summary: old }];
+  assert.deepEqual(ids(filterBoard(list, [], 'long passwords').list), ['CVE-2026-1']);
+  assert.deepEqual(easyAction(old), { kind: 'none', stopgap: '' });
+});
+
+test('the Risk banner comes from rules: exploited or CVSS 9.0+ is highest, 7.0+ high, else notice', () => {
+  assert.equal(riskLevel({ kev: true }), 'highest');
+  assert.equal(riskLevel({ kev: true, cvss: 3.1 }), 'highest');
+  assert.equal(riskLevel({ cvss: 9.0 }), 'highest');
+  assert.equal(riskLevel({ cvss: 8.9 }), 'high');
+  assert.equal(riskLevel({ cvss: 7.0 }), 'high');
+  assert.equal(riskLevel({ cvss: 6.9 }), 'notice');
+  assert.equal(riskLevel({}), 'notice'); // no score yet
+});
+
+test('the Easy action: devices first, then the source\'s command, then the fixed version', () => {
+  const router = { ...easySummary, command: '', devices: ['Archer AX21', 'Archer AX55'] };
+  assert.deepEqual(easyAction(router), { kind: 'devices', devices: ['Archer AX21', 'Archer AX55'], fixed: '10.6p2', stopgap: 'PasswordAuthentication no' });
+  assert.deepEqual(easyAction(easySummary), { kind: 'command', command: 'apk upgrade openssh', stopgap: 'PasswordAuthentication no' });
+  // The collector drops a command not found in the sources; the page then says "update to version X".
+  assert.deepEqual(easyAction({ ...easySummary, command: '' }), { kind: 'version', fixed: '10.6p2', stopgap: 'PasswordAuthentication no' });
+  assert.deepEqual(easyAction({ ...easySummary, command: '', fixed: '', stopgap: '' }), { kind: 'none', stopgap: '' });
 });
 
 test('search and Product picks narrow together', () => {

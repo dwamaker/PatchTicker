@@ -31,8 +31,25 @@ export function highlightScore(i) {
   return (i.kev ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
 }
 
-// The Summary's text in both languages, so either language finds the Incident.
-const summaryText = (s) => (s ? [...['ko', 'en'].flatMap((l) => [s[l].title, s[l].summary, ...s[l].conditions, s[l].mitigation]), ...s.products] : []);
+// The Summary's text in both languages, Easy view included, so either language finds the Incident.
+// Summaries written before the Easy view have no easy, command or stopgap.
+const summaryText = (s) => (s ? [...['ko', 'en'].flatMap((l) => [s[l].title, s[l].summary, ...s[l].conditions, s[l].mitigation, s[l].easy || '']),
+  ...s.products, s.command || '', s.stopgap || '', ...(s.devices || [])] : []);
+
+// The Easy view's Risk banner, set by rules and never by the model.
+export function riskLevel(i) {
+  if (i.kev || i.cvss >= 9) return 'highest';
+  return i.cvss >= 7 ? 'high' : 'notice';
+}
+
+// The Easy view's one action: update these devices, run the source's command, or update to the fixed version.
+export function easyAction(s) {
+  const stopgap = s.stopgap || '';
+  if (s.devices?.length) return { kind: 'devices', devices: s.devices, fixed: s.fixed, stopgap };
+  if (s.command) return { kind: 'command', command: s.command, stopgap };
+  if (s.fixed) return { kind: 'version', fixed: s.fixed, stopgap };
+  return { kind: 'none', stopgap };
+}
 
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
 // Returns the visible Incidents newest first, and the top ten of those first seen in the seven days before `now`.

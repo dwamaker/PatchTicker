@@ -20,6 +20,7 @@ SSHOLE_SUMMARY = {
                    "257~1024자 비밀번호를 받아들입니다. Alpine, OpenWrt 같은 musl 시스템이 해당합니다.",
         "conditions": ["musl libc", "PAM 미사용", "비밀번호 로그인 켜짐", "비밀번호가 `*`인 계정"],
         "mitigation": "OpenSSH 10.6p2로 업데이트하세요. 당장 못 하면 PasswordAuthentication no로 비밀번호 로그인을 끄세요.",
+        "easy": "Alpine이나 OpenWrt 서버에 아무 긴 비밀번호로 남이 로그인할 수 있습니다.",
     },
     "en": {
         "title": "OpenSSH on musl lets password-less accounts in with a long password",
@@ -27,9 +28,14 @@ SSHOLE_SUMMARY = {
                    "for accounts whose password is `*`. musl systems such as Alpine and OpenWrt are affected.",
         "conditions": ["musl libc", "PAM not used", "password logins on", "an account whose password is `*`"],
         "mitigation": "Update to OpenSSH 10.6p2. Until then, set PasswordAuthentication no to turn password logins off.",
+        "easy": "Anyone can log in to an Alpine or OpenWrt server with any long password.",
     },
     "products": ["OpenSSH"],
     "lead": "https://sshhole.com",
+    "fixed": "10.6p2",
+    "command": "apk upgrade openssh",
+    "stopgap": "PasswordAuthentication no",
+    "devices": [],
 }
 
 
@@ -87,6 +93,7 @@ class InstantSummaryTest(unittest.TestCase):
         sent = claude.user_text()
         self.assertIn("between 257 and 1024 characters", sent)
         self.assertIn('echo "PasswordAuthentication no"', sent)
+        self.assertIn("apk upgrade openssh", sent)
         self.assertNotIn("<span", sent)  # page text, not markup
         self.assertNotIn("CVE-2099-0001", sent)  # nor its scripts
 
@@ -114,7 +121,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -143,7 +150,10 @@ class InstantSummaryTest(unittest.TestCase):
                                                              "ko": ko | {"summary": "300자를 넘는 비밀번호가 통합니다."}},
             "a Lead that is not an input URL": SSHOLE_SUMMARY | {"lead": "https://example.com/sshole"},
             "Korean and English numbers that differ": SSHOLE_SUMMARY | {"ko": ko | {"summary": "256자 이상 비밀번호를 받아들입니다."}},
+            "a fixed version not in the input": SSHOLE_SUMMARY | {"fixed": "10.7p1"},
+            "Easy text whose numbers differ": SSHOLE_SUMMARY | {"en": en | {"easy": "Any password over 256 characters works."}},
             "a missing field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "lead"},
+            "a missing Easy field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "command"},
             "a field of the wrong type": SSHOLE_SUMMARY | {"products": "OpenSSH"},
         }
         for case, reply in bad.items():
@@ -153,6 +163,21 @@ class InstantSummaryTest(unittest.TestCase):
                 incident = board(self.store)[HN_STORY]
                 self.assertNotIn("summary", incident)
                 self.assertEqual(incident["summary_error"]["tries"], 1)
+
+    def test_the_easy_action_is_the_write_ups_own_command_and_stopgap(self):
+        self.run_at("2026-11-07T12:30:00", FakeClaude(SSHOLE_SUMMARY), hn="sshole.json")
+
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["command"], summary["stopgap"]), ("apk upgrade openssh", "PasswordAuthentication no"))
+        self.assertEqual(summary["ko"]["easy"], SSHOLE_SUMMARY["ko"]["easy"])
+
+    def test_a_command_not_in_the_input_is_dropped_and_the_fixed_version_stays(self):
+        made_up = SSHOLE_SUMMARY | {"command": "apk add --upgrade openssh-server", "stopgap": "UsePAM yes"}
+        self.run_at("2026-11-07T12:30:00", FakeClaude(made_up), hn="sshole.json")
+
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["command"], summary["stopgap"], summary["fixed"]), ("", "", "10.6p2"))
+        self.assertEqual(summary["en"], SSHOLE_SUMMARY["en"])  # the rest of the Summary is kept
 
     def test_numbers_written_differently_in_the_source_still_pass(self):
         # "1,024" and "1024" are one number; so are "05" and "5".

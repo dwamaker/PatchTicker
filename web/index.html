@@ -23,6 +23,16 @@
     #filter input { font: inherit; padding: 0.5rem; min-height: 44px; box-sizing: border-box; width: 100%; }
     #picks { display: flex; flex-wrap: wrap; gap: 0.25rem; }
     #picks button { font: inherit; min-height: 44px; padding: 0 0.75rem; }
+    .tabs { display: flex; gap: 0.25rem; margin-bottom: 0.25rem; }
+    .tabs button, .command button { font: inherit; font-size: 0.875rem; min-height: 44px; padding: 0 0.75rem; }
+    .tabs button[aria-pressed="true"] { font-weight: 600; border-bottom: 3px solid #333; }
+    .incidents .risk { font-size: 1.5rem; font-weight: 700; padding: 0.25rem 0.5rem; display: inline-block; }
+    .risk-highest { background: #a00; color: #fff; }
+    .risk-high { background: #e0a800; color: #000; }
+    .risk-notice { background: #eee; color: #333; }
+    .incidents .action { font-weight: 600; }
+    .command code { background: #f3f3f3; padding: 0.25rem 0.5rem; overflow-wrap: anywhere; }
+    .incidents .devices { margin: 0.25rem 0 0; }
     footer { border-top: 1px solid #ddd; margin-top: 1rem; padding-top: 0.5rem; }
   </style>
 </head>

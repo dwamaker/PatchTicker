@@ -32,8 +32,9 @@ LANG_FIELDS = {
         "summary": {"type": "string"},
         "conditions": {"type": "array", "items": {"type": "string"}},
         "mitigation": {"type": "string"},
+        "easy": {"type": "string"},
     },
-    "required": ["title", "summary", "conditions", "mitigation"],
+    "required": ["title", "summary", "conditions", "mitigation", "easy"],
     "additionalProperties": False,
 }
 SCHEMA = {
@@ -43,8 +44,13 @@ SCHEMA = {
         "en": LANG_FIELDS,
         "products": {"type": "array", "items": {"type": "string"}},
         "lead": {"type": "string"},
+        # The Easy view's action (spec stories 57-59), language-free: the page words it in either language.
+        "fixed": {"type": "string"},
+        "command": {"type": "string"},
+        "stopgap": {"type": "string"},
+        "devices": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["ko", "en", "products", "lead"],
+    "required": ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices"],
     "additionalProperties": False,
 }
 
@@ -52,12 +58,18 @@ INSTRUCTIONS = """You write entries for vuln-radar, a free public board of secur
 
 Return one JSON object with the same content in Korean ("ko") and English ("en"):
 - title: one short line naming the product and the problem. No CVE ID, no severity words.
-- summary: two or three sentences. What the problem is and who is affected. Plain words, no hype.
+- summary: at most two sentences. What the problem is and who is affected. Plain words, no hype.
 - conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). Empty list when the text names none.
 - mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. Empty string when no source says.
+- easy: one or two short sentences (at most 30 words) for someone who is not a security expert: what could happen to them. No jargon, no versions, no CVE ID.
 Also:
 - products: the affected product names without versions ("OpenSSH", "OpenWrt").
 - lead: the one Mention URL a reader should open first, copied exactly from the Mentions list. Prefer the product's official advisory or release note, then the discoverer's write-up, then the CVE record, then discussion. Empty string if none fits.
+- fixed: the fixed version number alone ("10.6p2"), as a source states it. Empty string when no source names one.
+- command: the one shell command a source gives to update, copied character for character ("apk upgrade openssh"). Empty string when no source prints one; never write a command yourself.
+- stopgap: the setting or command a source gives as a stopgap until the update, copied character for character. Empty string when none.
+- devices: when the affected products are device firmware (routers, cameras, NAS, printers), the affected device models as the sources name them. Empty list otherwise.
+Keep every field short and do not repeat one field in another.
 
 Rules:
 - Use only facts stated in the input. Never guess a version, a date or a number.
@@ -83,7 +95,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다)."}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service)."}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8"}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "SSH로 접속하는 Linux 서버를 인터넷에서 누구나 장악할 수 있습니다."}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Anyone on the internet could take over a Linux server you reach over SSH."}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": []}"""
 
 
 class Rejected(ValueError):
@@ -217,32 +229,37 @@ def numbers(text):
 
 
 def lang_text(fields):
-    return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"]])
+    return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"], fields["easy"]])
 
 
 def parse(reply, input_text, urls):
     """The checked Summary from a reply, or Rejected: broken JSON or shape, a number or version not
-    in the input, a Lead that is not an input URL, or Korean and English numbers that differ."""
+    in the input, a Lead that is not an input URL, or Korean and English numbers that differ.
+    An Easy command or stopgap not found verbatim in the input is dropped, so the page falls back to
+    "update to version X" and never shows a made-up command."""
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
         data = json.loads(next(b.text for b in reply.content if b.type == "text"))
         summary = {lang: {k: data[lang][k] for k in LANG_FIELDS["required"]} for lang in ("ko", "en")}
-        summary |= {"products": data["products"], "lead": data["lead"]}
-        strings = [summary["lead"], *summary["products"]] + [
-            s for lang in ("ko", "en") for s in (*summary[lang]["conditions"], summary[lang]["title"],
-                                                 summary[lang]["summary"], summary[lang]["mitigation"])]
+        summary |= {k: data[k] for k in SCHEMA["required"][2:]}
+        lists = [summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"]]
+        strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], *summary["products"],
+                   *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"],
+                                           *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy")))]
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None
-    lists = [summary["products"], summary["ko"]["conditions"], summary["en"]["conditions"]]
     if not all(isinstance(v, list) for v in lists) or not all(isinstance(s, str) for s in strings):
         raise Rejected("malformed reply: a field is not text")
     ko, en = numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
-    unknown = (ko | en) - numbers(input_text)
+    unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"]]))) - numbers(input_text)
     if unknown:
         raise Rejected(f"numbers not in the input: {sorted(unknown)}")
     if ko != en:
         raise Rejected(f"Korean and English numbers differ: {sorted(ko ^ en)}")
     if summary["lead"] and summary["lead"] not in urls:
         raise Rejected(f"lead is not an input URL: {summary['lead']}")
+    for key in ("command", "stopgap"):
+        if summary[key] not in input_text:
+            summary[key] = ""
     return summary
