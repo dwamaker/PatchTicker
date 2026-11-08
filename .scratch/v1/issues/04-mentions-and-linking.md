@@ -16,3 +16,4 @@
 ## Comments
 
 - 2026-11-07: done in 8cb0ec5 on `v1`. Limits: HN security filter is a word regex (includes "hole", will misfire); GitHub search only finds repos mentioning "CVE"; a failing Mention source still aborts the cycle (only NVD failures are skipped).
+- 2026-11-08: real-run fixes on `fix/real-run-2`. HN points are no longer frozen at first sight: each cycle `hn.refresh_points` asks Algolia once for stories of the last seven days at 100 points or more (`hitsPerPage=1000`; 277 such stories in the week to 2026-11-08) and updates the matching Mentions of Incidents first seen in that week; no request when no recent Incident has an HN story. HN is now at most 11 requests a cycle (44/h, limit 10,000/h). Limits: a story below 100 points keeps its first-seen count; more than 1,000 qualifying stories in a week would drop the rest.
