@@ -47,6 +47,8 @@ LANG_FIELDS = {
     "required": ["title", "summary", "conditions", "mitigation", "easy"],
     "additionalProperties": False,
 }
+# The language-free fields, beside the per-language "ko" and "en" (LANG_FIELDS).
+SHARED_FIELDS = ["products", "lead", "fixed", "command", "stopgap", "devices"]
 SCHEMA = {
     "type": "object",
     "properties": {
@@ -60,7 +62,7 @@ SCHEMA = {
         "stopgap": {"type": "string"},
         "devices": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices"],
+    "required": ["ko", "en", *SHARED_FIELDS],
     "additionalProperties": False,
 }
 
@@ -154,7 +156,7 @@ def is_budget_error(err):
     return status == 402 or status == 400 and bool(re.search(r"credit balance|usage limit|spend limit", err.message, re.I))
 
 
-def summarize(incident, claude, http_get, stamp):
+def summarize_now(incident, claude, http_get, stamp):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets API errors through."""
     text, seen = summary_input(incident, http_get), basis(incident)
     save_reply(incident, claude.messages.create(**params(text)), text, seen, stamp)
@@ -208,7 +210,7 @@ def collect_batch(pending, incidents, claude, stamp):
     return touched
 
 
-def params(text, effort=EFFORT, ttl=None):
+def params(text, ttl=None):
     """messages.create parameters; the batch path sends the same with ttl="1h"."""
     return {
         "model": MODEL,
@@ -217,7 +219,7 @@ def params(text, effort=EFFORT, ttl=None):
         # Batches use the one-hour TTL: their requests run over minutes to hours, past the default five.
         "system": [{"type": "text", "text": INSTRUCTIONS,
                     "cache_control": {"type": "ephemeral"} | ({"ttl": ttl} if ttl else {})}],
-        "output_config": {"effort": effort, "format": {"type": "json_schema", "schema": SCHEMA}},
+        "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": SCHEMA}},
         "messages": [{"role": "user", "content": text}],
     }
 
@@ -233,19 +235,19 @@ def summary_input(incident, http_get):
         *(f"- {m['kind']} {m['url']}" + (f" ({m['title']})" if m.get("title") else "") for m in incident["mentions"]),
     ]
     for cve in incident["cves"]:
-        record = fetch(http_get, cve_record_url(cve))
+        record = fetch_page(http_get, cve_record_url(cve))
         if record:
             lines += [f"CVE record {cve}:", cve_fields(record)]
     readable = [m for m in sorted(incident["mentions"], key=lambda m: PAGE_KINDS.index(m["kind"]) if m["kind"] in PAGE_KINDS else 99)
                 if m["kind"] in PAGE_KINDS and not is_hn(m["url"])]
     for m in readable[:MAX_PAGES]:
-        page = fetch(http_get, m["url"])
+        page = fetch_page(http_get, m["url"])
         if page:
             lines += [f"Text of {m['url']}:", page_text(page)[:PAGE_CHARS]]
     return "\n".join(lines)
 
 
-def fetch(http_get, url):
+def fetch_page(http_get, url):
     """A page or record for the input, or None: a dead link must not stop the Summary."""
     try:
         raw = http_get(url)
@@ -323,7 +325,7 @@ def parse(reply, input_text, urls):
     try:
         data = json.loads(next(b.text for b in reply.content if b.type == "text"))
         summary = {lang: {k: data[lang][k] for k in LANG_FIELDS["required"]} for lang in ("ko", "en")}
-        summary |= {k: data[k] for k in SCHEMA["required"][2:]}
+        summary |= {k: data[k] for k in SHARED_FIELDS}
         lists = [summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"]]
         strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], *summary["products"],
                    *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"],

@@ -8,13 +8,13 @@ from datetime import timedelta
 import anthropic
 
 from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
-from collector.incidents import cite, enrich, link
+from collector.incidents import STAMP, cite, enrich, link, month_of
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
               curator_feeds=(), claude=None):
     """claude: an anthropic.Anthropic client, or None for Briefs only."""
-    stamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
     # shortcut: loads every month to link against; fine for v1 volumes, revisit past a year.
@@ -48,14 +48,14 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         for c in citations:
             cite(incident, c)
         if json.dumps(incident) != before:
-            changed.add(incident["first_seen"][:7])
+            changed.add(month_of(incident["first_seen"]))
 
     status = {"updated": stamp, "collector": collector_id}
     batches = store.read("batches.json") or []
     if claude:
         was_paused = (store.read("status.json") or {}).get("summaries") == "paused"
         try:
-            summarize(incidents, batches, claude, http_get, now, stamp, changed, probe=was_paused)
+            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was_paused)
         except anthropic.APIError as err:
             # Briefs still go out; the next cycle asks again.
             print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
@@ -65,14 +65,14 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
 
     for m in changed:
         # Incidents stay in the month they were first seen; a merge can empty an older month's row.
-        store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if i["first_seen"][:7] == m]})
+        store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if month_of(i["first_seen"]) == m]})
     if changed - set(index["months"]):
         store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)
     store.write("status.json", status)
 
 
-def summarize(incidents, batches, claude, http_get, now, stamp, changed, probe):
+def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe):
     """Collect ended batches, summarize Highlight candidates at once, batch the rest. Lets API errors
     through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
     instead of building a full one that would likely fail."""
@@ -80,14 +80,14 @@ def summarize(incidents, batches, claude, http_get, now, stamp, changed, probe):
         touched = summaries.collect_batch(pending, incidents, claude, stamp)
         if touched is not None:
             batches.remove(pending)
-            changed.update(i["first_seen"][:7] for i in touched)
+            changed.update(month_of(i["first_seen"]) for i in touched)
     waiting = {r["incident"] for b in batches for r in b["requests"].values()}
     due = [i for i in incidents if i["id"] not in waiting and summaries.needs_summary(i)]
     instant = [i for i in due if summaries.is_candidate(i, now)]
     for incident in instant[:summaries.MAX_PER_CYCLE]:
-        summaries.summarize(incident, claude, http_get, stamp)
-        changed.add(incident["first_seen"][:7])
-    since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        summaries.summarize_now(incident, claude, http_get, stamp)
+        changed.add(month_of(incident["first_seen"]))
+    since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
     pending = summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
     if pending:

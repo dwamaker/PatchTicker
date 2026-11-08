@@ -3,8 +3,7 @@
 import html
 import sys
 import xml.etree.ElementTree as ET  # expat in Python 3.13 limits entity expansion
-from email.utils import parsedate_to_datetime
-
+from collector import rss
 from collector.incidents import cves_in, urls_in
 
 # tl;dr sec (RSS from its home page) and Risky Business News. ThinkstScapes has no feed (11-07).
@@ -26,7 +25,7 @@ def fetch(checkpoints, http_get, feeds):
             items = ET.fromstring(http_get(feed)).iter("item")
             since = checkpoints.get(feed)
             for item in items:
-                posted = parsedate_to_datetime(item.findtext("pubDate")).strftime("%Y-%m-%dT%H:%M:%SZ")
+                posted = rss.posted(item)
                 if since and posted <= since:
                     continue
                 checkpoints[feed] = max(checkpoints.get(feed) or posted, posted)
@@ -37,7 +36,7 @@ def fetch(checkpoints, http_get, feeds):
 
 
 def citation(item):
-    title = " ".join((item.findtext("title") or "").split())
+    title = rss.title(item)
     body = html.unescape(f"{item.findtext('description') or ''} {item.findtext(CONTENT) or ''}")
     return {
         "mention": {"kind": "curator", "url": item.findtext("link").strip(), "title": title},

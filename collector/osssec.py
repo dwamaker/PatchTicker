@@ -2,8 +2,7 @@
 
 import html
 import xml.etree.ElementTree as ET  # expat in Python 3.13 limits entity expansion
-from email.utils import parsedate_to_datetime
-
+from collector import rss
 from collector.incidents import cves_in, urls_in
 
 FEED_URL = "https://seclists.org/rss/oss-sec.rss"
@@ -16,7 +15,7 @@ def fetch(checkpoint, http_get):
     """
     groups, newest = [], checkpoint
     for item in ET.fromstring(http_get(FEED_URL)).iter("item"):
-        posted = parsedate_to_datetime(item.findtext("pubDate")).strftime("%Y-%m-%dT%H:%M:%SZ")
+        posted = rss.posted(item)
         if checkpoint and posted <= checkpoint:
             continue
         newest = max(newest or posted, posted)
@@ -25,7 +24,7 @@ def fetch(checkpoint, http_get):
 
 
 def mention_group(item):
-    title = " ".join((item.findtext("title") or "").split())
+    title = rss.title(item)
     body = html.unescape(item.findtext("description") or "")
     return {
         "mentions": [{"kind": "discussion", "url": item.findtext("link").strip(), "title": title}],

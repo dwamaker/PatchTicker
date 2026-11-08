@@ -3,7 +3,7 @@
 import unittest
 from urllib.error import URLError
 
-from collector.__main__ import make_http_get
+from collector.net import make_http_get
 
 
 class PrivateAddressTest(unittest.TestCase):

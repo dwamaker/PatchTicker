@@ -19,6 +19,11 @@ CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 
 
+def month_of(stamp):
+    """The monthly file a stamp belongs to ("2026-11"); an Incident stays in its first-seen month."""
+    return stamp[:7]
+
+
 def cves_in(text):
     return list(dict.fromkeys(c.upper() for c in CVE_RE.findall(text or "")))
 
@@ -55,7 +60,7 @@ def link(incidents, group, stamp):
         if group.get("join_only"):
             return set()
         incidents.append(proto)
-        return {stamp[:7]}
+        return {month_of(stamp)}
     target = min(hits, key=lambda i: i["first_seen"])  # min keeps the first of equal times
     before = json.dumps(target)
     changed = set()
@@ -65,10 +70,10 @@ def link(incidents, group, stamp):
     for other in [i for i in hits if i is not target] if merge else []:
         absorb(target, other)
         incidents.remove(other)
-        changed.add(other["first_seen"][:7])
+        changed.add(month_of(other["first_seen"]))
     absorb(target, proto)
     if json.dumps(target) != before:
-        changed.add(target["first_seen"][:7])
+        changed.add(month_of(target["first_seen"]))
     return changed
 
 
