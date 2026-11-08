@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
-from test_cycle import at, recorded
+from test_cycle import at, incident, recorded
 
 PAGES = {"https://sshhole.com": "sshhole.com.html", "https://www.openssh.com/txt/release-10.6p2": "release-10.6p2.txt"}
 
@@ -268,6 +268,41 @@ class InstantSummaryTest(unittest.TestCase):
 
         self.assertEqual(claude.sent, [])
         self.assertNotIn("summary", board(self.store)[HN_STORY])
+
+
+def hn_story(item, title, points, first_seen):
+    """An Incident seen only as an HN story (no CVE, no Product), as the real 2026-11-08 run stored them."""
+    url = f"https://news.ycombinator.com/item?id={item}"
+    return {"id": url, "cves": [], "first_seen": first_seen,
+            "mentions": [{"kind": "discussion", "url": url, "title": title, "points": points}],
+            "urls": [f"news.ycombinator.com/item?id={item}"], "brief": {"text": title, "lead": url}}
+
+
+REAL_RUN = "2026-11-08T03:38:07Z"
+
+
+class InstantOrderTest(unittest.TestCase):
+    def setUp(self):
+        self.store = MemoryStore()
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-08T03:00:00.000Z"})
+        self.store.write("index.json", {"months": ["2026-11"]})
+
+    def test_the_per_cycle_cap_goes_to_kev_then_cvss_then_curator_then_hn(self):
+        # The real run: HN stories arrived before the KEV-listed SonicWall CVE and used up the cap of ten.
+        stories = [hn_story(50400000 + n, f"Story {n}", 500, REAL_RUN) for n in range(9)]
+        curated = incident("CVE-2026-83844", "A curated flaw", REAL_RUN)
+        curated["mentions"].append({"kind": "curator", "url": "https://tldrsec.com/p/tldr-sec-351"})
+        critical = incident("CVE-2026-123957", "TOTOLINK CA300-PoE ...", REAL_RUN) | {"cvss": 9.9}
+        sonicwall = incident("CVE-2026-19868", "SonicOS SSLVPN ...", REAL_RUN) | {"cvss": 7.5, "kev": True}
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": stories + [curated, critical, sonicwall]})
+        claude = FakeClaude(*["not json"] * 10)
+
+        run_cycle(self.store, recorded(None), at("2026-11-08T03:45:00"), "test-box", claude=claude)
+
+        firsts = [claude.user_text(n).split("\n")[0] for n in range(len(claude.sent))]
+        self.assertEqual(len(firsts), 10)
+        self.assertEqual(firsts[:4], ["Incident: CVE-2026-19868", "Incident: CVE-2026-123957",
+                                      "Incident: CVE-2026-83844", "Incident: no CVE yet"])
 
 
 if __name__ == "__main__":

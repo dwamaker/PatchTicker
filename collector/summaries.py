@@ -129,6 +129,13 @@ def is_candidate(incident, now):
                 or (not incident["cves"] and "discussion" in kinds))
 
 
+def priority(incident):
+    """Sort key for instant candidates, so the per-cycle cap goes first to KEV, then CVSS 9.0+, then a
+    curator's pick, then HN buzz; arrival order within each (the sort is stable)."""
+    curated = any(m["kind"] == "curator" for m in incident["mentions"])
+    return (not incident.get("kev"), (incident.get("cvss") or 0) < 9.0, not curated)
+
+
 def basis(incident):
     """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing)."""
     return {"cves": sorted(incident["cves"]), "kev": bool(incident.get("kev")),

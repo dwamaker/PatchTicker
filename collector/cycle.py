@@ -83,7 +83,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
             changed.update(month_of(i["first_seen"]) for i in touched)
     waiting = {r["incident"] for b in batches for r in b["requests"].values()}
     due = [i for i in incidents if i["id"] not in waiting and summaries.needs_summary(i)]
-    instant = [i for i in due if summaries.is_candidate(i, now)]
+    instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
     for incident in instant[:summaries.MAX_PER_CYCLE]:
         summaries.summarize_now(incident, claude, http_get, stamp)
         changed.add(month_of(incident["first_seen"]))
