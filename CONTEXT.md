@@ -45,7 +45,7 @@ The short text the site writes for an Incident: what it is, who is affected and,
 _Avoid_: description, analysis, verdict
 
 **Easy view** (쉬운 설명):
-The second way to read an Incident, behind a tab: a loud risk banner, one or two plain sentences, and the one action to take now (a command to run, or the devices to update). The normal view is the default.
+The second way to read the Board, chosen with one Normal|Easy switch at the top: a loud risk banner, one or two plain sentences, and the one action to take now (a command to run, or the devices to update). The normal view is the default.
 _Avoid_: simple mode, ELI5, beginner view
 
 **Risk banner** (위험 배너):
