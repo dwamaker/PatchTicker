@@ -2,9 +2,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINES, briefMarker, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { LINES, pinReason, briefMarker, cveHead, easyLine, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
+
+test('a row is named by its first CVE and counts the rest; no CVE gives no name', () => {
+  assert.deepEqual(cveHead(['CVE-2026-1', 'CVE-2026-2', 'CVE-2026-3']), { id: 'CVE-2026-1', more: 2 });
+  assert.deepEqual(cveHead(['CVE-2026-1']), { id: 'CVE-2026-1', more: 0 });
+  assert.equal(cveHead([]), null);
+  assert.equal(cveHead(undefined), null);
+});
 
 test('the CVSS rating follows the v3 bands, and an unrated Incident has none', () => {
   assert.deepEqual([9, 8.9, 7, 6.9, 4, 3.9, 0.1, 0, null, undefined].map(cvssRating),
@@ -15,6 +22,11 @@ test('a row\'s tags are its Products, then the Summary\'s devices, each name onc
   const i = { products: [{ id: 'a:x', name: 'OpenSSH' }, { id: 'b:x', name: 'Router' }], summary: { devices: ['Router', 'NAS'] } };
   assert.deepEqual(rowTags(i), ['OpenSSH', 'Router', 'NAS']);
   assert.deepEqual(rowTags({}), []);
+  // The Summary's vendor-led names win over title-cased CPE names.
+  assert.deepEqual(rowTags({ ...i, summary: { products: ['SonicWall SonicOS'], devices: [] } }), ['SonicWall SonicOS']);
+  // Each language shows the names its readers know.
+  const paint = { summary: { products: ['Microsoft Paint'], devices: [], ko: { names: ['Windows 그림판'] }, en: { names: ['Microsoft Paint'] } } };
+  assert.deepEqual([rowTags(paint, 'ko'), rowTags(paint, 'en')], [['Windows 그림판'], ['Microsoft Paint']]);
 });
 
 test('returns Incidents newest first', () => {
@@ -24,6 +36,98 @@ test('returns Incidents newest first', () => {
     incident('CVE-2026-1', '2026-10-31T23:59:00Z'),
   ];
   assert.deepEqual(filterBoard(incidents).list.map((i) => i.id), ['CVE-2026-3', 'CVE-2026-2', 'CVE-2026-1']);
+});
+
+test('orders by when the news first broke, falling back to first seen', () => {
+  const incidents = [
+    { ...incident('CVE-2026-1', '2026-11-08T03:00:00Z'), published: '2026-11-01T00:00:00Z' },
+    incident('CVE-2026-2', '2026-11-05T00:00:00Z'),
+  ];
+  assert.deepEqual(filterBoard(incidents).list.map((i) => i.id), ['CVE-2026-2', 'CVE-2026-1']);
+  assert.equal(publishedAt(incidents[0]), '2026-11-01T00:00:00Z');
+});
+
+test('an HN story without a CVE waits for its Summary and stays off when it is not an Incident', () => {
+  const story = { id: 'https://news.ycombinator.com/item?id=1', cves: [] };
+  assert.equal(onBoard(story), false);
+  assert.equal(onBoard({ ...story, summary: { incident: true } }), true);
+  assert.equal(onBoard({ ...story, summary: { incident: false } }), false);
+  assert.equal(onBoard({ ...story, summary: {} }), true); // a Summary from before the flag
+  assert.equal(onBoard({ ...story, summary_error: { tries: 3, final: true } }), true);
+  assert.equal(onBoard({ id: 'CVE-2026-1', cves: ['CVE-2026-1'] }), true);
+  assert.equal(onBoard({ id: 'https://seclists.org/oss-sec/2026/q4/563', cves: [] }), true);
+});
+
+test('Products come from NVD or the CVE record, the Summary and its operating systems, each once', () => {
+  const i = { products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }],
+    summary: { products: ['OpenSSH', 'musl'], platforms: ['Linux'] } };
+  assert.deepEqual(productsOf(i).map((p) => p.id), ['openbsd:openssh', 'name:musl', 'os:linux']);
+  const sonic = { products: [{ id: 'sonicwall:sonicos', name: 'SonicOS' }], summary: { products: ['SonicWall SonicOS'] } };
+  assert.deepEqual(productsOf(sonic), [{ id: 'sonicwall:sonicos', name: 'SonicWall SonicOS' }]);
+  assert.deepEqual(productsOf({ summary: { products: ['iOS', 'Android'], platforms: ['iOS', 'Android'] } }).map((p) => p.id), ['os:ios', 'os:android']);
+  const paint = { id: 'CVE-2026-83844', cves: ['CVE-2026-83844'], first_seen: '2026-11-08T00:00:00Z', mentions: [], brief: { text: '' },
+    summary: { products: ['Microsoft Paint'], platforms: ['Windows'], ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) } };
+  assert.deepEqual(filterBoard([paint], ['os:windows']).list.length, 1);
+  assert.deepEqual(rowTags(paint, 'en'), ['Microsoft Paint', 'Windows']);
+});
+
+test('only package-manager and service lines count as shell commands; config lines do not', () => {
+  assert.equal(isShellCommand('apk upgrade openssh'), true);
+  assert.equal(isShellCommand('sudo apt-get install --only-upgrade openssh-server'), true);
+  assert.equal(isShellCommand('systemctl restart sshd'), true);
+  assert.equal(isShellCommand('PasswordAuthentication no'), false);
+  assert.equal(isShellCommand('LoginGraceTime 0'), false);
+  assert.equal(isShellCommand(''), false);
+});
+
+test('the Easy sentence keeps its "!" only at the top Risk level', () => {
+  assert.equal(easyLine('PC를 해킹당할 수 있습니다!', 'highest'), 'PC를 해킹당할 수 있습니다!');
+  assert.equal(easyLine('PC를 해킹당할 수 있습니다!', 'high'), 'PC를 해킹당할 수 있습니다.');
+  assert.equal(easyLine('계정이 털렸을 수 있습니다!! ', 'notice'), '계정이 털렸을 수 있습니다. ');
+  assert.equal(easyLine('조용한 문장입니다.', 'notice'), '조용한 문장입니다.');
+});
+
+test('a pinned row says why only when the row does not show it already', () => {
+  const base = { cves: [], mentions: [] };
+  assert.equal(pinReason({ ...base, kev: true, mentions: [{ kind: 'curator' }] }), null);
+  assert.equal(pinReason({ ...base, cvss: 9.8 }), null);
+  assert.equal(pinReason({ ...base, mentions: [{ kind: 'curator' }] }), 'curator');
+  assert.equal(pinReason({ ...base, mentions: [{ kind: 'discussion', points: 2935 }] }), 'buzz');
+  assert.equal(pinReason({ ...base, mentions: [{ kind: 'discussion', points: 40 }] }), null);
+});
+
+test('quick filters keep only the chosen Risk levels and, when asked, exploited Incidents; they ride in the hash', () => {
+  const a = { ...incident('CVE-2026-1', '2026-11-08T00:00:00Z'), kev: true, cvss: 5 };
+  const b = { ...incident('CVE-2026-2', '2026-11-08T00:00:00Z'), cvss: 7.5 };
+  const c = incident('CVE-2026-3', '2026-11-08T00:00:00Z');
+  const pick = (opts) => filterBoard([a, b, c], [], '', NOW, opts).list.map((i) => i.id).sort();
+  assert.deepEqual(pick({ risk: ['high'] }), ['CVE-2026-2']);
+  assert.deepEqual(pick({ risk: ['highest', 'notice'] }), ['CVE-2026-1', 'CVE-2026-3']);
+  assert.deepEqual(pick({ kev: true }), ['CVE-2026-1']);
+  const f = { picks: ['os:linux'], query: 'ssh', risk: ['highest'], kev: true, from: '2026-11-01', to: '2026-11-08', cvssMin: 7, cve: 'yes', has: ['advisory'], sort: 'risk' };
+  assert.deepEqual(filterFromQuery(filterToQuery(f)), f);
+  assert.deepEqual(filterFromQuery('r=bogus').risk, []);
+});
+
+test('the panel narrows by date, CVSS, CVE and link kind, and sorts by risk or CVSS', () => {
+  const at = (id, day, extra = {}) => ({ ...incident(id, `${day}T00:00:00Z`), ...extra });
+  const a = at('CVE-2026-1', '2026-11-01', { cvss: 9.8 });
+  const b = at('CVE-2026-2', '2026-11-05', { cvss: 7.5, mentions: [{ kind: 'advisory', url: '' }] });
+  const c = { ...at('x', '2026-11-07'), cves: [], mentions: [{ kind: 'repo', url: '' }] };
+  const run = (opts) => filterBoard([a, b, c], [], '', NOW, opts).list.map((i) => i.id);
+  assert.deepEqual(run({ from: '2026-11-02', to: '2026-11-06' }), ['CVE-2026-2']);
+  assert.deepEqual(run({ cvssMin: 9 }), ['CVE-2026-1']);
+  assert.deepEqual(run({ cve: 'no' }), ['x']);
+  assert.deepEqual(run({ has: ['advisory'] }), ['CVE-2026-2']);
+  assert.deepEqual(run({ sort: 'cvss' }), ['CVE-2026-1', 'CVE-2026-2', 'x']);
+  assert.deepEqual(run({ sort: 'risk' }), ['CVE-2026-1', 'CVE-2026-2', 'x']);
+  assert.deepEqual(run({}), ['x', 'CVE-2026-2', 'CVE-2026-1']);
+});
+
+test('search finds an Incident by a name only its Mentions use', () => {
+  const joined = { ...incident('CVE-2026-123158', '2026-11-08T05:00:00Z'),
+    mentions: [{ kind: 'cve_record', url: '' }, { kind: 'discussion', url: 'https://news.ycombinator.com/item?id=50399400', title: '*sshole, or when are we going to get rid of C?' }] };
+  assert.deepEqual(filterBoard([joined, incident('CVE-2026-1', '2026-11-08T05:00:00Z')], [], 'sshole').list.map((i) => i.id), ['CVE-2026-123158']);
 });
 
 test('lists an Unassigned incident (no CVE yet) among CVE Incidents, newest first', () => {
@@ -139,10 +243,10 @@ test('the Product list holds each Product seen in the last 90 days once, by name
 });
 
 test('a filter written to the page address reads back the same', () => {
-  const filter = { picks: [openssh.id, 'vendor:a,b&c'], query: 'heap overflow 9.8p1' };
+  const filter = { picks: [openssh.id, 'vendor:a,b&c'], query: 'heap overflow 9.8p1', risk: [], kev: false, from: '', to: '', cvssMin: 0, cve: '', has: [], sort: 'new' };
   assert.deepEqual(filterFromQuery(filterToQuery(filter)), filter);
   assert.deepEqual(filterFromQuery('?' + filterToQuery(filter)), filter);
-  assert.deepEqual(filterFromQuery(''), { picks: [], query: '' });
+  assert.deepEqual(filterFromQuery(''), { picks: [], query: '', risk: [], kev: false, from: '', to: '', cvssMin: 0, cve: '', has: [], sort: 'new' });
 });
 
 test('does not reorder the caller\'s array', () => {
