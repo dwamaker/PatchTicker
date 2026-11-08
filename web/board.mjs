@@ -174,6 +174,10 @@ export const isShellCommand = (text) => SHELL.test(text.trim());
 // The Easy sentence shouts only for the top Risk level: "!" everywhere teaches readers to ignore it.
 export const easyLine = (text, level) => (level === 'highest' ? text : text.replace(/!+(\s*)$/, '.$1'));
 
+// The Easy headline ends in its danger; at the lowest Risk level that word is 문제/issue, not 위험/risk (user, 11-08).
+// The level comes from the rules, not the model, so the page decides the word and no Summary is re-made.
+export const easyTitle = (text, level) => (level === 'notice' ? text.replace(/위험(\s*)$/, '문제$1').replace(/\brisk(\s*)$/i, 'issue$1') : text);
+
 // When the news first broke: the earliest source post time; Incidents stored before 11-08 only have first_seen.
 export const publishedAt = (i) => i.published || i.first_seen;
 
@@ -183,19 +187,24 @@ export const cveHead = (cves = []) => (cves.length ? { id: cves[0], more: cves.l
 // The row's 대상 column: the Summary's product names (vendor-led, "SonicWall SonicOS"), else the NVD Products'
 // title-cased CPE names, then the Summary's devices; each name once.
 // lang picks the Summary's names in that language ("Windows 그림판"); Summaries before 11-08 have none.
+// Past this many device models a row shows the product alone; the Easy to-do list folds the models away
+// (SNWLID-2026-0014 names 38 SonicWall models).
+export const MANY_DEVICES = 4;
 export const rowTags = (i, lang = 'en') => {
   const s = i.summary;
   const names = s?.[lang]?.names?.length ? s[lang].names : s?.products?.length ? s.products : (i.products || []).map((p) => p.name);
-  return [...new Set([...names, ...(s?.platforms || []), ...(s?.devices || [])])];
+  const devices = (s?.devices || []).length > MANY_DEVICES ? [] : s?.devices || [];
+  return [...new Set([...names, ...(s?.platforms || []), ...devices])];
 };
 
 // Line colours for Product badges, after the Seoul subway map: fill and the text colour that reads on it.
 // No red, amber or grey hues, so a badge is never mistaken for a risk dot.
+// Eight lines at least 0.13 apart in OKLab (11 before, but blue/navy, sky/periwinkle, teal/dark green and green/olive
+// read as the same line at badge size). Operating systems are not lines: they get an outline badge.
 export const LINES = [
   { bg: '#0052a4', ink: '#ffffff' }, { bg: '#00a84d', ink: '#0d0f12' }, { bg: '#00a5de', ink: '#0d0f12' },
-  { bg: '#7f4f9a', ink: '#ffffff' }, { bg: '#93a10c', ink: '#0d0f12' }, { bg: '#77c4a3', ink: '#0d0f12' },
-  { bg: '#0c8e72', ink: '#0d0f12' }, { bg: '#b0ce18', ink: '#0d0f12' }, { bg: '#6789ca', ink: '#0d0f12' },
-  { bg: '#2e3a8c', ink: '#ffffff' }, { bg: '#4a7c2a', ink: '#ffffff' },
+  { bg: '#7f4f9a', ink: '#ffffff' }, { bg: '#b0ce18', ink: '#0d0f12' }, { bg: '#77c4a3', ink: '#0d0f12' },
+  { bg: '#00828f', ink: '#ffffff' }, { bg: '#c25bb8', ink: '#0d0f12' },
 ];
 
 // A Product's line: FNV-1a of its name picks the colour, so it is the same on every visit and every row.

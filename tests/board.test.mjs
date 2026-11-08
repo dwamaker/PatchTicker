@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINES, pinReason, briefMarker, cveHead, easyLine, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { LINES, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -27,6 +27,13 @@ test('a row\'s tags are its Products, then the Summary\'s devices, each name onc
   // Each language shows the names its readers know.
   const paint = { summary: { products: ['Microsoft Paint'], devices: [], ko: { names: ['Windows 그림판'] }, en: { names: ['Microsoft Paint'] } } };
   assert.deepEqual([rowTags(paint, 'ko'), rowTags(paint, 'en')], [['Windows 그림판'], ['Microsoft Paint']]);
+});
+
+test('a long device list stays off the row: past four models the badges are the product alone', () => {
+  const few = { summary: { products: ['TP-Link Archer'], devices: ['TP-Link Archer C6', 'TP-Link Archer AX10'] } };
+  assert.deepEqual(rowTags(few), ['TP-Link Archer', 'TP-Link Archer C6', 'TP-Link Archer AX10']);
+  const many = { summary: { products: ['SonicWall SonicOS'], devices: ['TZ 270', 'TZ 370', 'TZ 470', 'TZ 570', 'TZ 670'].map((m) => `SonicWall ${m}`) } };
+  assert.deepEqual(rowTags(many), ['SonicWall SonicOS']);
 });
 
 test('returns Incidents newest first', () => {
@@ -85,6 +92,15 @@ test('the Easy sentence keeps its "!" only at the top Risk level', () => {
   assert.equal(easyLine('PC를 해킹당할 수 있습니다!', 'high'), 'PC를 해킹당할 수 있습니다.');
   assert.equal(easyLine('계정이 털렸을 수 있습니다!! ', 'notice'), '계정이 털렸을 수 있습니다. ');
   assert.equal(easyLine('조용한 문장입니다.', 'notice'), '조용한 문장입니다.');
+});
+
+test('an Easy headline at the lowest Risk level calls the danger a 문제, not a 위험', () => {
+  assert.equal(easyTitle('Apache Allura 협업 사이트 뚫림 위험', 'notice'), 'Apache Allura 협업 사이트 뚫림 문제');
+  assert.equal(easyTitle('Perl graph module freeze risk', 'notice'), 'Perl graph module freeze issue');
+  assert.equal(easyTitle('Windows 그림판 해킹 위험', 'high'), 'Windows 그림판 해킹 위험');
+  assert.equal(easyTitle('SonicWall 원격접속 장비 뚫림 위험', 'highest'), 'SonicWall 원격접속 장비 뚫림 위험');
+  assert.equal(easyTitle('AI 채팅 대화 털림', 'notice'), 'AI 채팅 대화 털림');
+  assert.equal(easyTitle('위험한 위험 앱 경고', 'notice'), '위험한 위험 앱 경고');
 });
 
 test('a pinned row says why only when the row does not show it already', () => {
@@ -338,6 +354,23 @@ test('every line badge reads at AA and never looks like a risk colour (red, ambe
     assert.ok(contrast(bg, ink) >= 4.5, `${bg} on ${ink}: ${contrast(bg, ink).toFixed(2)}`);
     const { h, s } = hue(bg);
     assert.ok(h > 60 && h < 330 && s > 0.3, `${bg}: hue ${h.toFixed(0)}, saturation ${s.toFixed(2)}`);
+  }
+});
+
+// OKLab distance: two line colours closer than this read as the same line at badge size (11-08: #0052a4 vs #2e3a8c).
+const oklab = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((n) => parseInt(hex.slice(n, n + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const [l, m, q] = [[0.4122214708, 0.5363325363, 0.0514459929], [0.2119034982, 0.6806995451, 0.1073969566], [0.0883024619, 0.2817188376, 0.6299787005]]
+    .map(([x, y, z]) => Math.cbrt(x * r + y * g + z * b));
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * q, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * q, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * q];
+};
+test('no two line colours are near twins', () => {
+  for (const [n, a] of LINES.entries()) {
+    for (const b of LINES.slice(n + 1)) {
+      const [x, y] = [oklab(a.bg), oklab(b.bg)];
+      const gap = Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+      assert.ok(gap >= 0.13, `${a.bg} and ${b.bg} are ${gap.toFixed(3)} apart`);
+    }
   }
 });
 

@@ -23,6 +23,7 @@
       --mid: light-dark(#8f5c00, #f5b400);
       --note: light-dark(#5f6b76, #9aa3ad);
       --focus: light-dark(#1a5fb4, #7cc4ff);
+      --ok: light-dark(#1d7a45, #4fc48c); /* done / nothing found: a state, never a risk and never a badge fill */
       --shadow: light-dark(rgb(20 25 30 / 0.07), rgb(0 0 0 / 0.32));
       --sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
       --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -62,14 +63,14 @@
     .end { justify-self: end; display: flex; gap: 0.5rem; }
     /* outlined button: theme, language, copy command */
     .btn { min-height: var(--tap); min-width: var(--tap); padding: 0 1rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: none; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-    .btn:hover { background: var(--panel-2); color: var(--ink); }
+    @media (hover: hover) { .btn:hover { background: var(--panel-2); color: var(--ink); } }
     #theme { padding: 0; }
     /* text size: 가− and 가+ in one outline, the glyph grows left to right (px, so the
        control itself does not jump); everything else is rem, so the root size scales the Board */
     .sizes { display: inline-flex; border: 1px solid var(--edge); border-radius: var(--r-ctl); overflow: hidden; }
     .sizes button { min-width: var(--tap); min-height: var(--tap); padding: 0; border: 0; background: none; font-weight: 700; line-height: 1; cursor: pointer; }
     .sizes button + button { border-left: 1px solid var(--rule-2); }
-    .sizes button:hover:not(:disabled) { background: var(--panel-2); }
+    @media (hover: hover) { .sizes button:hover:not(:disabled) { background: var(--panel-2); } }
     .sizes button:disabled { color: var(--ink-3); cursor: default; }
     .sizes b { margin-left: 1px; font-size: 10px; }
     .sizes .g1 { font-size: 12px; }
@@ -78,11 +79,14 @@
     @media (max-width: 599px) { #lang .full { display: none; } #lang .short { display: inline; } h1 { white-space: nowrap; } } /* the header fits 375px */
     #theme svg { width: 18px; height: 18px; }
     #theme[aria-pressed="true"] .sun, #theme[aria-pressed="false"] .moon { display: none; }
-    #views button:not([aria-pressed="true"]):hover { background: var(--panel-2); color: var(--ink); }
+    @media (hover: hover) { #views button:not([aria-pressed="true"]):hover { background: var(--panel-2); color: var(--ink); } }
     @media (max-width: 599px) {
-      .top .wrap { grid-template-columns: 1fr auto; padding-block: 0.75rem; }
-      #views { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
-      #views button { flex: 1; }
+      /* name and controls share the first line while they fit; at 320px or with larger text the controls
+         drop under the name instead of pushing the page sideways; the 기본|쉬운 설명 switch always gets its own line */
+      .top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; padding-block: 0.75rem; }
+      .end { margin-left: auto; }
+      #views { order: 3; flex: 1 1 100%; }
+      #views button { flex: 1 1 0; min-width: 0; padding: 0 0.75rem; white-space: nowrap; }
     }
 
     /* product picker and search on one line */
@@ -93,6 +97,12 @@
     .field input { flex: 1; min-width: 0; min-height: 46px; border: 0; background: none; outline: 0; }
     .field input::placeholder { color: var(--ink-3); }
     .field svg { flex: none; width: 16px; height: 16px; color: var(--ink-3); }
+    /* the '/' shortcut, shown only where there is a keyboard and a hovering pointer, hidden while typing */
+    .key { flex: none; min-width: 1.5rem; padding: 0 0.375rem; border: 1px solid var(--rule-2); border-bottom-width: 2px; border-radius: 4px; font: 600 calc(0.75rem * var(--ts))/1.5 var(--mono); color: var(--ink-2); text-align: center; }
+    /* hidden while typing and whenever there is text: otherwise focusing the box on a click hid it and slid the
+       clear button out from under the pointer, so the first click on it missed */
+    .field:focus-within .key, #search:not(:placeholder-shown) ~ .key { display: none; }
+    @media (hover: none), (pointer: coarse) { .key { display: none; } }
     /* skip link: out of sight until a keyboard user reaches it */
     .skip { position: absolute; left: -9999px; }
     .skip:focus { position: static; display: inline-block; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--panel); }
@@ -128,7 +138,7 @@
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
     .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
     .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 700; }
-    .btn.primary:hover { background: var(--ink-2); }
+    @media (hover: hover) { .btn.primary:hover { background: var(--ink-2); } }
     /* phones: the panel is a bottom sheet with 필터 적용 always in reach */
     @media (max-width: 599px) {
       .filters { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; max-height: 85vh; overflow-y: auto; margin: 0; border-radius: var(--r-frame) var(--r-frame) 0 0; padding-bottom: 0; }
@@ -140,16 +150,42 @@
     .chip .x { position: relative; width: 10px; height: 10px; margin-left: 0.5rem; }
     .chip .x::before, .chip .x::after { content: ""; position: absolute; left: 4px; top: -1px; width: 1.5px; height: 12px; background: currentColor; transform: rotate(45deg); }
     .chip .x::after { transform: rotate(-45deg); }
-    @media (max-width: 767px) { #filter { grid-template-columns: 1fr; } }
+    @media (max-width: 767px) { #filter { grid-template-columns: minmax(0, 1fr); } }
 
-    #status { margin: 0; padding: 1rem 0 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    /* status line: last update and count on the left, the 읽는 법 disclosure on the right */
+    .statusline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 1rem; padding-top: 0.5rem; }
+    #status { margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    #guide-btn { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--focus); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--focus) 50%, transparent); text-underline-offset: 3px; }
+    @media (hover: hover) { #guide-btn:hover { text-decoration-color: currentColor; } }
+    #guide-btn .chev, .legend .chev { display: inline-block; flex: none; border-color: currentColor; transform: rotate(45deg) translate(-2px, -2px); }
+    #guide-btn[aria-expanded="true"] .chev { transform: rotate(-135deg) translate(-2px, -2px); }
+    /* 이 게시판 읽는 법: each mark of a row, drawn with the row's own parts, beside what it means */
+    .guide { margin-top: 0.5rem; padding: 1.25rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
+    .g-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .g-head h2 { margin: 0; font-size: calc(0.9375rem * var(--ts)); color: var(--ink); }
+    .legend { display: grid; gap: 0.875rem; max-width: 46rem; margin: 1rem 0 0; }
+    .g-item { display: grid; grid-template-columns: 9rem minmax(0, 1fr); align-items: center; column-gap: 1.25rem; }
+    .g-item.group { padding-top: 0.875rem; border-top: 1px solid var(--rule); }
+    .legend dt { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; min-width: 0; }
+    .legend dd { margin: 0; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.55; }
+    .legend .c-date { align-items: flex-start; }
+    .g-pin { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 0.75rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-left: 3px solid var(--high); border-radius: var(--r-ctl); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
+    .g-views { display: inline-flex; padding: 2px; border: 1px solid var(--edge); border-radius: var(--r-pill); font-size: calc(0.75rem * var(--ts)); }
+    .g-views span { padding: 0.125rem 0.5rem; border-radius: var(--r-pill); color: var(--ink-2); }
+    .g-views .on { background: var(--ink); color: var(--bg); font-weight: 700; }
+    .g-word { font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
+    .g-note { margin: 1rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--rule); max-width: 46rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
+    @media (max-width: 599px) {
+      .guide { padding: 1rem; }
+      .g-item { grid-template-columns: 6.75rem minmax(0, 1fr); column-gap: 0.875rem; }
+    }
     h2 { margin: 1.75rem 0 0.625rem; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; color: var(--ink-2); }
     h2 .n { font-variant-numeric: tabular-nums; color: var(--ink); margin-left: 0.25rem; }
     ol { list-style: none; margin: 0; padding: 0; }
 
     /* a row is a sign: risk dot and word, the CVE ID as the bold name over the title, CVSS ring, line badges, age */
-    .row { display: grid; grid-template-columns: var(--pre) minmax(0, 1fr) 7.5rem minmax(0, 15rem) 5.5rem 0.75rem; grid-template-areas: "risk t score tags when chev"; align-items: center; column-gap: var(--gap); width: 100%; min-height: 4.5rem; padding: 0.75rem 0.75rem; border: 0; background: none; text-align: left; cursor: pointer; }
-    .row:hover { background: var(--panel-2); }
+    .row { display: grid; grid-template-columns: var(--pre) minmax(0, 1fr) 2.75rem minmax(0, 15rem) 5.5rem 0.75rem; grid-template-areas: "risk t score tags when chev"; align-items: center; column-gap: var(--gap); width: 100%; min-height: 4.5rem; padding: 0.75rem 0.75rem; border: 0; background: none; text-align: left; cursor: pointer; }
+    @media (hover: hover) { .row:hover { background: var(--panel-2); } }
     .c-risk { grid-area: risk; display: flex; align-items: center; gap: 0.5rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
     .c-risk { flex-wrap: wrap; row-gap: 0.125rem; }
     .why.kev { color: var(--high); font-weight: 700; }
@@ -184,6 +220,7 @@
     .kev { color: var(--high); font-weight: 700; }
     .c-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 0.375rem; min-width: 0; }
     .ln { display: inline-flex; align-items: center; max-width: 100%; min-height: 1.625rem; padding: 0.1875rem 0.6875rem; border-radius: var(--r-pill); background: var(--line); color: var(--line-ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 600; line-height: 1.2; letter-spacing: 0; overflow-wrap: anywhere; }
+    .ln.os { background: none; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--edge); font-weight: 500; } /* a system it runs on, not a line */
     .c-date { grid-area: when; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.35; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { grid-area: chev; width: 0.5rem; height: 0.5rem; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
     [aria-expanded="true"] .chev { transform: rotate(45deg) translate(-2px, -2px); }
@@ -192,8 +229,12 @@
     .stack { display: grid; gap: 0.5rem; }
     .alert { background: var(--panel); border: 1px solid var(--rule-2); border-left: 3px solid var(--note); border-radius: var(--r-frame); box-shadow: 0 6px 18px -8px var(--shadow); overflow: hidden; }
     .alert.risk-highest { border-left-color: var(--high); background: linear-gradient(90deg, color-mix(in srgb, var(--high) 7%, transparent), transparent 40%), var(--panel); }
-    .alert.risk-high { border-left-color: var(--mid); }
+    .alert.risk-high { border-left-color: var(--mid); background: linear-gradient(90deg, color-mix(in srgb, var(--mid) 5%, transparent), transparent 40%), var(--panel); }
     .alert .row { padding-left: calc(0.75rem - 2px); }
+    /* answered by the visitor (조치함 / 해당 없음): the alarm steps back, the green chip says why; the facts stay */
+    .answered .c-risk, .answered .why.kev { color: var(--ink-3); }
+    .alert.answered { border-left-color: var(--rule-2); background: var(--panel); box-shadow: none; }
+    #pinned-head .handled { margin-left: 0.5rem; padding-left: 0.5rem; border-left: 1px solid var(--rule-2); color: var(--ok); font-weight: 600; }
 
     /* 최신순: plain rows on one hairline each */
     .list { border-top: 1px solid var(--rule-2); }
@@ -213,15 +254,67 @@
     .empty { margin-top: 1.75rem; padding: 1.5rem 0; border-top: 1px solid var(--rule-2); }
     .empty p { margin: 0; font-size: calc(1.0625rem * var(--ts)); font-weight: 600; max-width: 46rem; }
     .empty .scope { margin-top: 0.375rem; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 400; color: var(--ink-2); }
+    /* the all-clear sign: picked Products, no Incident on the Board */
+    .allclear { display: flex; align-items: flex-start; gap: 1rem; }
+    .allclear .mark { flex: none; width: 2rem; height: 2rem; margin-top: 0.125rem; color: var(--ok); }
+    .allclear .mark svg { display: block; width: 100%; height: 100%; }
+    .allclear .lines { display: grid; gap: 0.375rem; min-width: 0; }
+    .allclear .c-tags { grid-area: auto; } /* the row's named area would shove the badges out of order here */
+    .allclear strong { font-size: calc(1.0625rem * var(--ts)); font-weight: 700; }
+    .allclear .note { font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); max-width: 40rem; }
     .empty .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; font-weight: 400; }
     .details .preparing { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); }
     .details .devices { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+    .details .fixes { margin: 0.375rem 0 0; padding-left: 1.25rem; }
+    .details .fixes li { padding: 0.125rem 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .models li { overflow-wrap: anywhere; break-inside: avoid; }
+    .models { margin-top: 0.375rem; }
+    .models summary { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--focus); font-weight: 600; cursor: pointer; }
+    .models ul { margin: 0; padding-left: 1.25rem; columns: 2 12rem; column-gap: 1.5rem; font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); }
+    /* Easy view to-do list: numbered steps that tick, a small progress ring, and the visitor's own "조치함" */
+    .todo { margin-top: 0.75rem; max-width: 46rem; padding: 1rem 1.125rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
+    .todo-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .todo-head strong { font-size: calc(1rem * var(--ts)); }
+    .todo-count { display: inline-flex; align-items: center; gap: 0.5rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .todo-count svg { width: 22px; height: 22px; transform: rotate(-90deg); }
+    .todo-count circle { fill: none; stroke-width: 3; }
+    .todo-count .track { stroke: var(--rule-2); }
+    .todo-count .arc { stroke: var(--ok); stroke-dasharray: var(--fill) 1; stroke-linecap: round; }
+    .todo-count.zero .arc { display: none; }
+    .todo-steps { list-style: none; margin: 0.875rem 0 0; padding: 0; display: grid; gap: 1rem; }
+    .step { display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); column-gap: 0.75rem; align-items: start; }
+    .step .num { width: 1.75rem; height: 1.75rem; border: 1.5px solid var(--edge); border-radius: 50%; display: grid; place-items: center; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .step.done .num { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+    .step.unsure .num { background: none; border-color: var(--edge); color: var(--ink); } /* answered, not a sure yes: no green */
+    .step .num svg, .todo-done svg, .why.mine svg { display: block; width: 14px; height: 14px; flex: none; }
+    .step .runs, .step .hint { margin: 0.375rem 0 0; font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); }
+    .step .body > :first-child { margin-top: 0.125rem; }
+    .details .step p.q { font-weight: 700; }
+    .step .c-tags { margin-top: 0.375rem; }
+    .choices { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .linkish { min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--focus); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .check { display: inline-flex; align-items: center; gap: 0.625rem; min-height: var(--tap); margin-top: 0.25rem; font-weight: 700; cursor: pointer; }
+    .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--ok); cursor: pointer; }
+    .check:has(input:disabled) { cursor: default; }
+    .details .todo-done { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; font-weight: 700; color: var(--ok); }
+    .todo-done svg { width: 20px; height: 20px; }
+    .details .todo-note { margin-top: 0.75rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
+    .why.mine { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--ok); font-weight: 700; }
     .mentions { list-style: none; padding: 0.75rem 0 0; margin: 0.75rem 0 0; border-top: 1px solid var(--rule); font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); max-width: 46rem; }
     .mentions li { overflow-wrap: anywhere; padding: 0.125rem 0; }
-    @media (pointer: coarse) { .mentions li a { display: inline-block; padding: 0.625rem 0; } } /* finger-sized links on touch screens */
+    @media (pointer: coarse) { .mentions li a, .details .lead a { display: inline-block; padding: 0.625rem 0; } } /* finger-sized links on touch screens */
     .command { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-    .command code { font: calc(var(--fs-small) * var(--ts))/1.5 var(--mono); background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 6px; padding: 0.375rem 0.625rem; overflow-wrap: anywhere; }
+    .command code { font: calc(var(--fs-small) * var(--ts))/1.5 var(--mono); background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 6px; padding: 0.375rem 0.625rem; overflow-wrap: anywhere; transition: background-color 700ms ease-out, border-color 700ms ease-out; }
+    /* copied: the command lights up like a stamped ticket, then fades back */
+    .command.stamped code { background: color-mix(in srgb, var(--ok) 16%, var(--panel-2)); border-color: var(--ok); transition-duration: 120ms; }
+    .command .ok { color: var(--ok); }
+    .command .btn { min-width: 6rem; gap: 0.375rem; }
+    .command .ok svg { display: block; width: 14px; height: 14px; }
 
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .row { grid-template-columns: var(--pre) minmax(0, 1fr) 2.75rem 5.5rem 0.75rem; grid-template-areas: "risk t score when chev" ". tags tags tags ."; row-gap: 0.5rem; }
+      .c-tags:empty { display: none; }
+    }
     @media (max-width: 767px) {
       /* phone: the CVSS ring joins the risk and date line, so each row is one line shorter */
       .row { grid-template-columns: minmax(0, 1fr) auto auto 0.75rem; grid-template-areas: "risk score when chev" "t t t t" "tags tags tags tags"; column-gap: 0.625rem; row-gap: 0.375rem; padding: 0.875rem 0.5rem; }
@@ -231,7 +324,18 @@
       .details { padding: 0 0.75rem 1rem; }
       .c-date { flex-direction: row; gap: 0.375rem; }
     }
-    @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+    /* micro-feedback: presses and toggles answer within 100-250ms; under reduced motion only colours change */
+    .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
+    .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: scale(0.96); }
+    #views { position: relative; isolation: isolate; }
+    #views.slid::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-pill); background: var(--ink); }
+    #views.ready::before { transition: left 240ms cubic-bezier(0.16, 1, 0.3, 1), width 240ms cubic-bezier(0.16, 1, 0.3, 1); }
+    #views.slid button[aria-pressed="true"] { background: none; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
+    @media (prefers-reduced-motion: reduce) { .chev { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
+    /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
+    @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
+    @media (prefers-reduced-motion: no-preference) { .arriving .gauge .arc { animation: ring-fill 700ms cubic-bezier(0.16, 1, 0.3, 1) 120ms backwards; } }
 
     footer { margin-top: 2.5rem; border-top: 1px solid var(--rule); padding: 1rem 0 2.5rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     footer p { margin: 0.25rem 0 0; max-width: 46rem; }
@@ -243,8 +347,8 @@
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal"></button><button id="view-easy" type="button" aria-pressed="false" data-t="easy"></button></div>
     <div class="end">
       <div class="sizes" role="group" data-t-aria="textSizeGroup">
-        <button id="text-down" type="button" data-t-aria="textDown"><span aria-hidden="true" class="g1">가<b>−</b></span></button>
-        <button id="text-up" type="button" data-t-aria="textUp"><span aria-hidden="true" class="g3">가<b>+</b></span></button>
+        <button id="text-down" type="button" data-t-aria="textDown"><span aria-hidden="true" class="g1"><span data-t="textGlyph"></span><b>−</b></span></button>
+        <button id="text-up" type="button" data-t-aria="textUp"><span aria-hidden="true" class="g3"><span data-t="textGlyph"></span><b>+</b></span></button>
       </div>
       <button id="theme" class="btn" type="button" aria-pressed="false" data-t-aria="theme"><svg class="moon" viewBox="0 0 18 18" aria-hidden="true"><path d="M14.5 11.2A6 6 0 0 1 6.8 3.5a6 6 0 1 0 7.7 7.7Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       <button id="lang" class="btn" type="button"></button>
@@ -254,10 +358,14 @@
     <div id="filter">
       <div class="field"><label for="product-pick" data-t="products"></label><input id="product-pick" list="product-options" data-t-placeholder="productsHint" autocomplete="off"></div>
       <datalist id="product-options"></datalist>
-      <div class="field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" data-t-placeholder="searchHint" autocomplete="off"></div>
+      <div class="field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" data-t-placeholder="searchHint" autocomplete="off" aria-keyshortcuts="/"><kbd class="key" aria-hidden="true">/</kbd></div>
       <div id="picks" data-t-aria="picked"></div>
     </div>
-    <p id="status"></p>
+    <div class="statusline">
+      <p id="status"></p>
+      <button id="guide-btn" type="button" aria-controls="guide" aria-expanded="false"><span data-t="guideBtn"></span><i class="chev" aria-hidden="true"></i></button>
+    </div>
+    <section id="guide" class="guide" aria-labelledby="guide-title" hidden></section>
     <p id="announce" class="sr-only" aria-live="polite"></p>
     <a id="skip" class="skip" href="#all-head" data-t="skip" hidden></a>
     <div class="bar">
