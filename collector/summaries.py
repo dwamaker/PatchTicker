@@ -129,6 +129,30 @@ Output:
 {"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"]}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"]}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "incident": true, "platforms": ["Linux"]}"""
 
 
+# Words the prompt bans from the Easy view (easy, easy_title, easy_action), checked in code because the model still
+# slips now and then (11-08: "SonicWall 방화벽 인증 우회 위험"). Keep in step with INSTRUCTIONS; a test checks it.
+EASY_BANNED = ("OAuth", "SAML", "MFA", "WSDL", "CGI", "FIPS", "SQL", "API", "hash", "root", "RCE", "SSRF", "injection",
+               "buffer", "protocol", "코드 실행", "임의 코드", "권한 상승", "인증 우회", "서비스 거부", "주입", "역직렬화",
+               "버퍼 오버플로", "경로 조작", "세션", "토큰", "자격 증명", "취약점 악용")
+EASY_FIELDS = ("easy", "easy_title", "easy_action")
+
+
+def easy_jargon(summary):
+    """The banned words in the Easy fields, leaving out the Products' own names ("Perl SQL::Abstract" may stay)."""
+    names = sorted({*summary["products"], *summary["devices"], *summary["ko"]["names"], *summary["en"]["names"]}, key=len, reverse=True)
+    found = set()
+    for lang in ("ko", "en"):
+        for field in EASY_FIELDS:
+            text = summary[lang][field]
+            for name in names:
+                text = text.replace(name, " ")
+            for word in EASY_BANNED:
+                hit = re.search(rf"\b{re.escape(word)}\b", text, re.I) if word.isascii() else word in text
+                if hit:
+                    found.add(word)
+    return sorted(found)
+
+
 class Rejected(ValueError):
     """The model's reply failed the schema or the code check; the Brief stays."""
 
@@ -197,10 +221,16 @@ def summarize_now(incident, claude, http_get, stamp):
 
 def save_reply(incident, reply, text, seen, stamp):
     try:
-        incident["summary"] = parse(reply, text, [m["url"] for m in incident["mentions"]]) | {"at": stamp}
+        summary = parse(reply, text, [m["url"] for m in incident["mentions"]])
     except Rejected as err:
         failed(incident, str(err))
         return
+    # Jargon in the Easy view costs a retry, never the Summary: the last try is kept as it is.
+    jargon = easy_jargon(summary)
+    if jargon and incident.get("summary_error", {}).get("tries", 0) + 1 < MAX_TRIES:
+        failed(incident, f"jargon in the Easy view: {jargon}")
+        return
+    incident["summary"] = summary | {"at": stamp}
     incident.pop("summary_error", None)
     incident["summary_basis"] = seen | {"n": incident.get("summary_basis", {}).get("n", 0) + 1}
 

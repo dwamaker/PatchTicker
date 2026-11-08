@@ -437,6 +437,41 @@ class NumberCheckTest(unittest.TestCase):
         self.assertIn("numbers not in the input", incident["summary_error"]["reason"])
 
 
+class EasyJargonTest(unittest.TestCase):
+    """The Easy view's three fields are checked for the words the prompt bans; a hit costs a retry, never the Summary."""
+
+    def save(self, reply, tries=0):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        if tries:
+            incident["summary_error"] = {"tries": tries, "reason": "earlier"}
+        text = json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)  # holds every number the replies use
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
+        return incident
+
+    def test_a_banned_word_in_an_easy_field_is_sent_back_for_another_try(self):
+        for lang, field, text in (("ko", "easy_title", "SonicWall VPN 인증 우회 위험"), ("en", "easy", "Attackers can run code via SSRF."),
+                                  ("ko", "easy_action", "세션을 끊고 업데이트하세요.")):
+            with self.subTest(field):
+                incident = self.save(SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {field: text}})
+                self.assertNotIn("summary", incident)
+                self.assertIn("jargon in the Easy view", incident["summary_error"]["reason"])
+                self.assertNotIn("final", incident["summary_error"])
+
+    def test_the_last_try_keeps_the_summary_even_with_jargon(self):
+        incident = self.save(SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"easy_title": "인증 우회 위험"}}, tries=2)
+        self.assertEqual(incident["summary"]["ko"]["easy_title"], "인증 우회 위험")
+        self.assertNotIn("summary_error", incident)
+
+    def test_product_names_and_the_normal_fields_are_not_checked(self):
+        reply = SSHOLE_SUMMARY | {"products": ["SQL::Abstract"], "ko": SSHOLE_SUMMARY["ko"] | {
+            "easy_title": "SQL::Abstract 데이터 털림 위험", "names": ["SQL::Abstract"], "title": "SQL 주입으로 원격 코드 실행 가능"}}
+        self.assertIn("summary", self.save(reply))
+
+    def test_the_banned_words_are_the_ones_the_prompt_names(self):
+        for word in summaries.EASY_BANNED:
+            self.assertIn(word, summaries.INSTRUCTIONS)
+
+
 class ScriptPageTest(unittest.TestCase):
     """SonicWall's advisory page draws its text with script; the input reads the JSON the page itself loads."""
 
