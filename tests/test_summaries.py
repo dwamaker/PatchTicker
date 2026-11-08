@@ -232,6 +232,21 @@ class InstantSummaryTest(unittest.TestCase):
         self.merged_sshole(FakeClaude(reply))
         self.assertIn("summary", board(self.store)[HN_STORY])
 
+    def test_a_version_named_in_one_language_only_passes_but_whole_numbers_must_match(self):
+        # Versions must still appear in the input; only whole numbers are compared across languages.
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "최신 OpenSSH로 업데이트하세요."}}
+        self.run_at("2026-11-07T12:30:00", FakeClaude(reply), hn="sshole.json")
+        self.assertIn("summary", board(self.store)[HN_STORY])
+
+    def test_the_instructions_ask_to_copy_numbers_and_dates_as_the_source_writes_them(self):
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+
+        text = claude.sent[0]["system"][0]["text"]
+        self.assertIn("as the source writes", text)
+        self.assertNotIn("YYYY-MM-DD", text)
+        self.assertNotIn("with digits", text)
+
     def test_after_three_failed_replies_the_incident_is_flagged_and_not_asked_again(self):
         claude = FakeClaude("not json", "not json", "not json")
         for when in ("2026-11-07T12:30:00", "2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00"):
