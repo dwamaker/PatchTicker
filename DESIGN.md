@@ -353,7 +353,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Style:** a 44 px ring, 3.5px stroke on a Rail track, turned so the arc starts at the top and fills
   clockwise to score/10 with round ends. The score sits inside with one decimal (Meta, 700, Sign Ink);
   nothing sits beside it (the risk word is the one severity word, the reading guide names the ring, and a
-  "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "실제 악용 중" in red
+  "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "악용 발생" in red (a CISA KEV listing, or a Summary reporting attacks)
   under the risk word, and the opened Normal panel does not repeat it.
 - **Colour:** by CVSS rating: Emergency Red 9.0+, Caution Amber 7.0+, Notice Slate
   below. Unrated shows no ring, only a quiet dash in Hint Ink ("점수 아직 없음" in its tooltip). Shown in both views.

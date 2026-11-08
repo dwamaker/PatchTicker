@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINES, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { isExploited, LINES, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -75,7 +75,7 @@ test('Products come from NVD or the CVE record, the Summary and its operating sy
   const paint = { id: 'CVE-2026-83844', cves: ['CVE-2026-83844'], first_seen: '2026-11-08T00:00:00Z', mentions: [], brief: { text: '' },
     summary: { products: ['Microsoft Paint'], platforms: ['Windows'], ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) } };
   assert.deepEqual(filterBoard([paint], ['os:windows']).list.length, 1);
-  assert.deepEqual(rowTags(paint, 'en'), ['Microsoft Paint', 'Windows']);
+  assert.deepEqual(rowTags(paint, 'en'), ['Windows', 'Microsoft Paint']); // operating systems lead
 });
 
 test('only package-manager and service lines count as shell commands; config lines do not', () => {
@@ -417,4 +417,20 @@ test('a row\'s age is minutes, hours or days ago, and nothing from 30 days on', 
   assert.deepEqual(relativeAge('2026-11-07T11:00:00Z', now), { value: -1, unit: 'day' });
   assert.deepEqual(relativeAge('2026-10-10T12:00:01Z', now), { value: -28, unit: 'day' });
   assert.equal(relativeAge('2026-10-09T12:00:00Z', now), null);
+});
+test('an attack the sources report counts as exploited, as a KEV listing does', () => {
+  const campaign = { ...incident('CVE-2026-5', '2026-11-06T00:00:00Z'), cves: [], summary: { exploited: true, products: [], ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) } };
+  const quiet = { ...incident('CVE-2026-6', '2026-11-06T00:00:00Z'), cvss: 5 };
+  assert.equal(isExploited(campaign), true);
+  assert.equal(isExploited({ ...quiet, kev: true }), true);
+  assert.equal(isExploited(quiet), false);
+  assert.equal(riskLevel(campaign), 'highest');
+  assert.deepEqual(filterBoard([campaign, quiet], [], '', Date.parse('2026-11-07T00:00:00Z'), { kev: true }).list.map((i) => i.id), [campaign.id]);
+  // A CVE-less story with few HN points is no Highlight, unless its sources report attacks.
+  assert.deepEqual(filterBoard([campaign], [], '', Date.parse('2026-11-07T00:00:00Z')).highlights.map((i) => i.id), [campaign.id]);
+});
+
+test('operating systems lead the tags of a row', () => {
+  const lib = { summary: { products: ['CPython'], platforms: ['Windows', 'Linux'], devices: [] } };
+  assert.deepEqual(rowTags(lib, 'en'), ['Windows', 'Linux', 'CPython']);
 });

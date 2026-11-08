@@ -77,7 +77,7 @@ export const PINNED = 4;
 
 // Why a row is pinned, when the row does not already show it: exploited and CVSS 9+ are on the row itself.
 export function pinReason(i) {
-  if (i.kev || i.cvss >= 9) return null;
+  if (isExploited(i) || i.cvss >= 9) return null;
   if (i.mentions.some((m) => m.kind === 'curator')) return 'curator';
   if (Math.max(0, ...i.mentions.map((m) => m.points || 0)) >= HN_BUZZ) return 'buzz';
   return null;
@@ -86,14 +86,14 @@ export function pinReason(i) {
 export function highlightScore(i) {
   const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
   const curated = i.mentions.filter((m) => m.kind === 'curator').length;
-  return (i.kev ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
+  return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
 }
 
 // A story seen only on HN (no CVE, no other discussion or curator pick) is a Highlight only from this
 // many points, or general security news fills the pinned area. Also in collector/hn.py (BUZZ_POINTS).
 const HN_BUZZ = 100;
 const isHn = (url) => url.startsWith('https://news.ycombinator.com/');
-const quietHnStory = (i) => !i.cves.length && i.mentions.every((m) => !['discussion', 'curator'].includes(m.kind) || isHn(m.url))
+const quietHnStory = (i) => !isExploited(i) && !i.cves.length && i.mentions.every((m) => !['discussion', 'curator'].includes(m.kind) || isHn(m.url))
   && Math.max(0, ...i.mentions.map((m) => m.points || 0)) < HN_BUZZ;
 
 // The Summary's text in both languages, Easy view included, so either language finds the Incident.
@@ -107,10 +107,14 @@ export const briefMarker = (i) => (i.summary_error?.final ? 'unavailable' : 'pre
 // The saved default view; anything else (nothing saved, the old per-Incident list) is the normal view.
 export const viewFromStorage = (saved) => (saved === 'easy' ? 'easy' : 'normal');
 
-// The Easy view's Risk banner, set by rules and never by the model.
+// Exploited: CISA lists it (KEV), or the Summary reports attacks its sources describe (user, 11-08: an attack campaign
+// with no score or KEV listing sat in grey 참고). Both read 악용 발생 and count the same everywhere.
+export const isExploited = (i) => Boolean(i.kev || i.summary?.exploited === true);
+
+// The Easy view's Risk banner, set by rules: exploited (above) or the CVSS score.
 // The 9.0 cutoff is also in collector/summaries.py (is_candidate).
 export function riskLevel(i) {
-  if (i.kev || i.cvss >= 9) return 'highest';
+  if (isExploited(i) || i.cvss >= 9) return 'highest';
   return i.cvss >= 7 ? 'high' : 'notice';
 }
 
@@ -132,7 +136,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   const shown = incidents.filter((i) => {
     if (picked.size && !productsOf(i).some((p) => picked.has(p.id))) return false;
     if (risk.length && !risk.includes(riskLevel(i))) return false;
-    if (kev && !i.kev) return false;
+    if (kev && !isExploited(i)) return false;
     const day = publishedAt(i).slice(0, 10); // UTC date; a visitor far from UTC may see a row one day off
     if ((from && day < from) || (to && day > to)) return false;
     if (cvssMin && !(i.cvss >= cvssMin)) return false;
@@ -196,7 +200,7 @@ export const rowTags = (i, lang = 'en') => {
   const s = i.summary;
   const names = s?.[lang]?.names?.length ? s[lang].names : s?.products?.length ? s.products : (i.products || []).map((p) => p.name);
   const devices = (s?.devices || []).length > MANY_DEVICES ? [] : s?.devices || [];
-  return [...new Set([...names, ...(s?.platforms || []), ...devices])];
+  return [...new Set([...(s?.platforms || []), ...names, ...devices])]; // operating systems first (user, 11-08)
 };
 
 // Line colours for Product badges, after the Seoul subway map: fill and the text colour that reads on it.

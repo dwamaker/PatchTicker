@@ -80,11 +80,12 @@ SCHEMA = {
         "incident": {"type": "boolean"},
         "platforms": {"type": "array", "items": {"type": "string", "enum": PLATFORMS}},
         "stopgap_file": {"type": "string"},
+        "exploited": {"type": "boolean"},
         # A Korean line for each English Mention title, so the Korean page's source list reads in Korean.
         "titles_ko": {"type": "array", "items": {"type": "object", "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
                                                  "required": ["url", "title"], "additionalProperties": False}},
     },
-    "required": ["ko", "en", *SHARED_FIELDS, "fixes", "incident", "platforms", "stopgap_file", "titles_ko"],
+    "required": ["ko", "en", *SHARED_FIELDS, "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited"],
     "additionalProperties": False,
 }
 
@@ -113,6 +114,7 @@ Also:
 - devices: when the affected products are device firmware (routers, cameras, NAS, printers), the affected device models as the sources name them, each with its vendor in front ("Synology DiskStation", "TP-Link Archer"), so a model name never stands alone. Empty list otherwise.
 - incident: true only when the input reports a security flaw or an attack on software or a device that readers install or run themselves (an app, a library, an OS, a server program, a router or other device firmware), so a reader can check whether they are affected and update or change a setting. False for a company's own breach or leak, fraud, scams, heists, lawsuits, policy, opinion, essays, how-tos and tool or feature announcements, even when the story is about security: there is nothing a reader can check or fix on their own systems.
 - platforms: every operating system, from Windows, macOS, Linux, Android, iOS, that the affected software runs on, so a reader filtering by their OS finds it. Software that runs on several lists all of them (CPython, Java servers such as Apache Axis2, Chrome: Windows, macOS, Linux; Chrome also Android). Narrow the list only when the sources limit the flaw to some (sshole needs musl libc: Linux; Microsoft Paint: Windows). If people can download and install it, it runs on something: list those systems (self-hosted servers such as Apache Allura or ForgeRock AM run on Linux at least). Empty only for online services that only the vendor runs (a bank, ChatGPT, a game's login servers) and for device firmware.
+- exploited: true only when a source says attackers are already using this flaw against real targets (in the wild, an attack campaign, active exploitation). False for a proof of concept, a researcher's demo or a warning that attacks are likely. The Board lifts such an Incident to its top Risk level, as a CISA KEV listing does.
 - titles_ko: for each Mention with a title (in brackets after its URL) that is not in Korean, except repositories, a short Korean rendering of that title: "url" copied exactly from the Mentions list, "title" in Korean with product names and CVE IDs kept as written ("sshole (OpenSSH 로그인 결함)"). Empty list when there are none.
 Keep every field short and do not repeat one field in another.
 
@@ -140,7 +142,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "use_question": "리눅스 서버에서 OpenSSH로 원격 접속을 받나요?"}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "use_question": "Do you accept remote logins with OpenSSH on a Linux server?"}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": []}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "use_question": "리눅스 서버에서 OpenSSH로 원격 접속을 받나요?"}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "use_question": "Do you accept remote logins with OpenSSH on a Linux server?"}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false}"""
 
 
 # Words the prompt bans from the Easy view (easy, easy_title, easy_action), checked in code because the model still
@@ -463,6 +465,7 @@ def parse(reply, input_text, urls):
             summary["fixes"] = [f | {"devices": f.get("devices", [])} for f in summary["fixes"]]
         summary["stopgap_file"] = data.get("stopgap_file", "")
         summary["titles_ko"] = data.get("titles_ko", [])
+        summary["exploited"] = data.get("exploited", False)  # came late on 11-08; older replies say nothing of attacks
         lists = [summary["fixes"], *(f["devices"] for f in summary["fixes"]), summary["titles_ko"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"],
                  summary["ko"]["names"], summary["en"]["names"]]
         strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], summary["stopgap_file"], *summary["products"],
@@ -472,7 +475,7 @@ def parse(reply, input_text, urls):
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None
     if not all(isinstance(v, list) for v in lists) or not all(isinstance(s, str) for s in strings) \
-            or not isinstance(summary["incident"], bool):
+            or not isinstance(summary["incident"], bool) or not isinstance(summary["exploited"], bool):
         raise Rejected("malformed reply: a field is not text")
     ko, en = numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
     unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"],

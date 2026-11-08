@@ -53,6 +53,7 @@ SSHOLE_SUMMARY = {
     "platforms": ["Linux"],
     "stopgap_file": "",
     "titles_ko": [],
+    "exploited": False,
 }
 
 
@@ -184,7 +185,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -227,6 +228,7 @@ class InstantSummaryTest(unittest.TestCase):
             "a missing field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "lead"},
             "a missing Easy field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "command"},
             "a field of the wrong type": SSHOLE_SUMMARY | {"products": "OpenSSH"},
+            "an exploited flag that is not true or false": SSHOLE_SUMMARY | {"exploited": "yes"},
         }
         for case, reply in bad.items():
             with self.subTest(case):
@@ -291,6 +293,13 @@ class InstantSummaryTest(unittest.TestCase):
                                   "en": SSHOLE_SUMMARY["en"] | {"use_question": "Do you run an OpenSSH server on Alpine Linux?"}}
         self.merged_sshole(FakeClaude(reply))
         self.assertEqual(board(self.store)[HN_STORY]["summary"]["ko"]["use_question"], "Alpine 리눅스에서 OpenSSH 서버를 돌리나요?")
+
+    def test_a_summary_says_whether_the_sources_report_attacks_and_old_replies_say_no(self):
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"exploited": True}))
+        self.assertIs(board(self.store)[HN_STORY]["summary"]["exploited"], True)
+        self.setUp()
+        self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k != "exploited"}))
+        self.assertIs(board(self.store)[HN_STORY]["summary"]["exploited"], False)
 
     def test_the_instructions_keep_the_condition_in_the_easy_headline(self):
         self.assertIn("use_question", summaries.INSTRUCTIONS)

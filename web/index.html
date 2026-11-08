@@ -152,6 +152,8 @@
       /* 써요 / 안 써요 / 몰라요 in one row of three, never 2 + 1 */
       .choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
+    .row-h { margin: 0; font: inherit; }
+    .pick-note { flex-basis: 100%; margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     #picks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
     #picks:empty { display: none; }
     .chip { min-height: var(--tap); padding: 0; border: 0; background: none; cursor: pointer; display: inline-flex; align-items: center; }
@@ -161,7 +163,9 @@
     @media (max-width: 767px) { #filter { grid-template-columns: minmax(0, 1fr); } }
 
     /* status line: last update and count on the left, the 읽는 법 disclosure on the right */
-    .statusline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 1rem; padding-top: 0.5rem; }
+    .statusline > #status { flex: 1 1 auto; min-width: 0; }
+    .statusline #guide-btn { flex: none; }
+    .statusline { display: flex; align-items: center; justify-content: space-between; column-gap: 1rem; padding-top: 0.5rem; }
     #status { margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
     #guide-btn { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--focus); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--focus) 50%, transparent); text-underline-offset: 3px; }
     @media (hover: hover) { #guide-btn:hover { text-decoration-color: currentColor; } }

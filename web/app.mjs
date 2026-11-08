@@ -1,4 +1,4 @@
-import { LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, lineKeys, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
+import { LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
 
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
@@ -13,27 +13,28 @@ const SAVED_THEME = 'vr-theme';
 const TEXT = {
   ko: {
     other: 'English', otherShort: 'EN', title: 'vuln-radar · 보안 취약점 게시판', loading: '불러오는 중…',
-    loadError: (msg) => `게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요. (${msg})`, retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '조건', has: { advisory: '공식 공지 있음', repo: '공격 코드(PoC) 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주목 더 보기 (${n})`, pinLess: '주목 접기', qfRisk: '위험 단계', qfKev: '실제 악용 중만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주목 건너뛰고 최신순으로', found: (n) => `${n}건이 보입니다.`,
+    notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았어요: ${text}`,
+    loadError: (msg) => `게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요. (${msg})`, retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '조건', has: { advisory: '공식 공지 있음', repo: '공격 코드(PoC) 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주목 더 보기 (${n})`, pinLess: '주목 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주목 건너뛰고 최신순으로', found: (n) => `${n}건이 보입니다.`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', picked: '고른 제품', remove: (name) => `${name} 빼기`,
     search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', theme: '어두운 화면',
-    pin: '주목', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', unrated: '점수 아직 없음', kevReason: '실제 악용 중', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
+    pin: '주목', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', unrated: '점수 아직 없음', kevReason: '악용 발생', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, scopeWeek: '최근 7일 안에서 찾았습니다.', scopeMonths: '최근 3개월 안에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
     clearWeek: '최근 7일 동안 게시된 사건이 없습니다', clearMonths: '최근 3개월 동안 게시된 사건이 없습니다', clearNote: '고른 제품은 주소에 저장됩니다. 즐겨찾기해 두면 다음에도 바로 확인할 수 있습니다.', searchOlderMonths: '이전 사건에서도 찾기 (최근 3개월)',
-    noIncidents: '아직 게시된 사건이 없습니다.', recentOnly: '최근 7일분', loadOlder: '이전 사건 불러오기 (최근 3개월)', showMore: (n) => `더 보기 (${n}건 남음)`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
+    noIncidents: '아직 게시된 사건이 없습니다.', recentOnly: '최근 7일 등록', loadOlder: '이전 사건 불러오기 (최근 3개월)', showMore: (n) => `더 보기 (${n}건 남음)`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     original: '원문', readAt: (site) => `${site}에서 읽기 →`,
     mentions: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', repo: '저장소' },
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
-    kevNote: '실제 악용 표시는 CISA의 알려진 악용 취약점(KEV) 목록에서 가져옵니다.',
+    kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     conditions: '해당 조건', mitigation: '대처법', views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
-    todo: { title: '지금 할 일', use: '이 제품을 쓰고 있나요?', yes: '써요', no: '안 써요', unsure: '몰라요', usedYes: '쓰고 있어요.', usedNo: '안 써요. 할 일이 없어요.', usedUnsure: '잘 모르겠어요. 쓰는 걸로 보고 아래 할 일을 확인하세요.', findDevice: '모델 이름은 기기 뒷면 라벨이나 관리 화면에서 볼 수 있어요.', findApp: '설치된 프로그램 목록이나 앱 정보에서 이름과 버전을 볼 수 있어요.', runsOn: (os) => `${os}에서 돌아가요`, locked: '1번에 먼저 답하면 체크할 수 있어요.', finishedCount: '완료', change: '처음부터 다시', act: '할 일', doneLabel: '다 했어요', allDone: '조치 완료! 이 브라우저에 기억해 둘게요.', notUsed: '해당 없음으로 표시했어요.', markDone: '조치함', markNo: '해당 없음', count: (a, b) => `${b}단계 중 ${a}단계`, note: '체크는 이 브라우저에만 저장돼요.' },
+    todo: { title: '지금 할 일', use: '이 제품을 쓰고 있나요?', yes: '써요', no: '안 써요', unsure: '몰라요', usedYes: '쓰고 있어요.', usedNo: '안 써요. 할 일이 없어요.', usedUnsure: '잘 모르겠어요. 쓰는 걸로 보고 아래 할 일을 확인하세요.', findDevice: '모델 이름은 기기 뒷면 라벨이나 관리 화면에서 볼 수 있어요.', versionHelp: (cve) => (cve ? `내 버전을 모르겠으면 제조사 사이트에서 찾거나, AI 도우미에게 ${cve} 번호로 물어보세요.` : '내 버전을 모르겠으면 제조사 사이트에서 제품 이름으로 찾아보세요.'), findApp: '설치된 프로그램 목록이나 앱 정보에서 이름과 버전을 볼 수 있어요.', runsOn: (os) => `${os}에서 돌아가요`, locked: '1번에 먼저 답하면 체크할 수 있어요.', finishedCount: '완료', change: '처음부터 다시', act: '할 일', doneLabel: '다 했어요', allDone: '조치 완료! 이 브라우저에 기억해 둘게요.', notUsed: '해당 없음으로 표시했어요.', markDone: '조치함', markNo: '해당 없음', count: (a, b) => `${b}단계 중 ${a}단계`, note: '체크는 이 브라우저에만 저장돼요.' },
     newTab: ' (새 탭에서 열림)', pinDone: (n) => `${n}건 처리`, fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
     guideBtn: '읽는 법',
     guide: {
@@ -42,7 +43,7 @@ const TEXT = {
       ring: '위험 점수(CVSS, 10점 만점). 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기로, 제품마다 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각 (내 시간대 기준)',
-      pin: '실제 악용 중이거나 점수가 높거나 보안 뉴스레터·HN에서 화제인 사건을 위에 최대 4건 고정합니다.',
+      pin: '악용이 발생했거나 점수가 높거나 보안 뉴스레터·HN에서 화제인 사건을 위에 최대 4건 고정합니다.',
       open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다.',
       easy: '위쪽에서 바꾸면 무엇이 위험한지와 지금 할 일을 쉬운 말로 보여줍니다.',
       filterWord: '제품 · 필터',
@@ -52,33 +53,34 @@ const TEXT = {
   },
   en: {
     other: '한국어', otherShort: '한', title: 'vuln-radar · vulnerability board', loading: 'Loading…',
-    loadError: (msg) => `Could not load the Board. Check your connection and try again. (${msg})`, retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Conditions', has: { advisory: 'Official advisory', repo: 'Attack code (PoC) public' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', found: (n) => `${n} Incidents shown.`,
+    notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`,
+    loadError: (msg) => `Could not load the Board. Check your connection and try again. (${msg})`, retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Conditions', has: { advisory: 'Official advisory', repo: 'Attack code (PoC) public' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', found: (n) => `${n} Incidents shown.`,
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', picked: 'Picked Products', remove: (name) => `Remove ${name}`,
     search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', theme: 'Dark theme',
-    pin: 'Top', noCve: 'No CVE yet', moreCves: (n) => ` +${n}`, published: 'First published', unrated: 'Not rated yet', kevReason: 'Exploited in the wild', kevEasy: 'Attackers are using this right now!',
+    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` +${n}`, published: 'First published', unrated: 'Not rated yet', kevReason: 'Exploited', kevEasy: 'Attackers are using this right now!',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, scopeWeek: 'Searched the last 7 days.', scopeMonths: 'Searched the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
     clearWeek: 'No Incident posted in the last 7 days', clearMonths: 'No Incident posted in the last 3 months', clearNote: 'Your picks are saved in the address. Bookmark it to check again next time.', searchOlderMonths: 'Search older Incidents too (last 3 months)',
-    noIncidents: 'No Incidents have been posted yet.', recentOnly: 'last 7 days', loadOlder: 'Load older Incidents (last 3 months)', showMore: (n) => `Show more (${n} left)`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
+    noIncidents: 'No Incidents have been posted yet.', recentOnly: 'added in last 7 days', loadOlder: 'Load older Incidents (last 3 months)', showMore: (n) => `Show more (${n} left)`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     original: '', readAt: (site) => `Read at ${site} →`,
     mentions: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', repo: 'Repository' },
     nvd: '',
-    kevNote: 'Exploited-in-the-wild flags come from the CISA Known Exploited Vulnerabilities catalog.',
+    kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     conditions: 'Affected when', mitigation: 'Mitigation', views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution', levels: { highest: 'High risk', high: 'Risk', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
-    todo: { title: 'What to do now', use: 'Do you use this?', yes: 'Yes', no: 'No', unsure: 'Not sure', usedYes: 'I use it.', usedNo: 'Not used. Nothing to do.', usedUnsure: 'Not sure. Treat it as in use and check the step below.', findDevice: 'The model name is on the label under the device or in its admin page.', findApp: 'Your list of installed programs or the app\'s About page shows its name and version.', runsOn: (os) => `Runs on ${os}`, locked: 'Answer step 1 first to tick this.', finishedCount: 'Done', change: 'Start over', act: 'To do', doneLabel: "I've done it", allDone: 'All done! This browser will remember it.', notUsed: 'Marked as not used.', markDone: 'Done', markNo: 'Not used', count: (a, b) => `Step ${a} of ${b}`, note: 'Checks are saved in this browser only.' },
+    todo: { title: 'What to do now', use: 'Do you use this?', yes: 'Yes', no: 'No', unsure: 'Not sure', usedYes: 'I use it.', usedNo: 'Not used. Nothing to do.', usedUnsure: 'Not sure. Treat it as in use and check the step below.', findDevice: 'The model name is on the label under the device or in its admin page.', versionHelp: (cve) => (cve ? `Not sure of your version? Look on the vendor's site, or ask an AI assistant about ${cve}.` : 'Not sure of your version? Look the product up on the vendor\'s site.'), findApp: 'Your list of installed programs or the app\'s About page shows its name and version.', runsOn: (os) => `Runs on ${os}`, locked: 'Answer step 1 first to tick this.', finishedCount: 'Done', change: 'Start over', act: 'To do', doneLabel: "I've done it", allDone: 'All done! This browser will remember it.', notUsed: 'Marked as not used.', markDone: 'Done', markNo: 'Not used', count: (a, b) => `Step ${a} of ${b}`, note: 'Checks are saved in this browser only.' },
     newTab: ' (opens in a new tab)', pinDone: (n) => `${n} handled`, fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
     guideBtn: 'How to read',
     guide: {
       title: 'How to read this Board', close: 'Close',
-      risk: { highest: 'Exploited in the wild, or a risk score of 9 or more out of 10', high: 'A risk score of 7 or more out of 10', notice: 'Everything else, including Incidents with no score yet.' },
-      ring: 'The risk score (CVSS, out of 10). The ring fills to the score and its colour follows the score. Exploitation in the wild lifts an Incident to the top level whatever its score. No score yet shows as —.',
+      risk: { highest: 'Exploited (attacks reported), or a risk score of 9 or more out of 10', high: 'A risk score of 7 or more out of 10', notice: 'Everything else, including Incidents with no score yet.' },
+      ring: 'The risk score (CVSS, out of 10). The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as —.',
       tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
       date: 'When it was first published, in your time zone',
       pin: 'Up to four Incidents that are exploited, scored high, or talked about in security newsletters or on HN stay on top.',
@@ -178,7 +180,8 @@ const getJson = async (name) => {
 const $ = (id) => document.getElementById(id);
 let incidents = [];
 let products = [];
-let seenProducts = []; // board/products.json: every Product of 90 days, so one with no loaded Incident can be picked
+let seenProducts = [];
+let pickNote = ''; // a name typed in the picker that is not a listed Product, now searched for instead // board/products.json: every Product of 90 days, so one with no loaded Incident can be picked
 let updated = '';
 let paused = false;
 let loadError = null; // null while loading or once loaded; the error message if loading failed
@@ -496,7 +499,8 @@ function render() {
   $('more').replaceChildren(...(loadError || !updated || !list.length ? [] : moreButtons(rest.length - shown)));
   // OS picks show as pressed buttons in the quick bar, so only Products become chips here.
   const chips = filter.picks.filter((p) => !p.startsWith('os:'));
-  $('picks').replaceChildren(...chips.map(chip), ...conditionChips(), ...(activeFilters() > 1 ? [clearButton(TEXT[lang].clearAll, NO_FILTER)] : []));
+  $('picks').replaceChildren(...chips.map(chip), ...conditionChips(), ...(activeFilters() > 1 ? [clearButton(TEXT[lang].clearAll, NO_FILTER)] : []),
+    ...(pickNote ? [el('p', 'pick-note', TEXT[lang].notListed(pickNote))] : []));
   $('all-head').hidden = !list.some((i) => !pinned.has(i));
   // Before the data arrives, say nothing; if it never arrives, say so and offer a retry, not "no Incidents".
   const quiet = list.length > 0 || (!updated && !loadError);
@@ -564,7 +568,7 @@ function markChip(mine) {
 
 function todoList(incident) {
   const s = incident.summary;
-  const parts = easyAnswer(s, riskLevel(incident));
+  const parts = easyAnswer(s, riskLevel(incident), incident.cves?.[0]);
   // Nothing a reader can do yet (no version, command, devices or advice): no list to tick, just say so.
   if (easyAction(s).kind === 'none' && !s[lang].easy_action && !s[lang].mitigation) return parts;
   const c = TEXT[lang].todo;
@@ -855,6 +859,7 @@ function applyPanel(event) {
 }
 
 function update(change) {
+  pickNote = ''; // the note answers one typed name; any later change makes it stale
   filter = { ...filter, ...change };
   shown = PAGE;
   saveFilter();
@@ -901,6 +906,8 @@ $('product-pick').addEventListener('change', (event) => {
   if (!picked && text) {
     $('search').value = text;
     update({ query: text });
+    pickNote = text;
+    render();
   }
 });
 $('lang').addEventListener('click', () => crossFade(() => {
@@ -917,6 +924,15 @@ $('view-normal').addEventListener('click', () => setDefaultView('normal'));
 $('view-easy').addEventListener('click', () => setDefaultView('easy'));
 $('theme').addEventListener('click', toggleTheme);
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('filters').hidden) closePanel(); });
+document.addEventListener('keydown', (event) => {
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key) || !event.target.classList?.contains('row')) return;
+  const rows = [...document.querySelectorAll('button.row')];
+  const next = rows[rows.indexOf(event.target) + (event.key === 'ArrowDown' ? 1 : -1)];
+  if (next) {
+    event.preventDefault();
+    next.focus();
+  }
+});
 // The phone sheet dims the Board behind it (CSS); a tap on the dimmed Board closes it, as a sheet does.
 document.addEventListener('pointerdown', (event) => {
   const form = $('filters');
@@ -1029,7 +1045,7 @@ function settingLine(text, file = '') {
   return [para('action', typeof file === 'string' && file ? t.settingIn(file) : t.setting), p, para('caution', t.caution)];
 }
 
-function easyAnswer(s, level) {
+function easyAnswer(s, level, cve = '') {
   const t = TEXT[lang];
   const action = easyAction(s);
   const parts = []; // the plain sentence is already the row's second line
@@ -1059,6 +1075,8 @@ function easyAnswer(s, level) {
       if (action.fixed) parts.push(para('fixed', t.fixedIn(action.fixed)));
     }
   }
+  // A version to compare with: one line on where to look, not a how-to (user, 11-08: readers ask the vendor or an AI).
+  if (fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)) parts.push(para('hint', t.todo.versionHelp(cve)));
   if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file)));
   return parts;
 }
@@ -1112,7 +1130,7 @@ function riskCell(incident) {
   dot.setAttribute('aria-hidden', 'true');
   cell.append(dot, defaultView === 'easy' ? TEXT[lang][level] : TEXT[lang].levels[level]);
   // Why it is this high when the score alone would not say so: exploited in the wild lifts it to the top level.
-  if (incident.kev) cell.append(el('small', 'why kev', TEXT[lang].kevReason));
+  if (isExploited(incident)) cell.append(el('small', 'why kev', TEXT[lang].kevReason));
   return cell;
 }
 
@@ -1226,7 +1244,7 @@ function details(incident) {
   const easy = defaultView === 'easy';
   const parts = !incident.summary ? briefNote(incident) : easy ? todoList(incident) : summary(incident.summary[lang]);
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
-  if (easy && incident.kev) parts.unshift(para('kev', t.kevEasy));
+  if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   if (easy && incident.cves.length) parts.unshift(para('cve-line', incident.cves.join(', ')));
   const mentions = el('ul', 'mentions');
   for (const m of incident.mentions) {
@@ -1281,7 +1299,9 @@ function row(incident, pinned) {
     }
   });
   body.append(...details(incident));
-  li.append(button, body);
+  const heading = el('h3', 'row-h');
+  heading.append(button);
+  li.append(heading, body);
   return li;
 }
 

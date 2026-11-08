@@ -42,7 +42,8 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 - One row per Incident, not per CVE (ADR 0001). Vocabulary in `CONTEXT.md`.
 - Board is a bulletin-board list (risk, CVE, title, target tags, date); rows expand in place; one
   Normal|Easy switch at the top; language toggle.
-- Risk banner set by rules (KEV or CVSS 9.0+, 7.0+, else notice), not by the model.
+- Risk banner set by rules: exploited (a CISA KEV listing, or a Summary whose sources report attacks; user, 2026-11-08)
+  or CVSS 9.0+ is the top level, 7.0+ the next, else notice. The model only reports what sources say, never the level.
 - Easy view to-do per Incident: does the visitor use it (써요 / 안 써요 / 몰라요), then the action and their own
   tick. Answers stay in the visitor's browser (shared between open tabs, never sent); answered rows step back.
   "조치함" is the visitor's word, never a check the Board ran.
