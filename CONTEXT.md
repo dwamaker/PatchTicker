@@ -58,6 +58,10 @@ _Avoid_: description, analysis, verdict
 The second way to read the Board, chosen with one Normal|Easy switch at the top: a loud risk banner, one or two plain sentences, and the one action to take now (a command to run, or the devices to update). The normal view is the default.
 _Avoid_: simple mode, ELI5, beginner view
 
+**To-do** (지금 할 일):
+The Easy view's checklist for one Incident: whether the visitor uses it (써요, 안 써요, 몰라요), then the Mitigation and the visitor's own tick. The answer stays in the visitor's browser; an answered Incident shows 조치함 or 해당 없음, which is the visitor's word, not a check the Board ran.
+_Avoid_: task, ticket, checklist item
+
 **Risk banner** (위험 배너):
 The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model.
 _Avoid_: alert, badge, warning level

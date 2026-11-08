@@ -35,7 +35,10 @@ CVE ID with the Korean title under it (the Easy view and CVE-less Incidents lead
 CVSS ring (arc filled to the score, number inside, coloured by rating), line badges with the vendor
 in the name, published date over time, chevron. Changed 2026-11-08 at the user's request; the English
 line left the row. Easy view (same day): plain headline over one plain sentence, CVSS ring kept, every
-Mention listed in the details.
+Mention listed in the details. Evening of 11-08: operating systems are outline badges, not lines (eight
+distinct line hues); the Easy panel's action is a to-do ("지금 할 일": 써요/안 써요/몰라요, then the action and
+다 했어요), and answered rows mute their alarm and sink in 주목 on the next visit; a "읽는 법" legend sits on
+the status line.
 
 FORM: user-pinned combination: 지하철 안내 (pick, rank 1 of the re-rolled list) with the grouping
 and framed-Highlight UI of 재난문자 (assigned). Signature move: Product line badges with fixed
