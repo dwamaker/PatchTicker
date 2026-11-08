@@ -201,7 +201,12 @@ def absorb(target, other):
     target["cves"] += [c for c in other["cves"] if c not in target["cves"]]
     seen = {url_key(m["url"]) for m in target["mentions"]}
     for m in other["mentions"]:
-        if url_key(m["url"]) not in seen:
+        if m["kind"] == "advisory" and url_key(m["url"]) in seen:
+            # Only a CVE record's tag says "advisory"; it beats the write-up an HN link guessed for the same page.
+            for t in target["mentions"]:
+                if url_key(t["url"]) == url_key(m["url"]):
+                    t["kind"] = "advisory"
+        elif url_key(m["url"]) not in seen:
             seen.add(url_key(m["url"]))
             target["mentions"].append(m)
     target["urls"] = sorted(set(target["urls"]) | set(other["urls"]) | seen)

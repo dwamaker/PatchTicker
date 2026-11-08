@@ -176,6 +176,19 @@ class StoryPageTest(unittest.TestCase):
                          [("advisory", "https://example.org/a"), ("writeup", "https://sshhole.com"), ("repo", "https://github.com/x/poc")])
         self.assertIn("https://www.openssh.org/releasenotes.html#10.6p2", group["urls"])  # untagged: a key only
 
+    def test_a_page_an_hn_story_linked_first_becomes_the_advisory_once_the_cve_record_tags_it(self):
+        # SonicWall's PSIRT page came in as an HN story's link (a write-up), then the CVE record tagged it vendor-advisory.
+        from collector.incidents import absorb
+        psirt = "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014"
+        target = {"cves": [], "first_seen": "2026-11-07T00:00:00Z", "brief": {"text": "", "lead": psirt}, "urls": [],
+                  "mentions": [{"kind": "discussion", "url": HN_STORY}, {"kind": "writeup", "url": psirt}]}
+        record = {"cves": ["CVE-2026-19868"], "brief": {"text": "x", "lead": ""}, "urls": [],
+                  "mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-19868"},
+                               {"kind": "advisory", "url": psirt}]}
+        absorb(target, record)
+        self.assertEqual([m["kind"] for m in target["mentions"]], ["discussion", "advisory", "cve_record"])
+        self.assertEqual(target["brief"]["lead"], psirt)
+
     def test_the_records_own_cvss_is_used_cna_first_then_adp_and_v3_before_v4(self):
         from collector.cvelist import record_cvss
         self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}, {}]), 8.1)  # sshole's CNA score

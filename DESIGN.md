@@ -397,7 +397,11 @@ Restrained outlined buttons for theme, language and copying a command.
   plain action sentence and any stopgap) and a "다 했어요" checkbox; step 2 stays fully readable, only the checkbox waits for step 1 and says so.
 - **Product lines and models:** when product lines have their own fixed versions, step 2 lists them one per
   line ("SonicWall Gen7 7.3.4-7013 이상"); past four device models the row shows the product alone and step 1
-  folds the models under "해당 모델 보기 (N개)", where the reader looks for their own.
+  folds the models under "해당 모델 보기 (N개)", where the reader looks for their own. When the Summary says which
+  models each line has (`fixes[].devices`), the fold groups them under the line's name in Ink, models no line names last.
+- **Context lines:** a command says which system it is for when a source or its package tool tells ("Alpine 리눅스라면
+  이 명령으로 업데이트하세요:"); a config line names its file when a source does ("설정 파일 /etc/ssh/sshd_config에 이 줄을
+  넣으세요:"). On the Korean page an English source title reads as the Summary's Korean line; the original is its tooltip.
 - **Finishing:** 다 했어요 ends with "조치 완료! 이 브라우저에 기억해 둘게요."; 안 써요 ends at once with "해당 없음으로
   표시했어요.". The row then carries "✓ 조치함" or "✓ 해당 없음" under its risk word in both views. 다시 고르기 clears it.
 - **Answered rows:** once the visitor says 안 써요 or 다 했어요, the row's alarm steps back (risk word and dot in Hint

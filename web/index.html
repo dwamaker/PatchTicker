@@ -269,6 +269,9 @@
     .details .fixes li { padding: 0.125rem 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .models li { overflow-wrap: anywhere; break-inside: avoid; }
     .models { margin-top: 0.375rem; }
+    .models ul.lines { columns: auto; padding-left: 0; list-style: none; }
+    .models ul.lines > li + li { margin-top: 0.5rem; }
+    .models ul.lines strong { color: var(--ink); }
     .models summary { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--focus); font-weight: 600; cursor: pointer; }
     .models ul { margin: 0; padding-left: 1.25rem; columns: 2 12rem; column-gap: 1.5rem; font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); }
     /* Easy view to-do list: numbered steps that tick, a small progress ring, and the visitor's own "조치함" */
@@ -323,6 +326,9 @@
       .alert .row { padding-left: calc(0.75rem - 2px); }
       .details { padding: 0 0.75rem 1rem; }
       .c-date { flex-direction: row; gap: 0.375rem; }
+      /* the risk word leads a phone row from its top-left corner: one step up from the date beside it */
+      .c-risk { font-size: calc(var(--fs-small) * var(--ts)); }
+      .why { font-size: calc(var(--fs-meta) * var(--ts)); }
     }
     /* micro-feedback: presses and toggles answer within 100-250ms; under reduced motion only colours change */
     .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }

@@ -26,6 +26,7 @@ SSHOLE_SUMMARY = {
         "easy_title": "Alpine·OpenWrt SSH 로그인 뚫림 위험 발견",
         "easy_action": "OpenSSH를 새 버전으로 업데이트하고, 그 전에는 비밀번호 로그인을 끄세요.",
         "names": ["OpenSSH"],
+        "command_for": "",
     },
     "en": {
         "title": "OpenSSH on musl lets password-less accounts in with a long password",
@@ -37,6 +38,7 @@ SSHOLE_SUMMARY = {
         "easy_title": "Alpine and OpenWrt SSH logins open to anyone",
         "easy_action": "Update OpenSSH, and turn password logins off until then.",
         "names": ["OpenSSH"],
+        "command_for": "",
     },
     "products": ["OpenSSH"],
     "lead": "https://sshhole.com",
@@ -47,6 +49,8 @@ SSHOLE_SUMMARY = {
     "fixes": [],
     "incident": True,
     "platforms": ["Linux"],
+    "stopgap_file": "",
+    "titles_ko": [],
 }
 
 
@@ -178,7 +182,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -212,6 +216,9 @@ class InstantSummaryTest(unittest.TestCase):
             "a per-line fix naming a version not in the input": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.7p1"}]},
             "a per-line fix that is not an object": SSHOLE_SUMMARY | {"fixes": ["10.6p2"]},
             "a per-line fix without a version": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH"}]},
+            "a per-line model with a number not in the input": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.6p2", "devices": ["Router X9000"]}]},
+            "a per-line model list that is not a list": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.6p2", "devices": "all"}]},
+            "a command context with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"command_for": "On Alpine 3.99"}},
             "an Easy action naming a version not in the input": SSHOLE_SUMMARY | {"en": en | {"easy_action": "Update to 10.7p1."},
                                                                                  "ko": ko | {"easy_action": "10.7p1로 업데이트하세요."}},
             "a missing field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "lead"},
@@ -256,10 +263,37 @@ class InstantSummaryTest(unittest.TestCase):
 
     def test_fixed_versions_per_product_line_are_kept_and_old_replies_have_none(self):
         self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH portable", "version": "10.6p2"}]}))
-        self.assertEqual(board(self.store)[HN_STORY]["summary"]["fixes"], [{"for": "OpenSSH portable", "version": "10.6p2"}])
+        # A per-line fix from before its models were asked for has none.
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["fixes"], [{"for": "OpenSSH portable", "version": "10.6p2", "devices": []}])
         self.setUp()
         self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k != "fixes"}))  # a reply from before
         self.assertEqual(board(self.store)[HN_STORY]["summary"]["fixes"], [])
+
+    def test_each_per_line_fix_carries_its_own_models(self):
+        fixes = [{"for": "OpenSSH portable", "version": "10.6p2", "devices": ["OpenSSH portable on Alpine"]}]
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"fixes": fixes}))
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["fixes"], fixes)
+
+    def test_the_command_says_which_system_it_is_for_and_the_stopgap_names_its_file(self):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"command_for": "Alpine 리눅스라면"},
+                                  "en": SSHOLE_SUMMARY["en"] | {"command_for": "On Alpine Linux"},
+                                  "stopgap_file": "/etc/ssh/sshd_config.d/00-no-passwords.conf"}
+        self.merged_sshole(FakeClaude(reply))
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["ko"]["command_for"], summary["en"]["command_for"]), ("Alpine 리눅스라면", "On Alpine Linux"))
+        self.assertEqual(summary["stopgap_file"], "/etc/ssh/sshd_config.d/00-no-passwords.conf")
+
+    def test_a_stopgap_file_not_in_the_input_is_dropped_and_old_replies_have_none(self):
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"stopgap_file": "/etc/ssh/sshd_config"}))  # the page names another file
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["stopgap_file"], summary["ko"]["command_for"], summary["titles_ko"]), ("", "", []))
+
+    def test_english_mention_titles_get_a_korean_line_for_input_links_only(self):
+        reply = SSHOLE_SUMMARY | {"titles_ko": [{"url": HN_STORY, "title": "sshole (OpenSSH 로그인 결함)"},
+                                                {"url": "https://example.org/elsewhere", "title": "다른 곳"},
+                                                {"url": HN_STORY, "title": "9999개 서버"}]}  # a made-up number: that line only
+        self.merged_sshole(FakeClaude(reply))
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["titles_ko"], [{"url": HN_STORY, "title": "sshole (OpenSSH 로그인 결함)"}])
 
     def test_the_easy_view_gets_its_own_plain_action_sentence(self):
         self.merged_sshole(FakeClaude(SSHOLE_SUMMARY))

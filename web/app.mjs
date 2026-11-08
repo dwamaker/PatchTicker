@@ -18,7 +18,7 @@ const TEXT = {
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', picked: '고른 제품', remove: (name) => `${name} 빼기`,
     search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', theme: '어두운 화면',
     pin: '주목', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', unrated: '점수 아직 없음', kevReason: '실제 악용 중', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
-    setting: '설정 파일에 이 줄을 넣으세요:', caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
+    setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, scopeWeek: '최근 7일 안에서 찾았습니다.', scopeMonths: '최근 3개월 안에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
     clearWeek: '최근 7일 동안 게시된 사건이 없습니다', clearMonths: '최근 3개월 동안 게시된 사건이 없습니다', clearNote: '고른 제품은 주소에 저장됩니다. 즐겨찾기해 두면 다음에도 바로 확인할 수 있습니다.', searchOlderMonths: '이전 사건에서도 찾기 (최근 3개월)',
     noIncidents: '아직 게시된 사건이 없습니다.', recentOnly: '최근 7일분', loadOlder: '이전 사건 불러오기 (최근 3개월)', showMore: (n) => `더 보기 (${n}건 남음)`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
@@ -57,7 +57,7 @@ const TEXT = {
     products: 'Products you run', productsHint: 'Type to find a Product', picked: 'Picked Products', remove: (name) => `Remove ${name}`,
     search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', theme: 'Dark theme',
     pin: 'Top', noCve: 'No CVE yet', moreCves: (n) => ` +${n}`, published: 'First published', unrated: 'Not rated yet', kevReason: 'Exploited in the wild', kevEasy: 'Attackers are using this right now!',
-    setting: 'Add this line to the config file:', caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
+    setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, scopeWeek: 'Searched the last 7 days.', scopeMonths: 'Searched the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
     clearWeek: 'No Incident posted in the last 7 days', clearMonths: 'No Incident posted in the last 3 months', clearNote: 'Your picks are saved in the address. Bookmark it to check again next time.', searchOlderMonths: 'Search older Incidents too (last 3 months)',
     noIncidents: 'No Incidents have been posted yet.', recentOnly: 'last 7 days', loadOlder: 'Load older Incidents (last 3 months)', showMore: (n) => `Show more (${n} left)`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
@@ -604,7 +604,7 @@ function todoList(incident) {
   tags.append(...rowTags(incident, lang).filter((name) => !os.has(name)).map(lineBadge));
   const first = [el('p', 'q', c.use), ...(tags.childElementCount ? [tags] : [])];
   if (os.size) first.push(el('p', 'runs', c.runsOn([...os].join('·'))));
-  if (Array.isArray(s.devices) && s.devices.length > MANY_DEVICES) first.push(modelList(s.devices));
+  if (Array.isArray(s.devices) && s.devices.length > MANY_DEVICES) first.push(modelList(s.devices, fixLines(s)));
   if (st.used === undefined) {
     const choices = el('div', 'choices');
     // 몰라요 counts as in use: when unsure, the Board shows the risk rather than hiding it (PRODUCT.md principle 2).
@@ -998,11 +998,12 @@ function commandLine(text) {
 }
 
 // A config line, not a shell command: no copy button that invites pasting it into a terminal, and a warning.
-function settingLine(text) {
+// file: the config file a source names for it ("/etc/ssh/sshd_config"), else the reader is told only "the config file".
+function settingLine(text, file = '') {
   const t = TEXT[lang];
   const p = el('p', 'command');
   p.append(el('code', '', text));
-  return [para('action', t.setting), p, para('caution', t.caution)];
+  return [para('action', typeof file === 'string' && file ? t.settingIn(file) : t.setting), p, para('caution', t.caution)];
 }
 
 function easyAnswer(s, level) {
@@ -1021,7 +1022,8 @@ function easyAnswer(s, level) {
     }
     parts.push(para('action', t.fixesIntro), list);
   } else {
-    if (action.kind === 'command') parts.push(...(isShellCommand(action.command) ? [para('action', t.command), commandLine(action.command)] : settingLine(action.command)));
+    const where = s[lang].command_for; // "Alpine 리눅스라면": the command is for one system only
+    if (action.kind === 'command') parts.push(...(isShellCommand(action.command) ? [para('action', where ? t.commandFor(where) : t.command), commandLine(action.command)] : settingLine(action.command)));
     if (action.kind === 'version') parts.push(para('action', t.version(action.fixed)));
     // No fixed version, command or devices: the Summary's plain action sentence; Summaries made before it existed fall
     // back to the normal advice ("run newer than 7.3.3-7015"), else say we have not confirmed one.
@@ -1034,15 +1036,31 @@ function easyAnswer(s, level) {
       if (action.fixed) parts.push(para('fixed', t.fixedIn(action.fixed)));
     }
   }
-  if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap)));
+  if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file)));
   return parts;
 }
 
-// A long list of affected models, folded: the reader opens it only to find their own model.
-function modelList(models) {
+// Fix lines that name their own models (SonicWall Gen7: TZ270, TZ370...), so the reader finds their model under its line.
+const fixLines = (s) => (Array.isArray(s.fixes) ? s.fixes : []).filter((f) => typeof f?.for === 'string' && f.for
+  && Array.isArray(f.devices) && f.devices.length && f.devices.every((d) => typeof d === 'string'));
+
+// A long list of affected models, folded: the reader opens it only to find their own model. With fix lines, the models
+// sit under their line's name, and any model no line names comes last.
+function modelList(models, lines = []) {
   const box = el('details', 'models');
-  const list = el('ul', '');
-  list.append(...models.map((m) => el('li', '', m)));
+  const list = el('ul', lines.length ? 'lines' : '');
+  const plain = (names) => names.map((m) => el('li', '', m));
+  if (lines.length) {
+    const named = new Set(lines.flatMap((f) => f.devices));
+    for (const f of lines) {
+      const li = el('li', '');
+      const sub = el('ul', '');
+      sub.append(...plain(f.devices));
+      li.append(el('strong', '', f.for), sub);
+      list.append(li);
+    }
+    list.append(...plain(models.filter((m) => !named.has(m))));
+  } else list.append(...plain(models));
   const summary = el('summary', '', TEXT[lang].models(models.length));
   // The same fold as a row: the browser would snap the list open and shut.
   summary.addEventListener('click', (event) => {
@@ -1186,7 +1204,11 @@ function details(incident) {
   const mentions = el('ul', 'mentions');
   for (const m of incident.mentions) {
     const item = el('li', '');
-    item.append(`${t.mentions[m.kind] ?? m.kind}: `, anchor(m.url, m.title || host(m.url)));
+    // On the Korean page an English title shows the Summary's Korean line; the original stays in the tooltip.
+    const gloss = lang === 'ko' && m.title && (incident.summary?.titles_ko || []).find((g) => g?.url === m.url && typeof g.title === 'string')?.title;
+    const link = anchor(m.url, gloss || m.title || host(m.url));
+    if (gloss) link.title = m.title;
+    item.append(`${t.mentions[m.kind] ?? m.kind}: `, link);
     mentions.append(item);
   }
   return [...parts, leadLine(incident), mentions];
@@ -1211,7 +1233,14 @@ function row(incident, pinned) {
   if (why) risk.append(el('small', 'why', TEXT[lang].why[why]));
   const mine = finished(incident.id);
   if (mine) risk.append(markChip(mine));
-  button.append(risk, titleCell(incident), scoreCell(incident), tagsCell(incident), dateCell(incident), chevron);
+  const cells = { risk, title: titleCell(incident), score: scoreCell(incident), tags: tagsCell(incident), date: dateCell(incident) };
+  for (const [k, cell] of Object.entries(cells)) cell.id = `${body.id}-${k}`;
+  cells.title.querySelector('.title').id = `${body.id}-name`;
+  cells.title.querySelector('.sub').id = `${body.id}-sub`;
+  // Screen readers hear the bold title and risk as the row's name, the rest as its description, not one long name.
+  button.setAttribute('aria-labelledby', `${body.id}-name ${body.id}-risk`);
+  button.setAttribute('aria-describedby', `${body.id}-sub ${body.id}-score ${body.id}-tags ${body.id}-date`);
+  button.append(...Object.values(cells), chevron);
   button.addEventListener('click', () => {
     const opening = !open.has(incident.id);
     button.setAttribute('aria-expanded', opening);
