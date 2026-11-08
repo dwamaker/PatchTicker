@@ -12,7 +12,7 @@ colors:
   rail: "light-dark(#c4c9cf, #3a4048)"
   control-edge: "light-dark(#858e97, #6b737c)"
   emergency-red: "light-dark(#c4231c, #ff6b62)"
-  caution-amber: "light-dark(#8f5c00, #f5b400)"
+  caution-amber: "light-dark(#b54a00, #f5b400)"
   notice-slate: "light-dark(#5f6b76, #9aa3ad)"
   wayfinding-blue: "light-dark(#1a5fb4, #7cc4ff)"
   clear-green: "light-dark(#1d7a45, #4fc48c)"
@@ -328,6 +328,8 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
   (on phones, under the product field next to search); the panel opens right under that row.
+- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주목 line; one order
+  serves 주목 and the list (주목 is still chosen by importance), and the list heading names it.
 - **Panel:** opens under that line in Kiosk Panel with a Rail border: 게시일 시작/끝, 최소 CVSS, CVE, then chip rows
   for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS, then 정렬. Nothing changes until 필터 적용;
   필터 초기화 clears the panel only (Products picked at the top and the search stay). Everything lives in the hash.
@@ -405,6 +407,7 @@ Restrained outlined buttons for theme, language and copying a command.
   the answer buttons, so opening it never moves them away from the question.
 - **Step 1 question:** the Summary's `use_question` names the condition that makes a reader affected ("Alpine 리눅스에서
   원격 접속 서버를 돌리나요?"); older Summaries ask "이 제품을 쓰고 있나요?". The answer buttons are a group named by it.
+- **Caution line:** the config caution is Secondary Ink with a drawn warning mark, never the 위험 amber (Two Alphabets).
 - **Stopgap follow-up:** when a source says what a stopgap needs ("바꾼 뒤 sshd를 다시 시작하세요."), it follows the stopgap line.
 - **Context lines:** a command says which system it is for when a source or its package tool tells ("Alpine 리눅스라면
   이 명령으로 업데이트하세요:"); a config line names its file when a source does ("설정 파일 /etc/ssh/sshd_config에 이 줄을

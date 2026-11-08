@@ -171,6 +171,20 @@ def easy_jargon(summary):
     return sorted(found)
 
 
+RESTART_RE = re.compile(r"restart|reload|reboot|재시작|다시 시작|재부팅", re.I)
+
+
+def missing_stopgap_step(summary):
+    """The Easy view shows the stopgap without the normal view's prose, so when the mitigation says a restart or reload
+    makes it work (sshole: "restart sshd"), stopgap_then must carry it in both languages. Empty string when fine."""
+    if not summary["stopgap"]:
+        return ""
+    for lang in ("ko", "en"):
+        if RESTART_RE.search(summary[lang]["mitigation"]) and not summary[lang]["stopgap_then"]:
+            return f"stopgap step missing in {lang}: the mitigation says to restart"
+    return ""
+
+
 class Rejected(ValueError):
     """The model's reply failed the schema or the code check; the Brief stays."""
 
@@ -243,10 +257,11 @@ def save_reply(incident, reply, text, seen, stamp):
     except Rejected as err:
         failed(incident, str(err))
         return
-    # Jargon in the Easy view costs a retry, never the Summary: the last try is kept as it is.
-    jargon = easy_jargon(summary)
-    if jargon and incident.get("summary_error", {}).get("tries", 0) + 1 < MAX_TRIES:
-        failed(incident, f"jargon in the Easy view: {jargon}")
+    # Jargon in the Easy view, or a stopgap without the step its mitigation says it needs, costs a retry, never the
+    # Summary: the last try is kept as it is.
+    problem = easy_jargon(summary) and f"jargon in the Easy view: {easy_jargon(summary)}" or missing_stopgap_step(summary)
+    if problem and incident.get("summary_error", {}).get("tries", 0) + 1 < MAX_TRIES:
+        failed(incident, problem)
         return
     incident["summary"] = summary | {"at": stamp}
     incident.pop("summary_error", None)

@@ -47,6 +47,8 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 - Easy view to-do per Incident: does the visitor use it (써요 / 안 써요 / 몰라요), then the action and their own
   tick. Answers stay in the visitor's browser (shared between open tabs, never sent); answered rows step back.
   "조치함" is the visitor's word, never a check the Board ran.
+- Judgments are the AI's first (Summary text, Incident or not, reported attacks); corrections come from readers through
+  public GitHub issues, not a hand-kept override list (user, 2026-11-08).
 - Required notices: the NVD sentence verbatim in English; reference-only note.
 - No login, no analytics, no cookies, no third-party trackers.
 - Light and dark themes: follows the system setting with a remembered toggle; both meet WCAG 2.2 AA

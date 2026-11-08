@@ -42,11 +42,19 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // known Product's name is that Product, shown with the Summary's vendor-led name ("SonicOS" -> "SonicWall SonicOS").
 // lang shows each Summary product by the name readers of that language know ("Windows 그림판"), as the badges do;
 // ids stay language-free so a shared filter works in either language.
+// The name a Product shows in this language. A Korean name stays ("Windows 그림판"); a Latin one that differs from the
+// Summary's product name is the model shortening it ("Apache Axis2" for "Apache Axis2/Java"), so the product name wins.
+const HANGUL = /[\uac00-\ud7a3]/;
+function shownName(s, lang, k) {
+  const local = s?.[lang]?.names?.[k];
+  const product = s?.products?.[k];
+  return local && product && !HANGUL.test(local) && local !== product ? product : local || product;
+}
+
 export function productsOf(i, lang = 'en') {
   const found = new Map((i.products || []).map((p) => [p.id, p]));
-  const local = i.summary?.[lang]?.names || [];
   (i.summary?.products || []).forEach((name, k) => {
-    const shown = local[k] || name;
+    const shown = shownName(i.summary, lang, k);
     const same = [...found.values()].find((p) => name.toLowerCase().includes(p.name.toLowerCase()));
     if (same) found.set(same.id, { ...same, name: shown });
     else found.set(`name:${name.toLowerCase()}`, { id: `name:${name.toLowerCase()}`, name: shown });
@@ -127,6 +135,14 @@ export function easyAction(s) {
   return { kind: 'none', stopgap };
 }
 
+// The Board's one order, for 주목 and the rest alike (user, 11-08): newest first, or by risk level, or by CVSS score,
+// each falling back to newest.
+const newest = (a, b) => (publishedAt(a) < publishedAt(b) ? 1 : publishedAt(a) > publishedAt(b) ? -1 : 0);
+export function orderBy(sort) {
+  return { risk: (a, b) => RISKS.indexOf(riskLevel(a)) - RISKS.indexOf(riskLevel(b)) || newest(a, b),
+    cvss: (a, b) => (b.cvss ?? -1) - (a.cvss ?? -1) || newest(a, b) }[sort] || newest;
+}
+
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
 // Returns the visible Incidents newest first, and the top ten of those first seen in the seven days before `now`.
 export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
@@ -147,10 +163,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
       ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
     return words.every((w) => text.includes(w));
   });
-  const newest = (a, b) => (publishedAt(a) < publishedAt(b) ? 1 : publishedAt(a) > publishedAt(b) ? -1 : 0);
-  const order = { risk: (a, b) => RISKS.indexOf(riskLevel(a)) - RISKS.indexOf(riskLevel(b)) || newest(a, b),
-    cvss: (a, b) => (b.cvss ?? -1) - (a.cvss ?? -1) || newest(a, b) }[sort] || newest;
-  const list = shown.sort(order);
+  const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // A stable sort keeps newest first among equal scores.
   const highlights = list.filter((i) => i.first_seen >= since && !quietHnStory(i)).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
@@ -198,7 +211,7 @@ export const cveHead = (cves = []) => (cves.length ? { id: cves[0], more: cves.l
 export const MANY_DEVICES = 4;
 export const rowTags = (i, lang = 'en') => {
   const s = i.summary;
-  const names = s?.[lang]?.names?.length ? s[lang].names : s?.products?.length ? s.products : (i.products || []).map((p) => p.name);
+  const names = s?.products?.length ? s.products.map((_, k) => shownName(s, lang, k)) : (i.products || []).map((p) => p.name);
   // A Product that is also one of the operating systems ("Android", shown in Korean as "안드로이드") is the OS badge only.
   const os = new Set((s?.platforms || []).map((p) => p.toLowerCase()));
   const own = names.filter((_, k) => !os.has(String(s?.products?.[k] ?? '').toLowerCase()));

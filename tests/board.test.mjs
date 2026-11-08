@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isExploited, LINES, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { isExploited, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -440,4 +440,21 @@ test('a Product that is also an operating system shows once, as the OS badge', (
     ko: { names: ['iOS', '안드로이드'] }, en: { names: ['iOS', 'Android'] } } };
   assert.deepEqual(rowTags(campaign, 'ko'), ['iOS', 'Android']);
   assert.deepEqual(rowTags(campaign, 'en'), ['iOS', 'Android']);
+});
+
+test('one sort orders both groups: newest first, or by risk, or by score', () => {
+  const a = { ...incident('CVE-2026-1', '2026-11-01T00:00:00Z'), cvss: 9.8 };
+  const b = { ...incident('CVE-2026-2', '2026-11-03T00:00:00Z'), cvss: 5 };
+  const c = { ...incident('CVE-2026-3', '2026-11-02T00:00:00Z'), cvss: 7.5 };
+  const ids = (sort) => [a, b, c].sort(orderBy(sort)).map((i) => i.id);
+  assert.deepEqual(ids('new'), ['CVE-2026-2', 'CVE-2026-3', 'CVE-2026-1']);
+  assert.deepEqual(ids('risk'), ['CVE-2026-1', 'CVE-2026-3', 'CVE-2026-2']);
+  assert.deepEqual(ids('cvss'), ['CVE-2026-1', 'CVE-2026-3', 'CVE-2026-2']);
+});
+
+test('a Latin display name that is not the product name falls back to it, so one Product reads one way', () => {
+  const axis = { summary: { products: ['Apache Axis2/Java'], platforms: [], devices: [], ko: { names: ['Apache Axis2'] }, en: { names: ['Apache Axis2'] } } };
+  assert.deepEqual(rowTags(axis, 'ko'), ['Apache Axis2/Java']);
+  const paint = { summary: { products: ['Microsoft Paint'], platforms: [], devices: [], ko: { names: ['Windows 그림판'] } } };
+  assert.deepEqual(rowTags(paint, 'ko'), ['Windows 그림판']); // a Korean name stays
 });

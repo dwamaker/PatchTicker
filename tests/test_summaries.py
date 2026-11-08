@@ -525,6 +525,14 @@ class EasyJargonTest(unittest.TestCase):
                 self.assertIn("jargon in the Easy view", incident["summary_error"]["reason"])
                 self.assertNotIn("final", incident["summary_error"])
 
+    def test_a_stopgap_whose_mitigation_says_restart_needs_its_easy_follow_up_step(self):
+        restart = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"mitigation": "Set PasswordAuthentication no and restart sshd."}}
+        incident = self.save(restart)
+        self.assertNotIn("summary", incident)
+        self.assertIn("stopgap step missing", incident["summary_error"]["reason"])
+        both = restart | {lang: restart[lang] | {"stopgap_then": then} for lang, then in (("ko", "바꾼 뒤 sshd를 다시 시작하세요."), ("en", "Then restart sshd."))}
+        self.assertIn("summary", self.save(both))
+
     def test_the_last_try_keeps_the_summary_even_with_jargon(self):
         incident = self.save(SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"easy_title": "인증 우회 위험"}}, tries=2)
         self.assertEqual(incident["summary"]["ko"]["easy_title"], "인증 우회 위험")

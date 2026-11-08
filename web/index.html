@@ -20,7 +20,7 @@
       --rule-2: light-dark(#c4c9cf, #3a4048);
       --edge: light-dark(#858e97, #6b737c);
       --high: light-dark(#c4231c, #ff6b62);
-      --mid: light-dark(#8f5c00, #f5b400);
+      --mid: light-dark(#b54a00, #f5b400);
       --note: light-dark(#5f6b76, #9aa3ad);
       --focus: light-dark(#1a5fb4, #7cc4ff);
       --ok: light-dark(#1d7a45, #4fc48c); /* done / nothing found: a state, never a risk and never a badge fill */
@@ -79,7 +79,7 @@
     #lang .short { display: none; }
     @media (max-width: 599px) { #lang .full { display: none; } #lang .short { display: inline; } h1 { white-space: nowrap; } } /* the header fits 375px */
     #theme svg { width: 18px; height: 18px; }
-    #theme[aria-pressed="true"] .sun, #theme[aria-pressed="false"] .moon { display: none; }
+    #theme[aria-pressed="true"] .moon, #theme[aria-pressed="false"] .sun { display: none; } /* the icon is the theme it switches to */
     @media (hover: hover) { #views button:not([aria-pressed="true"]):hover { background: var(--panel-2); color: var(--ink); } }
     @media (max-width: 599px) {
       /* name and controls share the first line while they fit; at 320px or with larger text the controls
@@ -109,11 +109,15 @@
     /* skip link: out of sight until a keyboard user reaches it */
     .skip { position: absolute; left: -9999px; }
     .skip:focus { position: static; display: inline-block; margin-top: 0.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--panel); }
-    #all-head:focus { outline: none; }
+    #all-head:focus, #board-start:focus { outline: none; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     /* 주목 line: the group heading on the left, the 필터 button on the right */
     .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.25rem 0 0.625rem; }
     .bar h2 { margin: 0; }
+    .bar { flex-wrap: wrap; }
+    .bar-tools { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+    .sort { display: inline-flex; align-items: center; gap: 0.5rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
+    .sort select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-weight: 500; }
     #filter-btn { gap: 0.5rem; padding: 0 1rem; margin-left: auto; } /* stays at the right even when 주목 is empty */
     .cond { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--rule-2); border-radius: var(--r-pill); background: var(--panel-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; }
     .cond .x { position: relative; width: 10px; height: 10px; }
@@ -184,6 +188,9 @@
     .g-item.group { padding-top: 0.875rem; border-top: 1px solid var(--rule); }
     .legend dt { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; min-width: 0; }
     .legend dd { margin: 0; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.55; }
+    .caution svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; }
+    /* 5: on a phone the guide is a quick reference, tighter, so it is not a screen and a half of reading */
+    @media (max-width: 599px) { .legend { gap: 0.5rem; } .legend dd { font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.45; } }
     .legend .c-date { align-items: flex-start; }
     .g-pin { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 0.75rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-left: 3px solid var(--high); border-radius: var(--r-ctl); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
     .g-views { display: inline-flex; padding: 2px; border: 1px solid var(--edge); border-radius: var(--r-pill); font-size: calc(0.75rem * var(--ts)); }
@@ -264,7 +271,7 @@
     .details .lead, .details .action { font-weight: 600; }
     .details .kev { color: var(--high); }
     .details .cve-line { margin-top: 0; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-    .details .caution { color: var(--mid); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
+    .details .caution { display: flex; align-items: flex-start; gap: 0.375rem; color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
     .more { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 1rem; }
     .more:empty { display: none; }
     .empty { margin-top: 1.75rem; padding: 1.5rem 0; border-top: 1px solid var(--rule-2); }
@@ -371,6 +378,7 @@
   </style>
 </head>
 <body>
+  <a id="skip-top" class="skip" href="#board-start" data-t="skipTop"></a>
   <header class="top"><div class="wrap">
     <h1><i aria-hidden="true"></i>vuln-radar</h1>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal"></button><button id="view-easy" type="button" aria-pressed="false" data-t="easy"></button></div>
@@ -399,8 +407,12 @@
     <section id="guide" class="guide" aria-labelledby="guide-title" hidden></section>
     <p id="announce" class="sr-only" aria-live="polite"></p>
     <a id="skip" class="skip" href="#all-head" data-t="skip" hidden></a>
-    <div class="bar">
+    <div class="bar" id="board-start" tabindex="-1">
       <h2 id="pinned-head"></h2>
+      <div class="bar-tools">
+        <button id="expand-all" class="btn" type="button" hidden></button>
+        <label class="sort"><span data-t="sortLabel"></span><select id="sort"></select></label>
+      </div>
     </div>
     <section id="pinned" aria-labelledby="pinned-head" hidden>
       <ol id="highlights" class="stack"></ol>
