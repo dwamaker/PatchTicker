@@ -220,13 +220,13 @@
     .risk-high .c-risk, .risk-high.c-risk { color: var(--mid); }
     .risk-high .dot { background: var(--mid-mark); }
     .risk-notice .c-risk, .risk-notice.c-risk { color: var(--note); }
-    /* Easy view: the risk word is a sign on closed rows too. 심각! a filled red pill (the dot steps aside), 경계 a gold
-       ring, 주의 plain; the same reds and golds as everywhere (Two Alphabets), only louder. */
+    /* Both views: the risk word is a sign. The top level a red ring, the next a gold ring (the dot steps aside), the
+       last plain with its dot; rings are never filled (user, 11-09); the same reds and golds as everywhere (Two Alphabets). */
     .loud .word { font-size: calc(0.9375rem * var(--ts)); font-weight: 800; line-height: 1.2; }
     .loud.risk-highest .dot, .loud.risk-high .dot { display: none; }
-    .loud.risk-highest .word { padding: 0.25rem 0.75rem; border-radius: var(--r-pill); background: var(--high); color: var(--bg); }
+    .loud.risk-highest .word { padding: calc(0.25rem - 1.5px) calc(0.75rem - 1.5px); border: 1.5px solid var(--high); border-radius: var(--r-pill); }
     .loud.risk-high .word { padding: calc(0.25rem - 1.5px) calc(0.75rem - 1.5px); border: 1.5px solid var(--mid-mark); border-radius: var(--r-pill); }
-    .loud .why { padding-left: 0; }
+    .loud .why { padding-left: 0.75rem; } /* starts where the word inside the ring starts (padding + border) */
     .c-title { grid-area: t; min-width: 0; }
     .title { display: block; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; overflow-wrap: anywhere; text-wrap: pretty; }
     .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin-top: 0.1875rem; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; color: var(--ink-2); letter-spacing: -0.01em; overflow-wrap: anywhere; }
@@ -275,6 +275,11 @@
     .details p { margin: 0.5rem 0 0; max-width: 46rem; overflow-wrap: anywhere; line-height: 1.7; }
     .details .summary, .details .easy { margin-top: 0; font-size: calc(0.9375rem * var(--ts)); }
     .details .conditions, .details .mitigation { font-size: calc(0.9375rem * var(--ts)); }
+    /* a release's CVEs, one line each: the ID in Ink, what it lets an attacker do after it */
+    .details .cve-lines-head { margin-top: 0.75rem; font-weight: 700; font-size: calc(0.9375rem * var(--ts)); }
+    .cve-lines { margin: 0.375rem 0 0; padding-left: 1.25rem; max-width: 46rem; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.5; color: var(--ink-2); }
+    .cve-lines li { margin: 0.25rem 0; overflow-wrap: anywhere; }
+    .cve-lines strong { margin-right: 0.5rem; color: var(--ink); font-variant-numeric: tabular-nums; }
     .details .lead, .details .action { font-weight: 600; }
     .details .kev { color: var(--high); }
     .details .cve-line { margin-top: 0; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
@@ -346,6 +351,12 @@
     #views.ready::before { transition: left 240ms cubic-bezier(0.16, 1, 0.3, 1), width 240ms cubic-bezier(0.16, 1, 0.3, 1); }
     #views.slid button[aria-pressed="true"] { background: none; }
     ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
+    /* rows in a Board redraw: staying rows glide (260ms ease-out), new ones fade in, gone ones leave faster;
+       a row's old and new picture keep their top edge, so an opening row grows downwards */
+    ::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); overflow: clip; }
+    ::view-transition-old(*):only-child { animation-duration: 140ms; }
+    ::view-transition-old(*), ::view-transition-new(*) { height: auto; object-fit: none; object-position: top; }
+    .vt-still::view-transition-group(*) { animation: none; }
     @media (prefers-reduced-motion: reduce) { .chev, .models summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }

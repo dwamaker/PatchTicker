@@ -82,5 +82,8 @@ def mention_group(hit):
 
 
 def is_repo(url):
-    parts = urlsplit(url)
+    try:
+        parts = urlsplit(url)
+    except ValueError:  # a malformed reference ("http://[...") is not a repo
+        return False
     return parts.netloc.lower() == "github.com" and len(parts.path.strip("/").split("/")) == 2

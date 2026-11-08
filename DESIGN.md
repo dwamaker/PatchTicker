@@ -397,10 +397,10 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Style:** the command in the code face on Recessed Panel with a 1px Rail border and 6px radius,
   followed by an outlined copy button. Only commands a source states verbatim appear here.
 
-### Easy view risk sign (bolder, after critique 6)
-- On closed Easy rows the risk word is a sign: 심각! a filled pill in Signal Red with background-coloured text (the
-  dot steps aside), 경계 a 1.5px ring in the brighter gold mark with gold text, 주의 plain in Slate; all 15px/800.
-  The Normal view keeps the dot and word. Contrast: 5.3:1 (심각! by day) and above in both themes.
+### Risk sign (bolder after critique 6; both views since 11-09)
+- In both views the risk word is a sign: the top level (고위험 / 심각!) a 1.5px ring in Signal Red with red text, the
+  next (위험 / 경계) a 1.5px ring in the brighter gold mark with gold text, both with the dot stepping aside; the last
+  (참고 / 주의) plain in Slate with its dot; all 15px/800. Rings are never filled (user, 11-09).
 
 ### Easy view panel
 - **Shape:** an opened Easy row shows the plain action (version, command, devices or the plain action sentence and any
@@ -445,6 +445,11 @@ Restrained outlined buttons for theme, language and copying a command.
   and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
+- **Board continuity:** a redraw the visitor asked for (필터 적용, a chip's ×, clear buttons, a picked Product, 정렬,
+  주목 더 보기 / 접기, 더 보기, 모두 펼치기 / 접기) keeps each row's identity through a View Transition: rows that stay
+  glide to their new place (260ms ease-out), new rows fade in, gone ones leave faster (140ms). Only rows on or within
+  200px of the screen are named, so a long Board stays cheap; typing in search redraws plainly. Reduced motion: rows
+  do not move, the change only cross-fades.
 - **Micro-feedback (100-250ms):** buttons, chips and the switch press in to 96% and tint in 120ms; the 기본|쉬운
   설명 pill slides under the pressed side (240ms); a copied command's check draws itself and "복사됨" slides in; the
   filter count pops when it changes; the all-clear check draws itself when the sign first appears; the theme icon

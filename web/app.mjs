@@ -30,7 +30,7 @@ const TEXT = {
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
-    conditions: '해당 조건', mitigation: '대처법', views: '보기 방식',
+    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
@@ -71,7 +71,7 @@ const TEXT = {
     nvd: '',
     kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
-    conditions: 'Affected when', mitigation: 'Mitigation', views: 'View',
+    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution', levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
@@ -288,6 +288,31 @@ function fold(node, opening, done = () => {}) {
   };
 }
 
+// Board redraws the visitor asked for (filters, sort, 주목 더 보기, 더 보기, 모두 펼치기) keep each row's identity: a row
+// that stays glides to its new place, a new one fades in, a gone one fades out (View Transitions; each row is named in
+// row()). Reduced motion: nothing moves, the change only cross-fades. Typing in search redraws plainly.
+const rowNames = new Map();
+const rowName = (id) => rowNames.get(id) || rowNames.set(id, `row-${rowNames.size + 1}`).get(id);
+// Only rows on or near the screen are named: every named row is captured, and off-screen ones cost memory for nothing.
+function nameRows() {
+  for (const li of document.querySelectorAll('li[data-vt]')) {
+    const box = li.getBoundingClientRect();
+    li.style.viewTransitionName = box.bottom > -200 && box.top < innerHeight + 200 ? li.dataset.vt : '';
+  }
+}
+function boardTransition(change) {
+  if (!document.startViewTransition) return change();
+  document.documentElement.classList.toggle('vt-still', reducedMotion.matches);
+  nameRows();
+  const transition = document.startViewTransition(() => {
+    change();
+    nameRows();
+  });
+  transition.finished.finally(() => {
+    for (const li of document.querySelectorAll('li[data-vt]')) li.style.viewTransitionName = '';
+  });
+}
+
 // Theme and language change the whole page at once: cross-fade it (View Transitions, where the browser has them).
 function crossFade(change) {
   if (reducedMotion.matches || !document.startViewTransition) return change();
@@ -484,7 +509,7 @@ function moreButtons(rest) {
   const buttons = [];
   if (rest > 0) {
     const more = Object.assign(el('button', 'btn', t.showMore(rest)), { type: 'button' });
-    more.addEventListener('click', () => { shown += PAGE; render(); });
+    more.addEventListener('click', () => boardTransition(() => { shown += PAGE; render(); }));
     buttons.push(more);
   }
   if (olderMonths.length) {
@@ -662,7 +687,7 @@ function pinToggle(rest) {
   const t = TEXT[lang];
   const button = Object.assign(el('button', 'btn', pinAll ? t.pinLess : t.pinMore(rest)), { type: 'button' });
   button.setAttribute('aria-expanded', pinAll);
-  button.addEventListener('click', () => { pinAll = !pinAll; render(); });
+  button.addEventListener('click', () => boardTransition(() => { pinAll = !pinAll; render(); }));
   return button;
 }
 
@@ -740,13 +765,17 @@ function applyPanel(event) {
   if (filter.from && filter.from < week && olderMonths.length) loadOlder();
 }
 
-function update(change) {
+function update(change, animate = true) {
   pickNote = ''; // the note answers one typed name; any later change makes it stale
   filter = { ...filter, ...change };
   shown = PAGE;
   saveFilter();
-  render();
-  if (!$('filters').hidden) filterPanel(); // an open panel always shows the filter in force, never a stale draft
+  const redraw = () => {
+    render();
+    if (!$('filters').hidden) filterPanel(); // an open panel always shows the filter in force, never a stale draft
+  };
+  if (animate) boardTransition(redraw);
+  else redraw();
 }
 
 function closePanel() {
@@ -860,12 +889,12 @@ document.addEventListener('keydown', (event) => {
   $('search').focus();
 });
 $('sort').addEventListener('change', (event) => update({ sort: event.target.value }));
-$('expand-all').addEventListener('click', () => {
+$('expand-all').addEventListener('click', () => boardTransition(() => {
   const closing = allOpen();
   for (const id of visibleIds) closing ? open.delete(id) : open.add(id);
   render();
   $('expand-all').focus();
-});
+}));
 $('filter-btn').addEventListener('click', () => {
   const form = $('filters');
   form.hidden = !form.hidden;
@@ -906,7 +935,7 @@ darkQuery.addEventListener('change', pageText);
 let typing;
 $('search').addEventListener('input', (event) => {
   clearTimeout(typing);
-  typing = setTimeout(() => update({ query: event.target.value }), 150);
+  typing = setTimeout(() => update({ query: event.target.value }, false), 150); // no transition under the caret
 });
 window.addEventListener('resize', placePill);
 document.fonts?.ready.then(placePill);
@@ -932,6 +961,23 @@ function summary(s) {
   if (s.conditions.length) parts.push(labelled('conditions', TEXT[lang].conditions, s.conditions.join(' · ')));
   if (s.mitigation) parts.push(labelled('mitigation', TEXT[lang].mitigation, s.mitigation));
   return parts;
+}
+
+// One release's CVEs grouped into one Incident (collector: group_releases): the Normal view names what each one does,
+// from the Summary's Korean/English lines, else each CVE record's own description (English) until the Summary comes.
+function cveList(incident) {
+  if (incident.cves.length < 2) return [];
+  const fromSummary = incident.summary?.[lang]?.cve_lines;
+  const texts = incident.cve_texts || {};
+  const lines = fromSummary?.length ? fromSummary : incident.cves.filter((c) => texts[c]).map((cve) => ({ cve, text: texts[cve] }));
+  if (!lines.length) return [];
+  const list = el('ul', 'cve-lines');
+  for (const line of lines) {
+    const li = el('li');
+    li.append(el('strong', '', line.cve), line.text);
+    list.append(li);
+  }
+  return [para('cve-lines-head', TEXT[lang].cveLines(lines.length)), list];
 }
 
 // Until the Summary arrives the row's title is the Brief, the source's own line (English); this says why.
@@ -1001,6 +1047,9 @@ function easyAnswer(s, level, cve = '') {
     parts.push(para('action', t.fixesIntro), list);
   } else {
     const where = s[lang].command_for; // "Alpine 리눅스라면": the command is for one system only
+    // A command for one system only: everyone else (OpenWrt, Buildroot…) still gets the version to reach, first.
+    const others = action.kind === 'command' && where && s.fixed && !fixes.length;
+    if (others) parts.push(para('action', t.version(s.fixed)));
     if (action.kind === 'command') parts.push(...(isShellCommand(action.command) ? [para('action', where ? t.commandFor(where) : t.command), commandLine(action.command)] : settingLine(action.command)));
     if (action.kind === 'version') parts.push(para('action', t.version(action.fixed)));
     // No fixed version, command or devices: the Summary's plain action sentence; Summaries made before it existed fall
@@ -1015,7 +1064,9 @@ function easyAnswer(s, level, cve = '') {
     }
   }
   // A version to compare with: one line on where to look, not a how-to (user, 11-08: readers ask the vendor or an AI).
-  if (fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)) parts.push(para('hint', t.versionHelp(cve)));
+  const versionToCheck = fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)
+    || (action.kind === 'command' && s[lang].command_for && s.fixed && !fixes.length);
+  if (versionToCheck) parts.push(para('hint', t.versionHelp(cve)));
   if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file)));
   // The step the stopgap needs to take effect ("바꾼 뒤 sshd를 다시 시작하세요."), when a source says it.
   if (action.stopgap && s[lang].stopgap_then) parts.push(para('action', s[lang].stopgap_then));
@@ -1063,12 +1114,12 @@ function modelList(models, lines = []) {
   return box;
 }
 
-// The row's start: a dot in the rule-based Risk colour and its word (loud in the Easy view).
+// The row's start: a dot in the rule-based Risk colour and its word (a ring sign in both views).
 function riskCell(incident) {
   const level = riskLevel(incident);
   const easy = defaultView === 'easy';
-  // The Easy view is loud on closed rows too: the risk word becomes a sign (index.html, .loud).
-  const cell = el('span', `c-risk risk-${level}${easy ? ' loud' : ''}`);
+  // In both views the risk word is a sign (index.html, .loud); only the words differ.
+  const cell = el('span', `c-risk risk-${level} loud`);
   const dot = el('i', 'dot');
   dot.setAttribute('aria-hidden', 'true');
   cell.append(dot, el('b', 'word', easy ? TEXT[lang][level] : TEXT[lang].levels[level]));
@@ -1193,19 +1244,54 @@ function details(incident) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
   const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang]);
+  if (!easy) parts.push(...cveList(incident)); // every CVE's issue in the Normal view (user, 2026-11-09)
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
   if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   if (easy && incident.cves.length) parts.unshift(para('cve-line', incident.cves.join(', ')));
   const mentions = el('ul', 'mentions');
   const order = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'repo'];
   const rank = (m) => (order.includes(m.kind) ? order.indexOf(m.kind) : order.length);
-  for (const m of [...incident.mentions].sort((a, b) => rank(a) - rank(b))) {
-    const item = el('li', '');
+  const lastPart = (url) => {
+    try {
+      return decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() || '');
+    } catch {
+      return ''; // a malformed address from a source: the site name stands in
+    }
+  };
+  const linkOf = (m, fallback) => {
     // On the Korean page an English title shows the Summary's Korean line; the original stays in the tooltip.
     const gloss = lang === 'ko' && m.title && (incident.summary?.titles_ko || []).find((g) => g?.url === m.url && typeof g.title === 'string')?.title;
-    const link = anchor(m.url, gloss || m.title || host(m.url));
+    const link = anchor(m.url, gloss || m.title || fallback);
     if (gloss) link.title = m.title;
-    item.append(`${t.mentions[m.kind] ?? m.kind}: `, link);
+    return link;
+  };
+  // A release group brings dozens of advisories from one site ("보안 공지: github.com" 29 times): three or more of one
+  // kind on one site fold into one line, each link named by the last part of its address (GHSA-xxxx).
+  const groups = new Map();
+  for (const m of [...incident.mentions].sort((a, b) => rank(a) - rank(b))) {
+    const key = `${m.kind} ${host(m.url)}`;
+    groups.set(key, [...(groups.get(key) || []), m]);
+  }
+  for (const list of groups.values()) {
+    const label = t.mentions[list[0].kind] ?? list[0].kind;
+    if (list.length < 3) {
+      for (const m of list) {
+        const item = el('li', '');
+        item.append(`${label}: `, linkOf(m, host(m.url)));
+        mentions.append(item);
+      }
+      continue;
+    }
+    const fold = el('details', 'models');
+    const inner = el('ul', '');
+    for (const m of list) {
+      const li = el('li', '');
+      li.append(linkOf(m, lastPart(m.url) || host(m.url)));
+      inner.append(li);
+    }
+    fold.append(el('summary', '', t.mentionsMany(label, host(list[0].url), list.length)), inner);
+    const item = el('li', '');
+    item.append(fold);
     mentions.append(item);
   }
   return [...parts, leadLine(incident), mentions];
@@ -1218,6 +1304,7 @@ let rowCount = 0;
 // alert edged in its Risk colour, with the details inside the frame.
 function row(incident, pinned) {
   const li = el('li', pinned ? `alert risk-${riskLevel(incident)}` : '');
+  li.dataset.vt = rowName(incident.id); // boardTransition names it: the same row before and after a redraw
   const body = Object.assign(el('div', 'details'), { id: `details-${++rowCount}`, hidden: !open.has(incident.id) });
   const button = Object.assign(el('button', 'row'), { type: 'button' });
   button.setAttribute('aria-controls', body.id);

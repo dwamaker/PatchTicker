@@ -26,7 +26,7 @@ URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 
 # What the Board page reads. Linking keys (urls, cites) and Summary bookkeeping stay in the collector's files:
 # at about 650 Incidents a day they were over half of each Incident's bytes.
-PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "products", "summary")
+PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "products", "summary", "cve_texts")
 
 
 def board_view(incident):
@@ -104,7 +104,10 @@ def is_http(url):
 
 def url_key(url):
     """The same page however it is written: no scheme, www., fragment, trailing slash or utm_ tracking."""
-    parts = urlsplit(url.strip())
+    try:
+        parts = urlsplit(url.strip())
+    except ValueError:  # "http://[..." in scraped text: kept as written, so it never matches a real page
+        return url.strip()
     host = parts.netloc.lower().removeprefix("www.")
     query = "&".join(p for p in parts.query.split("&") if p and not p.lower().startswith("utm_"))
     return host + parts.path.rstrip("/") + (f"?{query}" if query else "")
@@ -121,6 +124,7 @@ def link(incidents, group, stamp):
         **({"published": min(group["published"], stamp)} if group.get("published") else {}),
         **({"cvss": group["cvss"]} if group.get("cvss") is not None else {}),
         **({"products": group["products"]} if group.get("products") else {}),
+        **({"fix_keys": group["fix_keys"]} if group.get("fix_keys") else {}),
         "mentions": mentions,
         "urls": sorted({url_key(u) for u in group["urls"] + [m["url"] for m in mentions]}),
         "brief": {"text": group["text"], "lead": lead(mentions)},
@@ -157,7 +161,7 @@ MAX_CITED_LINKS = 50  # the public monthly file carries these for a week; most p
 def page_keys(page, page_url):
     """CVE IDs and outside link keys in a story's linked page (raw HTML or text). Links back to the page's
     own site are its navigation, not citations."""
-    own = urlsplit(page_url).netloc.lower().removeprefix("www.")
+    own = url_key(page_url).split("/", 1)[0]
     urls = {url_key(u) for u in urls_in(page)}
     return {"cves": cves_in(page), "urls": sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]}
 
@@ -200,6 +204,8 @@ def absorb(target, other):
     if has_record(other) and not has_record(target):
         target["brief"]["text"] = other["brief"]["text"]
     target["cves"] += [c for c in other["cves"] if c not in target["cves"]]
+    if other.get("fix_keys"):
+        target["fix_keys"] = sorted(set(target.get("fix_keys", [])) | set(other["fix_keys"]))
     seen = {url_key(m["url"]) for m in target["mentions"]}
     for m in other["mentions"]:
         if m["kind"] == "advisory" and url_key(m["url"]) in seen:
@@ -215,6 +221,39 @@ def absorb(target, other):
     if other.get("published"):
         set_published(target, other["published"])
     enrich(target, {"cvss": other.get("cvss"), "products": other.get("products", [])})
+
+
+# User, 2026-11-09: more than two CVEs for one product, fixed in the same version and published within two days, are one
+# Incident (a release note's worth), so one vendor's batch of fixes takes one row and one Highlight slot.
+GROUP_MIN_CVES = 3
+GROUP_HOURS = 48
+
+
+def group_releases(incidents):
+    """Merge the Incidents of one release (same fix key, published within GROUP_HOURS of the earliest) once they hold
+    GROUP_MIN_CVES CVEs or more; the earliest seen keeps its id. Each CVE's own description stays in "cve_texts" for the
+    page. Returns the months changed."""
+    changed = set()
+    when = lambda i: i.get("published") or i["first_seen"]
+    for key in sorted({k for i in incidents for k in i.get("fix_keys", [])}):
+        members = sorted((i for i in incidents if key in i.get("fix_keys", [])), key=when)
+        if not members:
+            continue
+        start = datetime.strptime(when(members[0]), STAMP)
+        members = [i for i in members if (datetime.strptime(when(i), STAMP) - start).total_seconds() <= GROUP_HOURS * 3600]
+        if len(members) < 2 or len({c for i in members for c in i["cves"]}) < GROUP_MIN_CVES:
+            continue
+        target = min(members, key=lambda i: i["first_seen"])
+        texts = target.setdefault("cve_texts", {c: target["brief"]["text"] for c in target["cves"]})
+        for other in members:
+            if other is target:
+                continue
+            texts.update(other.get("cve_texts") or {c: other["brief"]["text"] for c in other["cves"]})
+            absorb(target, other)
+            incidents.remove(other)
+            changed.add(month_of(other["first_seen"]))
+        changed.add(month_of(target["first_seen"]))
+    return changed
 
 
 def set_published(incident, when):

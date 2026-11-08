@@ -8,7 +8,7 @@ from datetime import timedelta
 import anthropic
 
 from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
-from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, link, month_of, page_keys,
+from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, link, month_of, page_keys,
                                  product_list, rejoin)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
@@ -41,6 +41,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # Join-only repos go last, so they can join Incidents that started this cycle.
     for group in [cvelist.mention_group(r) for r in records] + posts + stories + repos:
         changed |= link(incidents, group, stamp)
+    changed |= group_releases(incidents)
     changed |= rejoin(incidents, (now - timedelta(days=7)).strftime(STAMP))
     changed |= hn.refresh_points(incidents, now, http_get)
 
@@ -104,7 +105,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
             batches.remove(pending)
             changed.update(month_of(i["first_seen"]) for i in touched)
     waiting = {r["incident"] for b in batches for r in b["requests"].values()}
-    due = [i for i in incidents if i["id"] not in waiting and summaries.needs_summary(i)]
+    # A candidate (위험 and up, KEV, buzz, curator) never waits for a batch it is already in (user, 2026-11-09).
+    due = [i for i in incidents if summaries.needs_summary(i) and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
     for incident in instant[:summaries.MAX_PER_CYCLE]:
         summaries.summarize_now(incident, claude, http_get, stamp)

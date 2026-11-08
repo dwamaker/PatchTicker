@@ -28,6 +28,7 @@ SSHOLE_SUMMARY = {
         "names": ["OpenSSH"],
         "command_for": "",
         "stopgap_then": "",
+        "cve_lines": [],
     },
     "en": {
         "title": "OpenSSH on musl lets password-less accounts in with a long password",
@@ -41,6 +42,7 @@ SSHOLE_SUMMARY = {
         "names": ["OpenSSH"],
         "command_for": "",
         "stopgap_then": "",
+        "cve_lines": [],
     },
     "products": ["OpenSSH"],
     "lead": "https://sshhole.com",
@@ -303,6 +305,9 @@ class InstantSummaryTest(unittest.TestCase):
 
     def test_the_instructions_keep_the_condition_in_the_easy_headline(self):
         self.assertIn("never widen it to every user of the product", summaries.INSTRUCTIONS)
+        # 11-09: the headline said "Alpine" while the sources said musl Linux such as Alpine or OpenWrt.
+        self.assertIn("never one example alone", summaries.INSTRUCTIONS)
+        self.assertIn("Alpine·OpenWrt SSH", summaries.INSTRUCTIONS)  # the example names every example
 
     def test_a_stopgap_file_not_in_the_input_is_dropped_and_old_replies_have_none(self):
         self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"stopgap_file": "/etc/ssh/sshd_config"}))  # the page names another file
@@ -377,6 +382,29 @@ class InstantSummaryTest(unittest.TestCase):
                "first_seen": "2026-11-08T03:38:07Z", "published": "2026-10-13T18:59:53Z"}
         self.assertFalse(summaries.is_candidate(old, now))
         self.assertTrue(summaries.is_candidate({k: v for k, v in old.items() if k != "published"}, now))
+
+    def test_an_incident_at_the_high_risk_level_or_above_is_summarized_at_once_not_in_a_batch(self):
+        # User, 11-09: 위험 (CVSS 7.0+) and up never wait for a Message Batch.
+        from datetime import datetime
+        now = datetime(2026, 11, 9, 12, 0)
+        row = lambda cvss: {"cves": ["CVE-2026-9"], "cvss": cvss, "mentions": [{"kind": "cve_record", "url": "https://www.cve.org/"}],
+                            "first_seen": "2026-11-09T11:00:00Z", "published": "2026-11-09T10:00:00Z"}
+        self.assertTrue(summaries.is_candidate(row(7.0), now))
+        self.assertFalse(summaries.is_candidate(row(6.9), now))
+        buzz_only = {**row(None), "mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=1", "points": 500}]}
+        ranked = sorted([buzz_only, row(7.5), row(9.8)], key=summaries.priority)
+        self.assertEqual([i["cvss"] for i in ranked], [9.8, 7.5, None])
+
+    def test_a_group_summary_gives_each_cve_one_line_and_names_only_cves_from_the_input(self):
+        lines = {"ko": [{"cve": "CVE-2026-123158", "text": "긴 비밀번호로 로그인 우회"}], "en": [{"cve": "CVE-2026-123158", "text": "Login bypass with a long password"}]}
+        reply = SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {"cve_lines": lines[lang]} for lang in ("ko", "en")}
+        self.merged_sshole(FakeClaude(reply))
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["ko"]["cve_lines"], lines["ko"])
+        self.setUp()
+        made_up = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"cve_lines": [{"cve": "CVE-2026-999999", "text": "x"}]}}
+        self.merged_sshole(FakeClaude(made_up))
+        self.assertNotIn("summary", board(self.store)[HN_STORY])
+        self.assertIn("cve_lines", summaries.INSTRUCTIONS)
 
     def test_only_the_last_seven_days_are_summarized_at_once(self):
         claude = FakeClaude(SSHOLE_SUMMARY)

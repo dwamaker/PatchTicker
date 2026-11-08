@@ -49,11 +49,25 @@ def mention_group(record):
         "published": to_stamp(record["cveMetadata"].get("datePublished")),
         "cvss": record_cvss(containers),
         "products": record_products(record),
+        "fix_keys": record_fix_keys(record),
     }
 
 
 # CVSS versions in the order the Board reads them: its bands (9.0 / 7.0 / 4.0) are v3's; v4 uses the same.
 CVSS_KEYS = ("cvssV3_1", "cvssV3_0", "cvssV4_0")
+
+
+def record_fix_keys(record):
+    """Product and first fixed version pairs ("openemr:openemr<8.3.0") from the CNA's affected ranges, so CVEs one
+    release fixed together can be grouped into one Incident (incidents.group_releases)."""
+    keys = set()
+    for a in record["containers"]["cna"].get("affected", []):
+        vendor, product = (a.get("vendor") or "").strip(), (a.get("product") or "").strip()
+        if not vendor or not product or vendor.lower() in ("n/a", "unknown") or product.lower() in ("n/a", "unknown"):
+            continue
+        key = f"{vendor}:{product}".lower().replace(" ", "_")
+        keys |= {f"{key}<{v['lessThan']}" for v in a.get("versions", []) if v.get("status") == "affected" and v.get("lessThan")}
+    return sorted(keys)
 
 
 def record_products(record):

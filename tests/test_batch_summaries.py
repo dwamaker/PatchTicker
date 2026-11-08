@@ -16,7 +16,7 @@ KEYCLOAK, WPTRAVELLY = "CVE-2026-120984", "CVE-2026-120839"
 def plain(name):
     """A Summary reply with no numbers in it, so it passes the code check for any input."""
     fields = {"title": f"{name} flaw", "summary": f"A flaw in {name}.", "conditions": [],
-              "mitigation": "", "easy": f"Someone could misuse {name}.", "easy_title": f"{name} risk found", "easy_action": f"Update {name}.", "names": [name], "command_for": "", "stopgap_then": ""}
+              "mitigation": "", "easy": f"Someone could misuse {name}.", "easy_title": f"{name} risk found", "easy_action": f"Update {name}.", "names": [name], "command_for": "", "stopgap_then": "", "cve_lines": []}
     return {"ko": fields | {"title": f"{name} 취약점", "summary": f"{name}의 취약점입니다."}, "en": fields,
             "products": [name], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": [], "stopgap_file": "", "titles_ko": [], "exploited": False}
 
@@ -101,6 +101,42 @@ def api_error(status, kind, message):
 
 CREDIT_EXHAUSTED = api_error(402, "billing_error", "Your credit balance is too low to access the Anthropic API.")
 SPEND_LIMIT = api_error(400, "invalid_request_error", "You have reached your specified workspace API usage limits.")
+
+
+class HighRiskWaitsForNoBatchTest(unittest.TestCase):
+    """User, 11-09: 위험 (CVSS 7.0+) and up never wait for a Message Batch, even one they were already put in."""
+
+    def stub(self, status):
+        from types import SimpleNamespace as NS
+        sent = []
+        reply = NS(stop_reason="end_turn", content=[NS(type="text", text="not json")], usage=NS(input_tokens=1, output_tokens=1))
+        batches = NS(retrieve=lambda _id: NS(processing_status=status),
+                     results=lambda _id: [NS(custom_id="r0", result=NS(type="succeeded", message=reply))])
+        return NS(messages=NS(batches=batches, create=lambda **kw: sent.append(kw) or reply)), sent
+
+    def incident(self, cvss):
+        return {"id": "CVE-2026-7", "cves": ["CVE-2026-7"], "cvss": cvss, "first_seen": "2026-11-09T10:00:00Z",
+                "published": "2026-11-09T09:00:00Z", "mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-7"}],
+                "brief": {"text": "x", "lead": ""}}
+
+    def test_a_high_risk_incident_in_a_running_batch_is_summarized_now(self):
+        from datetime import datetime
+        from collector.cycle import route_summaries
+        claude, sent = self.stub("in_progress")
+        pending = {"id": "b1", "requests": {"r0": {"incident": "CVE-2026-7", "input": "x", "basis": {}}}}
+        route_summaries([self.incident(7.5)], [pending], claude, lambda *a, **k: b"", datetime(2026, 11, 9, 12), "2026-11-09T12:00:00Z", set(), False)
+        self.assertEqual(len(sent), 1)
+
+    def test_a_batch_reply_does_not_overwrite_a_summary_written_from_the_same_sources(self):
+        from collector import summaries
+        claude, _ = self.stub("ended")
+        incident = self.incident(7.5) | {"summary": {"at": "2026-11-09T11:00:00Z"}}
+        basis = summaries.basis(incident)
+        incident["summary_basis"] = basis | {"n": 1}
+        pending = {"id": "b1", "requests": {"r0": {"incident": "CVE-2026-7", "input": "x", "basis": basis}}}
+        summaries.collect_batch(pending, [incident], claude, "2026-11-09T12:00:00Z")
+        self.assertEqual(incident["summary"], {"at": "2026-11-09T11:00:00Z"})
+        self.assertNotIn("summary_error", incident)  # the "not json" reply was never read
 
 
 class BudgetStopTest(unittest.TestCase):

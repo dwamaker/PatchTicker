@@ -130,6 +130,22 @@ class PublishedTest(unittest.TestCase):
         enrich(known, {"cvss": None, "products": [], "published": "2026-11-07T15:00:00.000"})
         self.assertEqual(known["published"], "2026-11-07T12:00:00Z")
 
+    def test_a_malformed_url_in_a_page_does_not_stop_the_cycle(self):
+        # 11-09 live run: a write-up page held "http://[...", urlsplit raised "Invalid IPv6 URL" and the whole cycle died.
+        from collector.incidents import page_keys, url_key
+        self.assertEqual(url_key("http://[broken/path"), "http://[broken/path")
+        self.assertIn("example.net/a", page_keys("see http://[broken and https://example.net/a", "https://example.org/w")["urls"])
+
+    def test_a_malformed_reference_url_is_neither_a_repo_nor_hn_and_is_not_fetched(self):
+        import urllib.error
+        from collector.hn import is_repo
+        from collector.net import make_http_get
+        from collector.summaries import is_hn
+        self.assertFalse(is_repo("http://[broken"))
+        self.assertFalse(is_hn("http://[broken"))
+        with self.assertRaises(urllib.error.URLError):
+            make_http_get("test")("http://[broken")
+
     def test_an_rss_time_in_another_zone_is_turned_into_utc(self):
         import xml.etree.ElementTree as ET
         from collector import rss
@@ -351,3 +367,47 @@ class SourceLimitTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReleaseGroupTest(unittest.TestCase):
+    """User, 11-09: more than two CVEs for the same product, fixed in the same version and published within 48 hours,
+    are one Incident (OpenEMR 8.3.0 fixed a dozen at once and filled the Board)."""
+
+    def record(self, product="openemr", less_than="8.3.0"):
+        return {"containers": {"cna": {"affected": [{"vendor": "openemr", "product": product, "versions": [
+            {"version": "0", "status": "affected", "lessThan": less_than}, {"version": less_than, "status": "unaffected"}]}]}}}
+
+    def row(self, cve, published, key="openemr:openemr<8.3.0", cvss=7.1):
+        return {"id": cve, "cves": [cve], "first_seen": "2026-11-08T22:30:00Z", "published": published, "cvss": cvss,
+                "fix_keys": [key], "mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}],
+                "urls": [], "brief": {"text": f"{cve} text", "lead": ""}}
+
+    def test_the_fix_key_is_the_product_and_the_first_unaffected_version(self):
+        from collector.cvelist import record_fix_keys
+        self.assertEqual(record_fix_keys(self.record()), ["openemr:openemr<8.3.0"])
+        self.assertEqual(record_fix_keys({"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [{"version": "1.0", "status": "affected"}]}]}}}), [])
+
+    def test_two_stay_apart_and_a_third_joins_them_into_one_incident(self):
+        from collector.incidents import group_releases
+        incidents = [self.row("CVE-2026-1", "2026-11-08T22:15:00Z"), self.row("CVE-2026-2", "2026-11-08T22:16:00Z")]
+        self.assertEqual(group_releases(incidents), set())
+        self.assertEqual(len(incidents), 2)
+        incidents.append(self.row("CVE-2026-3", "2026-11-09T10:00:00Z", cvss=8.8))
+        incidents.append(self.row("CVE-2026-4", "2026-11-08T22:17:00Z", key="openemr:openemr<8.4.0"))  # another fix version
+        incidents.append(self.row("CVE-2026-5", "2026-11-11T09:00:00Z"))  # past 48 hours
+        self.assertEqual(group_releases(incidents), {"2026-11"})
+        group = incidents[0]
+        self.assertEqual(group["cves"], ["CVE-2026-1", "CVE-2026-2", "CVE-2026-3"])
+        self.assertEqual(group["cvss"], 8.8)
+        self.assertEqual(group["cve_texts"], {f"CVE-2026-{n}": f"CVE-2026-{n} text" for n in (1, 2, 3)})
+        self.assertEqual([i["id"] for i in incidents], ["CVE-2026-1", "CVE-2026-4", "CVE-2026-5"])
+
+    def test_a_later_cve_of_the_same_release_joins_the_group(self):
+        from collector.incidents import group_releases
+        incidents = [self.row(f"CVE-2026-{n}", f"2026-11-08T22:1{n}:00Z") for n in (1, 2, 3)]
+        group_releases(incidents)
+        incidents.append(self.row("CVE-2026-6", "2026-11-09T20:00:00Z"))
+        group_releases(incidents)
+        self.assertEqual(len(incidents), 1)
+        self.assertIn("CVE-2026-6", incidents[0]["cve_texts"])
+

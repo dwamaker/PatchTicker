@@ -15,7 +15,10 @@ def check_public(url):
     shortcut: the name is resolved again by urlopen, so DNS rebinding can slip past; pin the
     resolved address in the connection if the collector ever runs next to sensitive services.
     """
-    parts = urllib.parse.urlsplit(url)
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:  # "http://[..." from a scraped page: refused like any other bad address
+        raise urllib.error.URLError(f"refused: {url}") from None
     if parts.scheme not in ("http", "https") or not parts.hostname:
         raise urllib.error.URLError(f"refused: {url}")
     try:

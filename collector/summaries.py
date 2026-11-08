@@ -39,6 +39,7 @@ PAGE_KINDS = ("advisory", "writeup", "discussion")  # in Lead order; repos and n
 CVELIST_RECORD = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"
 # The same CVE JSON 5 record, for one too fresh for the raw path (three 404s in the 2026-11-08 run).
 CVE_API_RECORD = "https://cveawg.mitre.org/api/cve/{cve}"
+CVE_ID = re.compile(r"CVE-\d{4}-\d{4,}")
 
 LANG_FIELDS = {
     "type": "object",
@@ -53,9 +54,11 @@ LANG_FIELDS = {
         "names": {"type": "array", "items": {"type": "string"}},
         "command_for": {"type": "string"},
         "stopgap_then": {"type": "string"},
+        "cve_lines": {"type": "array", "items": {"type": "object", "properties": {"cve": {"type": "string"}, "text": {"type": "string"}},
+                                                  "required": ["cve", "text"], "additionalProperties": False}},
     },
     "required": ["title", "summary", "conditions", "mitigation", "easy", "easy_title", "easy_action", "names", "command_for",
-                 "stopgap_then"],
+                 "stopgap_then", "cve_lines"],
     "additionalProperties": False,
 }
 # Operating systems a row can be tagged and filtered by (the Board shows them as Products).
@@ -97,10 +100,13 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
 - conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). Empty list when the text names none.
 - mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Empty string when no source says anything a reader can act on.
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
-- When the flaw needs a condition (a system such as Alpine or musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it ("Alpine SSH 서버 아무 비밀번호 통과", "Alpine Linux SSH servers accept long passwords"); never widen it to every user of the product.
+- When the flaw needs a condition (a system such as musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it; never widen it to every user of the product, and never narrow it either: when the sources name a kind with examples ("musl-based Linux such as Alpine or OpenWrt"), name every example (the kind itself is often a technical term), never one example alone, or a reader who runs another one thinks they are safe ("Alpine·OpenWrt SSH 서버 아무 비밀번호 통과", "SSH on Alpine or OpenWrt accepts any long password"; never "Alpine SSH 서버 …" alone).
 - easy_title: a headline of at most 5 words for the same reader, ending in the plain danger ("Windows 그림판 해킹 위험", "SonicWall VPN 장비 뚫림 위험"): the product as its users call it, with what it is when that is unclear, then the danger in everyday words ("OpenSSH 원격 접속 서버 장악 위험", "Home routers open to anyone"). No versions, no CVE ID, and the same ban on technical terms.
 - easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전이 나오면 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Never a path, a setting name, a command, a version range or a product version; the page shows the fixed version and any command itself. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). Empty string when mitigation is empty.
 - command_for: when "command" is not empty, the system it is for as a short phrase the page shows before it ("Alpine 리눅스라면", "On Alpine Linux"; "Debian·Ubuntu라면", "On Debian or Ubuntu"), from what a source says or the package tool itself (apk is Alpine's, apt Debian's and Ubuntu's, dnf Fedora's and RHEL's). Empty string when command is empty or nothing tells.
+- cve_lines: when the Incident lists more than one CVE (one vendor release fixing several), one entry per CVE in the
+  input's order: "cve" copied exactly, "text" one short line on what that CVE lets an attacker do, in the same plain
+  words as summary, no CVE ID inside it. Empty list for one CVE or none.
 - names: the products in "products", in the same order, as readers of this language know them: in Korean the name Korean Windows, macOS or the vendor's Korean site uses ("Windows 그림판" for Microsoft Paint, "Windows 메모장" for Notepad), else the original name ("OpenSSH"); in English the original names.
 Also:
 - products: the affected product names without versions, with the vendor in front when the name alone does not say whose it is ("OpenSSH", "OpenWrt", "SonicWall SonicOS", "Apache Axis2").
@@ -142,7 +148,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": ""}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": ""}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false}"""
 
 
 # Words the prompt bans from the Easy view (easy, easy_title, easy_action), checked in code because the model still
@@ -188,12 +194,13 @@ class Rejected(ValueError):
 
 
 def is_candidate(incident, now):
-    """Highlight candidates (spec): newly KEV-listed, HN buzz (hn.BUZZ_POINTS) or a curator pick, CVSS
-    9.0 or higher, or an Unassigned incident seen in discussion off HN. A KEV listing no Summary has covered yet counts however
+    """Summarized at once, never left for a Message Batch: newly KEV-listed, CVSS 7.0 or higher (the Board's 위험
+    level and up; user, 2026-11-09), HN buzz (hn.BUZZ_POINTS) or a curator pick, or an Unassigned incident seen in
+    discussion off HN. A KEV listing no Summary has covered yet counts however
     old the Incident; the rest only within the Highlight window (seven days)."""
     if incident.get("kev") and not incident.get("summary_basis", {}).get("kev"):
         return True
-    # The seven days and the 9.0 cutoff are repeated in web/board.mjs (filterBoard, riskLevel).
+    # The seven days and the 7.0 cutoff are repeated in web/board.mjs (filterBoard, riskLevel).
     # Counted from when the news was published (else first seen), so an old CVE seen again is not new.
     if (incident.get("published") or incident["first_seen"]) < (now - timedelta(days=7)).strftime(STAMP):
         return False
@@ -202,7 +209,7 @@ def is_candidate(incident, now):
     # An oss-security post still makes an Unassigned incident a candidate; an HN story needs buzz, as
     # most HN-only Incidents in the real run were general news with a few points.
     talk = any(m["kind"] == "discussion" and not is_hn(m["url"]) for m in incident["mentions"])
-    return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 9.0 or buzz or "curator" in kinds
+    return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 7.0 or buzz or "curator" in kinds
                 or (not incident["cves"] and talk))
 
 
@@ -212,9 +219,10 @@ def hn_points(incident):
 
 def priority(incident):
     """Sort key for instant candidates, so the per-cycle cap goes first to KEV, then CVSS 9.0+, then a
-    curator's pick, then HN buzz; arrival order within each (the sort is stable)."""
+    curator's pick, then CVSS 7.0+, then HN buzz; arrival order within each (the sort is stable)."""
     curated = any(m["kind"] == "curator" for m in incident["mentions"])
-    return (not incident.get("kev"), (incident.get("cvss") or 0) < 9.0, not curated)
+    score = incident.get("cvss") or 0
+    return (not incident.get("kev"), score < 9.0, not curated, score < 7.0)
 
 
 def basis(incident):
@@ -296,6 +304,9 @@ def collect_batch(pending, incidents, claude, stamp):
         sent = pending["requests"].get(item.custom_id)
         incident = by_id.get(sent["incident"]) if sent else None  # gone if merged into another meanwhile
         if incident is None:
+            continue
+        # Summarized meanwhile from the same sources (a 위험 Incident does not wait for its batch): keep that one.
+        if incident.get("summary") and {k: v for k, v in incident.get("summary_basis", {}).items() if k != "n"} == sent["basis"]:
             continue
         if item.result.type == "succeeded":
             save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp)
@@ -425,7 +436,10 @@ def page_text(page):
 
 
 def is_hn(url):
-    return urlsplit(url).netloc.lower() == "news.ycombinator.com"  # a comment thread, not a write-up
+    try:
+        return urlsplit(url).netloc.lower() == "news.ycombinator.com"  # a comment thread, not a write-up
+    except ValueError:  # a malformed URL ("http://[...") is not HN
+        return False
 
 
 NUMBER_RE = re.compile(r"\d+(?:\.\d+)*(?:[a-z]+\d+)?", re.IGNORECASE)
@@ -453,7 +467,7 @@ def plain(value):
 
 def lang_text(fields):
     return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"], fields["easy"], fields["easy_title"],
-                      fields["easy_action"], fields["command_for"], fields["stopgap_then"]])
+                      fields["easy_action"], fields["command_for"], fields["stopgap_then"], *(line["text"] for line in fields["cve_lines"])])
 
 
 def parse(reply, input_text, urls):
@@ -467,7 +481,7 @@ def parse(reply, input_text, urls):
         data = json.loads(next(b.text for b in reply.content if b.type == "text"))
         # easy_title and names came on 11-08, easy_action later that day; replies sent before then lack them and
         # the page falls back (title; the normal mitigation).
-        late = {"easy_title": "", "easy_action": "", "names": [], "command_for": "", "stopgap_then": ""}
+        late = {"easy_title": "", "easy_action": "", "names": [], "command_for": "", "stopgap_then": "", "cve_lines": []}
         summary = {lang: {k: data[lang].get(k, late[k]) if k in late else data[lang][k] for k in LANG_FIELDS["required"]}
                    for lang in ("ko", "en")}
         summary |= {k: data[k] for k in SHARED_FIELDS}
@@ -482,11 +496,11 @@ def parse(reply, input_text, urls):
         summary["stopgap_file"] = data.get("stopgap_file", "")
         summary["titles_ko"] = data.get("titles_ko", [])
         summary["exploited"] = data.get("exploited", False)  # came late on 11-08; older replies say nothing of attacks
-        lists = [summary["fixes"], *(f["devices"] for f in summary["fixes"]), summary["titles_ko"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"],
+        lists = [summary["ko"]["cve_lines"], summary["en"]["cve_lines"], summary["fixes"], *(f["devices"] for f in summary["fixes"]), summary["titles_ko"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"],
                  summary["ko"]["names"], summary["en"]["names"]]
         strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], summary["stopgap_file"], *summary["products"],
                    *(f[k] for f in summary["fixes"] for k in ("for", "version")), *(d for f in summary["fixes"] for d in f["devices"]),
-                   *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"],
+                   *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"], *(line[k] for line in summary[lang]["cve_lines"] for k in ("cve", "text")),
                                            *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy", "easy_title", "easy_action", "command_for", "stopgap_then")))]
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None
@@ -503,6 +517,11 @@ def parse(reply, input_text, urls):
     differ = {t for t in ko ^ en if "." not in t}
     if differ:
         raise Rejected(f"Korean and English numbers differ: {sorted(differ)}")
+    # A group's per-CVE lines name only CVEs of this Incident (the input lists them).
+    for lang in ("ko", "en"):
+        for line in summary[lang]["cve_lines"]:
+            if not CVE_ID.fullmatch(line["cve"]) or line["cve"] not in input_text:
+                raise Rejected(f"cve_lines names a CVE not in the input: {line['cve']}")
     if summary["lead"] and summary["lead"] not in urls:
         raise Rejected(f"lead is not an input URL: {summary['lead']}")
     for key in ("command", "stopgap"):
