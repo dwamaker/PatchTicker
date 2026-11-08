@@ -10,6 +10,12 @@ SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
 # Algolia allows 10,000 requests/h per IP; 10 pages per 15-minute cycle is 40/h.
 MAX_PAGES = 10
 
+# HN buzz: the points at which an HN story counts as a Highlight signal (also in web/board.mjs).
+# 100 is about where a story reaches the front page: 277 of all HN stories got there in the week to
+# 2026-11-08. The real run's general security news (a bank heist, a soldier's SIM card) peaked at 93;
+# sshole was at 2,910 when first seen.
+BUZZ_POINTS = 100
+
 # shortcut: a story starts an Incident only if its title or URL has a security word; others only
 # join a known Incident. Misses security stories with no such word; ticket 06's Summary can judge.
 # "hole" catches named holes like "sshole" but not whole/wormhole/black hole.

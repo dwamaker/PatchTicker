@@ -304,6 +304,20 @@ class InstantOrderTest(unittest.TestCase):
         self.assertEqual(firsts[:4], ["Incident: CVE-2026-19868", "Incident: CVE-2026-123957",
                                       "Incident: CVE-2026-83844", "Incident: no CVE yet"])
 
+    def test_a_story_seen_only_on_hn_is_summarized_at_once_only_with_strong_buzz(self):
+        # Real run stories: general security news at 23 and 93 points; sshole was seen at 2910.
+        weak = hn_story(50407643, "Hackers pull off $133M French bank heist via service provider", 23, REAL_RUN)
+        near = hn_story(50399569, "A story just short of the bar", 93, REAL_RUN)
+        sshole = hn_story(50378228, "sshole", 2910, REAL_RUN)
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [weak, near, sshole]})
+        claude = FakeClaude("not json")
+
+        run_cycle(self.store, recorded(None), at("2026-11-08T03:45:00"), "test-box", claude=claude)
+
+        self.assertEqual(len(claude.sent), 1)
+        self.assertIn(HN_STORY, claude.user_text())
+        self.assertEqual(len(claude.batch_inputs()), 2)  # the other two still get a Summary, through the batch
+
 
 if __name__ == "__main__":
     unittest.main()

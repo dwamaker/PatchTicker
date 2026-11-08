@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 
 from anthropic.types.messages.batch_create_params import Request
 
+from collector import hn
 from collector.incidents import STAMP
 
 MODEL = "claude-haiku-5-5"
@@ -124,9 +125,16 @@ def is_candidate(incident, now):
     if incident["first_seen"] < (now - timedelta(days=7)).strftime(STAMP):
         return False
     kinds = {m["kind"] for m in incident["mentions"]}
-    on_hn = any(is_hn(m["url"]) for m in incident["mentions"])
-    return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 9.0 or on_hn or "curator" in kinds
-                or (not incident["cves"] and "discussion" in kinds))
+    buzz = hn_points(incident) >= hn.BUZZ_POINTS
+    # An oss-security post still makes an Unassigned incident a candidate; an HN story needs buzz, as
+    # most HN-only Incidents in the real run were general news with a few points.
+    talk = any(m["kind"] == "discussion" and not is_hn(m["url"]) for m in incident["mentions"])
+    return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 9.0 or buzz or "curator" in kinds
+                or (not incident["cves"] and talk))
+
+
+def hn_points(incident):
+    return max((m.get("points") or 0 for m in incident["mentions"] if is_hn(m["url"])), default=0)
 
 
 def priority(incident):

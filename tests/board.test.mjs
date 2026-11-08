@@ -184,6 +184,17 @@ test('Product picks and search narrow the Highlights too', () => {
   assert.deepEqual(ids(filterBoard(recent, [keycloak.id], 'race', NOW).highlights), []);
 });
 
+test('a story seen only on HN is a Highlight only from 100 points, and stays in the list either way', () => {
+  // The real 2026-11-08 run: general security news with no CVE and no Product filled the Highlights.
+  const story = (item, points) => ({ id: `https://news.ycombinator.com/item?id=${item}`, cves: [], first_seen: daysAgo(1),
+    mentions: [{ kind: 'discussion', url: `https://news.ycombinator.com/item?id=${item}`, points }, { kind: 'writeup', url: `https://example.com/${item}` }],
+    brief: { text: `story ${item}`, lead: '' } });
+  const plain = incident('CVE-2026-501', daysAgo(2));
+  const { highlights, list } = filterBoard([story(1, 23), story(2, 99), story(3, 100), plain], [], '', NOW);
+  assert.deepEqual(ids(highlights), [story(3, 100).id, 'CVE-2026-501']);
+  assert.equal(list.length, 4);
+});
+
 test('the sshole replay Incident becomes a Highlight ahead of ten CVSS 9.8 Incidents', () => {
   // Written by the sshole replay in tests/test_mentions.py (seam 1), which asserts it matches.
   const sshole = JSON.parse(readFileSync(new URL('./fixtures/board/sshole.json', import.meta.url)));

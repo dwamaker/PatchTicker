@@ -31,6 +31,13 @@ export function highlightScore(i) {
   return (i.kev ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
 }
 
+// A story seen only on HN (no CVE, no other discussion or curator pick) is a Highlight only from this
+// many points, or general security news fills the pinned area. Also in collector/hn.py (BUZZ_POINTS).
+const HN_BUZZ = 100;
+const isHn = (url) => url.startsWith('https://news.ycombinator.com/');
+const quietHnStory = (i) => !i.cves.length && i.mentions.every((m) => !['discussion', 'curator'].includes(m.kind) || isHn(m.url))
+  && Math.max(0, ...i.mentions.map((m) => m.points || 0)) < HN_BUZZ;
+
 // The Summary's text in both languages, Easy view included, so either language finds the Incident.
 // Summaries written before the Easy view have no easy, command or stopgap.
 const summaryText = (s) => (s ? [...['ko', 'en'].flatMap((l) => [s[l].title, s[l].summary, ...s[l].conditions, s[l].mitigation, s[l].easy || '']),
@@ -75,6 +82,6 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now())
   const list = shown.sort((a, b) => (a.first_seen < b.first_seen ? 1 : a.first_seen > b.first_seen ? -1 : 0));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // A stable sort keeps newest first among equal scores.
-  const highlights = list.filter((i) => i.first_seen >= since).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, 10);
+  const highlights = list.filter((i) => i.first_seen >= since && !quietHnStory(i)).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, 10);
   return { highlights, list };
 }
