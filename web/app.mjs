@@ -22,7 +22,7 @@ const TEXT = {
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, scopeWeek: '최근 7일 안에서 찾았습니다.', scopeMonths: '최근 3개월 안에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
     clearWeek: '최근 7일 동안 게시된 사건이 없습니다', clearMonths: '최근 3개월 동안 게시된 사건이 없습니다', clearNote: '고른 제품은 주소에 저장됩니다. 즐겨찾기해 두면 다음에도 바로 확인할 수 있습니다.', searchOlderMonths: '이전 사건에서도 찾기 (최근 3개월)',
-    noIncidents: '아직 게시된 사건이 없습니다.', recentOnly: '최근 7일 등록', loadOlder: '이전 사건 불러오기 (최근 3개월)', showMore: (n) => `더 보기 (${n}건 남음)`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
+    noIncidents: '아직 게시된 사건이 없습니다.', loadOlder: '이전 사건 불러오기 (최근 3개월)', showMore: (n) => `더 보기 (${n}건 남음)`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     original: '원문', readAt: (site) => `${site}에서 읽기 →`,
     mentions: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', repo: '저장소' },
@@ -62,7 +62,7 @@ const TEXT = {
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, scopeWeek: 'Searched the last 7 days.', scopeMonths: 'Searched the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
     clearWeek: 'No Incident posted in the last 7 days', clearMonths: 'No Incident posted in the last 3 months', clearNote: 'Your picks are saved in the address. Bookmark it to check again next time.', searchOlderMonths: 'Search older Incidents too (last 3 months)',
-    noIncidents: 'No Incidents have been posted yet.', recentOnly: 'added in last 7 days', loadOlder: 'Load older Incidents (last 3 months)', showMore: (n) => `Show more (${n} left)`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
+    noIncidents: 'No Incidents have been posted yet.', loadOlder: 'Load older Incidents (last 3 months)', showMore: (n) => `Show more (${n} left)`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     original: '', readAt: (site) => `Read at ${site} →`,
     mentions: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', repo: 'Repository' },
@@ -355,7 +355,7 @@ function statusLine(list) {
   const t = TEXT[lang];
   if (loadError) return ''; // the message and its retry button sit in the empty-state block
   if (!updated) return t.loading;
-  return t.status(ago(updated), list.length, incidents.length) + (olderMonths.length ? ` · ${t.recentOnly}` : '') + (paused ? ` · ${t.paused}` : '');
+  return t.status(ago(updated), list.length, incidents.length) + (paused ? ` · ${t.paused}` : '');
 }
 
 // 이 게시판 읽는 법: opens by itself on a first visit and stays shut once closed. Not on phones (under 600px,
@@ -410,7 +410,10 @@ function guide() {
   for (const level of Object.keys(sample)) item(g.risk[level], riskCell({ cvss: sample[level] }));
   rule();
   item(g.ring, scoreCell({ cvss: 9.8 }));
-  item(g.tags, lineBadge('SonicWall Gen7'), osBadge('Windows'));
+  // The example badge is the top Highlight's Product, so the guide shows a line the reader will see first on the Board.
+  const top = filterBoard(incidents, [], '', Date.now()).highlights[0];
+  const example = top && rowTags(top, lang).find((n) => !(top.summary?.platforms || []).includes(n));
+  item(g.tags, example ? lineBadge(example, lineKeys(top, lang).get(example)) : lineBadge('OpenSSH'), osBadge('Windows'));
   const when = el('span', 'c-date');
   when.append(el('span', '', '2026-11-08'), el('span', '', '09:30'));
   item(g.date, when);
@@ -817,6 +820,9 @@ function filterPanel() {
   const grid = el('div', 'fp-grid');
   // The conditions most visitors use come first (risk, exploited, OS); dates, which few set, come last, so a phone sheet
   // opens on what matters instead of two date pickers.
+  // The two dates are one range: side by side, never one left alone on its own grid row.
+  const dates = el('div', 'fp-dates');
+  dates.append(field(f.from, input('date', 'from', filter.from)), field(f.to, input('date', 'to', filter.to)));
   grid.append(
     checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)),
     checks(f.flags, 'flag', [['kev', t.qfKev], ...LINK_KINDS.map((k) => [k, f.has[k]])], (v) => (v === 'kev' ? filter.kev : filter.has.includes(v))),
@@ -824,8 +830,7 @@ function filterPanel() {
     field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
     field(f.cve, select('cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve)),
     field(f.sort, select('sort', SORTS.map((s) => [s, f.sorts[s]]), filter.sort)),
-    field(f.from, input('date', 'from', filter.from)),
-    field(f.to, input('date', 'to', filter.to)),
+    dates,
   );
   const actions = el('div', 'fp-actions');
   const reset = Object.assign(el('button', 'btn', f.reset), { type: 'button' });
@@ -836,7 +841,7 @@ function filterPanel() {
   const close = Object.assign(el('button', 'btn', f.close), { type: 'button' });
   close.addEventListener('click', closePanel);
   const head = el('div', 'g-head fp-head');
-  head.append(el('h3', 'fp-title', f.title), close);
+  head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
   form.replaceChildren(head, grid, actions);
 }
 
@@ -923,7 +928,36 @@ $('lang').addEventListener('click', () => crossFade(() => {
 $('view-normal').addEventListener('click', () => setDefaultView('normal'));
 $('view-easy').addEventListener('click', () => setDefaultView('easy'));
 $('theme').addEventListener('click', toggleTheme);
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('filters').hidden) closePanel(); });
+// Escape closes what is open, the latest layer first: the filter panel, then the reading guide, then the row the focus is in.
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  if (!$('filters').hidden) return closePanel();
+  if (guideOpen) {
+    setGuide(false);
+    return $('guide-btn').focus();
+  }
+  let item = document.activeElement;
+  while (item && !(item.tagName === 'LI' && item.querySelector(':scope > h3.row-h'))) item = item.parentElement;
+  const row = item?.querySelector(':scope > h3.row-h > button.row');
+  if (row?.getAttribute('aria-expanded') === 'true') {
+    row.click();
+    row.focus();
+  }
+});
+// The phone sheet is a dialog: Tab stays inside it while it covers the Board.
+document.addEventListener('keydown', (event) => {
+  const form = $('filters');
+  if (event.key !== 'Tab' || form.getAttribute('aria-modal') !== 'true' || form.hidden) return;
+  const stops = [...form.querySelectorAll('button, input, select')].filter((x) => !x.disabled && x.offsetParent);
+  const [first, last] = [stops[0], stops.at(-1)];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
 document.addEventListener('keydown', (event) => {
   if (!['ArrowDown', 'ArrowUp'].includes(event.key) || !event.target.classList?.contains('row')) return;
   const rows = [...document.querySelectorAll('button.row')];
@@ -952,7 +986,20 @@ $('filter-btn').addEventListener('click', () => {
   form.hidden = !form.hidden;
   if (!form.hidden) filterPanel();
   render();
-  if (!form.hidden) matchMedia('(max-width: 599px)').matches ? reveal(form, '0 100%', 300) : reveal(form);
+  if (form.hidden) return;
+  // On a phone the panel covers the Board as a sheet: a modal dialog with the focus inside. On wider screens it is an
+  // inline panel under its button, and the page around it stays usable.
+  const sheet = matchMedia('(max-width: 599px)').matches;
+  if (sheet) {
+    form.setAttribute('role', 'dialog');
+    form.setAttribute('aria-modal', 'true');
+    form.setAttribute('aria-labelledby', 'fp-title');
+    reveal(form, '0 100%', 300);
+    form.querySelector('.fp-head .btn').focus();
+  } else {
+    for (const name of ['role', 'aria-modal', 'aria-labelledby']) form.removeAttribute(name);
+    reveal(form);
+  }
 });
 $('guide-btn').addEventListener('click', () => {
   setGuide(!guideOpen);
@@ -1056,7 +1103,7 @@ function easyAnswer(s, level, cve = '') {
     const list = el('ul', 'fixes');
     for (const f of fixes) {
       const li = el('li', '');
-      li.append(el('strong', '', f.for), ` ${t.orNewer(f.version)}`);
+      li.append(el('strong', '', f.for), ' ', el('span', 'ver', t.orNewer(f.version)));
       list.append(li);
     }
     parts.push(para('action', t.fixesIntro), list);
@@ -1078,6 +1125,8 @@ function easyAnswer(s, level, cve = '') {
   // A version to compare with: one line on where to look, not a how-to (user, 11-08: readers ask the vendor or an AI).
   if (fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)) parts.push(para('hint', t.todo.versionHelp(cve)));
   if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file)));
+  // The step the stopgap needs to take effect ("바꾼 뒤 sshd를 다시 시작하세요."), when a source says it.
+  if (action.stopgap && s[lang].stopgap_then) parts.push(para('action', s[lang].stopgap_then));
   return parts;
 }
 
@@ -1247,7 +1296,9 @@ function details(incident) {
   if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   if (easy && incident.cves.length) parts.unshift(para('cve-line', incident.cves.join(', ')));
   const mentions = el('ul', 'mentions');
-  for (const m of incident.mentions) {
+  const order = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'repo'];
+  const rank = (m) => (order.includes(m.kind) ? order.indexOf(m.kind) : order.length);
+  for (const m of [...incident.mentions].sort((a, b) => rank(a) - rank(b))) {
     const item = el('li', '');
     // On the Korean page an English title shows the Summary's Korean line; the original stays in the tooltip.
     const gloss = lang === 'ko' && m.title && (incident.summary?.titles_ko || []).find((g) => g?.url === m.url && typeof g.title === 'string')?.title;

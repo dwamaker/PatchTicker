@@ -199,8 +199,11 @@ export const MANY_DEVICES = 4;
 export const rowTags = (i, lang = 'en') => {
   const s = i.summary;
   const names = s?.[lang]?.names?.length ? s[lang].names : s?.products?.length ? s.products : (i.products || []).map((p) => p.name);
+  // A Product that is also one of the operating systems ("Android", shown in Korean as "안드로이드") is the OS badge only.
+  const os = new Set((s?.platforms || []).map((p) => p.toLowerCase()));
+  const own = names.filter((_, k) => !os.has(String(s?.products?.[k] ?? '').toLowerCase()));
   const devices = (s?.devices || []).length > MANY_DEVICES ? [] : s?.devices || [];
-  return [...new Set([...(s?.platforms || []), ...names, ...devices])]; // operating systems first (user, 11-08)
+  return [...new Set([...(s?.platforms || []), ...own, ...devices])]; // operating systems first (user, 11-08)
 };
 
 // Line colours for Product badges, after the Seoul subway map: fill and the text colour that reads on it.

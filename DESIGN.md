@@ -326,7 +326,8 @@ Restrained outlined buttons for theme, language and copying a command.
   700; the other option is Secondary Ink, gaining the Recessed hover fill.
 
 ### Filter button and panel
-- **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the right end of the 주목 line.
+- **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
+  (on phones, under the product field next to search); the panel opens right under that row.
 - **Panel:** opens under that line in Kiosk Panel with a Rail border: 게시일 시작/끝, 최소 CVSS, CVE, then chip rows
   for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS, then 정렬. Nothing changes until 필터 적용;
   필터 초기화 clears the panel only (Products picked at the top and the search stay). Everything lives in the hash.
@@ -404,6 +405,7 @@ Restrained outlined buttons for theme, language and copying a command.
   the answer buttons, so opening it never moves them away from the question.
 - **Step 1 question:** the Summary's `use_question` names the condition that makes a reader affected ("Alpine 리눅스에서
   원격 접속 서버를 돌리나요?"); older Summaries ask "이 제품을 쓰고 있나요?". The answer buttons are a group named by it.
+- **Stopgap follow-up:** when a source says what a stopgap needs ("바꾼 뒤 sshd를 다시 시작하세요."), it follows the stopgap line.
 - **Context lines:** a command says which system it is for when a source or its package tool tells ("Alpine 리눅스라면
   이 명령으로 업데이트하세요:"); a config line names its file when a source does ("설정 파일 /etc/ssh/sshd_config에 이 줄을
   넣으세요:"). On the Korean page an English source title reads as the Summary's Korean line; the original is its tooltip.
@@ -438,7 +440,7 @@ Restrained outlined buttons for theme, language and copying a command.
   shrink back faster (160ms) when closed, so the rows below glide; a click mid-way turns them round.
 - **Opening:** the reading guide and the filter panel ease in over 200ms (a 6px drop
   and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
-  it) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
+  it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
 - **Micro-feedback (100-250ms):** buttons, chips and the switch press in to 96% and tint in 120ms; the 기본|쉬운
   설명 pill slides under the pressed side (240ms); a copied command's check draws itself and "복사됨" slides in; the

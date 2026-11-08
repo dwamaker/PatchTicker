@@ -434,3 +434,10 @@ test('operating systems lead the tags of a row', () => {
   const lib = { summary: { products: ['CPython'], platforms: ['Windows', 'Linux'], devices: [] } };
   assert.deepEqual(rowTags(lib, 'en'), ['Windows', 'Linux', 'CPython']);
 });
+
+test('a Product that is also an operating system shows once, as the OS badge', () => {
+  const campaign = { summary: { products: ['iOS', 'Android'], platforms: ['iOS', 'Android'], devices: [],
+    ko: { names: ['iOS', '안드로이드'] }, en: { names: ['iOS', 'Android'] } } };
+  assert.deepEqual(rowTags(campaign, 'ko'), ['iOS', 'Android']);
+  assert.deepEqual(rowTags(campaign, 'en'), ['iOS', 'Android']);
+});

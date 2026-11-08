@@ -28,6 +28,7 @@ SSHOLE_SUMMARY = {
         "names": ["OpenSSH"],
         "command_for": "",
         "use_question": "",
+        "stopgap_then": "",
     },
     "en": {
         "title": "OpenSSH on musl lets password-less accounts in with a long password",
@@ -41,6 +42,7 @@ SSHOLE_SUMMARY = {
         "names": ["OpenSSH"],
         "command_for": "",
         "use_question": "",
+        "stopgap_then": "",
     },
     "products": ["OpenSSH"],
     "lead": "https://sshhole.com",
@@ -222,6 +224,7 @@ class InstantSummaryTest(unittest.TestCase):
             "a per-line model with a number not in the input": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.6p2", "devices": ["Router X9000"]}]},
             "a per-line model list that is not a list": SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH", "version": "10.6p2", "devices": "all"}]},
             "a use question with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"use_question": "Do you run OpenSSH 9.9?"}},
+            "a stopgap step with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"stopgap_then": "Wait 30 seconds."}},
             "a command context with a made-up number": SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"command_for": "On Alpine 3.99"}},
             "an Easy action naming a version not in the input": SSHOLE_SUMMARY | {"en": en | {"easy_action": "Update to 10.7p1."},
                                                                                  "ko": ko | {"easy_action": "10.7p1로 업데이트하세요."}},
@@ -300,6 +303,15 @@ class InstantSummaryTest(unittest.TestCase):
         self.setUp()
         self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k != "exploited"}))
         self.assertIs(board(self.store)[HN_STORY]["summary"]["exploited"], False)
+
+    def test_the_easy_stopgap_carries_the_step_that_makes_it_work(self):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"stopgap_then": "바꾼 뒤 sshd를 다시 시작하세요."},
+                                  "en": SSHOLE_SUMMARY["en"] | {"stopgap_then": "Then restart sshd."}}
+        self.merged_sshole(FakeClaude(reply))
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["en"]["stopgap_then"], "Then restart sshd.")
+
+    def test_the_easy_question_never_narrows_the_conditions(self):
+        self.assertIn("every system or condition the sources name", summaries.INSTRUCTIONS)
 
     def test_the_instructions_keep_the_condition_in_the_easy_headline(self):
         self.assertIn("use_question", summaries.INSTRUCTIONS)
