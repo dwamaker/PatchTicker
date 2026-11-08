@@ -38,7 +38,8 @@ line left the row. Easy view (same day): plain headline over one plain sentence,
 Mention listed in the details. Evening of 11-08: operating systems are outline badges, not lines (eight
 distinct line hues); the Easy panel's action is a to-do ("지금 할 일": 써요/안 써요/몰라요, then the action and
 다 했어요), and answered rows mute their alarm and sink in 주목 on the next visit; a "읽는 법" legend sits on
-the status line.
+the status line. Late 11-08: 필터 joins the picker and search row (its panel opens under it); 정렬 and 모두 펼치기 sit on the 주목
+line and one order serves 주목 and the list; 악용 발생 (KEV or reported attacks) is the top level; light-theme 위험 is gold.
 
 FORM: user-pinned combination: 지하철 안내 (pick, rank 1 of the re-rolled list) with the grouping
 and framed-Highlight UI of 재난문자 (assigned). Signature move: Product line badges with fixed

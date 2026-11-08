@@ -21,7 +21,7 @@ Mentions join an Incident when they cite one of its CVE IDs or, while either sid
 of its URLs (`collector/incidents.py`, ADR 0001).
 
 Highlights (top ten of the last seven days) are scored in the page (`highlightScore` in
-`web/board.mjs`) from the KEV flag, HN points, curator newsletter Mentions, CVSS and Mention count.
+`web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS and Mention count.
 Curator feeds default to tl;dr sec and Risky Business News; `VR_CURATOR_FEEDS` overrides them.
 
 With `ANTHROPIC_API_KEY` set, Highlight candidates (KEV, HN or curator Mention, CVSS 9.0+, or an

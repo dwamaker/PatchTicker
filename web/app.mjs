@@ -1204,7 +1204,7 @@ function riskCell(incident) {
   const dot = el('i', 'dot');
   dot.setAttribute('aria-hidden', 'true');
   cell.append(dot, defaultView === 'easy' ? TEXT[lang][level] : TEXT[lang].levels[level]);
-  // Why it is this high when the score alone would not say so: exploited in the wild lifts it to the top level.
+  // Why it is this high when the score alone would not say so: exploited (KEV, or attacks its sources report) lifts it to the top level.
   if (isExploited(incident)) cell.append(el('small', 'why kev', TEXT[lang].kevReason));
   return cell;
 }

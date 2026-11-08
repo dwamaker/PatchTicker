@@ -34,7 +34,7 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주목 사건):
-An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen from the last seven days; the rest stay in the newest-first list.
+An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen by importance from the last seven days and shown in the visitor's sort order (newest first by default, 2026-11-08); the rest stay in the list below.
 _Avoid_: featured, top, hot, pinned item
 
 **Published time** (게시 시각):
@@ -43,7 +43,7 @@ When the news of an Incident first broke: the earliest post time among the Menti
 Not the cycle that first saw it (first_seen, which only picks the monthly file and the time windows).
 
 **Board** (보드):
-The page's list of Incidents: Highlights on top, then every Incident newest first.
+The page's list of Incidents: Highlights on top, then every other Incident, in one visitor-chosen order for both (newest first by default, or by risk level, or by CVSS).
 _Avoid_: leaderboard, feed, timeline
 
 **Brief** (속보):
@@ -63,7 +63,9 @@ The Easy view's checklist for one Incident: whether the visitor uses it (써요,
 _Avoid_: task, ticket, checklist item
 
 **Risk banner** (위험 배너):
-The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model.
+The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model. Exploited
+(악용 발생) means a CISA KEV listing or a Summary whose sources report attacks (2026-11-08): the model reports what the
+sources say; the rule sets the level.
 _Avoid_: alert, badge, warning level
 
 **Mitigation** (대처법):
