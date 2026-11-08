@@ -46,10 +46,6 @@ const summaryText = (s) => (s ? [...['ko', 'en'].flatMap((l) => [s[l].title, s[l
 // The note under a Brief: a Summary is coming, or the collector gave up after its last rejected try.
 export const briefMarker = (i) => (i.summary_error?.final ? 'unavailable' : 'preparing');
 
-// The view each Incident opens in: the Board-wide remembered default, unless the visitor switched
-// this Incident during the visit (overrides: id -> easy?).
-export const isEasy = (id, defaultView, overrides) => overrides.get(id) ?? defaultView === 'easy';
-
 // The saved default view; anything else (nothing saved, the old per-Incident list) is the normal view.
 export const viewFromStorage = (saved) => (saved === 'easy' ? 'easy' : 'normal');
 

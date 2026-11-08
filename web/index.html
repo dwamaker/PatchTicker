@@ -15,18 +15,21 @@
     .kev { color: #a00; font-weight: 600; font-size: 0.875rem; }
     .incidents .lead, .incidents .title { font-weight: 600; }
     .incidents .preparing { color: #666; font-size: 0.875rem; font-style: italic; }
-    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-    #lang, #view { font: inherit; min-height: 44px; padding: 0 0.75rem; }
-    #view[aria-pressed="true"] { font-weight: 600; }
+    header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 1rem; }
+    header #lang { justify-self: end; }
+    #lang, #views button { font: inherit; min-height: 44px; padding: 0 1rem; }
+    #views { display: inline-flex; }
+    #views button { border: 1px solid #333; background: #fff; color: #333; }
+    #views button + button { border-left: 0; }
+    #views button[aria-pressed="true"] { background: #333; color: #fff; font-weight: 600; }
+    @media (max-width: 480px) { header { grid-template-columns: 1fr auto; } #views { grid-column: 1 / -1; grid-row: 2; justify-self: center; } }
     .incidents .mentions { list-style: none; padding: 0; margin: 0.25rem 0 0; font-size: 0.875rem; color: #444; }
     .incidents .mentions li { border: 0; padding: 0; overflow-wrap: anywhere; }
     #filter { display: grid; gap: 0.5rem; }
     #filter input { font: inherit; padding: 0.5rem; min-height: 44px; box-sizing: border-box; width: 100%; }
     #picks { display: flex; flex-wrap: wrap; gap: 0.25rem; }
     #picks button { font: inherit; min-height: 44px; padding: 0 0.75rem; }
-    .tabs { display: flex; gap: 0.25rem; margin-bottom: 0.25rem; }
-    .tabs button, .command button { font: inherit; font-size: 0.875rem; min-height: 44px; padding: 0 0.75rem; }
-    .tabs button[aria-pressed="true"] { font-weight: 600; border-bottom: 3px solid #333; }
+    .command button { font: inherit; font-size: 0.875rem; min-height: 44px; padding: 0 0.75rem; }
     .incidents .risk { font-size: 1.5rem; font-weight: 700; padding: 0.25rem 0.5rem; display: inline-block; }
     .risk-highest { background: #a00; color: #fff; }
     .risk-high { background: #e0a800; color: #000; }
@@ -38,7 +41,7 @@
   </style>
 </head>
 <body>
-  <header><h1>vuln-radar</h1> <span><button id="view" type="button" aria-pressed="false">Open all in the Easy view</button> <button id="lang" type="button">English</button></span></header>
+  <header><h1>vuln-radar</h1> <div id="views" role="group"><button id="view-normal" type="button" aria-pressed="true">Normal</button><button id="view-easy" type="button" aria-pressed="false">Easy</button></div> <button id="lang" type="button">English</button></header>
   <div id="filter">
     <label for="product-pick">Products you run</label>
     <input id="product-pick" list="product-options" placeholder="Type to find a Product" autocomplete="off">

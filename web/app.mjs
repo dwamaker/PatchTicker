@@ -1,4 +1,4 @@
-import { briefMarker, easyAction, filterBoard, filterFromQuery, filterToQuery, isEasy, productList, riskLevel, viewFromStorage } from './board.mjs';
+import { briefMarker, easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel, viewFromStorage } from './board.mjs';
 
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
@@ -9,7 +9,7 @@ const SAVED_VIEW = 'vr-view';
 const TEXT = {
   ko: {
     other: 'English', preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 대표 링크를 확인하세요.',
-    conditions: '해당 조건', mitigation: '대처법', easyAll: '모두 쉬운 설명으로 보기',
+    conditions: '해당 조건', mitigation: '대처법', views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '고위험!', high: '위험', notice: '참고',
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '아직 나온 대처법이 없습니다. 아래 링크를 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
@@ -17,7 +17,7 @@ const TEXT = {
   },
   en: {
     other: '한국어', preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the Lead mention below.',
-    conditions: 'Affected when', mitigation: 'Mitigation', easyAll: 'Open all in the Easy view',
+    conditions: 'Affected when', mitigation: 'Mitigation', views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'High risk!', high: 'Risk', notice: 'Notice',
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'No mitigation is known yet. Check the link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
@@ -25,9 +25,8 @@ const TEXT = {
   },
 };
 let lang = loadLang();
-// The Board-wide view the visitor chose (remembered), and per-Incident tab switches for this visit only.
+// The Board-wide view (normal or Easy) the visitor chose at the top; remembered.
 let defaultView = loadView();
-const overrides = new Map();
 
 function loadView() {
   try {
@@ -39,7 +38,6 @@ function loadView() {
 
 function setDefaultView(view) {
   defaultView = view;
-  overrides.clear();
   try {
     localStorage.setItem(SAVED_VIEW, view);
   } catch {
@@ -142,9 +140,13 @@ function render() {
   $('picks').replaceChildren(...filter.picks.map(chip));
   $('lang').textContent = TEXT[lang].other;
   $('lang').lang = lang === 'ko' ? 'en' : 'ko';
-  $('view').textContent = TEXT[lang].easyAll;
-  $('view').lang = lang;
-  $('view').setAttribute('aria-pressed', defaultView === 'easy');
+  $('views').setAttribute('aria-label', TEXT[lang].views);
+  for (const view of ['normal', 'easy']) {
+    const button = $(`view-${view}`);
+    button.textContent = TEXT[lang][view];
+    button.lang = lang;
+    button.setAttribute('aria-pressed', defaultView === view);
+  }
 }
 
 function chip(id) {
@@ -177,7 +179,8 @@ $('lang').addEventListener('click', () => {
   }
   render();
 });
-$('view').addEventListener('click', () => setDefaultView(defaultView === 'easy' ? 'normal' : 'easy'));
+$('view-normal').addEventListener('click', () => setDefaultView('normal'));
+$('view-easy').addEventListener('click', () => setDefaultView('easy'));
 $('search').addEventListener('input', (event) => update({ query: event.target.value }));
 window.addEventListener('hashchange', () => {
   filter = loadFilter();
@@ -205,20 +208,6 @@ function leadLine(incident) {
   const lead = Object.assign(document.createElement('p'), { className: 'lead' });
   lead.append(anchor(incident.brief.lead, `Read at ${host(incident.brief.lead)} →`));
   return lead;
-}
-
-function tabs(incident, easy) {
-  const bar = Object.assign(document.createElement('div'), { className: 'tabs' });
-  for (const [view, on] of [['normal', !easy], ['easy', easy]]) {
-    const button = Object.assign(document.createElement('button'), { type: 'button', textContent: TEXT[lang][view], lang });
-    button.setAttribute('aria-pressed', on);
-    button.addEventListener('click', () => {
-      overrides.set(incident.id, view === 'easy');
-      render();
-    });
-    bar.append(button);
-  }
-  return bar;
 }
 
 // A command from a source, shown as is, with a button that copies exactly the text shown.
@@ -265,9 +254,7 @@ function easyRow(li, incident) {
 
 function row(incident) {
   const li = document.createElement('li');
-  const easy = isEasy(incident.id, defaultView, overrides);
-  li.append(tabs(incident, easy));
-  if (easy) return easyRow(li, incident);
+  if (defaultView === 'easy') return easyRow(li, incident);
   const head = document.createElement('div');
   const name = document.createElement('strong');
   name.textContent = incident.cves.join(', ') || 'No CVE yet';
