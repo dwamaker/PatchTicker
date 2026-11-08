@@ -15,17 +15,15 @@ colors:
   caution-amber: "light-dark(#8f5c00, #f5b400)"
   notice-slate: "light-dark(#5f6b76, #9aa3ad)"
   wayfinding-blue: "light-dark(#1a5fb4, #7cc4ff)"
+  clear-green: "light-dark(#1d7a45, #4fc48c)"
   line-01: "#0052a4"
   line-02: "#00a84d"
   line-03: "#00a5de"
   line-04: "#7f4f9a"
-  line-05: "#93a10c"
+  line-05: "#b0ce18"
   line-06: "#77c4a3"
-  line-07: "#0c8e72"
-  line-08: "#b0ce18"
-  line-09: "#6789ca"
-  line-10: "#2e3a8c"
-  line-11: "#4a7c2a"
+  line-07: "#00828f"
+  line-08: "#c25bb8"
   line-ink-dark: "#0d0f12"
   line-ink-light: "#ffffff"
 typography:
@@ -158,7 +156,7 @@ components:
 
 **Creative North Star: "The Station Board"**
 
-The Board is read the way a commuter reads a Seoul subway sign: no column labels, no legend, just a
+The Board is read the way a commuter reads a Seoul subway sign: no column labels, just a
 coloured line, a bold station name and the line under it that says where it goes. Every Product rides
 its own fixed line colour, every CVE ID is set like a station name with the Incident's title under it,
 the CVSS score is a ring filled to its value, and the reader understands a row in one glance. Risk sits apart from the lines as a filled dot at the row start, so "which line"
@@ -200,13 +198,19 @@ for Products only.
   (A separate orange for 7.0+ was dropped on 11-08: in light theme it read as the amber dot, 1.03:1.)
 
 ### Secondary
-- **Line palette** (`line-01` to `line-11`): Product line badges, after the Seoul subway map. Light
+- **Line palette** (`line-01` to `line-08`): Product line badges, after the Seoul subway map. Eight hues at least
+  0.13 apart in OKLab, so no two lines look alike at badge size (a test checks it). Operating systems are not
+  lines: they get an outline badge (Secondary Ink text, Control Edge inset ring). Light
   hues carry `line-ink-dark` text, deep hues carry `line-ink-light`. The source is `LINES` in
   `web/board.mjs`, which assigns each Product a colour by an FNV-1a hash of its name.
 
 ### Tertiary
 - **Wayfinding Blue** (`wayfinding-blue`): links, the focus ring, the caret, and the text selection
   wash (32% mix). Never a fill.
+- **Clear Green** (`clear-green`, `--ok`): "done" and "nothing found", like a board's 정상 운행: the all-clear
+  check, the visitor's 조치함 / 해당 없음, finished to-do steps and their ring, the closing line, the copy stamp.
+  Text and icons only (one exception: the small finished-step disc); never a risk colour, never a line-badge fill.
+  4.6:1 or more on every surface in both themes.
 
 ### Neutral
 - **Platform Graphite / Concourse Paper** (`platform-ground`): the page and the scrollbar track.
@@ -220,7 +224,8 @@ for Products only.
 - **Control Edge** (`control-edge`): borders of buttons, fields and the view switch.
 
 ### Named Rules
-**The Two Alphabets Rule.** Risk and severity speak only in red, amber and slate, and the same severity
+**The Two Alphabets Rule.** Risk and severity speak only in red, amber and slate (Clear Green is a third,
+separate alphabet for "done", never for risk), and the same severity
 is always the same colour; Product lines never use a red, orange, amber or grey hue, and a line colour
 never signals risk. Adding a line colour means checking it against all three first.
 
@@ -255,7 +260,8 @@ jumps, like signage lettering.
 the page language sits under it in Description size, cut after two lines. With more CVEs the name adds
 "외 N건". The Easy view leads with the Summary's plain headline over its one plain sentence (the opened panel starts with the CVE IDs) (Sign Ink,
 500, never cut); without a Summary, and for an Incident with no CVE yet, the title leads and the CVE
-line goes under it.
+line goes under it. On 주의 rows a headline ending in "위험" ends in "문제" instead ("risk" → "issue"), so only
+경계 and 심각! rows speak of danger; the page swaps the word by the rule-based level, the Summary is unchanged.
 
 **The Tabular Rule.** CVE IDs, counts, dates and times use tabular numerals so columns of
 numbers do not shimmer.
@@ -267,10 +273,14 @@ three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and l
 under 600 px the switch drops to its own full-width line. The product picker and search sit on one
 line (picker up to 24rem), stacking under 768 px.
 
-A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring and words (7.5rem), line
+A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
 badges (up to 15rem), published date over time (5.5rem), chevron. Column gap is 1.25rem. Opened details align with the
-name column. Under 768 px the row restacks into risk and date with time on one line on top, then name and title, then the
-CVSS ring, then badges, and the details drop their indent. Nothing scrolls sideways at 375 px.
+name column. From 768 to 1023 px (tablets, landscape phones) the badges move to a second line under the title, so the name
+column is not squeezed. Under 768 px the row restacks into risk, CVSS ring and date with time on one line on top, then name
+and title, then badges, and the details drop their indent. Under 600 px the header puts the name and controls on one line
+while they fit and drops the controls under the name when they do not (320 px, larger text), with the 기본|쉬운 설명
+switch on its own line. Nothing scrolls sideways from 320 px up, also at 150% text. Hover tints apply only where a pointer
+can hover, so a tapped row does not stay tinted on a phone.
 
 ### Named Rules
 **The No Header Row Rule.** The Board never shows a row of column labels. If a column needs a label
@@ -320,7 +330,7 @@ Restrained outlined buttons for theme, language and copying a command.
   필터 초기화 clears the panel only (Products picked at the top and the search stay). Everything lives in the hash.
 
 ### Text size
-- Two buttons, 가− and 가+, in one outlined control left of the theme button (the user's pick), glyphs 12 and 18 px
+- Two buttons, 가− and 가+ (A− and A+ on the English page), in one outlined control left of the theme button (the user's pick), glyphs 12 and 18 px
   (px on purpose, so the control does not grow with the text). Steps 87.5, 100, 112.5, 125, 150%, remembered; the end
   steps disable their button. Only text grows: every font size is multiplied by `--ts`; gaps, columns and controls
   stay the same size (the first version scaled the root size, which zoomed the whole page).
@@ -340,10 +350,11 @@ Restrained outlined buttons for theme, language and copying a command.
 ### CVSS ring (signature)
 - **Style:** a 44 px ring, 3.5px stroke on a Rail track, turned so the arc starts at the top and fills
   clockwise to score/10 with round ends. The score sits inside with one decimal (Meta, 700, Sign Ink);
-  only the word "CVSS" sits beside it (the risk word is the one severity word); an exploited row shows "실제
-  악용 중" in red under its risk word instead.
+  nothing sits beside it (the risk word is the one severity word, the reading guide names the ring, and a
+  "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "실제 악용 중" in red
+  under the risk word, and the opened Normal panel does not repeat it.
 - **Colour:** by CVSS rating: Emergency Red 9.0+, Caution Amber 7.0+, Notice Slate
-  below. Unrated shows no ring, only "점수 아직 없음" in Hint Ink. Shown in both views.
+  below. Unrated shows no ring, only a quiet dash in Hint Ink ("점수 아직 없음" in its tooltip). Shown in both views.
 
 ### Board row (signature)
 - **Style:** a full-width button, 72 px minimum, on a single hairline. Risk dot and word, CVE ID over
@@ -356,18 +367,82 @@ Restrained outlined buttons for theme, language and copying a command.
 - **State:** Recessed Panel on hover; an opened row and its details take Kiosk Panel; `aria-expanded`
   turns the chevron.
 
+### Reading guide (이 게시판 읽는 법)
+- **Place:** a link-coloured "읽는 법" disclosure at the right of the status line (wraps under it on
+  phones), 44px tall, chevron turning up when open. The guide opens below it in a Kiosk Panel with a
+  1px Rail border and 10px radius, like the filter panel, with a 닫기 button.
+- **First visit:** opens by itself once on screens 600px and wider (on phones it would fill about a screen
+  before the first row, so there it waits for the button); closing it stores `vr-guide` and it stays shut after that.
+  With storage blocked it waits for the button.
+- **Content:** each mark drawn with the row's own parts beside one plain line: the three risk levels
+  (words follow the current view) with their rules, the CVSS ring, line badges, the published date,
+  then 주목, an opened row, the Easy switch and the product picker and filters; hairlines split the
+  three groups; a closing note says Summaries are written by AI and to check the source links.
+- **Rule:** the guide never invents a mark; anything it shows comes from the same render functions as
+  the rows, so it cannot drift.
+
 ### Highlight frame (signature)
 - **Style:** Kiosk Panel, 1px Rail border, 10px radius, 3px left edge in the risk colour, the Alert
-  lift shadow. A 고위험 frame adds a faint red wash fading out by 40% of its width. Details open inside
+  lift shadow. A 고위험 frame adds a faint red wash (7%) and a 위험 frame a fainter amber one (5%), each fading out by 40% of its width. Details open inside
   the frame.
 
 ### Command line
 - **Style:** the command in the code face on Recessed Panel with a 1px Rail border and 6px radius,
   followed by an outlined copy button. Only commands a source states verbatim appear here.
 
+### Easy view to-do list (overdrive)
+- **Shape:** inside an opened Easy row, the action becomes "지금 할 일" on Recessed Panel with a Rail border and 10px
+  radius: a small progress ring and "2단계 중 N단계" on the right, then numbered steps. 1 "이 제품을 쓰고 있나요?"
+  with the product badges (operating systems in small print, "Windows·macOS·Linux에서 돌아가요", never as badges) and 써요 / 안 써요 / 몰라요 (몰라요 counts as in use: when unsure, show the risk; its step shows a neutral "?" and a hint on where to look); 2 "할 일" with the Easy action (version, command, devices or the
+  plain action sentence and any stopgap) and a "다 했어요" checkbox; step 2 stays fully readable, only the checkbox waits for step 1 and says so.
+- **Product lines and models:** when product lines have their own fixed versions, step 2 lists them one per
+  line ("SonicWall Gen7 7.3.4-7013 이상"); past four device models the row shows the product alone and step 1
+  folds the models under "해당 모델 보기 (N개)", where the reader looks for their own.
+- **Finishing:** 다 했어요 ends with "조치 완료! 이 브라우저에 기억해 둘게요."; 안 써요 ends at once with "해당 없음으로
+  표시했어요.". The row then carries "✓ 조치함" or "✓ 해당 없음" under its risk word in both views. 다시 고르기 clears it.
+- **Answered rows:** once the visitor says 안 써요 or 다 했어요, the row's alarm steps back (risk word and dot in Hint
+  Ink, the Highlight edge in Rail, no wash or lift) while the score, title and badges stay as they are; the 주목 heading
+  adds "| N건 처리" in Clear Green. From the next visit those rows sit at the bottom of 주목; a row answered now stays
+  where it is, so nothing jumps away under the pointer.
+- **Motion:** the step number turns into a check that draws itself, the ring fills to the new share, the closing line
+  and the row's chip pop in; focus stays on the control just used; screen readers hear the closing line.
+- **Truth:** answers live in this browser only (`vr-done`, at most 500, shared live between open tabs), never sent anywhere; "조치함" is the visitor's own word,
+  not a check the Board ran. An Incident with nothing to act on gets no list.
+
+### Small moments (delight)
+- **All-clear sign:** when only Products are picked and none is on the Board, the empty state is a sign, not a
+  sentence: a drawn check, the picked Products as line badges, "최근 7일 동안 게시된 사건이 없습니다" (or 3개월 once
+  older months are loaded) and that the picks live in the address, so a bookmark brings them back. It never says
+  "safe".
+- **'/' for search:** on pages with a keyboard and a hovering pointer the search box shows a small "/" key cap;
+  pressing "/" anywhere outside a field jumps there. Hidden on touch screens and while typing.
+- **Copy stamp:** copying a command turns the button into a check and "복사됨" and lights the command in the focus
+  blue for a moment, like a stamped ticket; both settle back after 2 seconds; screen readers hear "복사됨".
+- **Search older:** while a search or filter is on, the button under the list reads "이전 사건에서도 찾기 (최근
+  3개월)" instead of "이전 사건 불러오기".
+
+### Motion
+- **One authored moment:** when the Board first arrives, each CVSS ring fills from the top to its score
+  (700ms, `cubic-bezier(0.16, 1, 0.3, 1)`, after 120ms). Filter changes, view switches and paging redraw
+  without replaying it.
+- **Folding:** an opened row's details and a folded model list grow from 0 to their height (220ms, ease-out) and
+  shrink back faster (160ms) when closed, so the rows below glide; a click mid-way turns them round.
+- **Opening:** the reading guide and the filter panel ease in over 200ms (a 6px drop
+  and a fade); the phone's filter sheet rises from the bottom over 300ms. Closing is instant. The chevron turns
+  in 180ms.
+- **Micro-feedback (100-250ms):** buttons, chips and the switch press in to 96% and tint in 120ms; the 기본|쉬운
+  설명 pill slides under the pressed side (240ms); a copied command's check draws itself and "복사됨" slides in; the
+  filter count pops when it changes; the all-clear check draws itself when the sign first appears; the theme icon
+  turns in, and a theme or language change cross-fades the page (View Transitions, 200ms, where supported).
+- **Reduced motion:** the ring fill and every movement are dropped; opened panels keep only the fade, so the
+  change is still seen.
+- **Never:** loops, pulsing alerts, scroll reveals or entrance choreography; the Board is read, not watched.
+
 ## Do's and Don'ts
 
 ### Do:
+- **Do** open every source link in a new tab (`target=_blank`, `noopener noreferrer`, a hidden "새 탭에서 열림"
+  for screen readers), so the Board, its filters and to-do ticks stay put.
 - **Do** use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
   `--fs-small`) and the shared `.btn` for any new outlined button.
 - **Do** keep every interactive target at least 44 px.

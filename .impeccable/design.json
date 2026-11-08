@@ -288,16 +288,16 @@
       "line-05": {
         "role": "secondary",
         "displayName": "Line 05",
-        "canonical": "#93a10c",
+        "canonical": "#b0ce18",
         "tonalRamp": [
-          "oklch(15% 0.033 116)",
-          "oklch(26% 0.075 116)",
-          "oklch(38% 0.108 116)",
-          "oklch(49% 0.138 116)",
-          "oklch(61% 0.138 116)",
-          "oklch(72% 0.108 116)",
-          "oklch(84% 0.075 116)",
-          "oklch(95% 0.033 116)"
+          "oklch(15% 0.040 120)",
+          "oklch(26% 0.092 120)",
+          "oklch(38% 0.132 120)",
+          "oklch(49% 0.169 120)",
+          "oklch(61% 0.169 120)",
+          "oklch(72% 0.132 120)",
+          "oklch(84% 0.092 120)",
+          "oklch(95% 0.040 120)"
         ]
       },
       "line-06": {
@@ -318,76 +318,31 @@
       "line-07": {
         "role": "secondary",
         "displayName": "Line 07",
-        "canonical": "#0c8e72",
+        "canonical": "#00828f",
         "tonalRamp": [
-          "oklch(15% 0.024 172)",
-          "oklch(26% 0.054 172)",
-          "oklch(38% 0.078 172)",
-          "oklch(49% 0.100 172)",
-          "oklch(61% 0.100 172)",
-          "oklch(72% 0.078 172)",
-          "oklch(84% 0.054 172)",
-          "oklch(95% 0.024 172)"
+          "oklch(15% 0.019 207)",
+          "oklch(26% 0.044 207)",
+          "oklch(38% 0.063 207)",
+          "oklch(49% 0.081 207)",
+          "oklch(61% 0.081 207)",
+          "oklch(72% 0.063 207)",
+          "oklch(84% 0.044 207)",
+          "oklch(95% 0.019 207)"
         ]
       },
       "line-08": {
         "role": "secondary",
         "displayName": "Line 08",
-        "canonical": "#b0ce18",
+        "canonical": "#c25bb8",
         "tonalRamp": [
-          "oklch(15% 0.040 120)",
-          "oklch(26% 0.092 120)",
-          "oklch(38% 0.132 120)",
-          "oklch(49% 0.169 120)",
-          "oklch(61% 0.169 120)",
-          "oklch(72% 0.132 120)",
-          "oklch(84% 0.092 120)",
-          "oklch(95% 0.040 120)"
-        ]
-      },
-      "line-09": {
-        "role": "secondary",
-        "displayName": "Line 09",
-        "canonical": "#6789ca",
-        "tonalRamp": [
-          "oklch(15% 0.023 263)",
-          "oklch(26% 0.052 263)",
-          "oklch(38% 0.076 263)",
-          "oklch(49% 0.096 263)",
-          "oklch(61% 0.096 263)",
-          "oklch(72% 0.076 263)",
-          "oklch(84% 0.052 263)",
-          "oklch(95% 0.023 263)"
-        ]
-      },
-      "line-10": {
-        "role": "secondary",
-        "displayName": "Line 10",
-        "canonical": "#2e3a8c",
-        "tonalRamp": [
-          "oklch(15% 0.029 272)",
-          "oklch(26% 0.067 272)",
-          "oklch(38% 0.097 272)",
-          "oklch(49% 0.124 272)",
-          "oklch(61% 0.124 272)",
-          "oklch(72% 0.097 272)",
-          "oklch(84% 0.067 272)",
-          "oklch(95% 0.029 272)"
-        ]
-      },
-      "line-11": {
-        "role": "secondary",
-        "displayName": "Line 11",
-        "canonical": "#4a7c2a",
-        "tonalRamp": [
-          "oklch(15% 0.027 135)",
-          "oklch(26% 0.062 135)",
-          "oklch(38% 0.090 135)",
-          "oklch(49% 0.114 135)",
-          "oklch(61% 0.114 135)",
-          "oklch(72% 0.090 135)",
-          "oklch(84% 0.062 135)",
-          "oklch(95% 0.027 135)"
+          "oklch(15% 0.024 331)",
+          "oklch(26% 0.055 331)",
+          "oklch(38% 0.080 331)",
+          "oklch(49% 0.102 331)",
+          "oklch(61% 0.102 331)",
+          "oklch(72% 0.080 331)",
+          "oklch(84% 0.055 331)",
+          "oklch(95% 0.024 331)"
         ]
       },
       "line-ink-dark": {
@@ -535,7 +490,7 @@
       "refersTo": "board-row",
       "description": "One Incident as a sign: risk dot and word, CVE ID over the title, CVSS ring, line badges, age.",
       "html": "<button class=\"ds-row\" type=\"button\" aria-expanded=\"false\"><span class=\"ds-risk\"><span class=\"ds-dot\"></span>고위험</span><span><strong class=\"ds-title\">CVE-2026-19868</strong><span class=\"ds-sub\">SonicWall SonicOS SSLVPN 인증 우회 (SAML 및 MFA 우회)</span></span><span class=\"ds-cve\">7.5 높음</span><span class=\"ds-ln\" style=\"--line:#7f4f9a;--line-ink:#ffffff\">SonicWall Gen7</span><span class=\"ds-age\">1시간 전</span></button>",
-      "css": ".ds-row { display: grid; grid-template-columns: 6.5rem minmax(0,1fr) 7.5rem auto 5.5rem; align-items: center; column-gap: 1.25rem; width: 100%; min-height: 72px; padding: 12px; border: 0; border-bottom: 1px solid var(--rule, #2a2f35); background: none; color: var(--ink, #ececec); text-align: left; font: 400 15px/1.55 var(--sans, system-ui, sans-serif); cursor: pointer; } .ds-row:hover { background: var(--panel-2, #1f2328); } .ds-row:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 2px; } .ds-risk { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; font-weight: 700; color: var(--high, #ff6b62); } .ds-dot { width: 0.875rem; height: 0.875rem; border-radius: 50%; background: currentColor; } .ds-title { display: block; font-size: 1.0625rem; font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; } .ds-sub { display: block; font-size: 0.875rem; color: var(--ink-2, #a8afb7); } .ds-cve { font-size: 0.875rem; font-variant-numeric: tabular-nums; } .ds-age { font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--ink-2, #a8afb7); justify-self: end; } .ds-ln { display: inline-flex; min-height: 26px; align-items: center; padding: 3px 11px; border-radius: 999px; background: var(--line); color: var(--line-ink); font-size: 0.78125rem; font-weight: 600; }"
+      "css": ".ds-row { display: grid; grid-template-columns: 6.5rem minmax(0,1fr) 2.75rem auto 5.5rem; align-items: center; column-gap: 1.25rem; width: 100%; min-height: 72px; padding: 12px; border: 0; border-bottom: 1px solid var(--rule, #2a2f35); background: none; color: var(--ink, #ececec); text-align: left; font: 400 15px/1.55 var(--sans, system-ui, sans-serif); cursor: pointer; } .ds-row:hover { background: var(--panel-2, #1f2328); } .ds-row:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 2px; } .ds-risk { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; font-weight: 700; color: var(--high, #ff6b62); } .ds-dot { width: 0.875rem; height: 0.875rem; border-radius: 50%; background: currentColor; } .ds-title { display: block; font-size: 1.0625rem; font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; } .ds-sub { display: block; font-size: 0.875rem; color: var(--ink-2, #a8afb7); } .ds-cve { font-size: 0.875rem; font-variant-numeric: tabular-nums; } .ds-age { font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--ink-2, #a8afb7); justify-self: end; } .ds-ln { display: inline-flex; min-height: 26px; align-items: center; padding: 3px 11px; border-radius: 999px; background: var(--line); color: var(--line-ink); font-size: 0.78125rem; font-weight: 600; }"
     },
     {
       "name": "Highlight Frame",
