@@ -45,6 +45,8 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 - Risk banner set by rules (KEV or CVSS 9.0+, 7.0+, else notice), not by the model.
 - Required notices: the NVD sentence verbatim in English; reference-only note.
 - No login, no analytics, no cookies, no third-party trackers.
+- Light and dark themes: follows the system setting with a remembered toggle; both meet WCAG 2.2 AA
+  (user asked for dark mode, 2026-11-08).
 - Undecided: public name and domain (chosen before launch).
 
 ## Brand Commitments
