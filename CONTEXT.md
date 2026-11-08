@@ -12,6 +12,14 @@ _Avoid_: item, entry, vuln, CVE (as a row)
 One published piece that points at an Incident: an advisory, a CVE record, a write-up site, a repository, a forum or HN post.
 _Avoid_: source, article, post, link
 
+**Mention group** (언급 묶음):
+What one source item becomes before linking: its Mentions plus the CVE IDs and URLs it cites. Linking attaches it to an Incident or starts a new one.
+_Avoid_: item, record, hit
+
+**Citation** (인용):
+A curator newsletter's Mention plus the CVE IDs and URLs it cites. It joins only the Incidents it cites and never starts one.
+_Avoid_: reference, curated link
+
 **Lead mention** (대표 언급):
 The one Mention a Summary points to first, picked in this order: the product's official advisory or release note, the discoverer's write-up, the CVE record, then discussion.
 _Avoid_: main link, primary source

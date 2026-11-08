@@ -101,6 +101,8 @@ Incidents get theirs at once. Every Incident links out to its best Mention so re
   return new items and the next checkpoint. Sources: HN Algolia search, cvelistV5 delta log,
   NVD API (by last-modified range, with a free API key, sleeping between calls), oss-security RSS
   from seclists, CISA KEV JSON feed, curator RSS feeds, GitHub search (with a no-scope token).
+  CISA KEV is the exception: a snapshot adapter with no checkpoint. Each cycle reads the whole
+  catalog and flags the Incidents whose CVEs it lists.
 - **Incident linking.** An Incident is keyed by its CVE IDs when it has any, and otherwise by the
   URLs its Mentions point at. A Mention that cites a CVE or a URL already on an Incident joins it;
   an Unassigned incident whose Mentions later cite a new CVE merges into that CVE's Incident.
@@ -117,13 +119,18 @@ Incidents get theirs at once. Every Incident links out to its best Mention so re
   sentence explanation and one action: a command (only if it appears verbatim in a source), or the
   list of affected devices with "update now", or "update to version X". The Risk banner is set by
   rules, not the model: exploited in the wild or CVSS 9.0+ → highest ("고위험!"), CVSS 7.0+ → high,
-  otherwise notice. The page has a normal/Easy tab per Incident and a remembered default (normal).
+  otherwise notice. The page has a normal/Easy tab per Incident and one remembered Board-wide
+  default (normal until the visitor picks Easy); a tab switch on one Incident lasts for the visit.
   The code check that guards numbers also rejects an Easy command not found in the input text.
   Expected cost: more output per Incident (estimate, not measured), still well within the credit.
 - **Summary routing.** Highlight candidates (new KEV entry, HN or curator buzz, CVSS 9.0+, or an
   Unassigned incident seen in discussion) go to the regular API at once; everything else goes into
   one Batch per cycle, collected on later cycles. Re-summarize only on: new official advisory or
   fixed version, newly KEV-listed, CVE newly attached; at most three Summaries per Incident.
+  A KEV listing that no Summary has covered yet goes to the regular API at once however old the
+  Incident is (still within the per-cycle cap). After the last rejected try the Brief stops saying
+  "Summary in preparation" and says no Summary is available, pointing to the Lead mention. The
+  Board always shows the rule-based Lead mention; the model's `lead` is checked but not displayed.
 - **Prompt caching.** The fixed instructions, with a worked example, exceed the 512-token minimum
   and carry a cache breakpoint (one-hour TTL for batches).
 - **Highlight score** combines KEV, discussion signal (HN points, curator mention), CVSS and the
