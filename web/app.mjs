@@ -30,22 +30,22 @@ const TEXT = {
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
-    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제 · 쉬운 설명 준비 중`, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
+    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
     versionHelp: (cve) => (cve ? `내 버전을 모르겠으면 제조사 사이트에서 찾거나, AI 도우미에게 ${cve} 번호로 물어보세요.` : '내 버전을 모르겠으면 제조사 사이트에서 제품 이름으로 찾아보세요.'),
-    newTab: ' (새 탭에서 열림)', fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
+    newTab: ' (새 탭에서 열림)', newTabAll: ' (아래 링크는 모두 새 탭에서 열림)', fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
     guideBtn: '읽는 법',
     guide: {
       title: '이 게시판 읽는 법', close: '닫기',
-      risk: { highest: '실제 공격에 쓰이고 있거나, 위험 점수가 10점 중 9점 이상', high: '위험 점수 10점 중 7점 이상', notice: '그 밖의 사건. 점수가 아직 없는 사건도 여기에 들어갑니다.' },
+      risk: { highest: '실제 공격에 쓰이고 있거나("악용 발생"), 위험 점수가 10점 중 9점 이상', high: '위험 점수 10점 중 7점 이상', notice: '그 밖의 사건. 점수가 아직 없는 사건도 여기에 들어갑니다.' },
       ring: '위험 점수(CVSS, 10점 만점). 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기로, 제품마다 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
-      date: '처음 게시된 날짜와 시각 (내 시간대 기준)',
-      pin: '위험 단계 이상(실제 공격, 또는 점수 7점 이상) 가운데 최근 7일 안에 공개된 사건을 위에 최대 4건 고정합니다.',
-      group: '한 번의 업데이트로 함께 고쳐진 CVE 묶음입니다. 펼치면 CVE마다 한 줄씩 나옵니다.',
+      date: '처음 게시된 날짜와 시각 (내 시간대 기준). 원문에 시각이 없으면 "처음 확인"과 함께 이 게시판이 처음 본 시각을 보여 줍니다.',
+      pin: '위험 단계 이상(실제 공격, 또는 점수 7점 이상) 가운데 최근 7일 안에 공개된 사건에서 중요한 4건을 골라 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다.',
+      group: '한 번의 업데이트로 함께 고쳐진 CVE 묶음입니다. 링은 그중 가장 높은 점수이고, 펼치면 CVE마다 한 줄씩 나옵니다.',
       brief: '아직 요약 전이라 원문을 그대로 보여 주는 사건입니다. 영어일 수 있습니다.',
       open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다.',
       easy: '위쪽에서 바꾸면 무엇이 위험한지와 지금 할 일을 쉬운 말로 보여줍니다.',
@@ -73,22 +73,22 @@ const TEXT = {
     nvd: '',
     kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
-    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''} · plain summary coming`, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
+    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution', levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
     versionHelp: (cve) => (cve ? `Not sure of your version? Look on the vendor's site, or ask an AI assistant about ${cve}.` : 'Not sure of your version? Look the product up on the vendor\'s site.'),
-    newTab: ' (opens in a new tab)', fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
+    newTab: ' (opens in a new tab)', newTabAll: ' (every link below opens in a new tab)', fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
     guideBtn: 'How to read',
     guide: {
       title: 'How to read this Board', close: 'Close',
       risk: { highest: 'Exploited (attacks reported), or a risk score of 9 or more out of 10', high: 'A risk score of 7 or more out of 10', notice: 'Everything else, including Incidents with no score yet.' },
       ring: 'The risk score (CVSS, out of 10). The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as —.',
       tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
-      date: 'When it was first published, in your time zone',
-      pin: 'Up to four Incidents at the Elevated level or above (exploited, or scored 7 or more) made public in the last seven days stay on top.',
-      group: 'CVEs fixed together in one update, shown as one row. Open it for a line on each.',
+      date: 'When it was first published, in your time zone. With no time in the source, "first seen" shows when the Board first saw it.',
+      pin: 'The four most important Incidents at the Elevated level or above (exploited, or scored 7 or more) made public in the last seven days stay on top. More Highlights adds the rest below them.',
+      group: 'CVEs fixed together in one update, shown as one row. The ring is the highest score among them; open it for a line on each.',
       brief: '',
       open: 'Open a row for the summary, who is affected, the fix and the source links.',
       easy: 'Switch at the top for what is dangerous and what to do now, in plain words.',
@@ -325,14 +325,15 @@ function crossFade(change) {
 }
 
 // Source URLs are untrusted too: only http(s) ever becomes a link target.
-function anchor(url, text) {
+// note: false where one line above already said it for a whole list (a group's CVE lines carry dozens of links).
+function anchor(url, text, note = true) {
   const a = document.createElement('a');
   a.href = /^https?:\/\//i.test(url) ? url : '#';
   // Every source opens in a new tab so the Board, its filters and to-do ticks stay where they were (user, 11-08).
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
   a.textContent = text;
-  a.append(el('span', 'sr-only', TEXT[lang].newTab)); // screen readers are told before the tab changes
+  if (note) a.append(el('span', 'sr-only', TEXT[lang].newTab)); // screen readers are told before the tab changes
   return a;
 }
 
@@ -510,6 +511,7 @@ async function loadOlder() {
   }
   loadingOlder = false;
   render();
+  if (document.activeElement === document.body) ($('empty').querySelector('button') || $('search')).focus();
 }
 
 // Under the list: more rows of what is loaded, then older months.
@@ -536,7 +538,8 @@ function render() {
   // 주요 사건 더 보기 adds only Highlights worth a notice: 위험 or above, or a reason the row cannot show (newsletter, HN).
   const extra = chosen.slice(PINNED); // filterBoard already keeps 주요 사건 to 위험 and above (user, 2026-11-09)
   // Which Incidents are pinned is decided by importance (highlightScore); the order they show in is the visitor's sort.
-  const highlights = (pinAll ? [...chosen.slice(0, PINNED), ...extra] : chosen.slice(0, PINNED)).sort(orderBy(filter.sort));
+  // 더 보기 appends below the first four, which keep their place (user, 2026-11-09).
+  const highlights = [...chosen.slice(0, PINNED).sort(orderBy(filter.sort)), ...(pinAll ? [...extra].sort(orderBy(filter.sort)) : [])];
   shownList = list;
   $('status').textContent = statusLine(list);
   staleNote();
@@ -999,18 +1002,34 @@ function cveList(incident) {
   const item = (line) => {
     const li = el('li');
     const id = el('strong');
-    id.append(anchor(`https://www.cve.org/CVERecord?id=${encodeURIComponent(line.cve)}`, line.cve));
+    id.append(anchor(`https://www.cve.org/CVERecord?id=${encodeURIComponent(line.cve)}`, line.cve, false));
     li.append(id, line.text);
+    const own = incident.cve_links?.[line.cve] || [];
+    if (own.length) {
+      const src = el('span', 'cve-src');
+      const many = (kind) => own.filter((l) => l.kind === kind).length > 1; // two advisories read 공지 1 · 공지 2
+      const seen = {};
+      own.forEach((l, n) => {
+        seen[l.kind] = (seen[l.kind] || 0) + 1;
+        const name = TEXT[lang].linkKind[l.kind] || host(l.url);
+        src.append(...(n ? [' · '] : []), anchor(l.url, many(l.kind) ? `${name} ${seen[l.kind]}` : name, false));
+      });
+      li.append(' ', src);
+    }
     return li;
   };
   const list = el('ul', 'cve-lines');
   list.append(...lines.slice(0, 3).map(item));
-  const out = [para('cve-lines-head', TEXT[lang].cveLines(lines.length)), list];
+  const head = para('cve-lines-head', TEXT[lang].cveLines(lines.length));
+  head.append(el('span', 'sr-only', TEXT[lang].newTabAll)); // said once for the list, not after each of its links
+  const out = [head, list];
   if (lines.length > 3) {
     const fold = el('details', 'models');
     const rest = el('ul', 'cve-lines');
     rest.append(...lines.slice(3).map(item));
-    fold.append(el('summary', '', TEXT[lang].moreLines(lines.length - 3)), rest);
+    const label = el('summary', '', TEXT[lang].moreLines(lines.length - 3));
+    fold.addEventListener('toggle', () => { label.textContent = fold.open ? TEXT[lang].foldLess : TEXT[lang].moreLines(lines.length - 3); });
+    fold.append(label, rest);
     out.push(fold);
   }
   return out;
@@ -1019,7 +1038,11 @@ function cveList(incident) {
 // Until the Summary arrives the row's title is the Brief, the source's own line (English); this says why.
 const briefNote = (incident) => {
   const marker = briefMarker(incident);
-  return [para('preparing', defaultView === 'easy' && marker === 'preparing' ? TEXT[lang].easyPreparing : TEXT[lang][marker])];
+  if (defaultView !== 'easy' || marker !== 'preparing') return [para('preparing', TEXT[lang][marker])];
+  // Easy: the closed row shows only a frame, so the panel carries the source's own sentence in full.
+  const source = para('brief-src', '');
+  source.append(...describe(incident));
+  return [para('preparing', TEXT[lang].easyPreparing), source];
 };
 
 // One or two CVE IDs on a line, each kept whole ("CVE-2026-" never ends a line).
@@ -1066,14 +1089,14 @@ function commandLine(text) {
 
 // A config line, not a shell command: no copy button that invites pasting it into a terminal, and a warning.
 // file: the config file a source names for it ("/etc/ssh/sshd_config"), else the reader is told only "the config file".
-function settingLine(text, file = '') {
+function settingLine(text, file = '', cls = 'action') {
   const t = TEXT[lang];
   const p = el('p', 'command');
   p.append(el('code', '', text));
   const caution = para('caution', '');
   caution.innerHTML = WARN;
   caution.append(el('span', '', t.caution));
-  return [para('action', typeof file === 'string' && file ? t.settingIn(file) : t.setting), p, caution];
+  return [para(cls, typeof file === 'string' && file ? t.settingIn(file) : t.setting), p, caution];
 }
 
 function easyAnswer(s, level, cve = '') {
@@ -1096,7 +1119,7 @@ function easyAnswer(s, level, cve = '') {
     // A command for one system only: everyone else (OpenWrt, Buildroot…) still gets the version to reach, first.
     const others = action.kind === 'command' && where && s.fixed && !fixes.length;
     if (others) parts.push(para('action', t.version(s.fixed)));
-    if (action.kind === 'command') parts.push(...(isShellCommand(action.command) ? [para('action', where ? t.commandFor(where) : t.command), commandLine(action.command)] : settingLine(action.command)));
+    if (action.kind === 'command') parts.push(...(isShellCommand(action.command) ? [para(others ? 'step' : 'action', where ? t.commandFor(where) : t.command), commandLine(action.command)] : settingLine(action.command)));
     if (action.kind === 'version') parts.push(para('action', t.version(action.fixed)));
     // No fixed version, command or devices: the Summary's plain action sentence; Summaries made before it existed fall
     // back to the normal advice ("run newer than 7.3.3-7015"), else say we have not confirmed one.
@@ -1113,9 +1136,9 @@ function easyAnswer(s, level, cve = '') {
   const versionToCheck = fixes.length > 1 || action.kind === 'version' || (action.kind === 'devices' && action.fixed)
     || (action.kind === 'command' && s[lang].command_for && s.fixed && !fixes.length);
   if (versionToCheck) parts.push(para('hint', t.versionHelp(cve)));
-  if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file)));
+  if (action.stopgap) parts.push(para('stopgap', t.stopgap), ...(isShellCommand(action.stopgap) ? [commandLine(action.stopgap)] : settingLine(action.stopgap, s.stopgap_file, 'step')));
   // The step the stopgap needs to take effect ("바꾼 뒤 sshd를 다시 시작하세요."), when a source says it.
-  if (action.stopgap && s[lang].stopgap_then) parts.push(para('action', s[lang].stopgap_then));
+  if (action.stopgap && s[lang].stopgap_then) parts.push(para('step', s[lang].stopgap_then));
   return parts;
 }
 
@@ -1230,7 +1253,7 @@ function titleCell(incident) {
   } else if (defaultView === 'easy' && !s?.title) {
     const product = rowTags(incident, lang).find((n) => !OSES.includes(n));
     name.append(t.easyBrief(product));
-    line.append(...describe(incident));
+    line.append(el('span', 'orig', t.easyPrepTag));
   } else if (head && defaultView !== 'easy') {
     name.append(id);
     line.append(...describe(incident));
@@ -1302,7 +1325,7 @@ function details(incident) {
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
   if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   // Easy: a few IDs lead the panel; a group's count follows the action instead of a wall of IDs.
-  if (easy && incident.cves.length > 2) parts.push(para('cve-line count', t.cveCount(incident.cves.length)));
+  if (easy && incident.cves.length > 2) parts.push(para('cve-line cve-count', t.cveCount(incident.cves.length)));
   else if (easy && incident.cves.length) parts.unshift(idLine(incident.cves));
   const mentions = el('ul', 'mentions');
   const order = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'repo'];
@@ -1327,7 +1350,7 @@ function details(incident) {
   const groups = new Map();
   const linkedAbove = incident.cves.length > 2; // a group links each CVE record from its CVE list
   for (const m of [...incident.mentions].sort((a, b) => rank(a) - rank(b))) {
-    if (linkedAbove && m.kind === 'cve_record') continue;
+    if (linkedAbove && (m.kind === 'cve_record' || (incident.cve_links && ['advisory', 'writeup'].includes(m.kind)))) continue; // on each CVE's line
     const key = `${m.kind} ${host(m.url)}`;
     groups.set(key, [...(groups.get(key) || []), m]);
   }

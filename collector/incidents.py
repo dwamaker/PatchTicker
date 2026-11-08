@@ -26,7 +26,8 @@ URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 
 # What the Board page reads. Linking keys (urls, cites) and Summary bookkeeping stay in the collector's files:
 # at about 650 Incidents a day they were over half of each Incident's bytes.
-PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "products", "summary", "cve_texts")
+PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "products", "summary", "cve_texts",
+               "cve_links")
 
 
 def board_view(incident):
@@ -245,15 +246,24 @@ def group_releases(incidents):
             continue
         target = min(members, key=lambda i: i["first_seen"])
         texts = target.setdefault("cve_texts", {c: target["brief"]["text"] for c in target["cves"]})
+        links = target.setdefault("cve_links", own_links(target))
         for other in members:
             if other is target:
                 continue
             texts.update(other.get("cve_texts") or {c: other["brief"]["text"] for c in other["cves"]})
+            links.update(other.get("cve_links") or own_links(other))
             absorb(target, other)
             incidents.remove(other)
             changed.add(month_of(other["first_seen"]))
         changed.add(month_of(target["first_seen"]))
     return changed
+
+
+def own_links(incident):
+    """A not-yet-grouped Incident's advisories and write-ups, filed under each of its CVEs, so the page can put each
+    link on its CVE's line once the group holds dozens of them."""
+    found = [{"kind": m["kind"], "url": m["url"]} for m in incident["mentions"] if m["kind"] in ("advisory", "writeup")]
+    return {c: found for c in incident["cves"]}
 
 
 def set_published(incident, when):

@@ -35,7 +35,8 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주요 사건):
-(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09) and shown in the visitor's sort order (newest first by default, 2026-11-08); the rest stay in the list below.
+(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09) and shown in the visitor's sort order (newest first by default, 2026-11-08); 더 보기 appends the rest below the first four,
+which keep their place (2026-11-09); the rest stay in the list below.
 _Avoid_: featured, top, hot, pinned item
 
 **Published time** (게시 시각):

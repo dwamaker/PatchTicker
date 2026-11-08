@@ -402,6 +402,20 @@ class ReleaseGroupTest(unittest.TestCase):
         self.assertEqual(group["cve_texts"], {f"CVE-2026-{n}": f"CVE-2026-{n} text" for n in (1, 2, 3)})
         self.assertEqual([i["id"] for i in incidents], ["CVE-2026-1", "CVE-2026-4", "CVE-2026-5"])
 
+    def test_each_cve_keeps_its_own_advisory_and_write_up_links_in_the_group(self):
+        from collector.incidents import group_releases
+        incidents = []
+        for n in (1, 2, 3):
+            row = self.row(f"CVE-2026-{n}", f"2026-11-08T22:1{n}:00Z")
+            row["mentions"] += [{"kind": "advisory", "url": f"https://github.com/o/r/security/advisories/GHSA-{n}"},
+                                {"kind": "writeup", "url": f"https://vulncheck.com/a/{n}"}]
+            incidents.append(row)
+        group_releases(incidents)
+        self.assertEqual(incidents[0]["cve_links"]["CVE-2026-2"],
+                         [{"kind": "advisory", "url": "https://github.com/o/r/security/advisories/GHSA-2"},
+                          {"kind": "writeup", "url": "https://vulncheck.com/a/2"}])
+        self.assertEqual(sorted(incidents[0]["cve_links"]), ["CVE-2026-1", "CVE-2026-2", "CVE-2026-3"])
+
     def test_a_later_cve_of_the_same_release_joins_the_group(self):
         from collector.incidents import group_releases
         incidents = [self.row(f"CVE-2026-{n}", f"2026-11-08T22:1{n}:00Z") for n in (1, 2, 3)]
