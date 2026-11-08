@@ -249,12 +249,15 @@ class InstantSummaryTest(unittest.TestCase):
 
     def test_after_three_failed_replies_the_incident_is_flagged_and_not_asked_again(self):
         claude = FakeClaude("not json", "not json", "not json")
-        for when in ("2026-11-07T12:30:00", "2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00"):
-            self.run_at(when, claude, hn="sshole.json" if when.endswith("12:30:00") else None)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.assertNotIn("final", board(self.store)[HN_STORY]["summary_error"])  # the page still says "in preparation"
+        for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00"):
+            self.run_at(when, claude)
 
         self.assertEqual(len(claude.sent), 3)
         incident = board(self.store)[HN_STORY]
         self.assertEqual(incident["summary_error"]["tries"], 3)
+        self.assertTrue(incident["summary_error"]["final"])  # the page says no Summary is coming
         self.assertEqual(incident["brief"]["text"], "sshole")
 
     def test_only_the_last_seven_days_are_summarized_at_once(self):

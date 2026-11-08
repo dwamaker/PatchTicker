@@ -172,7 +172,8 @@ def save_reply(incident, reply, text, seen, stamp):
 
 def failed(incident, reason):
     tries = incident.get("summary_error", {}).get("tries", 0) + 1
-    incident["summary_error"] = {"tries": tries, "reason": reason[:200]}
+    # final: no more tries, so the page stops saying a Summary is coming (spec story 24).
+    incident["summary_error"] = {"tries": tries, "reason": reason[:200]} | ({"final": True} if tries >= MAX_TRIES else {})
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):

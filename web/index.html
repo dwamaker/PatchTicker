@@ -15,8 +15,9 @@
     .kev { color: #a00; font-weight: 600; font-size: 0.875rem; }
     .incidents .lead, .incidents .title { font-weight: 600; }
     .incidents .preparing { color: #666; font-size: 0.875rem; font-style: italic; }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-    #lang { font: inherit; min-height: 44px; padding: 0 0.75rem; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+    #lang, #view { font: inherit; min-height: 44px; padding: 0 0.75rem; }
+    #view[aria-pressed="true"] { font-weight: 600; }
     .incidents .mentions { list-style: none; padding: 0; margin: 0.25rem 0 0; font-size: 0.875rem; color: #444; }
     .incidents .mentions li { border: 0; padding: 0; overflow-wrap: anywhere; }
     #filter { display: grid; gap: 0.5rem; }
@@ -37,7 +38,7 @@
   </style>
 </head>
 <body>
-  <header><h1>vuln-radar</h1> <button id="lang" type="button">English</button></header>
+  <header><h1>vuln-radar</h1> <span><button id="view" type="button" aria-pressed="false">Open all in the Easy view</button> <button id="lang" type="button">English</button></span></header>
   <div id="filter">
     <label for="product-pick">Products you run</label>
     <input id="product-pick" list="product-options" placeholder="Type to find a Product" autocomplete="off">

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel } from '../web/board.mjs';
+import { briefMarker, easyAction, filterBoard, filterFromQuery, filterToQuery, isEasy, productList, riskLevel, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -83,6 +83,22 @@ test('a Summary written before the Easy view still shows and searches', () => {
   const list = [{ ...incident('CVE-2026-1', '2026-11-05T12:30:00Z'), summary: old }];
   assert.deepEqual(ids(filterBoard(list, [], 'long passwords').list), ['CVE-2026-1']);
   assert.deepEqual(easyAction(old), { kind: 'none', stopgap: '' });
+});
+
+test('a Brief says a Summary is in preparation until the collector gives up, then that none is available', () => {
+  assert.equal(briefMarker(incident('CVE-2026-1', '2026-11-05T12:30:00Z')), 'preparing');
+  assert.equal(briefMarker({ summary_error: { tries: 2, reason: 'x' } }), 'preparing');
+  assert.equal(briefMarker({ summary_error: { tries: 3, reason: 'x', final: true } }), 'unavailable');
+});
+
+test('the Board opens every Incident in the remembered view; a tab click overrides one Incident for the visit', () => {
+  const overrides = new Map([['CVE-2026-2', false]]);
+  assert.equal(isEasy('CVE-2026-1', 'easy', overrides), true);
+  assert.equal(isEasy('CVE-2026-2', 'easy', overrides), false);
+  assert.equal(isEasy('CVE-2026-1', 'normal', new Map([['CVE-2026-1', true]])), true);
+  assert.equal(viewFromStorage('easy'), 'easy');
+  assert.equal(viewFromStorage(null), 'normal'); // nothing saved: the normal view
+  assert.equal(viewFromStorage('["CVE-2026-1"]'), 'normal'); // the old per-Incident list
 });
 
 test('the Risk banner comes from rules: exploited or CVSS 9.0+ is highest, 7.0+ high, else notice', () => {

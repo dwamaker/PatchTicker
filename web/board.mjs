@@ -36,7 +36,18 @@ export function highlightScore(i) {
 const summaryText = (s) => (s ? [...['ko', 'en'].flatMap((l) => [s[l].title, s[l].summary, ...s[l].conditions, s[l].mitigation, s[l].easy || '']),
   ...s.products, s.command || '', s.stopgap || '', ...(s.devices || [])] : []);
 
+// The note under a Brief: a Summary is coming, or the collector gave up after its last rejected try.
+export const briefMarker = (i) => (i.summary_error?.final ? 'unavailable' : 'preparing');
+
+// The view each Incident opens in: the Board-wide remembered default, unless the visitor switched
+// this Incident during the visit (overrides: id -> easy?).
+export const isEasy = (id, defaultView, overrides) => overrides.get(id) ?? defaultView === 'easy';
+
+// The saved default view; anything else (nothing saved, the old per-Incident list) is the normal view.
+export const viewFromStorage = (saved) => (saved === 'easy' ? 'easy' : 'normal');
+
 // The Easy view's Risk banner, set by rules and never by the model.
+// The 9.0 cutoff is also in collector/summaries.py (is_candidate).
 export function riskLevel(i) {
   if (i.kev || i.cvss >= 9) return 'highest';
   return i.cvss >= 7 ? 'high' : 'notice';
@@ -62,7 +73,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now())
     return words.every((w) => text.includes(w));
   });
   const list = shown.sort((a, b) => (a.first_seen < b.first_seen ? 1 : a.first_seen > b.first_seen ? -1 : 0));
-  const since = new Date(now - 7 * DAY_MS).toISOString();
+  const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // A stable sort keeps newest first among equal scores.
   const highlights = list.filter((i) => i.first_seen >= since).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, 10);
   return { highlights, list };

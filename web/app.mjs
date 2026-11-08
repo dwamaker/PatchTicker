@@ -1,45 +1,47 @@
-import { easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel } from './board.mjs';
+import { briefMarker, easyAction, filterBoard, filterFromQuery, filterToQuery, isEasy, productList, riskLevel, viewFromStorage } from './board.mjs';
 
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
 const SAVED = 'vr-filter';
 const SAVED_LANG = 'vr-lang';
-const SAVED_EASY = 'vr-easy';
+const SAVED_VIEW = 'vr-view';
 // The Summary's language: the visitor's toggle, else the browser's language.
 const TEXT = {
   ko: {
-    other: 'English', preparing: '요약 준비 중', conditions: '해당 조건', mitigation: '대처법',
+    other: 'English', preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 대표 링크를 확인하세요.',
+    conditions: '해당 조건', mitigation: '대처법', easyAll: '모두 쉬운 설명으로 보기',
     normal: '기본', easy: '쉬운 설명', highest: '고위험!', high: '위험', notice: '참고',
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '아직 나온 대처법이 없습니다. 아래 링크를 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 속보로만 보입니다.',
   },
   en: {
-    other: '한국어', preparing: 'Summary in preparation', conditions: 'Affected when', mitigation: 'Mitigation',
+    other: '한국어', preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the Lead mention below.',
+    conditions: 'Affected when', mitigation: 'Mitigation', easyAll: 'Open all in the Easy view',
     normal: 'Normal', easy: 'Easy', highest: 'High risk!', high: 'Risk', notice: 'Notice',
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
-    fixedIn: (v) => `Fixed in version ${v}.`, none: 'No fix is out yet. Check the link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
+    fixedIn: (v) => `Fixed in version ${v}.`, none: 'No mitigation is known yet. Check the link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
     paused: 'Summaries are paused for now; new Incidents show their Brief only.',
   },
 };
 let lang = loadLang();
-// Incidents the visitor switched to the Easy view; every other Incident opens in the normal view.
-let easyIds = loadEasy();
+// The Board-wide view the visitor chose (remembered), and per-Incident tab switches for this visit only.
+let defaultView = loadView();
+const overrides = new Map();
 
-function loadEasy() {
+function loadView() {
   try {
-    return new Set(JSON.parse(localStorage.getItem(SAVED_EASY) || '[]'));
+    return viewFromStorage(localStorage.getItem(SAVED_VIEW));
   } catch {
-    return new Set(); // storage blocked or unreadable: normal view everywhere
+    return 'normal'; // storage blocked: normal view everywhere
   }
 }
 
-function setView(id, easy) {
-  easyIds.delete(id);
-  if (easy) easyIds.add(id);
+function setDefaultView(view) {
+  defaultView = view;
+  overrides.clear();
   try {
-    // shortcut: the newest 200 choices are kept; upgrade if visitors keep more Incidents in the Easy view.
-    localStorage.setItem(SAVED_EASY, JSON.stringify([...easyIds].slice(-200)));
+    localStorage.setItem(SAVED_VIEW, view);
   } catch {
     // storage blocked: the choice lasts until reload
   }
@@ -140,6 +142,9 @@ function render() {
   $('picks').replaceChildren(...filter.picks.map(chip));
   $('lang').textContent = TEXT[lang].other;
   $('lang').lang = lang === 'ko' ? 'en' : 'ko';
+  $('view').textContent = TEXT[lang].easyAll;
+  $('view').lang = lang;
+  $('view').setAttribute('aria-pressed', defaultView === 'easy');
 }
 
 function chip(id) {
@@ -172,6 +177,7 @@ $('lang').addEventListener('click', () => {
   }
   render();
 });
+$('view').addEventListener('click', () => setDefaultView(defaultView === 'easy' ? 'normal' : 'easy'));
 $('search').addEventListener('input', (event) => update({ query: event.target.value }));
 window.addEventListener('hashchange', () => {
   filter = loadFilter();
@@ -189,9 +195,16 @@ function summary(s) {
   return parts;
 }
 
-// A Brief is the source's own one line (English) until the Summary arrives.
-function brief(b) {
-  return [para('brief', b.text, 'en'), para('preparing', TEXT[lang].preparing)];
+// A Brief is the source's own one line (English) until the Summary arrives, or for good once the collector gives up.
+function brief(incident) {
+  return [para('brief', incident.brief.text, 'en'), para('preparing', TEXT[lang][briefMarker(incident)])];
+}
+
+// The Lead mention is always the rule-based one (CONTEXT.md order), never the model's pick.
+function leadLine(incident) {
+  const lead = Object.assign(document.createElement('p'), { className: 'lead' });
+  lead.append(anchor(incident.brief.lead, `Read at ${host(incident.brief.lead)} →`));
+  return lead;
 }
 
 function tabs(incident, easy) {
@@ -199,7 +212,10 @@ function tabs(incident, easy) {
   for (const [view, on] of [['normal', !easy], ['easy', easy]]) {
     const button = Object.assign(document.createElement('button'), { type: 'button', textContent: TEXT[lang][view], lang });
     button.setAttribute('aria-pressed', on);
-    button.addEventListener('click', () => setView(incident.id, view === 'easy'));
+    button.addEventListener('click', () => {
+      overrides.set(incident.id, view === 'easy');
+      render();
+    });
     bar.append(button);
   }
   return bar;
@@ -243,18 +259,13 @@ function easyAnswer(s) {
 function easyRow(li, incident) {
   const level = riskLevel(incident);
   li.append(Object.assign(document.createElement('p'), { className: `risk risk-${level}`, textContent: TEXT[lang][level], lang }));
-  li.append(...(incident.summary ? easyAnswer(incident.summary) : brief(incident.brief)));
-  const lead = document.createElement('p');
-  lead.className = 'lead';
-  const leadUrl = incident.summary?.lead || incident.brief.lead;
-  lead.append(anchor(leadUrl, `Read at ${host(leadUrl)} →`));
-  li.append(lead);
+  li.append(...(incident.summary ? easyAnswer(incident.summary) : brief(incident)), leadLine(incident));
   return li;
 }
 
 function row(incident) {
   const li = document.createElement('li');
-  const easy = easyIds.has(incident.id);
+  const easy = isEasy(incident.id, defaultView, overrides);
   li.append(tabs(incident, easy));
   if (easy) return easyRow(li, incident);
   const head = document.createElement('div');
@@ -266,14 +277,10 @@ function row(incident) {
   head.append(name, ' ', time);
   head.append(' ', Object.assign(document.createElement('span'), { className: 'cvss', textContent: severity(incident.cvss) }));
   if (incident.kev) head.append(' ', Object.assign(document.createElement('span'), { className: 'kev', textContent: 'Exploited in the wild (CISA KEV)' }));
-  li.append(head, ...(incident.summary ? summary(incident.summary[lang]) : brief(incident.brief)));
+  li.append(head, ...(incident.summary ? summary(incident.summary[lang]) : brief(incident)));
   if (incident.products?.length) {
     li.append(Object.assign(document.createElement('p'), { className: 'products', textContent: incident.products.map((p) => p.name).join(' · ') }));
   }
-  const lead = document.createElement('p');
-  lead.className = 'lead';
-  const leadUrl = incident.summary?.lead || incident.brief.lead;
-  lead.append(anchor(leadUrl, `Read at ${host(leadUrl)} →`));
   const mentions = document.createElement('ul');
   mentions.className = 'mentions';
   for (const m of incident.mentions) {
@@ -281,7 +288,7 @@ function row(incident) {
     item.append(`${MENTION_LABEL[m.kind] ?? m.kind}: `, anchor(m.url, m.title || host(m.url)));
     mentions.append(item);
   }
-  li.append(lead, mentions);
+  li.append(leadLine(incident), mentions);
   return li;
 }
 
