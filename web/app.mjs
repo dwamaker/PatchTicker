@@ -1,10 +1,12 @@
-import { briefMarker, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel, rowTags, viewFromStorage } from './board.mjs';
+import { briefMarker, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
 
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
 const SAVED = 'vr-filter';
 const SAVED_LANG = 'vr-lang';
 const SAVED_VIEW = 'vr-view';
+// Also read by the inline script in index.html's head, so the remembered theme applies before first paint.
+const SAVED_THEME = 'vr-theme';
 // Every UI string, per language: the visitor's toggle, else the browser's language.
 // Only CVE IDs, Product names, URLs and source data (the Brief's own line, Mention titles) are shown as they come.
 // The NVD notice keeps its required English sentence in index.html; `nvd` is the Korean line beside it.
@@ -14,8 +16,7 @@ const TEXT = {
     loadError: (msg) => `게시판을 불러오지 못했습니다: ${msg}`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · 전체 ${total}건 중 ${shown}건`,
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', picked: '고른 제품', remove: (name) => `${name} 빼기`,
-    search: '검색', searchHint: '키워드, CVE ID, 버전', all: '전체 사건 · 최신순',
-    colRisk: '위험도', colCve: 'CVE', colTitle: '제목', colTags: '대상', colDate: '날짜',
+    search: '검색', searchHint: '키워드, CVE ID, 버전', all: '최신순', theme: '어두운 화면',
     pin: '주목', noCve: 'CVE 미배정', unrated: '평가 전', kevShort: '악용 중', kev: '실제 공격에 악용 중 (CISA KEV)',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     original: '원문', readAt: (site) => `${site}에서 읽기 →`,
@@ -24,7 +25,7 @@ const TEXT = {
     kevNote: '실제 악용 표시는 CISA의 알려진 악용 취약점(KEV) 목록에서 가져옵니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 대표 링크를 확인하세요.',
     conditions: '해당 조건', mitigation: '대처법', views: '보기 방식',
-    normal: '기본', easy: '쉬운 설명', highest: '고위험!', high: '위험', notice: '참고',
+    normal: '기본', easy: '쉬운 설명', highest: '고위험!', high: '위험', notice: '참고', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '아직 나온 대처법이 없습니다. 아래 링크를 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 속보로만 보입니다.',
@@ -34,8 +35,7 @@ const TEXT = {
     loadError: (msg) => `Could not load the Board: ${msg}`,
     status: (updated, shown, total) => `Last updated ${updated} · ${shown} of ${total} incidents`,
     products: 'Products you run', productsHint: 'Type to find a Product', picked: 'Picked Products', remove: (name) => `Remove ${name}`,
-    search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'All incidents, newest first',
-    colRisk: 'Risk', colCve: 'CVE', colTitle: 'Title', colTags: 'Affects', colDate: 'Date',
+    search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', theme: 'Dark theme',
     pin: 'Top', noCve: 'No CVE yet', unrated: 'Not rated yet', kevShort: 'Exploited', kev: 'Exploited in the wild (CISA KEV)',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     original: '', readAt: (site) => `Read at ${site} →`,
@@ -44,7 +44,7 @@ const TEXT = {
     kevNote: 'Exploited-in-the-wild flags come from the CISA Known Exploited Vulnerabilities catalog.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the Lead mention below.',
     conditions: 'Affected when', mitigation: 'Mitigation', views: 'View',
-    normal: 'Normal', easy: 'Easy', highest: 'High risk!', high: 'Risk', notice: 'Notice',
+    normal: 'Normal', easy: 'Easy', highest: 'High risk!', high: 'Risk', notice: 'Notice', levels: { highest: 'High risk', high: 'Risk', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'No mitigation is known yet. Check the link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
     paused: 'Summaries are paused for now; new Incidents show their Brief only.',
@@ -80,6 +80,21 @@ function loadLang() {
     // storage blocked: fall back to the browser's language
   }
   return (navigator.language || '').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+}
+
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+// The theme the page shows: the visitor's remembered choice, else the system's.
+const theme = () => document.documentElement.dataset.theme || (darkQuery.matches ? 'dark' : 'light');
+
+function toggleTheme() {
+  const next = theme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try {
+    localStorage.setItem(SAVED_THEME, next);
+  } catch {
+    // storage blocked: the choice lasts until reload
+  }
+  pageText();
 }
 
 const getJson = async (name) => {
@@ -164,13 +179,14 @@ function pageText() {
   $('lang').textContent = t.other;
   $('lang').lang = lang === 'ko' ? 'en' : 'ko';
   for (const view of ['normal', 'easy']) $(`view-${view}`).setAttribute('aria-pressed', defaultView === view);
+  $('theme').setAttribute('aria-pressed', theme() === 'dark');
 }
 
 function statusLine(list) {
   const t = TEXT[lang];
   if (loadError) return t.loadError(loadError);
   if (!updated) return t.loading;
-  return t.status(updated, list.length, incidents.length) + (paused ? ` · ${t.paused}` : '');
+  return t.status(ago(updated), list.length, incidents.length) + (paused ? ` · ${t.paused}` : '');
 }
 
 function render() {
@@ -181,15 +197,19 @@ function render() {
   const pinned = new Set(highlights);
   rowCount = 0;
   // CVE text is untrusted input, so it only ever goes in through textContent.
-  $('board').replaceChildren(...highlights.map((i) => row(i, true)), ...list.filter((i) => !pinned.has(i)).map((i) => row(i, false)));
+  $('highlights').replaceChildren(...highlights.map((i) => row(i, true)));
+  $('pinned').hidden = !highlights.length;
+  $('pinned-head').replaceChildren(`${TEXT[lang].pin} `, el('span', 'n', String(highlights.length)));
+  $('board').replaceChildren(...list.filter((i) => !pinned.has(i)).map((i) => row(i, false)));
   $('picks').replaceChildren(...filter.picks.map(chip));
 }
 
 function chip(id) {
   const name = products.find((p) => p.id === id)?.name || id;
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.textContent = `${name} ×`;
+  const button = Object.assign(el('button', 'chip'), { type: 'button' });
+  const badge = lineBadge(name);
+  badge.append(el('span', 'x'));
+  button.append(badge);
   button.setAttribute('aria-label', TEXT[lang].remove(name));
   button.addEventListener('click', () => update({ picks: filter.picks.filter((p) => p !== id) }));
   return button;
@@ -217,6 +237,8 @@ $('lang').addEventListener('click', () => {
 });
 $('view-normal').addEventListener('click', () => setDefaultView('normal'));
 $('view-easy').addEventListener('click', () => setDefaultView('easy'));
+$('theme').addEventListener('click', toggleTheme);
+darkQuery.addEventListener('change', pageText);
 $('search').addEventListener('input', (event) => update({ query: event.target.value }));
 window.addEventListener('hashchange', () => {
   filter = loadFilter();
@@ -279,42 +301,68 @@ function easyAnswer(s) {
   return parts;
 }
 
-// 위험도: the CVSS rating (and the exploited flag), or in the Easy view the rule-based Risk word.
+// The row's start: a dot in the rule-based Risk colour and its word (loud in the Easy view).
 function riskCell(incident) {
-  const t = TEXT[lang];
-  const cell = el('span', 'c-risk');
-  if (defaultView === 'easy') {
-    const level = riskLevel(incident);
-    cell.append(el('span', `risk risk-${level}`, t[level]));
-    return cell;
-  }
-  const rating = cvssRating(incident.cvss);
-  cell.append(el('span', `sev sev-${rating}`, rating ? `${incident.cvss} ${t.rating[rating]}` : t.unrated));
-  if (incident.kev) cell.append(el('span', 'kev', t.kevShort));
+  const level = riskLevel(incident);
+  const cell = el('span', `c-risk risk-${level}`);
+  const dot = el('i', 'dot');
+  dot.setAttribute('aria-hidden', 'true');
+  cell.append(dot, defaultView === 'easy' ? TEXT[lang][level] : TEXT[lang].levels[level]);
   return cell;
 }
 
-function titleCell(incident, pinned) {
+// CVE IDs, and in the normal view the CVSS rating and the exploited flag under them.
+function idCell(incident) {
+  const t = TEXT[lang];
+  const cell = el('span', 'c-id');
+  cell.append(el('span', incident.cves.length ? 'c-cve' : 'c-cve none', incident.cves.join(', ') || t.noCve));
+  if (defaultView === 'easy') return cell;
+  const rating = cvssRating(incident.cvss);
+  const sev = el('small', `sev sev-${rating}`, rating ? `CVSS ${incident.cvss} ${t.rating[rating]}` : t.unrated);
+  if (incident.kev) sev.append(' · ', el('span', 'kev', t.kevShort));
+  cell.append(sev);
+  return cell;
+}
+
+// A station sign: the title in the page's language, bold, over the other language's title.
+function titleCell(incident) {
   const t = TEXT[lang];
   const cell = el('span', 'c-title');
-  if (pinned) cell.append(el('span', 'pin', t.pin), ' ');
   if (incident.summary) {
-    cell.append(el('span', 'title', incident.summary[lang].title));
+    const other = lang === 'ko' ? 'en' : 'ko';
+    cell.append(el('strong', 'title', incident.summary[lang].title), Object.assign(el('small', 'sub', incident.summary[other].title), { lang: other }));
   } else {
-    if (t.original) cell.append(el('span', 'orig', t.original), ' ');
-    cell.append(Object.assign(el('span', 'title', incident.brief.text), { lang: 'en' }));
+    const title = el('strong', 'title');
+    if (t.original) title.append(el('span', 'orig', t.original), ' ');
+    title.append(Object.assign(el('span', '', incident.brief.text), { lang: 'en' }));
+    cell.append(title);
   }
   return cell;
+}
+
+// A Product's line badge, in that Product's fixed colour.
+function lineBadge(name) {
+  const badge = el('span', 'ln', name);
+  const { bg, ink } = productLine(name);
+  badge.style.setProperty('--line', bg);
+  badge.style.setProperty('--line-ink', ink);
+  return badge;
 }
 
 function tagsCell(incident) {
   const cell = el('span', 'c-tags');
-  cell.append(...rowTags(incident).map((name) => el('span', 'tag', name)));
+  cell.append(...rowTags(incident).map(lineBadge));
   return cell;
 }
 
+// "2시간 전" / "2 hours ago"; the date from 30 days on.
+function ago(iso) {
+  const age = relativeAge(iso, Date.now());
+  return age ? new Intl.RelativeTimeFormat(lang, { numeric: 'always' }).format(age.value, age.unit) : iso.slice(0, 10);
+}
+
 function dateCell(incident) {
-  const time = el('time', 'c-date', incident.first_seen.slice(0, 10));
+  const time = el('time', 'c-date', ago(incident.first_seen));
   time.dateTime = incident.first_seen;
   time.title = incident.first_seen.replace('T', ' ').replace('Z', ' UTC');
   return time;
@@ -336,14 +384,17 @@ function details(incident) {
 
 let rowCount = 0;
 
-// One board row: a button with the five columns that opens the details below it, like opening a post.
+// One board row: a button that opens the details below it, like opening a post. A Highlight is a framed
+// alert edged in its Risk colour, with the details inside the frame.
 function row(incident, pinned) {
-  const li = el('li', pinned ? 'pinned' : '');
+  const li = el('li', pinned ? `alert risk-${riskLevel(incident)}` : '');
   const body = Object.assign(el('div', 'details'), { id: `details-${++rowCount}`, hidden: !open.has(incident.id) });
-  const button = Object.assign(el('button', 'cols row'), { type: 'button' });
+  const button = Object.assign(el('button', 'row'), { type: 'button' });
   button.setAttribute('aria-controls', body.id);
   button.setAttribute('aria-expanded', !body.hidden);
-  button.append(riskCell(incident), el('span', 'c-cve', incident.cves.join(', ') || TEXT[lang].noCve), titleCell(incident, pinned), tagsCell(incident), dateCell(incident));
+  const chevron = el('i', 'chev');
+  chevron.setAttribute('aria-hidden', 'true');
+  button.append(riskCell(incident), titleCell(incident), idCell(incident), tagsCell(incident), dateCell(incident), chevron);
   button.addEventListener('click', () => {
     body.hidden = !body.hidden;
     button.setAttribute('aria-expanded', !body.hidden);

@@ -90,3 +90,28 @@ export function cvssRating(cvss) {
 
 // The row's 대상 column: the Incident's Products, then the Summary's devices, each name once.
 export const rowTags = (i) => [...new Set([...(i.products || []).map((p) => p.name), ...(i.summary?.devices || [])])];
+
+// Line colours for Product badges, after the Seoul subway map: fill and the text colour that reads on it.
+// No red, amber or grey hues, so a badge is never mistaken for a risk dot.
+export const LINES = [
+  { bg: '#0052a4', ink: '#ffffff' }, { bg: '#00a84d', ink: '#0d0f12' }, { bg: '#00a5de', ink: '#0d0f12' },
+  { bg: '#7f4f9a', ink: '#ffffff' }, { bg: '#93a10c', ink: '#0d0f12' }, { bg: '#77c4a3', ink: '#0d0f12' },
+  { bg: '#0c8e72', ink: '#0d0f12' }, { bg: '#b0ce18', ink: '#0d0f12' }, { bg: '#6789ca', ink: '#0d0f12' },
+  { bg: '#2e3a8c', ink: '#ffffff' }, { bg: '#4a7c2a', ink: '#ffffff' },
+];
+
+// A Product's line: FNV-1a of its name picks the colour, so it is the same on every visit and every row.
+export function productLine(name) {
+  let h = 0x811c9dc5;
+  for (const ch of name) h = Math.imul(h ^ ch.codePointAt(0), 0x01000193) >>> 0;
+  return LINES[h % LINES.length];
+}
+
+// How long ago, as a value and unit for Intl.RelativeTimeFormat; null from 30 days on (the date is shown instead).
+export function relativeAge(iso, now) {
+  const minutes = Math.max(1, Math.floor((now - Date.parse(iso)) / 60000));
+  if (minutes < 60) return { value: -minutes, unit: 'minute' };
+  if (minutes < 24 * 60) return { value: -Math.floor(minutes / 60), unit: 'hour' };
+  if (minutes < 30 * 24 * 60) return { value: -Math.floor(minutes / (24 * 60)), unit: 'day' };
+  return null;
+}

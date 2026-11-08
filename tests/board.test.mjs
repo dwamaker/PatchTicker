@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { briefMarker, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productList, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { LINES, briefMarker, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, productLine, productList, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -209,4 +209,41 @@ test('the sshole replay Incident becomes a Highlight ahead of ten CVSS 9.8 Incid
   const { highlights } = filterBoard([...critical, sshole], [], '', NOW);
   assert.equal(highlights.length, 10);
   assert.equal(highlights[0].id, sshole.id);
+});
+
+test('a Product keeps its line colour, and Products spread over the lines', () => {
+  assert.equal(productLine('OpenSSH'), productLine('OpenSSH'));
+  const names = ['OpenSSH', 'OpenWrt', 'Alpine', 'Windows', 'Perl', 'Python', 'SonicOS', 'Keycloak', 'Dropbear', 'WordPress'];
+  assert.ok(new Set(names.map(productLine)).size >= 5);
+  assert.ok(LINES.includes(productLine('')));
+});
+
+// WCAG relative luminance and contrast of two #rrggbb colours.
+const lum = (hex) => [1, 3, 5].map((n) => parseInt(hex.slice(n, n + 2), 16) / 255)
+  .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)).reduce((s, c, n) => s + c * [0.2126, 0.7152, 0.0722][n], 0);
+const contrast = (a, b) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+const hue = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((n) => parseInt(hex.slice(n, n + 2), 16) / 255);
+  const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return { h: (h * 60 + 360) % 360, s: max ? d / max : 0 };
+};
+
+test('every line badge reads at AA and never looks like a risk colour (red, amber, grey)', () => {
+  for (const { bg, ink } of LINES) {
+    assert.ok(contrast(bg, ink) >= 4.5, `${bg} on ${ink}: ${contrast(bg, ink).toFixed(2)}`);
+    const { h, s } = hue(bg);
+    assert.ok(h > 60 && h < 330 && s > 0.3, `${bg}: hue ${h.toFixed(0)}, saturation ${s.toFixed(2)}`);
+  }
+});
+
+test('a row\'s age is minutes, hours or days ago, and nothing from 30 days on', () => {
+  const now = Date.parse('2026-11-08T12:00:00Z');
+  assert.deepEqual(relativeAge('2026-11-08T11:59:50Z', now), { value: -1, unit: 'minute' });
+  assert.deepEqual(relativeAge('2026-11-08T12:05:00Z', now), { value: -1, unit: 'minute' }); // clock skew
+  assert.deepEqual(relativeAge('2026-11-08T11:01:00Z', now), { value: -59, unit: 'minute' });
+  assert.deepEqual(relativeAge('2026-11-08T10:00:00Z', now), { value: -2, unit: 'hour' });
+  assert.deepEqual(relativeAge('2026-11-07T11:00:00Z', now), { value: -1, unit: 'day' });
+  assert.deepEqual(relativeAge('2026-10-10T12:00:01Z', now), { value: -28, unit: 'day' });
+  assert.equal(relativeAge('2026-10-09T12:00:00Z', now), null);
 });
