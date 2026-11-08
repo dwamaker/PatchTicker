@@ -15,7 +15,7 @@ view; others read the normal view.
 
 ## Product Purpose
 
-A public, free, no-login board of security Incidents, newest first, with up to ten Highlights
+A public, free, no-login board of security Incidents, newest first, with up to four Highlights
 pinned on top like notices. Each Incident appears within one 15-minute cycle as a Brief from source
 data, then gets a Korean and English Summary (what it is, who is affected, preconditions,
 Mitigation) and an Easy view (Risk banner, plain sentences, one action). Success: a visitor learns
@@ -53,7 +53,7 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 
 - Name: vuln-radar is a working name only.
 - Voice: the normal view is calm, precise, polite Korean (존댓말). The Easy view is loud and lively
-  ("고위험!", "어서 업데이트하세요!") but stays polite, and never overstates beyond the sources.
+  ("심각!" for the top level only, then 경계 and 주의; "어서 업데이트하세요!") but stays polite, and never overstates beyond the sources.
 
 ## Evidence on Hand
 

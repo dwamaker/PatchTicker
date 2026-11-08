@@ -16,6 +16,11 @@ _Avoid_: source, article, post, link
 What one source item becomes before linking: its Mentions plus the CVE IDs and URLs it cites. Linking attaches it to an Incident or starts a new one.
 _Avoid_: item, record, hit
 
+**Citations** (인용):
+For an HN story with no CVE, the CVE IDs and outside links found in the page it links to. Kept on its
+Incident for a week; when they point at exactly one other Incident (a CVE ID, or its advisory, write-up
+or repo page), the story is folded into it, whichever arrived first.
+
 **Citation** (인용):
 A curator newsletter's Mention plus the CVE IDs and URLs it cites. It joins only the Incidents it cites and never starts one.
 _Avoid_: reference, curated link
@@ -29,8 +34,13 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주목 사건):
-An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most ten, chosen from the last seven days.
+An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen from the last seven days; the rest stay in the newest-first list.
 _Avoid_: featured, top, hot, pinned item
+
+**Published time** (게시 시각):
+When the news of an Incident first broke: the earliest post time among the Mentions that could start it
+(CVE record datePublished, HN story, oss-security post). Shown on the row and used for "newest first".
+Not the cycle that first saw it (first_seen, which only picks the monthly file and the time windows).
 
 **Board** (보드):
 The page's list of Incidents: Highlights on top, then every Incident newest first.

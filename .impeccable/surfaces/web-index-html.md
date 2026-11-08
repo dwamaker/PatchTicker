@@ -15,7 +15,7 @@ labels (user steer); top Normal|Easy switch; Highlights pinned.
 ## Direction contract
 
 THESIS: The Board reads like Seoul subway signage: every Product has its own fixed line colour, every
-title is a station name in bold Korean over a small English line, so a row is understood without a
+CVE ID is a station name in bold over the Incident's Korean title, so a row is understood without a
 header row. It refuses the category-default white table with labelled columns.
 
 OWN-WORLD: Dark graphite ground (#121417) and a light twin; near-white text; Product tags are rounded
@@ -31,7 +31,11 @@ FIRST VIEWPORT: Top bar: name left, segmented 기본|쉬운 설명 centred, them
 line below: product picker and search. Status line with last update and count. Then a "주목 N" group
 of framed rows (thin outline, left accent bar in the risk colour, expanded panel attached inside the
 frame, taken from the 재난문자 sketch), then a "최신순" group of plain rows: risk dot + word, bold
-Korean title with small English under it, CVE ID, line badges, relative time, chevron.
+CVE ID with the Korean title under it (the Easy view and CVE-less Incidents lead with the title),
+CVSS ring (arc filled to the score, number inside, coloured by rating), line badges with the vendor
+in the name, published date over time, chevron. Changed 2026-11-08 at the user's request; the English
+line left the row. Easy view (same day): plain headline over one plain sentence, CVSS ring kept, every
+Mention listed in the details.
 
 FORM: user-pinned combination: 지하철 안내 (pick, rank 1 of the re-rolled list) with the grouping
 and framed-Highlight UI of 재난문자 (assigned). Signature move: Product line badges with fixed

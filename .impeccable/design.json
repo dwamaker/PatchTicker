@@ -1,0 +1,616 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T07:29:30+00:00",
+  "title": "Design System: vuln-radar",
+  "extensions": {
+    "colorMeta": {
+      "platform-ground": {
+        "role": "neutral",
+        "displayName": "Platform Graphite / Concourse Paper",
+        "canonical": "light-dark(#f4f5f7, #121417)",
+        "tonalRamp": [
+          "oklch(15% 0.001 258)",
+          "oklch(26% 0.003 258)",
+          "oklch(38% 0.005 258)",
+          "oklch(49% 0.006 258)",
+          "oklch(61% 0.006 258)",
+          "oklch(72% 0.005 258)",
+          "oklch(84% 0.003 258)",
+          "oklch(95% 0.001 258)"
+        ],
+        "light": "#f4f5f7",
+        "dark": "#121417"
+      },
+      "kiosk-panel": {
+        "role": "neutral",
+        "displayName": "Kiosk Panel",
+        "canonical": "light-dark(#ffffff, #191c20)",
+        "tonalRamp": [
+          "oklch(15% 0.002 256)",
+          "oklch(26% 0.004 256)",
+          "oklch(38% 0.006 256)",
+          "oklch(49% 0.008 256)",
+          "oklch(61% 0.008 256)",
+          "oklch(72% 0.006 256)",
+          "oklch(84% 0.004 256)",
+          "oklch(95% 0.002 256)"
+        ],
+        "light": "#ffffff",
+        "dark": "#191c20"
+      },
+      "recessed-panel": {
+        "role": "neutral",
+        "displayName": "Recessed Panel",
+        "canonical": "light-dark(#eceef1, #1f2328)",
+        "tonalRamp": [
+          "oklch(15% 0.002 254)",
+          "oklch(26% 0.005 254)",
+          "oklch(38% 0.008 254)",
+          "oklch(49% 0.010 254)",
+          "oklch(61% 0.010 254)",
+          "oklch(72% 0.008 254)",
+          "oklch(84% 0.005 254)",
+          "oklch(95% 0.002 254)"
+        ],
+        "light": "#eceef1",
+        "dark": "#1f2328"
+      },
+      "sign-ink": {
+        "role": "neutral",
+        "displayName": "Sign Ink",
+        "canonical": "light-dark(#16191d, #ececec)",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(38% 0.000 90)",
+          "oklch(49% 0.000 90)",
+          "oklch(61% 0.000 90)",
+          "oklch(72% 0.000 90)",
+          "oklch(84% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ],
+        "light": "#16191d",
+        "dark": "#ececec"
+      },
+      "secondary-ink": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "canonical": "light-dark(#4f5862, #a8afb7)",
+        "tonalRamp": [
+          "oklch(15% 0.003 252)",
+          "oklch(26% 0.007 252)",
+          "oklch(38% 0.010 252)",
+          "oklch(49% 0.013 252)",
+          "oklch(61% 0.013 252)",
+          "oklch(72% 0.010 252)",
+          "oklch(84% 0.007 252)",
+          "oklch(95% 0.003 252)"
+        ],
+        "light": "#4f5862",
+        "dark": "#a8afb7"
+      },
+      "hint-ink": {
+        "role": "neutral",
+        "displayName": "Hint Ink",
+        "canonical": "light-dark(#5f6872, #8c949d)",
+        "tonalRamp": [
+          "oklch(15% 0.003 251)",
+          "oklch(26% 0.008 251)",
+          "oklch(38% 0.012 251)",
+          "oklch(49% 0.015 251)",
+          "oklch(61% 0.015 251)",
+          "oklch(72% 0.012 251)",
+          "oklch(84% 0.008 251)",
+          "oklch(95% 0.003 251)"
+        ],
+        "light": "#5f6872",
+        "dark": "#8c949d"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "light-dark(#dde1e5, #2a2f35)",
+        "tonalRamp": [
+          "oklch(15% 0.003 253)",
+          "oklch(26% 0.006 253)",
+          "oklch(38% 0.009 253)",
+          "oklch(49% 0.012 253)",
+          "oklch(61% 0.012 253)",
+          "oklch(72% 0.009 253)",
+          "oklch(84% 0.006 253)",
+          "oklch(95% 0.003 253)"
+        ],
+        "light": "#dde1e5",
+        "dark": "#2a2f35"
+      },
+      "rail": {
+        "role": "neutral",
+        "displayName": "Rail",
+        "canonical": "light-dark(#c4c9cf, #3a4048)",
+        "tonalRamp": [
+          "oklch(15% 0.003 256)",
+          "oklch(26% 0.008 256)",
+          "oklch(38% 0.011 256)",
+          "oklch(49% 0.014 256)",
+          "oklch(61% 0.014 256)",
+          "oklch(72% 0.011 256)",
+          "oklch(84% 0.008 256)",
+          "oklch(95% 0.003 256)"
+        ],
+        "light": "#c4c9cf",
+        "dark": "#3a4048"
+      },
+      "control-edge": {
+        "role": "neutral",
+        "displayName": "Control Edge",
+        "canonical": "light-dark(#858e97, #6b737c)",
+        "tonalRamp": [
+          "oklch(15% 0.004 251)",
+          "oklch(26% 0.008 251)",
+          "oklch(38% 0.012 251)",
+          "oklch(49% 0.015 251)",
+          "oklch(61% 0.015 251)",
+          "oklch(72% 0.012 251)",
+          "oklch(84% 0.008 251)",
+          "oklch(95% 0.004 251)"
+        ],
+        "light": "#858e97",
+        "dark": "#6b737c"
+      },
+      "emergency-red": {
+        "role": "primary",
+        "displayName": "Emergency Red",
+        "canonical": "light-dark(#c4231c, #ff6b62)",
+        "tonalRamp": [
+          "oklch(15% 0.039 26)",
+          "oklch(26% 0.090 26)",
+          "oklch(38% 0.130 26)",
+          "oklch(49% 0.166 26)",
+          "oklch(61% 0.166 26)",
+          "oklch(72% 0.130 26)",
+          "oklch(84% 0.090 26)",
+          "oklch(95% 0.039 26)"
+        ],
+        "light": "#c4231c",
+        "dark": "#ff6b62"
+      },
+      "caution-amber": {
+        "role": "primary",
+        "displayName": "Caution Amber",
+        "canonical": "light-dark(#8f5c00, #f5b400)",
+        "tonalRamp": [
+          "oklch(15% 0.036 82)",
+          "oklch(26% 0.082 82)",
+          "oklch(38% 0.119 82)",
+          "oklch(49% 0.151 82)",
+          "oklch(61% 0.151 82)",
+          "oklch(72% 0.119 82)",
+          "oklch(84% 0.082 82)",
+          "oklch(95% 0.036 82)"
+        ],
+        "light": "#8f5c00",
+        "dark": "#f5b400"
+      },
+      "notice-slate": {
+        "role": "primary",
+        "displayName": "Notice Slate",
+        "canonical": "light-dark(#5f6b76, #9aa3ad)",
+        "tonalRamp": [
+          "oklch(15% 0.004 251)",
+          "oklch(26% 0.009 251)",
+          "oklch(38% 0.013 251)",
+          "oklch(49% 0.016 251)",
+          "oklch(61% 0.016 251)",
+          "oklch(72% 0.013 251)",
+          "oklch(84% 0.009 251)",
+          "oklch(95% 0.004 251)"
+        ],
+        "light": "#5f6b76",
+        "dark": "#9aa3ad"
+      },
+      "wayfinding-blue": {
+        "role": "tertiary",
+        "displayName": "Wayfinding Blue",
+        "canonical": "light-dark(#1a5fb4, #7cc4ff)",
+        "tonalRamp": [
+          "oklch(15% 0.024 245)",
+          "oklch(26% 0.055 245)",
+          "oklch(38% 0.079 245)",
+          "oklch(49% 0.101 245)",
+          "oklch(61% 0.101 245)",
+          "oklch(72% 0.079 245)",
+          "oklch(84% 0.055 245)",
+          "oklch(95% 0.024 245)"
+        ],
+        "light": "#1a5fb4",
+        "dark": "#7cc4ff"
+      },
+      "line-01": {
+        "role": "secondary",
+        "displayName": "Line 01",
+        "canonical": "#0052a4",
+        "tonalRamp": [
+          "oklch(15% 0.032 255)",
+          "oklch(26% 0.074 255)",
+          "oklch(38% 0.107 255)",
+          "oklch(49% 0.135 255)",
+          "oklch(61% 0.135 255)",
+          "oklch(72% 0.107 255)",
+          "oklch(84% 0.074 255)",
+          "oklch(95% 0.032 255)"
+        ]
+      },
+      "line-02": {
+        "role": "secondary",
+        "displayName": "Line 02",
+        "canonical": "#00a84d",
+        "tonalRamp": [
+          "oklch(15% 0.038 150)",
+          "oklch(26% 0.087 150)",
+          "oklch(38% 0.126 150)",
+          "oklch(49% 0.160 150)",
+          "oklch(61% 0.160 150)",
+          "oklch(72% 0.126 150)",
+          "oklch(84% 0.087 150)",
+          "oklch(95% 0.038 150)"
+        ]
+      },
+      "line-03": {
+        "role": "secondary",
+        "displayName": "Line 03",
+        "canonical": "#00a5de",
+        "tonalRamp": [
+          "oklch(15% 0.030 232)",
+          "oklch(26% 0.068 232)",
+          "oklch(38% 0.099 232)",
+          "oklch(49% 0.126 232)",
+          "oklch(61% 0.126 232)",
+          "oklch(72% 0.099 232)",
+          "oklch(84% 0.068 232)",
+          "oklch(95% 0.030 232)"
+        ]
+      },
+      "line-04": {
+        "role": "secondary",
+        "displayName": "Line 04",
+        "canonical": "#7f4f9a",
+        "tonalRamp": [
+          "oklch(15% 0.027 312)",
+          "oklch(26% 0.062 312)",
+          "oklch(38% 0.089 312)",
+          "oklch(49% 0.114 312)",
+          "oklch(61% 0.114 312)",
+          "oklch(72% 0.089 312)",
+          "oklch(84% 0.062 312)",
+          "oklch(95% 0.027 312)"
+        ]
+      },
+      "line-05": {
+        "role": "secondary",
+        "displayName": "Line 05",
+        "canonical": "#93a10c",
+        "tonalRamp": [
+          "oklch(15% 0.033 116)",
+          "oklch(26% 0.075 116)",
+          "oklch(38% 0.108 116)",
+          "oklch(49% 0.138 116)",
+          "oklch(61% 0.138 116)",
+          "oklch(72% 0.108 116)",
+          "oklch(84% 0.075 116)",
+          "oklch(95% 0.033 116)"
+        ]
+      },
+      "line-06": {
+        "role": "secondary",
+        "displayName": "Line 06",
+        "canonical": "#77c4a3",
+        "tonalRamp": [
+          "oklch(15% 0.020 165)",
+          "oklch(26% 0.045 165)",
+          "oklch(38% 0.065 165)",
+          "oklch(49% 0.083 165)",
+          "oklch(61% 0.083 165)",
+          "oklch(72% 0.065 165)",
+          "oklch(84% 0.045 165)",
+          "oklch(95% 0.020 165)"
+        ]
+      },
+      "line-07": {
+        "role": "secondary",
+        "displayName": "Line 07",
+        "canonical": "#0c8e72",
+        "tonalRamp": [
+          "oklch(15% 0.024 172)",
+          "oklch(26% 0.054 172)",
+          "oklch(38% 0.078 172)",
+          "oklch(49% 0.100 172)",
+          "oklch(61% 0.100 172)",
+          "oklch(72% 0.078 172)",
+          "oklch(84% 0.054 172)",
+          "oklch(95% 0.024 172)"
+        ]
+      },
+      "line-08": {
+        "role": "secondary",
+        "displayName": "Line 08",
+        "canonical": "#b0ce18",
+        "tonalRamp": [
+          "oklch(15% 0.040 120)",
+          "oklch(26% 0.092 120)",
+          "oklch(38% 0.132 120)",
+          "oklch(49% 0.169 120)",
+          "oklch(61% 0.169 120)",
+          "oklch(72% 0.132 120)",
+          "oklch(84% 0.092 120)",
+          "oklch(95% 0.040 120)"
+        ]
+      },
+      "line-09": {
+        "role": "secondary",
+        "displayName": "Line 09",
+        "canonical": "#6789ca",
+        "tonalRamp": [
+          "oklch(15% 0.023 263)",
+          "oklch(26% 0.052 263)",
+          "oklch(38% 0.076 263)",
+          "oklch(49% 0.096 263)",
+          "oklch(61% 0.096 263)",
+          "oklch(72% 0.076 263)",
+          "oklch(84% 0.052 263)",
+          "oklch(95% 0.023 263)"
+        ]
+      },
+      "line-10": {
+        "role": "secondary",
+        "displayName": "Line 10",
+        "canonical": "#2e3a8c",
+        "tonalRamp": [
+          "oklch(15% 0.029 272)",
+          "oklch(26% 0.067 272)",
+          "oklch(38% 0.097 272)",
+          "oklch(49% 0.124 272)",
+          "oklch(61% 0.124 272)",
+          "oklch(72% 0.097 272)",
+          "oklch(84% 0.067 272)",
+          "oklch(95% 0.029 272)"
+        ]
+      },
+      "line-11": {
+        "role": "secondary",
+        "displayName": "Line 11",
+        "canonical": "#4a7c2a",
+        "tonalRamp": [
+          "oklch(15% 0.027 135)",
+          "oklch(26% 0.062 135)",
+          "oklch(38% 0.090 135)",
+          "oklch(49% 0.114 135)",
+          "oklch(61% 0.114 135)",
+          "oklch(72% 0.090 135)",
+          "oklch(84% 0.062 135)",
+          "oklch(95% 0.027 135)"
+        ]
+      },
+      "line-ink-dark": {
+        "role": "secondary",
+        "displayName": "Line Ink Dark",
+        "canonical": "#0d0f12",
+        "tonalRamp": [
+          "oklch(15% 0.002 258)",
+          "oklch(26% 0.003 258)",
+          "oklch(38% 0.005 258)",
+          "oklch(49% 0.006 258)",
+          "oklch(61% 0.006 258)",
+          "oklch(72% 0.005 258)",
+          "oklch(84% 0.003 258)",
+          "oklch(95% 0.002 258)"
+        ]
+      },
+      "line-ink-light": {
+        "role": "secondary",
+        "displayName": "Line Ink Light",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(38% 0.000 90)",
+          "oklch(49% 0.000 90)",
+          "oklch(61% 0.000 90)",
+          "oklch(72% 0.000 90)",
+          "oklch(84% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Site name in the top bar."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Incident title, the station name of a row."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text, keep-all word breaking."
+      },
+      "body-detail": {
+        "displayName": "Body detail",
+        "purpose": "Summary and Easy text in an opened row, 46rem measure."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Group headings, field labels, button text."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Ages, status, CVSS number and rating, risk word, footer."
+      },
+      "description": {
+        "displayName": "Description",
+        "purpose": "Incident title under the CVE ID, two lines at most."
+      },
+      "badge": {
+        "displayName": "Badge",
+        "purpose": "Product line badge text."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Commands quoted verbatim from sources."
+      }
+    },
+    "shadows": [
+      {
+        "name": "alert-lift",
+        "value": "0 6px 18px -8px light-dark(rgb(20 25 30 / 0.07), rgb(0 0 0 / 0.32))",
+        "purpose": "Highlight frames only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "chevron-turn",
+        "value": "transform 180ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Row chevron when a row opens; off under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "top-bar-stack",
+        "value": "599px"
+      },
+      {
+        "name": "row-restack",
+        "value": "767px"
+      },
+      {
+        "name": "wide-gutter",
+        "value": "768px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Outlined Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Theme, language and copy-command buttons; the shared .btn.",
+      "html": "<button class=\"ds-btn\" type=\"button\">English</button>",
+      "css": ".ds-btn { min-height: 44px; min-width: 44px; padding: 0 16px; border: 1px solid var(--edge, #6b737c); border-radius: 8px; background: none; color: var(--ink, #ececec); font: 500 0.875rem/1 var(--sans, system-ui, sans-serif); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; } .ds-btn:hover { background: var(--panel-2, #1f2328); } .ds-btn:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "View Switch",
+      "kind": "nav",
+      "refersTo": "view-switch",
+      "description": "The one 기본|쉬운 설명 switch at the top of the Board.",
+      "html": "<div class=\"ds-views\" role=\"group\" aria-label=\"보기\"><button type=\"button\" aria-pressed=\"true\">기본</button><button type=\"button\" aria-pressed=\"false\">쉬운 설명</button></div>",
+      "css": ".ds-views { display: inline-flex; padding: 3px; border: 1px solid var(--edge, #6b737c); border-radius: 999px; background: var(--panel-2, #1f2328); } .ds-views button { min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: none; color: var(--ink-2, #a8afb7); font: 500 15px/1 var(--sans, system-ui, sans-serif); cursor: pointer; } .ds-views button[aria-pressed=\"true\"] { background: var(--ink, #ececec); color: var(--bg, #121417); font-weight: 700; } .ds-views button:not([aria-pressed=\"true\"]):hover { color: var(--ink, #ececec); } .ds-views button:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Product picker and search box, one line on wide screens.",
+      "html": "<div class=\"ds-field\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><circle cx=\"7\" cy=\"7\" r=\"5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"/><path d=\"m11 11 3.5 3.5\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg><input type=\"search\" placeholder=\"키워드, CVE ID, 버전\" aria-label=\"검색\"></div>",
+      "css": ".ds-field { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 14px; background: var(--panel, #191c20); border: 1px solid var(--edge, #6b737c); border-radius: 10px; color: var(--ink, #ececec); } .ds-field:focus-within { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 1px; } .ds-field svg { width: 16px; height: 16px; color: var(--ink-3, #8c949d); flex: none; } .ds-field input { flex: 1; min-width: 0; min-height: 46px; border: 0; background: none; outline: 0; color: inherit; font: 400 15px var(--sans, system-ui, sans-serif); } .ds-field input::placeholder { color: var(--ink-3, #8c949d); }"
+    },
+    {
+      "name": "Product Line Badge",
+      "kind": "chip",
+      "refersTo": "line-badge",
+      "description": "A Product in its fixed subway-line colour.",
+      "html": "<span class=\"ds-ln\" style=\"--line:#0052a4;--line-ink:#ffffff\">OpenSSH</span> <span class=\"ds-ln\" style=\"--line:#00a84d;--line-ink:#0d0f12\">Gen7</span>",
+      "css": ".ds-ln { display: inline-flex; align-items: center; min-height: 26px; padding: 3px 11px; border-radius: 999px; background: var(--line); color: var(--line-ink); font: 600 0.78125rem/1.2 var(--sans, system-ui, sans-serif); }"
+    },
+    {
+      "name": "CVSS Ring",
+      "kind": "custom",
+      "refersTo": "cvss-ring",
+      "description": "CVSS score as a ring filled to score/10, number inside, coloured by rating.",
+      "html": "<span class=\"ds-gauge\" role=\"img\" aria-label=\"CVSS 7.5 높음\" style=\"--fill:0.75\"><svg viewBox=\"0 0 40 40\" aria-hidden=\"true\"><circle class=\"track\" cx=\"20\" cy=\"20\" r=\"17\" pathLength=\"1\"/><circle class=\"arc\" cx=\"20\" cy=\"20\" r=\"17\" pathLength=\"1\"/></svg><b>7.5</b></span>",
+      "css": ".ds-gauge { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; color: var(--mid, #f5b400); } .ds-gauge svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); } .ds-gauge circle { fill: none; stroke-width: 3.5; } .ds-gauge .track { stroke: var(--rule-2, #3a4048); } .ds-gauge .arc { stroke: currentColor; stroke-dasharray: var(--fill) 1; stroke-linecap: round; } .ds-gauge b { position: relative; font: 700 0.8125rem var(--sans, system-ui, sans-serif); color: var(--ink, #ececec); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Board Row",
+      "kind": "custom",
+      "refersTo": "board-row",
+      "description": "One Incident as a sign: risk dot and word, CVE ID over the title, CVSS ring, line badges, age.",
+      "html": "<button class=\"ds-row\" type=\"button\" aria-expanded=\"false\"><span class=\"ds-risk\"><span class=\"ds-dot\"></span>고위험</span><span><strong class=\"ds-title\">CVE-2026-19868</strong><span class=\"ds-sub\">SonicWall SonicOS SSLVPN 인증 우회 (SAML 및 MFA 우회)</span></span><span class=\"ds-cve\">7.5 높음</span><span class=\"ds-ln\" style=\"--line:#7f4f9a;--line-ink:#ffffff\">SonicWall Gen7</span><span class=\"ds-age\">1시간 전</span></button>",
+      "css": ".ds-row { display: grid; grid-template-columns: 6.5rem minmax(0,1fr) 7.5rem auto 5.5rem; align-items: center; column-gap: 1.25rem; width: 100%; min-height: 72px; padding: 12px; border: 0; border-bottom: 1px solid var(--rule, #2a2f35); background: none; color: var(--ink, #ececec); text-align: left; font: 400 15px/1.55 var(--sans, system-ui, sans-serif); cursor: pointer; } .ds-row:hover { background: var(--panel-2, #1f2328); } .ds-row:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 2px; } .ds-risk { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; font-weight: 700; color: var(--high, #ff6b62); } .ds-dot { width: 0.875rem; height: 0.875rem; border-radius: 50%; background: currentColor; } .ds-title { display: block; font-size: 1.0625rem; font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; } .ds-sub { display: block; font-size: 0.875rem; color: var(--ink-2, #a8afb7); } .ds-cve { font-size: 0.875rem; font-variant-numeric: tabular-nums; } .ds-age { font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--ink-2, #a8afb7); justify-self: end; } .ds-ln { display: inline-flex; min-height: 26px; align-items: center; padding: 3px 11px; border-radius: 999px; background: var(--line); color: var(--line-ink); font-size: 0.78125rem; font-weight: 600; }"
+    },
+    {
+      "name": "Highlight Frame",
+      "kind": "card",
+      "refersTo": "highlight-frame",
+      "description": "A 주목 Incident framed like a stacked emergency alert.",
+      "html": "<div class=\"ds-alert\"><strong>SonicWall SonicOS SSLVPN 인증 우회</strong><p>다른 로그인 방식의 정상 계정을 가진 사람이 SAML 로그인과 추가 인증 확인 없이 회사 VPN에 들어올 수 있습니다.</p></div>",
+      "css": ".ds-alert { padding: 12px 16px; background: linear-gradient(90deg, color-mix(in srgb, var(--high, #ff6b62) 7%, transparent), transparent 40%), var(--panel, #191c20); border: 1px solid var(--rule-2, #3a4048); border-left: 3px solid var(--high, #ff6b62); border-radius: 10px; box-shadow: 0 6px 18px -8px var(--shadow, rgb(0 0 0 / 0.32)); color: var(--ink, #ececec); font: 400 15px/1.55 var(--sans, system-ui, sans-serif); } .ds-alert p { margin: 8px 0 0; font-size: 0.9375rem; line-height: 1.7; }"
+    },
+    {
+      "name": "Command Line",
+      "kind": "custom",
+      "refersTo": "command-code",
+      "description": "A source-quoted command with a copy button.",
+      "html": "<p class=\"ds-command\"><code>apt upgrade openssh-server</code> <button type=\"button\">복사</button></p>",
+      "css": ".ds-command { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; } .ds-command code { font: 0.875rem/1.5 var(--mono, ui-monospace, Consolas, monospace); background: var(--panel-2, #1f2328); border: 1px solid var(--rule-2, #3a4048); border-radius: 6px; padding: 6px 10px; color: var(--ink, #ececec); } .ds-command button { min-height: 44px; padding: 0 16px; border: 1px solid var(--edge, #6b737c); border-radius: 8px; background: none; color: var(--ink, #ececec); font: 500 0.875rem var(--sans, system-ui, sans-serif); cursor: pointer; } .ds-command button:hover { background: var(--panel-2, #1f2328); } .ds-command button:focus-visible { outline: 2px solid var(--focus, #7cc4ff); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Station Board",
+    "overview": "The Board is read the way a commuter reads a Seoul subway sign: no column labels, no legend, just a coloured line, a bold station name and the line under it that says where it goes. Every Product rides its own fixed line colour, every CVE ID is set like a station name with the Incident's title under it, the CVSS score is a ring filled to its value, and the reader understands a row in one glance. Risk sits apart from the lines as a filled dot at the row start, so \"which line\" and \"how dangerous\" never share a colour.\n\nDensity is that of a departure board: rows of 72 px minimum, one hairline between them, generous column gaps, nothing decorative. The ground is graphite at night and pale concourse paper by day; the visitor's system setting picks one and a remembered toggle overrides it. The only thing that lifts off the ground is the \"주목\" group, stacked like emergency alerts in thin framed rows with a risk-coloured edge.\n\nThe Normal view is restrained: calm type, quiet colour, the facts. The Easy view is the same board with a friendlier voice: the risk word gains its \"!\", the row leads with a plain headline (\"SonicWall VPN 인증 우회 위험 발견\") over one plain sentence in Sign Ink, and each opened row ends in one plain action line set heavier than the text around it. The sign does not change; only the announcement does.",
+    "keyCharacteristics": [
+      "No column header row; the row's grid position carries the meaning.",
+      "Two separate colour alphabets: risk and severity (red, amber, slate) and Product lines",
+      "The CVE ID as the bold name over the Incident title, like a station name over its direction.",
+      "CVSS as a ring filled to the score out of 10, number inside.",
+      "Flat rows on hairlines; only the Highlight frames carry a shadow.",
+      "Light and dark twins from one set of `light-dark()` tokens."
+    ],
+    "rules": [
+      {
+        "name": "The Two Alphabets Rule",
+        "body": "Risk and severity speak only in red, amber and slate, and the same severity is always the same colour; Product lines never use a red, orange, amber or grey hue, and a line colour never signals risk. Adding a line colour means checking it against all three first.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Line Rule",
+        "body": "A Product's line colour is a function of its name, the same on every row and every visit. Never pick a line colour per page or per row.",
+        "section": "colors"
+      },
+      {
+        "name": "The Station Name Rule",
+        "body": "In the normal view the CVE ID is the bold name and the Incident title in the page language sits under it in Description size, cut after two lines. With more CVEs the name adds \"외 N건\". The Easy view leads with the Summary's plain headline over its one plain sentence (the opened panel starts with the CVE IDs) (Sign Ink, 500, never cut); without a Summary, and for an Incident with no CVE yet, the title leads and the CVE line goes under it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "CVE IDs, counts, dates and times use tabular numerals so columns of numbers do not shimmer.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Header Row Rule",
+        "body": "The Board never shows a row of column labels. If a column needs a label to be understood, the column is wrong.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Lift Rule",
+        "body": "Only the \"주목\" frames cast a shadow. Plain rows, fields, buttons and opened details stay flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`, `--fs-small`) and the shared `.btn` for any new outlined button.",
+      "Do keep every interactive target at least 44 px.",
+      "Do theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link underline offset (3px).",
+      "Do keep Normal view calm and let the Easy view carry the louder voice (levels 심각! / 경계 / 주의, \"!\" only at 심각, a plain headline, one plain sentence that may end in \"!\", one action line at weight 600).",
+      "Do check both themes for WCAG 2.2 AA contrast after any colour change.",
+      "Do write a device or Product badge with its vendor in front."
+    ],
+    "donts": [
+      "Don't add a column header row to the Board.",
+      "Don't give a Product line a red, amber or grey hue, or use a line colour for risk.",
+      "Don't put shadows on plain rows, fields or buttons; the Highlight frame is the only lift.",
+      "Don't widen the Highlight's risk edge past 3px or add a coloured edge to plain rows.",
+      "Don't set a column of numbers without tabular numerals."
+    ]
+  }
+}
