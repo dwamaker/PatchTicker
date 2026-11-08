@@ -2,12 +2,14 @@
 
 import json
 import re
+from datetime import timedelta
 from urllib.parse import urlencode, urlsplit
 
-from collector.incidents import cves_in, is_http
+from collector.incidents import STAMP, cves_in, is_http, month_of
 
 SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
-# Algolia allows 10,000 requests/h per IP; 10 pages per 15-minute cycle is 40/h.
+ITEM_URL = "https://news.ycombinator.com/item?id="
+# Algolia allows 10,000 requests/h per IP; 10 pages and one points refresh per 15-minute cycle is 44/h.
 MAX_PAGES = 10
 
 # HN buzz: the points at which an HN story counts as a Highlight signal (also in web/board.mjs).
@@ -42,13 +44,36 @@ def fetch(checkpoint, http_get):
     return [mention_group(h) for h in hits], max([since] + [h["created_at_i"] for h in hits])
 
 
+def refresh_points(incidents, now, http_get):
+    """Read again the points of the HN stories in Incidents first seen in the last seven days, so buzz
+    that grows after first sight counts; return the months it changed. One request a cycle (44/h with
+    fetch's ten), and none when no recent Incident has a story: only stories of the last seven days at
+    BUZZ_POINTS or more, as only those can change a Highlight or the instant path much.
+
+    shortcut: one page of 1,000; 277 stories reached 100 points in the week to 2026-11-08.
+    """
+    since = now - timedelta(days=7)
+    recent = [i for i in incidents if i["first_seen"] >= since.strftime(STAMP)
+              and any(m["url"].startswith(ITEM_URL) for m in i["mentions"])]
+    if not recent:
+        return set()
+    query = {"tags": "story", "hitsPerPage": 1000, "attributesToRetrieve": "points",
+             "numericFilters": f"created_at_i>{int(since.timestamp())},points>={BUZZ_POINTS}"}
+    points = {ITEM_URL + h["objectID"]: h["points"] for h in json.loads(http_get(f"{SEARCH_URL}?{urlencode(query)}"))["hits"]}
+    changed = set()
+    for incident in recent:
+        for m in incident["mentions"]:
+            if m["url"] in points and m.get("points") != points[m["url"]]:
+                m["points"] = points[m["url"]]
+                changed.add(month_of(incident["first_seen"]))
+    return changed
+
+
 def mention_group(hit):
     title = " ".join((hit.get("title") or "").split())
     link = hit.get("url")
-    # shortcut: points as first seen (a story is read once), so a story that climbs later keeps its
-    # early count; re-read recent stories' points if Highlights miss HN buzz.
-    mentions = [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={hit['objectID']}",
-                 "title": title, "points": hit.get("points") or 0}]
+    # Points as first seen; refresh_points reads them again while the Incident is recent.
+    mentions = [{"kind": "discussion", "url": ITEM_URL + hit["objectID"], "title": title, "points": hit.get("points") or 0}]
     if is_http(link):
         mentions.append({"kind": "repo" if is_repo(link) else "writeup", "url": link})
     text = f"{title} {link or ''}"

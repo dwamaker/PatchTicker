@@ -5,10 +5,12 @@ each cut to the one paragraph that cites something).
 """
 
 import unittest
+from urllib.parse import parse_qs, urlsplit
 
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 from test_cycle import at, incident, recorded
+from test_summaries import FakeClaude, hn_story
 
 
 class KevTest(unittest.TestCase):
@@ -104,6 +106,52 @@ class CuratorTest(unittest.TestCase):
 
         self.assertEqual([self.store.read(f"months/{m}.json") for m in ("2026-09", "2026-10")], months)
         self.assertEqual(self.store.read("status.json")["updated"], "2026-11-07T12:45:00Z")
+
+
+class HnPointsTest(unittest.TestCase):
+    """hn/buzz.json is a real points-refresh response, trimmed to two stories (the second one's ID reused)."""
+
+    def setUp(self):
+        self.store = MemoryStore()
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-08T11:00:00.000Z"})
+        self.store.write("index.json", {"months": ["2026-11"]})
+
+    def test_points_of_recent_stories_are_read_again_in_one_request(self):
+        # First seen at 12 points; a day later the story has 412 and is worth a Summary at once.
+        story = hn_story(50399569, "A story that climbed", 12, "2026-11-07T10:00:00Z")
+        old = hn_story(50300000, "An old story", 5, "2026-11-01T10:00:00Z")
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [story, old]})
+        searches, answer = [], recorded(None, hn_buzz="buzz.json")
+
+        def get(url, headers=None):
+            if url.startswith("https://hn.algolia.com/"):
+                searches.append({k: v[0] for k, v in parse_qs(urlsplit(url).query).items()})
+            return answer(url, headers)
+
+        claude = FakeClaude("not json")
+        run_cycle(self.store, get, at("2026-11-08T12:00:00"), "test-box", claude=claude)
+
+        incidents = {i["id"]: i for i in self.store.read("months/2026-11.json")["incidents"]}
+        self.assertEqual(incidents[story["id"]]["mentions"][0]["points"], 412)
+        self.assertEqual(incidents[old["id"]]["mentions"][0]["points"], 5)
+        week_ago = int(at("2026-11-01T12:00:00").timestamp())
+        refreshes = [s for s in searches if "points" in s["numericFilters"]]
+        self.assertEqual([s["numericFilters"] for s in refreshes], [f"created_at_i>{week_ago},points>=100"])
+        self.assertEqual(len(claude.sent), 1)
+
+    def test_no_recent_story_no_request(self):
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [
+            hn_story(50300000, "An old story", 5, "2026-11-01T10:00:00Z")]})
+        searches = []
+        answer = recorded(None)
+
+        def get(url, headers=None):
+            searches.append(url)
+            return answer(url, headers)
+
+        run_cycle(self.store, get, at("2026-11-08T12:00:00"), "test-box")
+
+        self.assertEqual(len([u for u in searches if "points" in u]), 0)
 
 
 if __name__ == "__main__":

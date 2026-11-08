@@ -29,6 +29,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # Join-only repos go last, so they can join Incidents that started this cycle.
     for group in [cvelist.mention_group(r) for r in records] + posts + stories + repos:
         changed |= link(incidents, group, stamp)
+    changed |= hn.refresh_points(incidents, now, http_get)
 
     try:
         enriched, checkpoints["nvd"] = nvd.fetch(checkpoints.get("nvd"), now, http_get, sleep, nvd_api_key)

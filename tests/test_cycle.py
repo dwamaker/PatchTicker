@@ -39,12 +39,13 @@ WPTRAVELLY_TEXT = (
 
 
 def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=None, hn=None, oss=None, github=None,
-             kev=None, curators=None, web=None):
+             kev=None, curators=None, web=None, hn_buzz=None):
     """An http_get that answers from fixtures and fails on anything not recorded.
 
     NVD pages are trimmed real responses, keyed by the startIndex they answer.
     delta_log=None serves an empty delta log; a Mention source given no fixture answers empty.
     web maps a Mention's URL to its page in fixtures/pages/ (what a Summary reads).
+    hn_buzz answers the HN points refresh (the search with a points filter); without it, no hits.
     """
     pages = {json.loads((NVD_FIXTURES / p).read_bytes())["startIndex"]: p for p in nvd_pages}
     names = {"hn": hn, "oss-security": oss, "github": github, "kev": kev, "curators": curators}
@@ -52,6 +53,8 @@ def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=Non
     def get(url, headers=None):
         if url in (web or {}):
             return (FIXTURES / "pages" / web[url]).read_bytes()
+        if url.startswith("https://hn.algolia.com/") and "points" in parse_qs(urlsplit(url).query).get("numericFilters", [""])[0]:
+            return (FIXTURES / "hn" / hn_buzz).read_bytes() if hn_buzz else b'{"hits": [], "nbPages": 0}'
         if url.startswith(nvd.API_URL):
             query = {k: v[0] for k, v in parse_qs(urlsplit(url).query).items()}
             if nvd_range:
