@@ -370,6 +370,14 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertTrue(incident["summary_error"]["final"])  # the page says no Summary is coming
         self.assertEqual(incident["brief"]["text"], "sshole")
 
+    def test_the_seven_days_count_from_the_publish_time_not_the_first_sighting(self):
+        from datetime import datetime
+        now = datetime(2026, 11, 9, 12, 0)
+        old = {"cves": ["CVE-2026-83844"], "cvss": 9.8, "mentions": [{"kind": "cve_record", "url": "https://www.cve.org/"}],
+               "first_seen": "2026-11-08T03:38:07Z", "published": "2026-10-13T18:59:53Z"}
+        self.assertFalse(summaries.is_candidate(old, now))
+        self.assertTrue(summaries.is_candidate({k: v for k, v in old.items() if k != "published"}, now))
+
     def test_only_the_last_seven_days_are_summarized_at_once(self):
         claude = FakeClaude(SSHOLE_SUMMARY)
         self.run_at("2026-11-05T12:30:00", None, hn="sshole.json")  # no API key: Briefs only

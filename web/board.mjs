@@ -144,7 +144,7 @@ export function orderBy(sort) {
 }
 
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
-// Returns the visible Incidents newest first, and the top ten of those first seen in the seven days before `now`.
+// Returns the visible Incidents newest first, and the top ten of those published (else first seen) in the seven days before `now`.
 export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   { risk = [], kev = false, from = '', to = '', cvssMin = 0, cve = '', has = [], sort = 'new' } = {}) {
   const picked = new Set(picks);
@@ -166,7 +166,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // A stable sort keeps newest first among equal scores.
-  const highlights = list.filter((i) => i.first_seen >= since && !quietHnStory(i)).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
+  const highlights = list.filter((i) => publishedAt(i) >= since && !quietHnStory(i)).sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
   return { highlights, list };
 }
 

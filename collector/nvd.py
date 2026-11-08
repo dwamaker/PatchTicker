@@ -35,7 +35,7 @@ def fetch(checkpoint, now, http_get, sleep, api_key=""):
         total = page["totalResults"]
         index += len(page["vulnerabilities"])
         for item in page["vulnerabilities"]:
-            found[item["cve"]["id"]] = {"cvss": cvss(item["cve"]), "products": products(item["cve"])}
+            found[item["cve"]["id"]] = {"cvss": cvss(item["cve"]), "products": products(item["cve"]), "published": item["cve"].get("published")}
     return found, end
 
 

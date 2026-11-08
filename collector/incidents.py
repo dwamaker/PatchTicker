@@ -117,7 +117,8 @@ def link(incidents, group, stamp):
         "id": group["cves"][0] if group["cves"] else mentions[0]["url"],
         "cves": group["cves"],
         "first_seen": stamp,
-        "published": min(group.get("published") or stamp, stamp),
+        # A source without its own time leaves it unknown: the cycle's time is not when the news broke.
+        **({"published": min(group["published"], stamp)} if group.get("published") else {}),
         **({"cvss": group["cvss"]} if group.get("cvss") is not None else {}),
         **({"products": group["products"]} if group.get("products") else {}),
         "mentions": mentions,
@@ -143,7 +144,7 @@ def link(incidents, group, stamp):
         incidents.remove(other)
         changed.add(month_of(other["first_seen"]))
     if group.get("join_only"):
-        del proto["published"]  # an old PoC repo or a reply joining later says nothing about when the news broke
+        proto.pop("published", None)  # an old PoC repo or a reply joining later says nothing about when the news broke
     absorb(target, proto)
     if json.dumps(target) != before:
         changed.add(month_of(target["first_seen"]))
@@ -212,8 +213,17 @@ def absorb(target, other):
     target["urls"] = sorted(set(target["urls"]) | set(other["urls"]) | seen)
     target["brief"]["lead"] = lead(target["mentions"])
     if other.get("published"):
-        target["published"] = min(target.get("published") or target["first_seen"], other["published"])
+        set_published(target, other["published"])
     enrich(target, {"cvss": other.get("cvss"), "products": other.get("products", [])})
+
+
+def set_published(incident, when):
+    """Keep the earliest known publish time. With none known yet, a time after the Board first saw the Incident is
+    not taken: the news broke before that, so it stays unknown rather than wrong."""
+    if incident.get("published"):
+        incident["published"] = min(incident["published"], when)
+    elif when <= incident["first_seen"]:
+        incident["published"] = when
 
 
 def cite(incident, citation):
@@ -232,6 +242,8 @@ def enrich(incident, data):
     merged = {p["id"]: p for p in incident.get("products", []) + data["products"]}
     if merged:
         incident["products"] = sorted(merged.values(), key=lambda p: p["id"])
+    if data.get("published") and to_stamp(data["published"]):
+        set_published(incident, to_stamp(data["published"]))  # NVD's publish date, for Incidents whose sources gave none
 
 
 def lead(mentions):

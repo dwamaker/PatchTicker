@@ -194,7 +194,8 @@ def is_candidate(incident, now):
     if incident.get("kev") and not incident.get("summary_basis", {}).get("kev"):
         return True
     # The seven days and the 9.0 cutoff are repeated in web/board.mjs (filterBoard, riskLevel).
-    if incident["first_seen"] < (now - timedelta(days=7)).strftime(STAMP):
+    # Counted from when the news was published (else first seen), so an old CVE seen again is not new.
+    if (incident.get("published") or incident["first_seen"]) < (now - timedelta(days=7)).strftime(STAMP):
         return False
     kinds = {m["kind"] for m in incident["mentions"]}
     buzz = hn_points(incident) >= hn.BUZZ_POINTS

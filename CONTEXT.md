@@ -34,13 +34,14 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주목 사건):
-An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen by importance from the last seven days and shown in the visitor's sort order (newest first by default, 2026-11-08); the rest stay in the list below.
+An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen by importance from Incidents published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09) and shown in the visitor's sort order (newest first by default, 2026-11-08); the rest stay in the list below.
 _Avoid_: featured, top, hot, pinned item
 
 **Published time** (게시 시각):
 When the news of an Incident first broke: the earliest post time among the Mentions that could start it
-(CVE record datePublished, HN story, oss-security post). Shown on the row and used for "newest first".
-Not the cycle that first saw it (first_seen, which only picks the monthly file and the time windows).
+(CVE record datePublished, HN story, oss-security post), else NVD's publish date. Shown on the row and used for
+"newest first" and the Highlight window. Not the cycle that first saw it (first_seen, which only picks the monthly
+file): when no source gives a time it stays unknown, and the row says "처음 확인 12:38" (first seen) instead.
 
 **Board** (보드):
 The page's list of Incidents: Highlights on top, then every other Incident, in one visitor-chosen order for both (newest first by default, or by risk level, or by CVSS).

@@ -105,6 +105,37 @@ class PublishedTest(unittest.TestCase):
         [incident] = incidents
         self.assertEqual((incident["first_seen"], incident["published"]), ("2026-11-05T16:00:00Z", "2026-11-05T12:00:00Z"))
 
+    def test_a_source_without_a_time_leaves_the_publish_time_unknown(self):
+        # The cycle's own time is not when the news broke; the page says "처음 확인" instead.
+        from collector.incidents import link
+        incidents = []
+        post = {"mentions": [{"kind": "discussion", "url": "https://example.org/post"}], "cves": ["CVE-2026-2"], "urls": [], "text": "post"}
+        link(incidents, post, "2026-11-05T16:00:00Z")
+        self.assertNotIn("published", incidents[0])
+        # A later source with a time after the cycle first saw it does not become the publish time either.
+        later = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-2"}], "cves": ["CVE-2026-2"],
+                 "urls": [], "text": "record", "published": "2026-11-05T18:00:00Z"}
+        link(incidents, later, "2026-11-05T18:15:00Z")
+        self.assertNotIn("published", incidents[0])
+        earlier = dict(later, mentions=[{"kind": "advisory", "url": "https://example.org/advisory"}], published="2026-11-04T09:00:00Z")
+        link(incidents, earlier, "2026-11-05T18:30:00Z")
+        self.assertEqual(incidents[0]["published"], "2026-11-04T09:00:00Z")
+
+    def test_nvd_publish_date_fills_or_moves_back_the_publish_time(self):
+        from collector.incidents import enrich
+        unknown = {"first_seen": "2026-11-08T03:38:07Z"}
+        enrich(unknown, {"cvss": None, "products": [], "published": "2026-10-13T18:59:53.123"})
+        self.assertEqual(unknown["published"], "2026-10-13T18:59:53Z")
+        known = {"first_seen": "2026-11-08T03:38:07Z", "published": "2026-11-07T12:00:00Z"}
+        enrich(known, {"cvss": None, "products": [], "published": "2026-11-07T15:00:00.000"})
+        self.assertEqual(known["published"], "2026-11-07T12:00:00Z")
+
+    def test_an_rss_time_in_another_zone_is_turned_into_utc(self):
+        import xml.etree.ElementTree as ET
+        from collector import rss
+        item = ET.fromstring("<item><pubDate>Fri, 06 Nov 2026 13:14:32 -0500</pubDate></item>")
+        self.assertEqual(rss.posted(item), "2026-11-06T18:14:32Z")
+
     def test_a_source_time_reads_as_utc_and_a_bad_one_is_none(self):
         from collector.incidents import to_stamp
         self.assertEqual(to_stamp("2026-11-07T12:43:21.399Z"), "2026-11-07T12:43:21Z")

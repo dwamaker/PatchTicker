@@ -318,6 +318,14 @@ test('an Incident older than seven days leaves the Highlights and stays in the l
   assert.deepEqual(ids(at('2026-11-08T12:00:01Z').list), ['CVE-2026-301']);
 });
 
+test('Highlights count the seven days from when the news was published, not when the Board first saw it', () => {
+  const old = { ...incident('CVE-2026-83844', daysAgo(1)), published: daysAgo(26), cvss: 9.8 };
+  const fresh = { ...incident('CVE-2026-1002', daysAgo(1)), cvss: 9.8 }; // no publish time: the first sighting counts
+  const { highlights, list } = filterBoard([old, fresh], [], '', NOW);
+  assert.deepEqual(ids(highlights), ['CVE-2026-1002']);
+  assert.deepEqual(ids(list).sort(), ['CVE-2026-1002', 'CVE-2026-83844']);
+});
+
 test('Product picks and search narrow the Highlights too', () => {
   // All four score the same, so they rank newest first: CVE-2024-6387 (1 day old) to CVE-2026-120839 (4 days).
   const recent = board.map((i, n) => ({ ...i, first_seen: daysAgo(n + 1), cvss: 9 }));

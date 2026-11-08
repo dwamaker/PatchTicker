@@ -18,7 +18,7 @@ const TEXT = {
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', remove: (name) => `${name} 빼기`,
     search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', theme: '어두운 화면',
-    pin: '주목', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', unrated: '점수 아직 없음', kevReason: '악용 발생', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
+    pin: '주목', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', firstSeen: '게시 시각을 모르는 사건이라 이 게시판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, unrated: '점수 아직 없음', kevReason: '악용 발생', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: (a) => `마지막 업데이트가 ${a}입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다.`, scopeWeek: '최근 7일 안에서 찾았습니다.', scopeMonths: '최근 3개월 안에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
     clearWeek: '최근 7일 동안 게시된 사건이 없습니다', clearMonths: '최근 3개월 동안 게시된 사건이 없습니다', clearNote: '고른 제품은 주소에 저장됩니다. 즐겨찾기해 두면 다음에도 바로 확인할 수 있습니다.', searchOlderMonths: '이전 사건에서도 찾기 (최근 3개월)',
@@ -59,7 +59,7 @@ const TEXT = {
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', remove: (name) => `Remove ${name}`,
     search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', theme: 'Dark theme',
-    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` +${n}`, published: 'First published', unrated: 'Not rated yet', kevReason: 'Exploited', kevEasy: 'Attackers are using this right now!',
+    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` +${n}`, published: 'First published', firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, unrated: 'Not rated yet', kevReason: 'Exploited', kevEasy: 'Attackers are using this right now!',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: (a) => `The last update was ${a}. Collection may have stopped, so recent Incidents can be missing.`, scopeWeek: 'Searched the last 7 days.', scopeMonths: 'Searched the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
     clearWeek: 'No Incident posted in the last 7 days', clearMonths: 'No Incident posted in the last 3 months', clearNote: 'Your picks are saved in the address. Bookmark it to check again next time.', searchOlderMonths: 'Search older Incidents too (last 3 months)',
@@ -1181,8 +1181,10 @@ function dateCell(incident) {
   const two = (n) => String(n).padStart(2, '0');
   const time = el('time', 'c-date');
   time.dateTime = at;
-  time.append(el('span', '', `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`), el('span', '', `${two(d.getHours())}:${two(d.getMinutes())}`));
-  time.title = `${TEXT[lang].published} · ${ago(at)}`;
+  const clock = `${two(d.getHours())}:${two(d.getMinutes())}`;
+  // No source gave a time: the Board's first sighting, said as such, never passed off as the publish time.
+  time.append(el('span', '', `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`), el('span', '', incident.published ? clock : TEXT[lang].firstSeenAt(clock)));
+  time.title = `${incident.published ? TEXT[lang].published : TEXT[lang].firstSeen} · ${ago(at)}`;
   return time;
 }
 

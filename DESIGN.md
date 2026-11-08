@@ -255,7 +255,7 @@ jumps, like signage lettering.
 - **Label** (700, 0.875rem): group headings ("주목 N", "최신순"), field labels, button text (500).
 - **Description** (400, 0.875rem, 1.45, -0.01em): the Incident title under the CVE ID, Secondary
   Ink, at most two lines.
-- **Meta** (400, 0.8125rem, tabular numerals): the published date and time, status line, CVSS number (700) and
+- **Meta** (400, 0.8125rem, tabular numerals): the published date and time ("처음 확인 12:38" when no source gave a time), status line, CVSS number (700) and
   rating word, risk word (700), footer.
 - **Badge** (600, 0.78125rem, 1.2): Product line badge text.
 
