@@ -319,5 +319,50 @@ class InstantOrderTest(unittest.TestCase):
         self.assertEqual(len(claude.batch_inputs()), 2)  # the other two still get a Summary, through the batch
 
 
+NHS = "https://www.theregister.com/security/2026/11/07/nhs-breach-helpline-left-staff-carrying-a-significant-emotional-burden/5308201"
+HEIST = "https://www.bleepingcomputer.com/news/security/hackers-pull-off-133-million-french-bank-heist-via-service-provider/"
+
+
+def news_reply(ko, en):
+    """A Summary reply for general news: no product, no fix, only the sentence under test."""
+    fields = {"title": "", "summary": "", "conditions": [], "mitigation": "", "easy": ""}
+    return {"ko": fields | {"summary": ko}, "en": fields | {"summary": en},
+            "products": [], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": []}
+
+
+class NumberCheckTest(unittest.TestCase):
+    """The two real-run rejections, '715' and '1', with the write-ups they were built from (trimmed)."""
+
+    def summarize(self, item, page_url, page, reply):
+        store = MemoryStore()
+        store.write("checkpoints.json", {"cvelist": "2026-11-08T03:00:00.000Z"})
+        store.write("index.json", {"months": ["2026-11"]})
+        story = hn_story(item, "a story", 500, REAL_RUN)
+        story["mentions"].append({"kind": "writeup", "url": page_url})
+        store.write("months/2026-11.json", {"month": "2026-11", "incidents": [story]})
+        run_cycle(store, recorded(None, web={page_url: page}), at("2026-11-08T03:45:00"), "test-box",
+                  claude=FakeClaude(reply))
+        return board(store)[story["id"]]
+
+    def test_korean_counters_and_number_units_pass_when_the_value_is_the_sources(self):
+        cases = {
+            "a counter after a thousands comma": (NHS, "nhs-helpline.txt", news_reply(
+                "직원 7,715명과 외부 인력 288명의 건강 정보가 노출되었습니다.",
+                "Health data of 7,715 staff and 288 non-trust workers was exposed.")),
+            "만 and 억 for millions": (HEIST, "bank-heist.txt", news_reply(
+                "최대 1억 3,300만 달러(1억 1,800만 유로)가 빠져나갔고, 은행 회원은 580만 명입니다.",
+                "Up to $133 million (118 million euros) was taken; the bank has 5.8 million members.")),
+        }
+        for case, (url, page, reply) in cases.items():
+            with self.subTest(case):
+                self.assertIn("summary", self.summarize(50410137, url, page, reply))
+
+    def test_a_korean_amount_with_another_value_is_still_rejected(self):
+        incident = self.summarize(50407643, HEIST, "bank-heist.txt", news_reply(
+            "최대 1억 3,400만 달러가 빠져나갔습니다.", "Up to $133 million was taken."))
+        self.assertNotIn("summary", incident)
+        self.assertIn("numbers not in the input", incident["summary_error"]["reason"])
+
+
 if __name__ == "__main__":
     unittest.main()

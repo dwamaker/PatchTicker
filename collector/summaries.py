@@ -11,6 +11,7 @@ import json
 import re
 import sys
 from datetime import timedelta
+from decimal import Decimal
 from urllib.parse import urlsplit
 
 from anthropic.types.messages.batch_create_params import Request
@@ -318,12 +319,26 @@ def is_hn(url):
 
 
 NUMBER_RE = re.compile(r"\d+(?:\.\d+)*(?:[a-z]+\d+)?", re.IGNORECASE)
+# Number words that scale the number before them, so Korean "1억 3,300만" and "$133 million" are one value.
+SCALES = {"천": 3, "만": 4, "억": 8, "조": 12, "thousand": 3, "million": 6, "billion": 9, "trillion": 12, "M": 6, "bn": 9}
+# Korean pieces add up ("1억 3300만", "7천715"); bare digits count only right after a unit.
+KO_AMOUNT_RE = re.compile(r"\d+(?:\.\d+)?\s?[천만억조]+(?:\s?\d+(?:\.\d+)?\s?[천만억조]+)*(?:\d+(?![\d.]))?")
+KO_PIECE_RE = re.compile(r"(\d+(?:\.\d+)?)\s?([천만억조]*)")
+EN_AMOUNT_RE = re.compile(r"(\d+(?:\.\d+)?)\s?(thousand|million|billion|trillion|M|bn)\b")
 
 
 def numbers(text):
-    """Number and version tokens, so "1,024" == "1024" and "05" == "5"."""
-    text = re.sub(r"(?<=\d),(?=\d{3}\b)", "", text)
+    """Number and version tokens, so "1,024" == "1024", "05" == "5" and "580만" == "5.8 million"."""
+    # Not \b after the three digits: a Korean counter ("7,715명") is a word character.
+    text = re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", text)
+    text = KO_AMOUNT_RE.sub(lambda m: plain(sum(Decimal(n) * 10 ** sum(SCALES[u] for u in units)
+                                                for n, units in KO_PIECE_RE.findall(m[0]))), text)
+    text = EN_AMOUNT_RE.sub(lambda m: plain(Decimal(m[1]) * 10 ** SCALES[m[2]]), text)
     return {t.lstrip("0") or "0" if t.isdigit() else t.lower() for t in NUMBER_RE.findall(text)}
+
+
+def plain(value):
+    return f"{value.normalize():f}"  # 133000000, not 1.33E+8
 
 
 def lang_text(fields):
