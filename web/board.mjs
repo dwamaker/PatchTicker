@@ -191,12 +191,14 @@ export async function slug(id) {
 
 // An Incident page lives this long from first seen (also collector/cycle.py PAGE_DAYS); edge/page.mjs answers 410 after.
 export const PAGE_DAYS = 90;
+// Whether a time (an Incident's first seen, a move) is within PAGE_DAYS of now: the Board, the pages and the sitemaps.
+export const withinPageDays = (stamp, now) => Date.parse(stamp) >= now - PAGE_DAYS * DAY_MS;
 
 // "Copy this Incident's link": its Incident page in the visitor's language when it has one (a Summary, on the Board,
 // first seen within PAGE_DAYS), else the Board's #i= link. pageSlug is slug(i.id) worked out ahead, so the click writes
 // to the clipboard at once (Safari drops the click's permission across an await); undefined means not ready yet.
 export function shareLink(i, pageSlug, lang, board, now = Date.now()) {
-  const hasPage = pageSlug && i.summary && onBoard(i) && Date.parse(i.first_seen) >= now - PAGE_DAYS * DAY_MS;
+  const hasPage = pageSlug && i.summary && onBoard(i) && withinPageDays(i.first_seen, now);
   return hasPage ? new URL(`${lang === 'en' ? '/en' : ''}/i/${pageSlug}`, board).href : `${board}#i=${encodeURIComponent(i.id)}`;
 }
 

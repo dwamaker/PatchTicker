@@ -32,7 +32,7 @@ test('the Korean and English feeds carry each Incident in their language, linked
   assert.match(ko, /<link>https:\/\/patchticker.com\/i\/CVE-2026-123158<\/link>/);
   assert.match(ko, /<guid isPermaLink="false">https:\/\/patchticker.com\/i\/CVE-2026-123158<\/guid>/);
   assert.match(ko, /<pubDate>Thu, 05 Nov 2026 10:00:00 GMT<\/pubDate>/);
-  assert.match(ko, /&lt;b&gt;대처법:&lt;\/b&gt; 9.9p2로 업데이트하세요./);
+  assert.match(ko, /&lt;b&gt;대처법&lt;\/b&gt;&lt;\/p&gt;&lt;p&gt;9.9p2로 업데이트하세요./);
   assert.match(ko, /<link>https:\/\/patchticker.com\/i\/hn-50378228<\/link>/);
   const en = await (await feedResponse(bucket(doc), 'en')).text();
   assert.match(en, /<atom:link href="https:\/\/patchticker.com\/en\/feed.xml"/);
@@ -55,6 +55,23 @@ test('hostile text from a source cannot break out of the feed', async () => {
   assert.doesNotMatch(xml, /<script>|<img /);
   assert.match(xml, /&lt;\/title&gt;&lt;script&gt;/);
   assert.match(xml, /&amp;lt;img src=x onerror=alert\(1\)&amp;gt;/); // escaped inside the escaped HTML body
+});
+
+test('an item says what to do and the plain explanation as the Incident page does', async () => {
+  const command = { ...SSHOLE, summary: { command: 'sudo apk upgrade openssh', ko: { ...SSHOLE.summary.ko, mitigation: undefined }, en: SSHOLE.summary.en } };
+  const ko = await (await feedResponse(bucket({ incidents: [command] }), 'ko')).text();
+  assert.match(ko, /&lt;p&gt;리눅스 서버가 뚫릴 수 있습니다\.&lt;\/p&gt;/); // easyLine: "!" only at the highest level
+  assert.match(ko, /&lt;b&gt;대처법&lt;\/b&gt;&lt;\/p&gt;&lt;p&gt;이 명령으로 업데이트하세요:&lt;\/p&gt;&lt;p class=&quot;command&quot;&gt;&lt;code&gt;sudo apk upgrade openssh&lt;\/code&gt;/);
+  const exploited = await (await feedResponse(bucket({ incidents: [{ ...command, kev: true }] }), 'ko')).text();
+  assert.match(exploited, /리눅스 서버가 뚫릴 수 있습니다!/);
+});
+
+test('503, never a runtime error or a half feed, for a document the feed cannot use', async () => {
+  for (const doc of [{ incidents: 'oops' }, { incidents: [null] }]) {
+    const res = await feedResponse(bucket(doc), 'ko');
+    assert.equal(res.status, 503);
+    assert.match(await res.text(), /^The RSS feed is unavailable right now\./);
+  }
 });
 
 test('answers RSS with a short cache, and 503 when the store cannot be read', async () => {

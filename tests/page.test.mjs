@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { slug } from '../web/board.mjs';
 import { pageResponse } from '../edge/page.mjs';
+import { cached } from '../edge/shared.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');
 const reads = [];
@@ -78,6 +79,16 @@ test('the page shows what the Board panel shows, with the Board rules', async ()
   assert.match(html, /The MITRE Corporation/);
 });
 
+test('source links open in a new tab and say so, as on the Board; the Board and language links stay in the tab', async () => {
+  const html = await (await page(SSHOLE)).text();
+  assert.match(html, /<a href="https:\/\/www.openssh.com\/txt\/release-9.9p2" target="_blank" rel="noopener noreferrer">OpenSSH 9.9p2 release notes<span class="sr-only"> \(새 탭에서 열림\)<\/span><\/a>/);
+  assert.match(html, /<a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158" target="_blank" rel="noopener noreferrer">CVE-2026-123158</);
+  assert.match(html, /<a href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*" target="_blank" rel="noopener noreferrer">틀린 내용 알리기</);
+  assert.match(html, /<a href="\/#i=CVE-2026-123158">/);
+  assert.match(html, /<a href="\/en\/i\/CVE-2026-123158" hreflang="en"/);
+  assert.match(await (await page(SSHOLE, 'en')).text(), /<span class="sr-only"> \(opens in a new tab\)<\/span>/);
+});
+
 test('the English page is the English Summary, canonical to itself', async () => {
   const html = await (await page(SSHOLE, 'en')).text();
   assert.match(html, /<html lang="en">/);
@@ -132,7 +143,7 @@ test('404 for an unknown slug, a malformed one (no store read) and an Incident t
 });
 
 // Ticket incident-pages/04: the collector leaves this in place of an absorbed Incident's page.
-const MOVED = { id: 'CVE-2026-1002', moved_to: 'CVE-2026-123158', moved: '2026-11-08T00:00:00Z' };
+const MOVED = { id: 'CVE-2026-1002', moved_to: 'CVE-2026-123158', moved_to_id: 'CVE-2026-123158', moved: '2026-11-08T00:00:00Z' };
 const moved = (doc, target = SSHOLE, lang = 'ko') => pageResponse(bucket({ 'pages/CVE-2026-1002.json': doc, ...(target ? { 'pages/CVE-2026-123158.json': target } : {}) }), lang, 'CVE-2026-1002', NOW);
 
 test('a merged Incident answers 301 to the survivor in the same language', async () => {
@@ -144,8 +155,8 @@ test('a merged Incident answers 301 to the survivor in the same language', async
   assert.equal(en.headers.get('location'), 'https://patchticker.com/en/i/CVE-2026-123158');
 });
 
-test('410 when the move or the survivor is past 90 days, or the survivor has no page', async () => {
-  for (const [doc, target] of [[{ ...MOVED, moved: '2026-08-10T00:00:00Z' }, SSHOLE], [MOVED, { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' }], [MOVED, null]]) {
+test('410 when the move or the survivor is past 90 days', async () => {
+  for (const [doc, target] of [[{ ...MOVED, moved: '2026-08-10T00:00:00Z' }, SSHOLE], [MOVED, { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' }]]) {
     const res = await moved(doc, target);
     assert.equal(res.status, 410);
     const html = await res.text();
@@ -155,15 +166,60 @@ test('410 when the move or the survivor is past 90 days, or the survivor has no 
   assert.equal((await moved({ ...MOVED, moved: '2026-08-12T00:00:00Z' })).status, 301);
 });
 
+test('302 to the survivor on the Board while the survivor has no page yet (owner, 11-10)', async () => {
+  const story = { ...MOVED, moved_to: 'hn-77', moved_to_id: 'https://news.ycombinator.com/item?id=77' };
+  for (const [doc, target] of [[MOVED, null], [MOVED, { ...SSHOLE, summary: undefined }], [story, null]]) {
+    const res = await moved(doc, target, 'en');
+    assert.equal(res.status, 302);
+    assert.equal(res.headers.get('location'), `https://patchticker.com/#i=${encodeURIComponent(doc.moved_to_id)}`);
+    assert.match(res.headers.get('cache-control'), /public, max-age=300/);
+  }
+});
+
 test('a moved document never renders as a page, and a malformed target is never read', async () => {
   reads.length = 0;
   const res = await moved({ ...MOVED, moved_to: '../board/feed' });
-  assert.equal(res.status, 410);
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), 'https://patchticker.com/#i=CVE-2026-123158');
   assert.deepEqual(reads, ['pages/CVE-2026-1002.json']);
 });
 
 test('503 when the store cannot be read', async () => {
   const res = await pageResponse({ get: async () => { throw new Error('R2 down'); } }, 'ko', 'CVE-2026-123158', NOW);
   assert.equal(res.status, 503);
+  assert.equal(res.headers.get('cache-control'), null);
   assert.match(await res.text(), /patchticker.com/);
+});
+
+test('503, never a runtime error or half a page, for a document the page cannot use', async () => {
+  for (const doc of [{ ...SSHOLE, mentions: undefined }, { ...SSHOLE, cves: 'CVE-2026-123158' }, { ...MOVED, moved_to_id: undefined }]) {
+    const res = await page(doc, 'ko', 'CVE-2026-1002');
+    assert.equal(res.status, 503);
+    assert.match(await res.text(), /지금은 사건 페이지를 불러올 수 없습니다/);
+  }
+});
+
+test('expired, missing and moved answers carry a short cache time too, a 404 the shortest', async () => {
+  const age = async (res) => Number(/max-age=(\d+)/.exec(res.headers.get('cache-control'))[1]);
+  assert.equal(await age(await page({ ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' })), 300);
+  assert.equal(await age(await pageResponse(bucket({}), 'ko', 'CVE-2026-99999', NOW)), 60);
+  assert.equal(await age(await pageResponse(bucket({}), 'ko', '../x', NOW)), 60);
+  assert.equal(await age(await moved(MOVED)), 300);
+});
+
+test('the edge cache keeps 200, 301, 302, 404 and 410 answers, never a 503', async () => {
+  const stored = [];
+  const saved = globalThis.caches;
+  globalThis.caches = { default: { match: async () => undefined, put: async (req, res) => { stored.push(res.status); } } };
+  try {
+    for (const status of [200, 301, 302, 404, 410, 503]) {
+      const pending = [];
+      const res = await cached({ request: new Request('https://patchticker.com/i/x'), waitUntil: (p) => pending.push(p) }, async () => new Response(null, { status }));
+      await Promise.all(pending);
+      assert.equal(res.status, status);
+    }
+  } finally {
+    globalThis.caches = saved;
+  }
+  assert.deepEqual(stored, [200, 301, 302, 404, 410]);
 });
