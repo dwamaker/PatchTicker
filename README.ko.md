@@ -10,11 +10,10 @@
 </p>
 
 <p align="center">
-  <a href="https://patchticker.dwamaker.com"><b>patchticker.dwamaker.com</b></a>
-  &nbsp;·&nbsp;
-  <a href="https://github.com/dwamaker/vuln-radar/issues/new">틀린 내용 알리기</a>
-  &nbsp;·&nbsp;
-  <a href="README.md">English</a>
+  <a href="https://patchticker.dwamaker.com"><img src="https://img.shields.io/badge/live-patchticker.dwamaker.com-1a5fb4?style=flat-square" alt="Live: patchticker.dwamaker.com"></a>
+  <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="Updates every 10 minutes">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="License: MIT"></a>
+  <a href="README.md"><img src="https://img.shields.io/badge/README-English-444?style=flat-square" alt="English"></a>
 </p>
 
 ---
