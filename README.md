@@ -97,3 +97,8 @@ No server answers visitors' requests. How to develop and run it: [docs/developme
 - This product uses data from the NVD API but is not endorsed or certified by the NVD.
 - CVE® records: Copyright © 1999–2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation.
   Used under the [CVE Terms of Use](https://www.cve.org/Legal/TermsOfUse).
+
+## License
+
+The code in this repository is under the [MIT License](LICENSE). CVE and NVD data keep their own terms (see
+Notices above); the collected data and summaries are not covered by this license.

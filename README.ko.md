@@ -92,3 +92,8 @@ Patch Ticker는 이 두 질문에 몇 초 안에 답하려고 만들었습니다
 - This product uses data from the NVD API but is not endorsed or certified by the NVD.
 - CVE® records: Copyright © 1999–2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation.
   Used under the [CVE Terms of Use](https://www.cve.org/Legal/TermsOfUse).
+
+## 라이선스
+
+이 저장소의 코드는 [MIT 라이선스](LICENSE)를 따릅니다. CVE와 NVD 데이터는 각자의 이용 조건을 따르고(위 고지 참고),
+수집한 데이터와 요약문은 이 라이선스에 포함되지 않습니다.
