@@ -131,6 +131,37 @@ test('404 for an unknown slug, a malformed one (no store read) and an Incident t
   assert.equal((await page({ ...SSHOLE, summary: undefined })).status, 404);
 });
 
+// Ticket incident-pages/04: the collector leaves this in place of an absorbed Incident's page.
+const MOVED = { id: 'CVE-2026-1002', moved_to: 'CVE-2026-123158', moved: '2026-11-08T00:00:00Z' };
+const moved = (doc, target = SSHOLE, lang = 'ko') => pageResponse(bucket({ 'pages/CVE-2026-1002.json': doc, ...(target ? { 'pages/CVE-2026-123158.json': target } : {}) }), lang, 'CVE-2026-1002', NOW);
+
+test('a merged Incident answers 301 to the survivor in the same language', async () => {
+  const ko = await moved(MOVED);
+  assert.equal(ko.status, 301);
+  assert.equal(ko.headers.get('location'), 'https://patchticker.com/i/CVE-2026-123158');
+  const en = await moved(MOVED, SSHOLE, 'en');
+  assert.equal(en.status, 301);
+  assert.equal(en.headers.get('location'), 'https://patchticker.com/en/i/CVE-2026-123158');
+});
+
+test('410 when the move or the survivor is past 90 days, or the survivor has no page', async () => {
+  for (const [doc, target] of [[{ ...MOVED, moved: '2026-08-10T00:00:00Z' }, SSHOLE], [MOVED, { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' }], [MOVED, null]]) {
+    const res = await moved(doc, target);
+    assert.equal(res.status, 410);
+    const html = await res.text();
+    assert.match(html, /보관 기간 90일이 지났어요/);
+    assert.match(html, /noindex/);
+  }
+  assert.equal((await moved({ ...MOVED, moved: '2026-08-12T00:00:00Z' })).status, 301);
+});
+
+test('a moved document never renders as a page, and a malformed target is never read', async () => {
+  reads.length = 0;
+  const res = await moved({ ...MOVED, moved_to: '../board/feed' });
+  assert.equal(res.status, 410);
+  assert.deepEqual(reads, ['pages/CVE-2026-1002.json']);
+});
+
 test('503 when the store cannot be read', async () => {
   const res = await pageResponse({ get: async () => { throw new Error('R2 down'); } }, 'ko', 'CVE-2026-123158', NOW);
   assert.equal(res.status, 503);

@@ -229,8 +229,7 @@ def link(incidents, group, stamp):
     # any other joins the earliest one (a PoC repo naming several CVEs must not merge their rows).
     merge = proto["cves"] and not group.get("join_only")
     for other in [i for i in hits if i is not target] if merge else []:
-        absorb(target, other)
-        incidents.remove(other)
+        fold(incidents, target, other)
         changed.add(month_of(other["first_seen"]))
     if group.get("join_only"):
         proto.pop("published", None)  # an old PoC repo or a reply joining later says nothing about when the news broke
@@ -271,8 +270,7 @@ def rejoin(incidents, since):
             continue
         hits = cited_by([i for i in incidents if i is not story], story["cites"])
         if hits:
-            absorb(hits[0], story)
-            incidents.remove(story)
+            fold(incidents, hits[0], story)
             changed |= {month_of(story["first_seen"]), month_of(hits[0]["first_seen"])}
     return changed
 
@@ -283,6 +281,14 @@ def matches(incident, proto):
     # URLs key an Incident only while it or the Mention has no CVE (spec: "keyed by its CVE IDs
     # when it has any"), so two CVE rows citing one project page stay apart.
     return not (incident["cves"] and proto["cves"]) and bool(set(incident["urls"]) & set(proto["urls"]))
+
+
+def fold(incidents, target, other):
+    """Merge Incident `other` into `target` and drop it. The survivor keeps its ID (ADR 0001) and records every ID it
+    absorbed, those `other` had absorbed too, so the absorbed pages can move to it (ticket incident-pages/04)."""
+    absorb(target, other)
+    target["absorbed"] = target.get("absorbed", []) + [other["id"]] + other.get("absorbed", [])
+    incidents.remove(other)
 
 
 def absorb(target, other):
@@ -336,8 +342,7 @@ def group_releases(incidents):
                 continue
             texts.update(other.get("cve_texts") or {c: other["brief"]["text"] for c in other["cves"]})
             links.update(other.get("cve_links") or own_links(other))
-            absorb(target, other)
-            incidents.remove(other)
+            fold(incidents, target, other)
             changed.add(month_of(other["first_seen"]))
         changed.add(month_of(target["first_seen"]))
     return changed

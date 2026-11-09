@@ -109,6 +109,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)
     write_pages(store, incidents, now, stamp)
+    write_moves(store, incidents, stamp)
     picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
@@ -171,3 +172,23 @@ def write_pages(store, incidents, now, stamp):
             store.write(f"pages/{slug}.json", view)
     if pages != known:
         store.write("page_hashes.json", pages)
+
+
+def write_moves(store, incidents, stamp):
+    """A "moved to" document in place of each absorbed Incident's page (pages/<slug>.json, so its old page stops
+    rendering): the function answers 301 to the survivor, 410 once the move or the survivor is PAGE_DAYS old.
+    moves.json keeps {slug: [survivor slug, moved]}, so a document is written only when a slug moves or its survivor
+    is absorbed in turn (the chain ends at the last survivor; "moved" stays when the address first moved)."""
+    known = store.read("moves.json") or {}
+    live = {page_slug(i["id"]) for i in incidents}  # shortcut: an ID that is an Incident again keeps its own page
+    moves = dict(known)
+    for incident in incidents:
+        to = page_slug(incident["id"])
+        for gone in incident.get("absorbed", []):
+            slug = page_slug(gone)
+            if slug in live or (known.get(slug) or [None])[0] == to:
+                continue
+            moves[slug] = [to, (known.get(slug) or [None, stamp])[1]]
+            store.write(f"pages/{slug}.json", {"id": gone, "moved_to": to, "moved": moves[slug][1]})
+    if moves != known:
+        store.write("moves.json", moves)

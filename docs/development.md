@@ -80,7 +80,10 @@ It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/
 `edge/page.mjs`, rules imported from `web/board.mjs`) from `pages/<slug>.json`: one document per Incident with a
 Summary first seen in the last 90 days, written by the collector only when its fields changed (`page_hashes.json` in
 the store holds each page's hash, so a cycle reads one document instead of one per page). 404 for an unknown slug or an
-Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read.
+Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read. When an Incident is absorbed into another, the
+survivor lists its ID in `absorbed` and the collector replaces its page document with `{id, moved_to, moved}`
+(`moves.json` in the store tracks them): 301 to the survivor's page in the same language, 410 once the move or the
+survivor is past 90 days or the survivor has no page.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.
 

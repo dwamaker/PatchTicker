@@ -269,24 +269,36 @@ function note(lang, status, text, links) {
   return new Response(document(lang, head, body), { status, headers: { 'content-type': 'text/html; charset=utf-8', ...(status === 503 ? { 'retry-after': '600' } : {}) } });
 }
 
+const read = async (bucket, name) => {
+  const obj = await bucket.get(`pages/${name}.json`);
+  return obj && JSON.parse(await obj.text());
+};
+
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). now: for the 90-day check.
 export async function pageResponse(bucket, lang, name, now = Date.now()) {
   const t = TEXT[lang];
   const home = `<a href="/">${esc(t.home)}</a>`;
+  const fresh = (stamp) => Date.parse(stamp) >= now - PAGE_DAYS * DAY_MS;
+  const expired = (page) => note(lang, 410, t.expired, page?.cves
+    ? [`<a href="/#i=${esc(encodeURIComponent(page.id))}">${esc(t.board)}</a>`, ...(page.cves[0] ? [link(cveUrl(page.cves[0]), t.cveRecord)] : [])]
+    : [home]);
   if (!SLUG.test(name)) return note(lang, 404, t.missing, [home]);
   let doc;
+  let target;
   try {
-    const obj = await bucket.get(`pages/${name}.json`);
-    doc = obj && JSON.parse(await obj.text());
+    doc = await read(bucket, name);
+    // An absorbed Incident (ticket 04): its address moves to the survivor's page while both are within PAGE_DAYS.
+    if (doc?.moved_to && SLUG.test(doc.moved_to) && fresh(doc.moved)) target = await read(bucket, doc.moved_to);
   } catch {
     // Fail closed: never a half-rendered page.
     return note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]);
   }
   if (!doc) return note(lang, 404, t.missing, [home]);
-  if (!(Date.parse(doc.first_seen) >= now - PAGE_DAYS * DAY_MS)) {
-    const cve = doc.cves?.[0];
-    return note(lang, 410, t.expired, [`<a href="/#i=${esc(encodeURIComponent(doc.id))}">${esc(t.board)}</a>`, ...(cve ? [link(cveUrl(cve), t.cveRecord)] : [])]);
+  if (doc.moved_to) {
+    if (!target?.summary || target.moved_to || !fresh(target.first_seen) || !onBoard(target)) return expired(target);
+    return new Response(null, { status: 301, headers: { location: pageUrl(lang, doc.moved_to), 'cache-control': 'public, max-age=300' } });
   }
+  if (!fresh(doc.first_seen)) return expired(doc);
   if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
   return new Response(pageHtml(doc, lang, name), {
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300',

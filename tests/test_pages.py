@@ -74,6 +74,45 @@ class PageDocumentTest(unittest.TestCase):
         self.assertEqual(store.read("pages/CVE-2026-1002.json")["cvss"], 9.8)
 
 
+def release(store, *rows):
+    """Put the rows in one vendor release (same fix key), so the next cycle's release grouping merges them."""
+    months = store.read("months/2026-11.json")
+    for r in months["incidents"]:
+        if r["id"] in rows:
+            r["fix_keys"] = ["acme:widget@2.0"]
+    store.write("months/2026-11.json", months)
+
+
+class MovedPageTest(unittest.TestCase):
+    """Ticket incident-pages/04: an absorbed Incident's page moves to the survivor's."""
+
+    def test_a_merge_leaves_a_moved_document_in_place_of_the_absorbed_page(self):
+        survivor, absorbed = row(1, first_seen="2026-11-09T01:00:00Z"), row(2, first_seen="2026-11-09T02:00:00Z")
+        survivor["cves"].append("CVE-2026-1011")  # a release group needs three CVEs
+        store = cycle(WatchedStore(), [survivor, absorbed])
+        self.assertIn("summary", store.read("pages/CVE-2026-1002.json"))  # its own page, before the merge
+        release(store, "CVE-2026-1001", "CVE-2026-1002")
+        cycle(store, now="2026-11-09T13:00:00")
+        self.assertEqual(store.read("pages/CVE-2026-1002.json"),
+                         {"id": "CVE-2026-1002", "moved_to": "CVE-2026-1001", "moved": "2026-11-09T13:00:00Z"})
+        self.assertEqual(store.read("months/2026-11.json")["incidents"][0]["absorbed"], ["CVE-2026-1002"])
+        cycle(store, now="2026-11-09T14:00:00")
+        self.assertNotIn("pages/CVE-2026-1002.json", store.writes)  # written once, when it moved
+
+    def test_a_chain_of_merges_ends_at_the_last_survivor(self):
+        c, b, a = (row(n, first_seen=f"2026-11-09T0{n}:00:00Z") for n in (1, 2, 3))
+        b["cves"].append("CVE-2026-1012")
+        store = cycle(WatchedStore(), [c, b, a])
+        release(store, "CVE-2026-1002", "CVE-2026-1003")  # A into B
+        cycle(store, now="2026-11-09T13:00:00")
+        self.assertEqual(store.read("pages/CVE-2026-1003.json")["moved_to"], "CVE-2026-1002")
+        release(store, "CVE-2026-1001")  # B (with A in it) into C
+        cycle(store, now="2026-11-09T14:00:00")
+        self.assertEqual(store.read("pages/CVE-2026-1002.json")["moved_to"], "CVE-2026-1001")
+        self.assertEqual(store.read("pages/CVE-2026-1003.json"),
+                         {"id": "CVE-2026-1003", "moved_to": "CVE-2026-1001", "moved": "2026-11-09T13:00:00Z"})  # moved since
+
+
 SLUGS = json.loads((Path(__file__).parent / "fixtures" / "board" / "slug-case.json").read_text(encoding="utf-8"))
 
 
