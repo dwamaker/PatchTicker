@@ -17,6 +17,11 @@
 </p>
 
 <p align="center">
+  <em>Find it useful? A coffee keeps it running.</em><br>
+  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=flat-square&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
+</p>
+
+<p align="center">
   <a href="https://patchticker.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-en-dark.png">
@@ -86,12 +91,6 @@ Collector (Docker, every 10 min)  ──writes──▶  Cloudflare R2 (public J
 ```
 
 No server answers visitors. Running it yourself: [docs/development.md](docs/development.md).
-
-## Support
-
-Patch Ticker runs without ads. If it helps you, a coffee pays for the AI summaries and the server.
-
-<a href="https://buymeacoffee.com/dwamaker"><img src="docs/assets/bmc-button.png" width="182" height="51" alt="Buy Me a Coffee"></a>
 
 ## Notices and license
 
