@@ -880,7 +880,7 @@ function render() {
   $('filter-count').hidden = !count;
   $('stuck-count').textContent = count ? String(count) : '';
   $('stuck-count').hidden = !count;
-  if (count && count !== shownCount) pop($('filter-count'));
+  if (count && count !== shownCount) { pop($('filter-count')); if (stuckOn) pop($('stuck-count')); }
   shownCount = count;
   $('filter-btn').setAttribute('aria-expanded', !$('filters').hidden);
   const rest = list.filter((i) => !pinned.has(i));
@@ -1453,13 +1453,46 @@ function placeJump() {
   document.body.classList.toggle('scrolled', scrollY > 40);
   // the bar's 필터 and 정렬 have passed under the frozen row: their copy shows at the end of the search line
   const past = $('board-start').getBoundingClientRect().bottom < stickyPart().getBoundingClientRect().bottom;
-  if ($('stuck-tools').hidden === past) { $('stuck-tools').hidden = !past; measureStick(); }
+  stuckTools(past);
+  // 맨 위로 wears how far down the page is, as a ring that fills clockwise
+  const room2 = document.documentElement.scrollHeight - innerHeight;
+  $('to-top').style.setProperty('--read', room2 > 0 ? Math.min(scrollY / room2, 1).toFixed(3) : 0);
   // phones: the jump buttons rest out of the way 2 s after the page stops moving
   document.body.classList.remove('jump-idle');
   clearTimeout(jumpIdle);
   jumpIdle = setTimeout(() => document.body.classList.add('jump-idle'), 2000);
 }
 let jumpIdle;
+// The frozen copy of 필터 and 정렬 rises into the frozen row as the bar passes under it (owner: "자연스럽게 올라가는"):
+// it lifts 10px into place while its width opens, so the search field gives way smoothly; it sinks and closes faster
+// when the bar comes back. Reduced motion: it simply appears.
+let stuckOn = false;
+function stuckTools(on) {
+  if (on === stuckOn) return;
+  stuckOn = on;
+  const box = $('stuck-tools');
+  box.sliding?.cancel();
+  box.hidden = false;
+  const full = `${box.scrollWidth}px`;
+  const done = () => { box.style.overflow = ''; box.sliding = null; box.hidden = !stuckOn; measureStick(); };
+  if (reducedMotion.matches) return done();
+  const shut = { width: '0px', opacity: 0, transform: 'translateY(10px)' };
+  const open = { width: full, opacity: 1, transform: 'none' };
+  box.style.overflow = 'clip';
+  box.sliding = box.animate(on ? [shut, open] : [open, shut], { duration: on ? 280 : 180, easing: on ? EASE_OUT : 'cubic-bezier(0.4, 0, 1, 1)' });
+  box.sliding.onfinish = done;
+}
+// 맨 위로 / 맨 아래로: the arrow leaves the way the page will go and comes back from the other side.
+function launch(button, up) {
+  if (reducedMotion.matches) return;
+  const out = up ? -10 : 10;
+  button.querySelector('svg').animate([
+    { transform: 'none', opacity: 1 },
+    { transform: `translateY(${out}px)`, opacity: 0, offset: 0.4 },
+    { transform: `translateY(${-out}px)`, opacity: 0, offset: 0.41 },
+    { transform: 'none', opacity: 1 },
+  ], { duration: 440, easing: EASE_OUT });
+}
 addEventListener('scroll', () => {
   if (!jumpQueued) {
     jumpQueued = true;
@@ -1468,6 +1501,8 @@ addEventListener('scroll', () => {
 }, { passive: true });
 const glide = () => (reducedMotion.matches ? 'auto' : 'smooth');
 $('to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: glide() }));
+$('to-top').addEventListener('click', (event) => launch(event.currentTarget, true));
+$('to-bottom').addEventListener('click', (event) => launch(event.currentTarget, false));
 $('to-bottom').addEventListener('click', () => scrollTo({ top: document.documentElement.scrollHeight, behavior: glide() }));
 
 $('guide-btn').addEventListener('click', () => {

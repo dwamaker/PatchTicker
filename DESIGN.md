@@ -523,6 +523,11 @@ Restrained outlined buttons for theme, language and copying a command.
   fades in at the end of the search line, on every width; the bar keeps the originals. The copy's 필터 opens the sheet
   on a phone, and wider brings the bar back under the frozen row and opens the panel there. Phones use the short
   search hint ("키워드, CVE 번호") so the words fit beside them.
+- **Motion of the frozen controls and jump buttons (owner, after critique 12):** the frozen copy of 필터 and 정렬 rises
+  10px into the frozen row while its width opens (280ms ease-out), so the search field gives way smoothly; it sinks and
+  closes in 180ms when the bar comes back. 맨 위로 wears a 2px ring in the focus blue that fills clockwise with how far
+  down the page is. An arrow leans 2px its way on hover; on a press it leaves the way the page goes and returns from the
+  other side (440ms). The filter count pops in both places; the dashed-chip note rises in. Reduced motion: none of it.
 - **Jump buttons rest on phones (owner, after critique 12):** under 768px 맨 위로 / 맨 아래로 show while the page moves
   and fade 2 s after it stops, so they do not sit on the text being read; keyboard focus keeps them.
 - **Korean search words (owner, after critique 12):** a small alias table lets 윈도우, 맥, 리눅스, 안드로이드, 아이폰,
