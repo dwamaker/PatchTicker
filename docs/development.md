@@ -81,6 +81,11 @@ It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/
 Summary first seen in the last 90 days, written by the collector only when its fields changed (`page_hashes.json` in
 the store holds each page's hash, so a cycle reads one document instead of one per page). 404 for an unknown slug or an
 Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read.
+The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
+`/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
+search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`
+alternates and the page's last change as `lastmod`. They come from `sitemap.json`, which each cycle rewrites when it
+changed: `{pages: {slug: [first_seen, last change]}}`, the last change taken from `page_hashes.json`.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.
 

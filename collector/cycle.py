@@ -108,7 +108,12 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)
-    write_pages(store, incidents, now, stamp)
+    pages = write_pages(store, incidents, now, stamp)
+    # The Incident sitemap's document: {slug: [first_seen, last change]} of every search-worthy page (edge/sitemap.mjs).
+    sitemap = {"pages": {slug: [i["first_seen"], pages[slug][1]] for i in incidents
+                         if (slug := page_slug(i["id"])) in pages and search_worthy(i)}}
+    if store.read("sitemap.json") != sitemap:
+        store.write("sitemap.json", sitemap)
     picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
@@ -156,7 +161,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
 def write_pages(store, incidents, now, stamp):
     """One Incident page document per slug (pages/<slug>.json, the Board's fields) for every Incident with a Summary first
     seen in the last PAGE_DAYS; the function decides on-Board, 404 and 410 from it. A page is rewritten only when its
-    fields changed: page_hashes.json keeps {slug: [hash, changed]}, so a cycle reads one document, not one per page."""
+    fields changed: page_hashes.json keeps {slug: [hash, changed]}, so a cycle reads one document, not one per page. Returns that index."""
     since = (now - timedelta(days=PAGE_DAYS)).strftime(STAMP)
     known = store.read("page_hashes.json") or {}
     pages = {}
@@ -171,3 +176,4 @@ def write_pages(store, incidents, now, stamp):
             store.write(f"pages/{slug}.json", view)
     if pages != known:
         store.write("page_hashes.json", pages)
+    return pages
