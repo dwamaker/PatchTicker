@@ -409,7 +409,8 @@ export function relativeAge(iso, now) {
 
 // User, 2026-11-09: one vendor's bulk push (IBM put about 30 CVEs over 20 products in 80 minutes) folds into one list
 // item once this many of its rows share a publish day; each row stays its own Incident inside. 0 turns the fold off.
-export const VENDOR_FOLD_MIN = 5;
+// Owner, late 11-09: 3, not 5, so a smaller push folds too (Red Hat's three GStreamer CVEs in one minute).
+export const VENDOR_FOLD_MIN = 3;
 export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
 // Owner, critique 14 c.1: WordPress plugins and themes are about a quarter of the list, so they fold as one pseudo-vendor,
 // ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin.

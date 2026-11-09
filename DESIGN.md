@@ -473,7 +473,7 @@ Restrained outlined buttons for theme, language and copying a command.
   and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
-- **Vendor fold (trial, 11-09):** five or more list rows of one vendor (or of WordPress plugins and themes, one
+- **Vendor fold (trial, 11-09; three since late 11-09, owner):** three or more list rows of one vendor (or of WordPress plugins and themes, one
   pseudo-vendor since critique 14) on one publish day show as one ordinary row
   (gravest member's risk sign, highest CVSS ring, "IBM 보안 공지 25건 묶음" over the first product names, the vendor as
   its badge, the newest date) that opens its members in place; never with a search or a picked Product. A "묶음 풀기 /
