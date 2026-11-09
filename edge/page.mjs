@@ -243,9 +243,8 @@ const redirect = (status, location) => new Response(null, { status, headers: { l
 export async function pageResponse(bucket, lang, slug, now = Date.now()) {
   const t = TEXT[lang];
   const home = `<a href="/">${esc(t.home)}</a>`;
-  const board = (id) => `<a href="/#i=${esc(encodeURIComponent(id))}">${esc(t.board)}</a>`;
   const expired = (page) => note(lang, 410, t.expired, page?.cves
-    ? [board(page.id), ...(page.cves[0] ? [link(cveUrl(page.cves[0]), t.cveRecord, t)] : [])]
+    ? [`<a href="/#i=${esc(encodeURIComponent(page.id))}">${esc(t.board)}</a>`, ...(page.cves[0] ? [link(cveUrl(page.cves[0]), t.cveRecord, t)] : [])]
     : [home]);
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {

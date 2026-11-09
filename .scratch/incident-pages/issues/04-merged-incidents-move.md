@@ -29,3 +29,13 @@ has a page on the Board within 90 days; 410 when the move or the survivor is pas
 (no Summary yet, or not on the Board), or the target slug is malformed (never read). Only merges after deploy are
 recorded; older absorbed pages stay as ticket 02 left them until they expire. Left: deploy (site first, then the
 collector).
+
+**2026-11-10 (review fixes, owner decision):** a moved slug whose survivor has no page yet (no document, no Summary, not
+on the Board) now answers **302 to the survivor's Board row** (`/#i=<survivor id>`), not 410; once the survivor has a
+page the same address answers 301. 410 stays only for a move or a survivor past 90 days. For that the moved document
+carries the survivor's Incident ID: `{id, moved_to, moved_to_id, moved}`; a moved document without it answers 503
+(malformed). A malformed `moved_to` is still never read and goes to the Board row. `moves.json` is now
+`{slug: {moved_to, moved_to_id, moved}}` and is pruned: moves past 90 days leave it. A move is written only for an
+absorbed Incident that had a page (its slug in the last cycle's `page_hashes.json`) or is already in `moves.json` (a
+chain); an expired, pruned slug is never in either, so it is not written again. The edge cache now keeps 301, 302,
+404 and 410 answers too (each with its cache-control), never a 503.

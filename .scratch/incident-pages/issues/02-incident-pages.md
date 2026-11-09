@@ -36,3 +36,11 @@ compiles it (the Board module's JSON import included). A sample page was checked
 light and dark: no sideways scroll, long URLs and commands wrap. Left: deploy (site first, then the collector, whose
 first cycle writes every summarized Incident of the last 90 days once), the owner's Chrome check and a messenger link
 preview. An absorbed Incident's old page document stays (and renders) until ticket 04 writes its "moved to" document.
+
+**2026-11-10 (review fixes):** `page_hashes.json` is now `{slug: {hash, changed}}` (named fields, nothing deployed yet);
+it already held only the current page set, so it never grows (now tested). Source links on the page open in a new tab
+with the Board's hidden "새 탭에서 열림" / "opens in a new tab"; 틀린 내용 알리기 opens in a new tab as the Board's does;
+the Board and language links stay in the tab. Nav and Mention/CVE links are 44 px tall. A document the renderer cannot
+use answers the 503 note, never a runtime 500. 404s are cached at the edge for 1 minute, 410s for 5. Old page
+documents are cleared by an R2 lifecycle rule on `pages/` (100 days after the last write), set by the owner at deploy
+(`docs/development.md`).

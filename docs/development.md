@@ -73,22 +73,32 @@ npx wrangler@4 pages deploy <copy of web without data/> --project-name patchrada
 ```
 
 Run it from the repository root: `functions/` (the Pages Function) is taken from the working directory, and it imports
-`edge/`. The function answers `/feed.xml` and `/en/feed.xml` from `board/feed.json` in R2 through the binding `DATA`
-(bucket `patchradar`), which the Pages project must have. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
+`edge/` (`edge/shared.mjs`: the site address, escaping, the R2 read, the edge cache and the what-to-do text every
+function shares). The function answers `/feed.xml` and `/en/feed.xml` from `board/feed.json` in R2 through the binding
+`DATA` (bucket `patchradar`), which the Pages project must have. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
 It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/[slug].js`, renderer in
 `edge/page.mjs`, rules imported from `web/board.mjs`) from `pages/<slug>.json`: one document per Incident with a
 Summary first seen in the last 90 days, written by the collector only when its fields changed (`page_hashes.json` in
-the store holds each page's hash, so a cycle reads one document instead of one per page). 404 for an unknown slug or an
-Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read. When an Incident is absorbed into another, the
-survivor lists its ID in `absorbed` and the collector replaces its page document with `{id, moved_to, moved}`
-(`moves.json` in the store tracks them): 301 to the survivor's page in the same language, 410 once the move or the
-survivor is past 90 days or the survivor has no page.
+the store, `{slug: {hash, changed}}` for the current page set only, so a cycle reads one document instead of one per
+page). 404 for an unknown slug or an Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read or a
+document cannot be rendered. When an Incident that had a page is absorbed into another, the survivor lists its ID in
+`absorbed` and the collector replaces its page document with `{id, moved_to, moved_to_id, moved}` (`moves.json` in the
+store, `{slug: {moved_to, moved_to_id, moved}}`, drops moves past 90 days): 301 to the survivor's page in the same
+language, 302 to the survivor's row on the Board (`/#i=<id>`) while the survivor has no page yet, 410 once the move or
+the survivor is past 90 days. The edge cache keeps 200, 301, 302 and 410 answers for 5 minutes and 404s for 1 minute,
+never a 503.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
 search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`
-alternates and the page's last change as `lastmod`. They come from `sitemap.json`, which each cycle rewrites when it
-changed: `{pages: {slug: [first_seen, last change]}}`, the last change taken from `page_hashes.json`.
+alternates and the page's last change as `lastmod`, at most 25,000 pages (50,000 URLs) per file, newest first. They
+come from `sitemap.json`, which each cycle rewrites when it changed: `{pages: {slug: {first_seen, changed}}}`, the last
+change taken from `page_hashes.json`.
+Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
+`pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
+`wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document
+when the move happens, so 100 days after the last write is always past the 90 days in which it answers anything but
+410; after the rule deletes it, the address answers 404.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.
 
@@ -108,7 +118,13 @@ checking shell itself. Cycles start on the 10-minute marks, so a recreate keeps 
 
 ```sh
 python -m unittest discover tests   # collector: cycle (seam 1), fake Claude client, store contract
-node --test                         # page: the Board's filter function (seam 2)
+node --test                         # page: the Board's filter function (seam 2); the Pages Function (seam 3)
 ```
 
+The Python tests run whole collection cycles on a memory store and check the documents it holds; among them
+`test_feed.py` (`board/feed.json`), `test_pages.py` (`pages/<slug>.json`, `page_hashes.json`, moved documents and
+`moves.json`) and `test_sitemap.py` (`sitemap.json`). The node tests check the Board's rules (`board.test.mjs`) and the
+Pages Function: a request's inputs and a fake R2 binding in, a `Response` out (`feed.test.mjs`, `page.test.mjs` with
+the edge cache, `sitemap.test.mjs`). The slug and risk rules live in both languages; `tests/fixtures/board/slug-case.json`
+and `risk-case.json` are checked by both suites so the two never drift.
 Tests replay recorded responses from `tests/fixtures/`; they make no network calls.

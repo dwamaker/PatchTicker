@@ -33,3 +33,8 @@ Search Console reports as empty, not as an error. 503 when R2 cannot be read, 40
 2026-11-08..09) has 88 search-worthy of 265 Incidents (33%), 176 URLs. On the live week's 42% share (~270 a day), a
 calendar month is ~8,400 Incidents, ~16,800 URLs per monthly sitemap, ~48,000 over the four: each well under 50,000.
 `sitemap.json` would be ~1.7 MB at that size. Recheck the share and the slot sizes on live data after the backfill.
+
+**2026-11-10 (review fixes):** `sitemap.json` is now `{pages: {slug: {first_seen, changed}}}` (named fields). A sitemap
+file lists at most 25,000 pages (50,000 URLs), newest first; past that the oldest are left out (a `shortcut:` comment
+in `edge/sitemap.mjs`). A `sitemap.json` without its `pages` object answers 503, never an empty list a crawler would
+read as "all gone". The 90-day check is `withinPageDays` from `web/board.mjs`, shared with the page and `shareLink`.

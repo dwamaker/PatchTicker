@@ -12,13 +12,13 @@ request, with a short edge cache. See the spec (`../spec.md`) and ADR 0002's 202
 
 **Status:** done (built and committed f081413; deploy pending, see Comments)
 
-- [ ] The collector has a Python port of the Board's risk rule, checked against the JavaScript rule by one shared fixture of cases.
-- [ ] Each cycle writes one feed document: the newest 50 search-worthy Incidents with Summaries, newest first, only when it changed.
-- [ ] `/feed.xml` and `/en/feed.xml` answer valid RSS 2.0 in their language; item GUIDs stay the same when a Summary is rewritten.
-- [ ] Every text in the feed is escaped and only http/https links are emitted (a hostile title in a test proves it).
-- [ ] An R2 read error answers 503, never a broken feed.
-- [ ] The Board page has `rel="alternate"` links to both feeds; the footer and both READMEs link them.
-- [ ] Tests at the cycle seam (store holds the right feed document) and the function seam (request plus fake R2 in, response out, `node --test`).
+- [x] The collector has a Python port of the Board's risk rule, checked against the JavaScript rule by one shared fixture of cases.
+- [x] Each cycle writes one feed document: the newest 50 search-worthy Incidents with Summaries, newest first, only when it changed.
+- [x] `/feed.xml` and `/en/feed.xml` answer valid RSS 2.0 in their language; item GUIDs stay the same when a Summary is rewritten.
+- [x] Every text in the feed is escaped and only http/https links are emitted (a hostile title in a test proves it).
+- [x] An R2 read error answers 503, never a broken feed.
+- [x] The Board page has `rel="alternate"` links to both feeds; the footer and both READMEs link them.
+- [x] Tests at the cycle seam (store holds the right feed document) and the function seam (request plus fake R2 in, response out, `node --test`).
 - [ ] Deployed: the site with the function and its R2 binding first, then the collector; the live feeds validate in an RSS validator.
 
 ## Comments
