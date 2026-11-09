@@ -13,7 +13,8 @@
       --bg: light-dark(#f4f5f7, #121417);
       --panel: light-dark(#ffffff, #191c20);
       --panel-2: light-dark(#eceef1, #1f2328);
-      --group: light-dark(#e6ebf1, #1c2531); /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
+      --group: light-dark(#e6ebf1, #1c2531);
+      --rainbow: #ff4d4d, #ffa02e, #ffe03a, #4cd964, #3ab7ff, #7a6cff, #ff5ad8, #ff4d4d; /* the 쉬운 설명 beckon only (DESIGN.md beckon-*) */ /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
       --ink: light-dark(#16191d, #ececec);
       --ink-2: light-dark(#4f5862, #a8afb7);
       --ink-3: light-dark(#5f6872, #8c949d);
@@ -373,23 +374,36 @@
     .jump svg { width: 18px; height: 18px; }
     @media (hover: hover) { .jump button:hover { background: var(--panel-2); } }
     @media (prefers-reduced-motion: reduce) { .jump button, .jump button.off, .new-above.off { transform: none; translate: none; } .jump button:active, .new-above:active { transform: none; scale: none; } }
-    /* 쉬운 설명 beckons as the Board arrives in 기본 (until it has been tried once): twice, 1.4s each, the word swells to
-       116% and turns the interface blue, settles with a small bounce, a ring rolls out 10px from the switch and a bright
-       band crosses the button. Reduced motion: the colour and a still ring only. */
+    /* 쉬운 설명 beckons as the Board arrives in 기본 (until it has been tried once; owner, 11-09: it sits at the very top,
+       so it must be loud): twice, 1.4s each, the whole 기본|쉬운 설명 switch swells to 112% and settles with a bounce, a
+       rainbow ring spins around it, the word 쉬운 설명 runs through the rainbow and swells to 116%, and a rainbow band
+       crosses the button. Reduced motion: the rainbow word and a still rainbow ring, no movement. */
+    @property --spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
     #view-easy { position: relative; overflow: hidden; }
+    #views.beckon { animation: beckon-switch 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) 500ms 2; }
+    #views.beckon::after { content: ""; position: absolute; inset: -4px; z-index: -2; border-radius: var(--r-pill); padding: 3px; pointer-events: none;
+      background: conic-gradient(from var(--spin), var(--rainbow));
+      mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+      animation: beckon-spin 1400ms linear 500ms 2 both, beckon-ring-fade 2800ms ease-in-out 500ms 1 both; }
     #view-easy.beckon { animation: beckon-word 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) 500ms 2; }
-    #views.beckon { animation: beckon-ring 1400ms cubic-bezier(0.4, 0, 0.2, 1) 500ms 2; }
-    #view-easy.beckon::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(105deg, transparent 20%, color-mix(in srgb, var(--focus) 80%, transparent) 50%, transparent 80%); transform: translateX(-120%); animation: beckon-band 1400ms cubic-bezier(0.4, 0, 0.2, 1) 500ms 2; }
-    @keyframes beckon-word { 0%, 100% { transform: scale(1); } 22% { transform: scale(1.16); color: var(--focus); } 42% { transform: scale(0.97); color: var(--focus); } 62% { transform: scale(1.05); color: var(--focus); } }
-    @keyframes beckon-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--focus) 70%, transparent); } 75%, 100% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--focus) 0%, transparent); } }
+    #view-easy.beckon { background-image: linear-gradient(90deg, var(--rainbow)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #view-easy.beckon::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; mix-blend-mode: screen;
+      background: linear-gradient(105deg, transparent 20%, rgb(255 77 77 / 0.55) 35%, rgb(255 224 58 / 0.6) 45%, rgb(76 217 100 / 0.55) 55%, rgb(58 183 255 / 0.6) 65%, transparent 80%);
+      transform: translateX(-120%); animation: beckon-band 1400ms cubic-bezier(0.4, 0, 0.2, 1) 500ms 2; }
+    @keyframes beckon-switch { 0%, 100% { transform: scale(1); } 22% { transform: scale(1.12); } 42% { transform: scale(0.98); } 62% { transform: scale(1.04); } }
+    @keyframes beckon-word { 0% { transform: scale(1); background-position: 0% 0; } 22% { transform: scale(1.16); } 42% { transform: scale(0.97); } 62% { transform: scale(1.05); } 100% { transform: scale(1); background-position: 200% 0; } }
+    @keyframes beckon-spin { to { --spin: 360deg; } }
+    @keyframes beckon-ring-fade { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
     @keyframes beckon-band { to { transform: translateX(120%); } }
     @media (prefers-reduced-motion: reduce) {
-      #view-easy.beckon { animation: beckon-tint 2800ms ease-in-out 500ms 1; }
-      #views.beckon { animation: beckon-still 2800ms ease-in-out 500ms 1; }
+      #views.beckon, #view-easy.beckon { animation: none; }
+      #views.beckon::after { animation: beckon-ring-fade 2800ms ease-in-out 500ms 1 both; }
       #view-easy.beckon::after { display: none; }
     }
-    @keyframes beckon-tint { 20%, 80% { color: var(--focus); } }
-    @keyframes beckon-still { 20%, 80% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 60%, transparent); } }
+    /* 이 사건 링크 복사: the last line of an opened Incident */
+    .details .share { margin: 1rem 0 0; }
+    .details .share .btn { gap: 0.5rem; }
+    .details .share svg { width: 16px; height: 16px; flex: none; }
     .grp { display: inline-flex; align-items: center; min-height: 1.625rem; padding: 0.1875rem 0.5rem; border: 1px solid var(--ink-2); border-radius: 4px; background: var(--panel); color: var(--ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 700; line-height: 1.2; white-space: nowrap; }
     .fold-members { margin: 0; padding: 0; list-style: none; }
     .fold-members > li { border-top: 1px solid var(--rule); }
@@ -414,6 +428,8 @@
     .models ul.cve-lines { columns: auto; margin-top: 0.25rem; } /* sentences, not names: one column */
     .details .cve-line span { white-space: nowrap; }
     .details .cve-line.cve-count { margin-block: 0.625rem; } /* a group's count, between the action and the source link */
+    .details .cve-fold { margin-block: 0.375rem; }
+    .cve-fold ul { font-variant-numeric: tabular-nums; }
     .details .lead, .details .action { font-weight: 600; }
     .details .step { font-weight: 500; } /* a second way or a follow-up: one bold action line per panel (DESIGN.md) */
     .details .kev { color: var(--high); }

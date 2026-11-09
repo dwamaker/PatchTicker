@@ -28,6 +28,14 @@ colors:
   line-08: "#c25bb8"
   line-ink-dark: "#0d0f12"
   line-ink-light: "#ffffff"
+  # 쉬운 설명 beckon only (owner, 11-09): never a risk, never a Product line
+  beckon-red: "#ff4d4d"
+  beckon-orange: "#ffa02e"
+  beckon-yellow: "#ffe03a"
+  beckon-green: "#4cd964"
+  beckon-blue: "#3ab7ff"
+  beckon-violet: "#7a6cff"
+  beckon-pink: "#ff5ad8"
 typography:
   headline:
     fontFamily: "Pretendard Variable, Pretendard, Apple SD Gothic Neo, Malgun Gothic, Noto Sans KR, system-ui, sans-serif"
@@ -528,6 +536,16 @@ Restrained outlined buttons for theme, language and copying a command.
   CVSS, CVE and the dates on one line; a checked risk chip is a ring in its level's colour on a faint tint, never a
   filled block. The dark group ground is #1c2531 (a clear step from the opened-row panel). The guide shows the "묶음"
   and "함께 패치" tags as the Board draws them. From 125% text the fields use their short placeholders.
+- **Back undoes a filter; one Incident has an address (owner, 11-09):** every filter change the visitor makes (panel,
+  chips, picks, sort, clear buttons) is a step in the browser's history, so Back and Forward walk through them with
+  the Board's motion; typing in search rewrites the current step. Each opened Incident ends with "이 사건 링크 복사",
+  which copies `…#i=<id>`; opening such a link shows the Board with that row open, in view, focused and wearing the
+  blue arrival edge (a vendor fold is ungrouped, older months load if needed); a link to an Incident no longer on
+  the Board says so under the fields.
+- **Version help and CVE list in the Easy panel (owner, 11-09):** the help line no longer sends readers to a "maker's
+  site" (plugins and libraries have none) or to an "AI 도우미" (reads as a product name): "내 버전은 보통 그 프로그램의
+  설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 CVE-… 번호로 물어보세요." A group's "CVE N건" opens to every ID,
+  each linked to its CVE record.
 - **Loading (11-09, user: the reload screen was a bare splash):** until the data arrives the Board stands in its own
   shape, four Highlight frames and six list rows of placeholder bars in the rows' cells, and one scan band runs down
   them (1.6s, the only loop, and only while loading; reduced motion: still bars). When the rows arrive, those on
@@ -543,9 +561,10 @@ Restrained outlined buttons for theme, language and copying a command.
   away faster (140ms); the "↑ 새 사건" pill drops in (240ms) and lifts out (160ms); the settings menu fades out (120ms)
   as it faded in; the first-visit line folds away when closed; hints ("맞는 제품이 N개", the older-months result) slide
   in 4px; the frozen row's shadow eases in; the settings icon turns 90°; presses dip to 94-96%.
-- **쉬운 설명 beckon, louder (owner, 11-09: the first one was barely seen):** twice, 1.4s each, the word swells to 116%
-  in the interface blue and settles with a small bounce, a ring rolls 10px out of the switch and a bright band
-  crosses the button; reduced motion keeps the blue word and a still ring. The one place the Board performs.
+- **쉬운 설명 beckon, louder (owner, 11-09: it sits at the very top, so it must be loud):** twice, 1.4s each, the whole
+  기본|쉬운 설명 switch swells to 112% and settles with a bounce, a rainbow ring spins once around it per beat, the
+  word 쉬운 설명 runs through a rainbow and swells to 116%, and a rainbow band crosses the button. The rainbow belongs
+  to this one moment only (it never marks risk). Reduced motion: the rainbow word and a still rainbow ring.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts

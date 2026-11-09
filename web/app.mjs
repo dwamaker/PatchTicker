@@ -39,9 +39,9 @@ const TEXT = {
     conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '회사 묶음을 풀었습니다.', refoldDone: '회사별로 묶었습니다.', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
-    fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
+    fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨', share: '이 사건 링크 복사', linkNotFound: '링크의 사건을 게시판에서 찾지 못했습니다. 최근 3개월이 지나 내려갔을 수 있습니다.',
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
-    versionHelp: (cve) => (cve ? `내 버전을 모르겠으면 제조사 사이트에서 찾거나, AI 도우미에게 ${cve} 번호로 물어보세요.` : '내 버전을 모르겠으면 제조사 사이트에서 제품 이름으로 찾아보세요.'),
+    versionHelp: (cve) => (cve ? `내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 ${cve} 번호로 물어보세요.` : '내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요.'),
     newTab: ' (새 탭에서 열림)', newTabAll: ' (아래 링크는 모두 새 탭에서 열림)', fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', noneEasy: '아직 고친 버전 소식이 없어요. 아래 원문 링크에서 새 소식을 확인하세요.', orNewer: (v) => `${v}\u00a0이상`, models: (n) => `해당 모델 보기 (${n}개)`,
     guideBtn: '읽는 법',
     guide: {
@@ -86,9 +86,9 @@ const TEXT = {
     conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Vendor groups opened up.', refoldDone: 'Grouped by vendor again.', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution', levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
-    fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
+    fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied', share: 'Copy link to this Incident', linkNotFound: 'The linked Incident is not on the Board; it may be older than three months.',
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
-    versionHelp: (cve) => (cve ? `Not sure of your version? Look on the vendor's site, or ask an AI assistant about ${cve}.` : 'Not sure of your version? Look the product up on the vendor\'s site.'),
+    versionHelp: (cve) => (cve ? `Your version is usually shown in the program's settings or About screen. If not, ask an AI chatbot about ${cve}.` : "Your version is usually shown in the program's settings or About screen."),
     newTab: ' (opens in a new tab)', newTabAll: ' (every link below opens in a new tab)', fixesIntro: 'Update to at least the version for your product:', noneEasy: 'No fixed version has been announced yet. Watch the source link below for news.', orNewer: (v) => `${v}\u00a0or\u00a0later`, models: (n) => `Affected models (${n})`,
     guideBtn: 'How to read',
     guide: {
@@ -262,16 +262,39 @@ function loadFilter() {
   }
 }
 
-function saveFilter() {
+// push: a filter change the visitor made becomes a step in the browser's history, so Back undoes it (owner, 11-09);
+// typing in search only rewrites the current step, or every letter would be a step.
+function saveFilter(push = false) {
   const encoded = filterToQuery(filter);
   try {
     localStorage.setItem(SAVED, filterToQuery({ ...filter, query: '' }));
   } catch {
     // storage blocked: the address still carries the filter
   }
-  history.replaceState(null, '', encoded ? `#${encoded}` : location.pathname + location.search);
+  const next = encoded ? `#${encoded}` : location.pathname + location.search;
+  const now = location.hash || location.pathname + location.search;
+  if (push && next !== now) history.pushState(null, '', next);
+  else history.replaceState(null, '', next);
 }
 
+// Back / Forward: the filter of that step comes back, with the Board's motion.
+addEventListener('popstate', () => {
+  filter = filterFromQuery(location.hash.slice(1));
+  pickNote = '';
+  shown = PAGE;
+  $('search').value = filter.query;
+  try {
+    localStorage.setItem(SAVED, filterToQuery({ ...filter, query: '' }));
+  } catch {
+    // storage blocked
+  }
+  boardTransition(() => {
+    render();
+    if (!$('filters').hidden) filterPanel();
+  });
+});
+
+let linked = false; // the page was opened by a link to one Incident (#i=)
 async function main() {
   render();
   try {
@@ -285,7 +308,8 @@ async function main() {
     paused = st.summaries === 'paused'; // the collector hit its AI budget (ticket 07)
     refreshProducts();
     $('search').value = filter.query;
-    saveFilter();
+    linked = !place && new URLSearchParams(location.hash.slice(1)).has('i');
+    if (!linked) saveFilter();
     if (place) {
       if (place.older && olderMonths.length) olderAdded = await fetchOlder().catch(() => null); // the button stays if it fails
       shown = Math.max(PAGE, Number(place.shown) || PAGE);
@@ -301,6 +325,10 @@ async function main() {
   document.body.classList.add('arriving');
   render();
   if (place && !loadError) scrollTo(0, Number(place.y) || 0);
+  if (linked) {
+    await openLinked();
+    saveFilter(); // the address returns to the filter form; the opened row stays open
+  }
   if (!loadError) settleRows();
   // A light sweep across 쉬운 설명 twice as the Board arrives, until the visitor has tried that view once.
   let tried = true;
@@ -418,6 +446,68 @@ function watchFresh() {
     li.addEventListener('pointerenter', () => clearFresh(li), { once: true });
     li.addEventListener('focusin', () => clearFresh(li), { once: true });
   }
+}
+
+// #i=<id>: a link to one Incident. The Board opens with that row open, in view, focused and edged in blue (the
+// same edge a new arrival wears); a member of a vendor fold is shown ungrouped; an older one loads the three months.
+async function openLinked() {
+  const id = new URLSearchParams(location.hash.slice(1)).get('i');
+  if (!id || loadError) return false;
+  let found = incidents.find((i) => i.id === id);
+  if (!found && olderMonths.length) {
+    await fetchOlder().catch(() => {});
+    found = incidents.find((i) => i.id === id);
+  }
+  if (!found) {
+    $('pick-hint').textContent = TEXT[lang].linkNotFound;
+    return false;
+  }
+  open.add(id);
+  render();
+  let li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === id);
+  if (!li) { // inside a closed vendor fold
+    folding = false;
+    render();
+    li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === id);
+  }
+  if (!li) return false;
+  li.scrollIntoView({ block: 'start' });
+  li.querySelector('button.row')?.focus({ preventScroll: true });
+  // The edge goes on after the focus, so the focus itself does not count as having seen it; it leaves after four
+  // seconds on screen or when the pointer reaches it.
+  fresh.add(id);
+  li.classList.add('fresh');
+  freshSeen.observe(li);
+  li.addEventListener('pointerenter', () => clearFresh(li), { once: true });
+  return true;
+}
+
+function shareLine(incident) {
+  const p = el('p', 'share');
+  const button = Object.assign(el('button', 'btn'), { type: 'button' });
+  const icon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2.1-2.1a3 3 0 0 0-4.2-4.2l-.7.7M9.5 6.5a3 3 0 0 0-4.2 0L3.2 8.6a3 3 0 0 0 4.2 4.2l.7-.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  const idle = () => { button.innerHTML = icon; button.append(el('span', '', TEXT[lang].share)); };
+  idle();
+  button.addEventListener('click', async () => {
+    const url = `${location.origin}${location.pathname}#i=${encodeURIComponent(incident.id)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      const ok = el('span', 'ok');
+      ok.setAttribute('aria-hidden', 'true');
+      ok.innerHTML = '<svg viewBox="0 0 16 16"><path d="m3.5 8.3 2.8 2.8 6.2-6.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const label = el('span', '', TEXT[lang].copied);
+      button.replaceChildren(ok, label);
+      draw(ok.querySelector('path'), 280);
+      pop(label, 'translateX(-4px)', 200);
+      $('announce').textContent = TEXT[lang].copied;
+      clearTimeout(button.settle);
+      button.settle = setTimeout(idle, 2000);
+    } catch {
+      prompt(TEXT[lang].share, url); // clipboard blocked: show the address to copy by hand
+    }
+  });
+  p.append(button);
+  return p;
 }
 
 addEventListener('pagehide', () => {
@@ -1082,9 +1172,12 @@ function applyPanel(event) {
 
 function update(change, animate = true) {
   pickNote = ''; // the note answers one typed name; any later change makes it stale
+  // A search word rewrites its own step; starting a search (from none) is a new step, so Back first clears the search.
+  const onlyQuery = Object.keys(change).length === 1 && 'query' in change;
+  const push = !onlyQuery || (!filter.query && Boolean(change.query));
   filter = { ...filter, ...change };
   shown = PAGE;
-  saveFilter();
+  saveFilter(push);
   const redraw = () => {
     render();
     if (!$('filters').hidden) filterPanel(); // an open panel always shows the filter in force, never a stale draft
@@ -1718,7 +1811,18 @@ function details(incident) {
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
   if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   // Easy: a few IDs lead the panel; a group's count follows the action instead of a wall of IDs.
-  if (easy && incident.cves.length > 2) parts.push(para('cve-line cve-count', t.cveCount(incident.cves.length)));
+  // Easy: "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09).
+  if (easy && incident.cves.length > 2) {
+    const fold = el('details', 'models cve-fold');
+    const ids = el('ul', '');
+    for (const cve of incident.cves) {
+      const li = el('li', '');
+      li.append(anchor(`https://www.cve.org/CVERecord?id=${encodeURIComponent(cve)}`, cve, false));
+      ids.append(li);
+    }
+    fold.append(el('summary', '', `${t.cveCount(incident.cves.length)}${t.newTabAll}`), ids);
+    parts.push(fold);
+  }
   else if (easy && incident.cves.length) parts.unshift(idLine(incident.cves));
   const mentions = el('ul', 'mentions');
   const order = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'repo'];
@@ -1769,7 +1873,7 @@ function details(incident) {
     item.append(fold);
     mentions.append(item);
   }
-  return [...parts, leadLine(incident), ...list, mentions];
+  return [...parts, leadLine(incident), ...list, mentions, shareLine(incident)];
 }
 
 let rowCount = 0;
