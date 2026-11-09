@@ -421,7 +421,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Empty state names every narrowing:** with Products picked and a search, it says both ("고른 제품(OpenSSH) 가운데
   'zzqq'에 맞는 사건이 없습니다."), never "nothing for OpenSSH" while the search hid an OpenSSH row; its recovery
   buttons say what they bring back ("검색 지우기 · 1건 보기"). Counts appear only in the empty state.
-- **Stale data notice:** an hour without an update (four missed 15-minute runs) puts a notice under the status line:
+- **Stale data notice:** an hour without an update (six missed 10-minute runs) puts a notice under the status line:
   Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "마지막
   업데이트가 8시간 전입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." It is a status region (heard once) and is
   rechecked every minute, as is the status line's age, so a tab left open goes stale visibly.
@@ -453,6 +453,20 @@ Restrained outlined buttons for theme, language and copying a command.
   Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item on the panel
   ground, members in their own labelled list with the list's columns, a stronger edge below; opening announces the
   count, closing from the bottom brings the fold row back into view.
+- **Group ground and tag (11-09, owner: groups were hard to find):** a row that stands for several Incidents (a release
+  group of three or more CVEs, or a vendor fold) sits on `--group` (#e6ebf1 / #1a2028, a cool step off the page,
+  distinct from the opened-row white) and leads its badge cell with a "묶음" tag: square corners, ink outline, so it
+  never reads as a Product (filled pill) or an OS (outlined pill). An opened fold keeps that ground for its row and
+  members; its closing "IBM 묶음 접기" is an outlined house button. In 주요 사건 frames only the tag shows.
+- **Live updates (11-09, owner):** the page reads `status.json` every 10 minutes and when the tab comes back into view;
+  only a new update time fetches the week again. New Incidents take their place in the visitor's sort and filter.
+  Near the top of the page they come in with the Board's motion; further down, the rows on screen stay put (the scroll
+  is corrected by what was added above) and an inverse pill at the top centre says "↑ 새 사건 N건" until they are
+  reached or it is pressed. Each new row wears a 2px blue edge and a faint blue tint (the interface colour, never a
+  risk colour), held four seconds after it is half on screen, or cleared at once when the pointer or the keyboard reaches the row;
+  it leaves by thinning to 1px and fading into the row's ground (520ms). Screen readers hear one sentence
+  per refresh ("새 사건 N건이 추가되었습니다"); focus never moves. Changes to rows already shown (a Summary, an
+  exploited flag) apply in place, opened rows stay open.
 - **Applied filter chips (11-09):** conditions from the filter panel sit right under the bar that holds 필터; picked
   Products stay under the picker.
 - **Bar (11-09):** 주요 사건 heading with 모두 펼치기 on the left, 필터 and 정렬 on the right; the filter panel opens under it.
@@ -487,6 +501,12 @@ Restrained outlined buttons for theme, language and copying a command.
   them (1.6s, the only loop, and only while loading; reduced motion: still bars). When the rows arrive, those on
   screen rise 8px and fade in top to bottom (360ms, 28ms apart, at most twelve) while the rings fill; reduced
   motion: one fade. A reload plays it the same way, at the restored place.
+- **Motion for views, folds and arrivals (11-09, owner):** switching 기본 / 쉬운 설명 runs through the Board's View
+  Transition: each row on screen lets its old words sink 5px and fade (160ms) while the new ones rise into place
+  (300ms, 60ms later), and rows whose height changed glide. A vendor fold opens like an Incident's details: its
+  members grow out of the fold row (220ms) with the first ten fading in 24ms apart, and close faster (160ms) before
+  the list redraws. A row that arrives by a refresh drops 14px into its place (420ms): through the View Transition at
+  the top of the Board, by itself further down. Reduced motion: cross-fades only, folds appear at once.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts

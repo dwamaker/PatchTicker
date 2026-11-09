@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { foldByVendor, isExploited, matchProducts, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { foldByVendor, isExploited, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -276,6 +276,16 @@ test('the Product picker matches typed names regardless of case, whole names fir
   assert.deepEqual(matchProducts(list, 'windows', label), [win]);
   assert.deepEqual(matchProducts(list, '공유기', label), []);
   assert.deepEqual(matchProducts(list, '   ', label), []);
+});
+
+// A refresh while the page is open: the new week replaces the Incidents it holds, older months already loaded stay,
+// and only ids the page did not have count as new (a Summary arriving later is a change, not a new Incident).
+test('a refresh merges the new week into what the page holds and names only the new ids', () => {
+  const a = { id: 'a', v: 1 }, b = { id: 'b', v: 1 }, old = { id: 'old', v: 1 };
+  const { incidents, added } = mergeIncidents([a, b, old], [{ id: 'a', v: 2 }, b, { id: 'c', v: 1 }]);
+  assert.deepEqual(incidents.map((i) => [i.id, i.v]).sort(), [['a', 2], ['b', 1], ['c', 1], ['old', 1]]);
+  assert.deepEqual(added, ['c']);
+  assert.deepEqual(mergeIncidents([a], [a]).added, []);
 });
 
 // The collector's board/products.json (collector.incidents.product_list) must name Products as the page does.

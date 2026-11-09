@@ -16,7 +16,7 @@ view; others read the normal view.
 ## Product Purpose
 
 A public, free, no-login board of security Incidents, newest first, with up to four Highlights
-pinned on top like notices. Each Incident appears within one 15-minute cycle as a Brief from source
+pinned on top like notices. Each Incident appears within one 10-minute cycle as a Brief from source
 data, then gets a Korean and English Summary (what it is, who is affected, preconditions,
 Mitigation) and an Easy view (Risk banner, plain sentences, one action). Success: a visitor learns
 in seconds whether an Incident applies to them and leaves with the right next step, verified at the
@@ -32,7 +32,7 @@ action, and a command is shown only when a source states it verbatim.
 ## Operating Context
 
 Visitors arrive from news, chat links or a bookmarked filtered address, on desktop and phone. The
-filter lives in the browser and the address hash, never on a server. Data refreshes every 15
+filter lives in the browser and the address hash, never on a server. Data refreshes every 10
 minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curator feeds, GitHub).
 
 ## Capabilities and Constraints

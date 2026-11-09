@@ -78,6 +78,15 @@ export function matchProducts(products, text, label = (p) => p.name) {
   return whole.length ? whole : products.filter((p) => low(p).some((n) => n.includes(want)));
 }
 
+// A refresh while the page is open: the fresh week replaces what it holds (a Summary or exploited flag may have
+// arrived), Incidents the page already had beyond it (older months) stay, and only ids it lacked are new.
+export function mergeIncidents(current, fresh) {
+  const byId = new Map(current.map((i) => [i.id, i]));
+  const added = fresh.filter((i) => !byId.has(i.id)).map((i) => i.id);
+  for (const i of fresh) byId.set(i.id, i);
+  return { incidents: [...byId.values()], added };
+}
+
 export function productList(incidents, now, lang = 'en', seen = []) {
   const since = new Date(now - 90 * DAY_MS).toISOString();
   const found = new Map(seen.map((p) => [p.id, { id: p.id, name: p[lang] || p.en }]));

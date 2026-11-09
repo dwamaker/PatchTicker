@@ -9,7 +9,7 @@ from collector.incidents import STAMP, cves_in, is_http, month_of
 
 SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
 ITEM_URL = "https://news.ycombinator.com/item?id="
-# Algolia allows 10,000 requests/h per IP; 10 pages and one points refresh per 15-minute cycle is 44/h.
+# Algolia allows 10,000 requests/h per IP; 10 pages and one points refresh per 10-minute cycle is 66/h.
 MAX_PAGES = 10
 
 # HN buzz: the points at which an HN story counts as a Highlight signal (also in web/board.mjs).

@@ -7,7 +7,8 @@
 **Status:** ready-for-agent
 
 - [ ] An R2 implementation of the store passes the same store tests as the fake.
-- [ ] The container image builds and runs one cycle on demand and on a 15-minute schedule.
+- [ ] The container image builds and runs one cycle on demand and on a 10-minute schedule (owner, 11-09; was 15). `status.json` must be served with a cache
+  time of a minute or less, or the page's 10-minute check sees an old update time.
 - [ ] The page on its Pages address shows the Board from R2 data through the custom subdomain (checked with curl and in a browser).
 - [ ] A data update appears on the live page without a Pages deploy.
 - [ ] No secret is in the image or the repository; credentials come from the environment file.

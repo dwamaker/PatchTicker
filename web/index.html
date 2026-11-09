@@ -13,6 +13,7 @@
       --bg: light-dark(#f4f5f7, #121417);
       --panel: light-dark(#ffffff, #191c20);
       --panel-2: light-dark(#eceef1, #1f2328);
+      --group: light-dark(#e6ebf1, #1a2028); /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
       --ink: light-dark(#16191d, #ececec);
       --ink-2: light-dark(#4f5862, #a8afb7);
       --ink-3: light-dark(#5f6872, #8c949d);
@@ -309,12 +310,35 @@
     .list > li { border-bottom: 1px solid var(--rule); }
     .list .row[aria-expanded="true"], .list .details { background: var(--panel); }
     /* an opened vendor fold: its row, members and closing line share the panel ground; members keep the list's columns */
-    .vendor-fold.open { background: var(--panel); border-bottom-color: var(--rule-2); }
+    .list li.grouped, .list li.vendor-fold { background: var(--group); }
+    .vendor-fold.open { border-bottom-color: var(--rule-2); }
+    .list .vendor-fold > .row-h > .row[aria-expanded="true"] { background: none; } /* the whole open group keeps one ground */
+    /* a row that arrived while the page was open: a blue edge (the interface colour, never a risk colour) and a faint
+       tint, held four seconds after it is on screen, then faded */
+    li.fresh { box-shadow: inset 0 0 0 2px var(--focus); }
+    .list li.fresh:not(.alert) { background-color: color-mix(in srgb, var(--focus) 7%, var(--bg)); }
+    .alert.fresh { box-shadow: inset 0 0 0 2px var(--focus), 0 6px 18px -8px var(--shadow); }
+    /* leaving: the edge thins and fades into the row's own ground (keyframes with only a start end on the row's style) */
+    li.fresh-out { animation: fresh-out 520ms cubic-bezier(0.4, 0, 0.2, 1); }
+    .list li.fresh-out:not(.alert) { animation-name: fresh-out-tint; }
+    .alert.fresh-out { animation-name: fresh-out-frame; }
+    @keyframes fresh-out-frame { from { box-shadow: inset 0 0 0 2px var(--focus), 0 6px 18px -8px var(--shadow); } }
+    @keyframes fresh-out { from { box-shadow: inset 0 0 0 2px var(--focus); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
+    @keyframes fresh-out-tint { from { box-shadow: inset 0 0 0 2px var(--focus); background-color: color-mix(in srgb, var(--focus) 7%, var(--bg)); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
+    @media (prefers-reduced-motion: reduce) { li.fresh-out { animation-duration: 200ms; } }
+    /* new Incidents above the window: an inverse pill at the top centre, the strongest mark on the page while it shows */
+    .new-above { position: fixed; top: max(0.75rem, env(safe-area-inset-top)); left: 50%; z-index: 15; display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 1.125rem; border: 0; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font: inherit; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; box-shadow: 0 6px 20px -6px var(--shadow), 0 0 0 3px color-mix(in srgb, var(--focus) 45%, transparent); cursor: pointer; transform: translateX(-50%); }
+    .new-above[hidden] { display: none; }
+    .new-above svg { width: 16px; height: 16px; flex: none; }
+    @media (hover: hover) { .new-above:hover { background: var(--ink-2); } }
+    @media (prefers-reduced-motion: no-preference) { .new-above:not([hidden]) { animation: drop-in 260ms cubic-bezier(0.16, 1, 0.3, 1); } }
+    @keyframes drop-in { from { opacity: 0; translate: 0 -12px; } }
+    .grp { display: inline-flex; align-items: center; min-height: 1.625rem; padding: 0.1875rem 0.5rem; border: 1px solid var(--ink-2); border-radius: 4px; background: var(--panel); color: var(--ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 700; line-height: 1.2; white-space: nowrap; }
     .fold-members { margin: 0; padding: 0; list-style: none; }
     .fold-members > li { border-top: 1px solid var(--rule); }
-    .fold-end { display: flex; align-items: center; gap: 0.625rem; width: 100%; min-height: var(--tap); padding: 0 0.75rem 0 calc(0.75rem + var(--pre) + var(--gap)); border: 0; border-top: 1px solid var(--rule); background: none; color: var(--ink); font: inherit; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; text-align: left; cursor: pointer; }
+    .fold-end { display: flex; align-items: center; padding: 0.625rem 0.75rem 0.75rem calc(0.75rem + var(--pre) + var(--gap)); border-top: 1px solid var(--rule); }
+    .fold-end .btn { gap: 0.625rem; font-weight: 700; color: var(--ink); background: var(--panel); }
     .fold-end .chev { transform: rotate(-135deg) translate(-2px, -2px); border-color: currentColor; }
-    @media (hover: hover) { .fold-end:hover { background: var(--panel-2); color: var(--ink); } }
 
     .details { padding: 0.25rem 2.5rem 1.25rem calc(0.75rem + var(--pre) + var(--gap)); }
     .details p { margin: 0.5rem 0 0; max-width: 46rem; overflow-wrap: anywhere; line-height: 1.7; }
@@ -421,6 +445,17 @@
     ::view-transition-old(*):only-child { animation-duration: 140ms; }
     ::view-transition-old(*), ::view-transition-new(*) { height: auto; object-fit: none; object-position: top; }
     .vt-still::view-transition-group(*) { animation: none; }
+    /* a row that arrived by a refresh drops into its place at the top of the Board (where supported) */
+    li.fresh { view-transition-class: fresh; }
+    @media (prefers-reduced-motion: no-preference) {
+      ::view-transition-new(*.fresh):only-child { animation: fresh-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+      /* 기본 <-> 쉬운 설명: each row's old words sink and fade (160ms), the new ones rise into place (300ms) */
+      .vt-view::view-transition-old(*) { animation: words-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
+      .vt-view::view-transition-new(*) { animation: words-in 300ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both; }
+    }
+    @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
+    @keyframes words-out { to { opacity: 0; transform: translateY(5px); } }
+    @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
     @media (prefers-reduced-motion: reduce) { .chev, .models summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
@@ -452,6 +487,7 @@
 </head>
 <body>
   <a id="skip-top" class="skip" href="#board-start" data-t="skipTop"></a>
+  <button id="new-above" class="new-above" type="button" data-t-aria="toNew" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button>
   <header class="top"><div class="wrap">
     <h1><i aria-hidden="true"></i>vuln-radar</h1>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal"></button><button id="view-easy" type="button" aria-pressed="false" data-t="easy"></button></div>
