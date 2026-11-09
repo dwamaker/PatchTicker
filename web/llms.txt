@@ -1,6 +1,6 @@
 # Patch Ticker
 
-> A free, public, no-login board of security vulnerabilities, Korean first with English alongside. It is updated every 10 minutes from the CVE List, NVD, CISA KEV, oss-security, Hacker News and GitHub, and tells a reader whether a new vulnerability touches something they run and what to do.
+> A free, public, no-login board of security vulnerabilities, Korean first with English alongside. It is updated every 10 minutes from the CVE List, NVD, CISA KEV, oss-security, Hacker News, GitHub, security news sites and KISA, and tells a reader whether a new vulnerability touches something they run and what to do.
 
 Each Incident (one row; it may hold several CVEs, or none yet) has a risk level set by rules, not by a model: exploited (CISA KEV, or a source that reports attacks) or CVSS 9.0 and up is "high risk", CVSS 7.0 and up is "elevated", everything else is a notice. Summaries in Korean and English are written by Claude from the linked sources only, and every Incident links to its official advisory.
 

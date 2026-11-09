@@ -23,7 +23,8 @@ Incident for a week; when they point at exactly one other Incident (a CVE ID, or
 or repo page), the story is folded into it, whichever arrived first.
 
 **Citation** (인용):
-A curator newsletter's Mention plus the CVE IDs and URLs it cites. It joins only the Incidents it cites and never starts one.
+A curator newsletter's Mention plus the CVE IDs and URLs it cites, or a KISA 보호나라 notice (kind "notice") plus the CVE IDs
+on its page. It joins only the Incidents it cites and never starts one.
 _Avoid_: reference, curated link
 
 **Lead mention** (대표 언급):

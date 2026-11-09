@@ -7,7 +7,7 @@ from datetime import timedelta
 
 import anthropic
 
-from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
+from collector import curators, cvelist, github, hn, kev, kisa, news, nvd, osssec, summaries
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, link, month_of, page_keys,
                                  product_list, rejoin, unknown_vendors)
 
@@ -15,7 +15,7 @@ RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older mont
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=(), claude=None):
+              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None):
     """claude: an anthropic.Anthropic client, or None for Briefs only."""
     stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
@@ -34,8 +34,9 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get)
     stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
     repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
+    articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds)
 
-    for story in stories:
+    for story in stories + articles:
         # A story with no CVE in its title may still be about a known Incident; its linked page says which.
         writeup = next((m["url"] for m in story["mentions"] if m["kind"] == "writeup"), None)
         if writeup and not story["cves"] and not story["join_only"]:
@@ -45,7 +46,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
 
     changed = set()
     # Join-only repos go last, so they can join Incidents that started this cycle.
-    for group in [cvelist.mention_group(r) for r in records] + posts + stories + repos:
+    for group in [cvelist.mention_group(r) for r in records] + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
     changed |= rejoin(incidents, (now - timedelta(days=7)).strftime(STAMP))
@@ -59,6 +60,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         enriched = {}
     exploited = kev.fetch(http_get)
     citations, checkpoints["curators"] = curators.fetch(checkpoints.get("curators"), http_get, curator_feeds)
+    notices, checkpoints["kisa"] = kisa.fetch(checkpoints.get("kisa"), http_get, kisa_feed)
+    citations += notices
     for incident in incidents:
         before = json.dumps(incident)
         for cve in incident["cves"]:

@@ -33,7 +33,7 @@ action, and a command is shown only when a source states it verbatim.
 
 Visitors arrive from news, chat links or a bookmarked filtered address, on desktop and phone. The
 filter lives in the browser and the address hash, never on a server. Data refreshes every 10
-minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curator feeds, GitHub).
+minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curator feeds, GitHub, security news sites, KISA 보호나라).
 
 ## Capabilities and Constraints
 

@@ -18,8 +18,9 @@ from urllib.parse import urlsplit
 STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
 
 # Lead mention order (CONTEXT.md): official advisory or release note, discoverer write-up,
-# CVE record, discussion (a curator's newsletter is discussion too). Repositories are listed but come last.
-LEAD_ORDER = ["advisory", "writeup", "cve_record", "discussion", "curator", "repo"]
+# CVE record, discussion (a curator's newsletter is discussion too). A KISA notice (Korean, restating the vendor's)
+# and repositories are listed but come last.
+LEAD_ORDER = ["advisory", "writeup", "cve_record", "discussion", "curator", "notice", "repo"]
 
 CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
@@ -42,9 +43,22 @@ def board_view(incident):
 PICKER_DAYS = 90  # the picker lists Products of these days (board/products.json), as productList in board.mjs does
 
 
+# Security news sites (collector/news.py reads the first two). The Record has no feed there, but HN links to it often.
+# Repeated in web/board.mjs (NEWS_HOSTS).
+NEWS_HOSTS = {"bleepingcomputer.com", "securityweek.com", "therecord.media"}
+
+
+def is_news(url):
+    try:
+        host = urlsplit(url).netloc.lower()
+    except ValueError:
+        return False
+    return host.removeprefix("www.") in NEWS_HOSTS
+
+
 def on_board(incident):
-    """A port of onBoard in web/board.mjs: a CVE-less HN story shows only once its Summary calls it an Incident."""
-    if incident["cves"] or not incident["id"].startswith("https://news.ycombinator.com/"):
+    """A port of onBoard in web/board.mjs: a CVE-less HN or news story shows only once its Summary calls it an Incident."""
+    if incident["cves"] or not (incident["id"].startswith("https://news.ycombinator.com/") or is_news(incident["id"])):
         return True
     if incident.get("summary"):
         return incident["summary"].get("incident") is not False

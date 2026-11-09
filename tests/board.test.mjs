@@ -74,6 +74,9 @@ test('an HN story without a CVE waits for its Summary and stays off when it is n
   assert.equal(onBoard({ ...story, summary_error: { tries: 3, final: true } }), true);
   assert.equal(onBoard({ id: 'CVE-2026-1', cves: ['CVE-2026-1'] }), true);
   assert.equal(onBoard({ id: 'https://seclists.org/oss-sec/2026/q4/563', cves: [] }), true);
+  // A CVE-less security news story waits the same way (owner, 11-10: news sites are read; NIKKE launcher compromise).
+  assert.equal(onBoard({ id: 'https://www.bleepingcomputer.com/news/security/nikke-pc-game-launcher-hacked/', cves: [] }), false);
+  assert.equal(onBoard({ id: 'https://www.securityweek.com/x/', cves: [], summary: { incident: true } }), true);
 });
 
 test('Products come from NVD or the CVE record, the Summary and its operating systems, each once', () => {

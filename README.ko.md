@@ -69,6 +69,8 @@ Patch Ticker는 이 두 질문에 몇 초 안에 답합니다. 보안 담당자�
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | 실제로 악용된 취약점 |
 | [oss-security](https://www.openwall.com/lists/oss-security/), Hacker News, GitHub | CVE 번호가 나오기 전의 소식과 분석 글 |
 | tl;dr sec, Risky Business News | 주목받는 사건 |
+| [BleepingComputer](https://www.bleepingcomputer.com/), [SecurityWeek](https://www.securityweek.com/) | 뉴스로 먼저 알려진 공격과 해킹 (CVE 번호가 없는 경우가 많음) |
+| [KISA 보호나라](https://www.boho.or.kr/) | 사건의 CVE에 대한 한국어 보안 공지 |
 
 요약은 Anthropic의 Claude가 위 원문만 읽고 씁니다. 원문에 없는 숫자나 버전이 들어간 요약은 버리고 다시 씁니다.
 

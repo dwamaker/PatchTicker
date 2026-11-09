@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn
-from collector.incidents import STAMP
+from collector.incidents import STAMP, is_news
 
 MODEL = "claude-haiku-5-5"
 # Decided by the 2026-11-07 low vs medium comparison (plan.md).
@@ -246,7 +246,9 @@ def is_candidate(incident, now):
     # An oss-security post still makes an Unassigned incident a candidate; an HN story needs buzz, as
     # most HN-only Incidents in the real run were general news with a few points.
     talk = any(m["kind"] == "discussion" and not is_hn(m["url"]) for m in incident["mentions"])
-    return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 7.0 or buzz or "curator" in kinds
+    # A security news site ran it (owner, 2026-11-10): its editors' pick counts like a curator's, whatever the HN points.
+    news = any(is_news(m["url"]) for m in incident["mentions"])
+    return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 7.0 or buzz or "curator" in kinds or news
                 or (not incident["cves"] and talk))
 
 

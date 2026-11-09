@@ -10,7 +10,7 @@ no build step.
 
 ```sh
 cp .env.example .env        # then set VR_STORE_DIR=web/data, VR_COLLECTOR_ID, VR_CONTACT
-python -m collector         # one cycle: cvelistV5, oss-security, HN, GitHub, NVD, CISA KEV, curators -> web/data/
+python -m collector         # one cycle: cvelistV5, oss-security, HN, GitHub, news sites, NVD, CISA KEV, curators, KISA -> web/data/
 python -m http.server 8000 -d web
 ```
 
@@ -35,6 +35,11 @@ of its URLs (`collector/incidents.py`, ADR 0001).
 Highlights (top ten of the last seven days) are scored in the page (`highlightScore` in
 `web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS and Mention count.
 Curator feeds default to tl;dr sec and Risky Business News; `VR_CURATOR_FEEDS` overrides them.
+Security news sites (BleepingComputer and SecurityWeek, `collector/news.py`) start Incidents like HN stories: a story,
+or an HN story linking to one of `incidents.NEWS_HOSTS`, is summarized at once whatever its points, and a CVE-less one
+shows only once its Summary calls it an Incident (company breaches, arrests and scams stay off). KISA 보호나라 notices
+(`collector/kisa.py`) join the Incidents of the CVE IDs on their pages as "notice" Mentions: never the Lead, never read
+for a Summary.
 
 With `ANTHROPIC_API_KEY` set, Highlight candidates (KEV, HN or curator Mention, CVSS 9.0+, or an
 Unassigned incident seen in discussion, first seen in the last seven days) get a Summary from Claude

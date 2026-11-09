@@ -23,7 +23,7 @@ BUZZ_POINTS = 100
 # "hole" catches named holes like "sshole" but not whole/wormhole/black hole.
 SECURITY_RE = re.compile(
     r"cve-\d{4}-\d+|vulnerab|exploit|\brce\b|0-?day|zero-?day|backdoor|bypass|privilege escalation"
-    r"|remote code|malware|ransomware|breach|compromis|hijack|advisory|security|(?<![wm\s-])hole\b",
+    r"|remote code|malware|ransomware|breach|compromis|hijack|supply[ -]?chain|advisory|security|(?<![wm\s-])hole\b",
     re.IGNORECASE,
 )
 

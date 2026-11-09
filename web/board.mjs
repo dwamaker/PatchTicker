@@ -273,8 +273,12 @@ export function cvssRating(cvss) {
 // An HN story with no CVE is on the Board only once its Summary calls it a real Incident (a flaw, attack or
 // breach in something a reader runs); essays and anecdotes stay off. A story whose Summary failed for good
 // is shown: never hide by mistake. Every other Incident is always shown.
+// Security news sites: a CVE-less story from one waits for its Summary like an HN story (collector/incidents.py NEWS_HOSTS).
+const NEWS_HOSTS = new Set(['bleepingcomputer.com', 'securityweek.com', 'therecord.media']);
+const isNews = (url) => { try { return NEWS_HOSTS.has(new URL(url).hostname.replace(/^www\./, '')); } catch { return false; } };
+
 export function onBoard(i) {
-  if (i.cves.length || !i.id.startsWith('https://news.ycombinator.com/')) return true;
+  if (i.cves.length || !(i.id.startsWith('https://news.ycombinator.com/') || isNews(i.id))) return true;
   if (i.summary) return i.summary.incident !== false;
   return Boolean(i.summary_error?.final);
 }

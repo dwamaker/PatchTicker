@@ -69,6 +69,8 @@ Rules set the level, never the AI.
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Exploited in the wild |
 | [oss-security](https://www.openwall.com/lists/oss-security/), Hacker News, GitHub | News and write-ups before a CVE |
 | tl;dr sec, Risky Business News | Incidents getting attention |
+| [BleepingComputer](https://www.bleepingcomputer.com/), [SecurityWeek](https://www.securityweek.com/) | Attacks and compromises reported as news, often with no CVE |
+| [KISA 보호나라](https://www.boho.or.kr/) | Korean security notices for an Incident's CVEs |
 
 Summaries are written by Anthropic's Claude from these sources only; one with a number or version not in its sources
 is thrown away and written again.

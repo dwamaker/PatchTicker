@@ -11,7 +11,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import curators
+from collector import curators, kisa, news
 from collector.cycle import run_cycle
 from collector.net import make_http_get
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -75,6 +75,8 @@ def main():
         github_token=settings.get("VR_GITHUB_TOKEN") or None,
         curator_feeds=[u.strip() for u in settings["VR_CURATOR_FEEDS"].split(",") if u.strip()]
         if "VR_CURATOR_FEEDS" in settings else curators.FEEDS,
+        news_feeds=news.FEEDS,
+        kisa_feed=kisa.FEED,
         # The key is passed in, never left for the SDK to find in a login profile; no key, no Summaries.
         claude=anthropic.Anthropic(api_key=key) if key else None,
     )
