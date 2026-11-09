@@ -311,6 +311,13 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertIn("never one example alone", summaries.INSTRUCTIONS)
         self.assertIn("Alpine·OpenWrt SSH", summaries.INSTRUCTIONS)  # the example names every example
 
+    def test_the_instructions_give_web_software_no_platforms(self):
+        # Owner, 11-09: a WordPress plugin wore Windows, macOS and Linux badges because its host can be any OS.
+        self.assertIn("installed on and runs natively on", summaries.INSTRUCTIONS)
+        self.assertIn("CMS plugins (WordPress, Drupal", summaries.INSTRUCTIONS)
+        self.assertIn("empty platforms list even if their host can be any OS", summaries.INSTRUCTIONS)
+        self.assertNotIn("Java servers such as Apache Axis2", summaries.INSTRUCTIONS)  # a web app: no longer an example
+
     def test_a_stopgap_file_not_in_the_input_is_dropped_and_old_replies_have_none(self):
         self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"stopgap_file": "/etc/ssh/sshd_config"}))  # the page names another file
         summary = board(self.store)[HN_STORY]["summary"]
@@ -435,20 +442,20 @@ class InstantOrderTest(unittest.TestCase):
         self.store.write("checkpoints.json", {"cvelist": "2026-11-08T03:00:00.000Z"})
         self.store.write("index.json", {"months": ["2026-11"]})
 
-    def test_the_per_cycle_cap_goes_to_kev_then_cvss_then_curator_then_hn(self):
-        # The real run: HN stories arrived before the KEV-listed SonicWall CVE and used up the cap of ten.
+    def test_every_candidate_is_summarized_in_the_cycle_that_sees_it_kev_first(self):
+        # No per-cycle cap on a breaking-news board (owner, 2026-11-09); the order still leads with KEV, then CVSS.
         stories = [hn_story(50400000 + n, f"Story {n}", 500, REAL_RUN) for n in range(9)]
         curated = incident("CVE-2026-83844", "A curated flaw", REAL_RUN)
         curated["mentions"].append({"kind": "curator", "url": "https://tldrsec.com/p/tldr-sec-351"})
         critical = incident("CVE-2026-123957", "TOTOLINK CA300-PoE ...", REAL_RUN) | {"cvss": 9.9}
         sonicwall = incident("CVE-2026-19868", "SonicOS SSLVPN ...", REAL_RUN) | {"cvss": 7.5, "kev": True}
         self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": stories + [curated, critical, sonicwall]})
-        claude = FakeClaude(*["not json"] * 10)
+        claude = FakeClaude(*["not json"] * 12)
 
         run_cycle(self.store, recorded(None), at("2026-11-08T03:45:00"), "test-box", claude=claude)
 
         firsts = [claude.user_text(n).split("\n")[0] for n in range(len(claude.sent))]
-        self.assertEqual(len(firsts), 10)
+        self.assertEqual(len(firsts), 12)
         self.assertEqual(firsts[:4], ["Incident: CVE-2026-19868", "Incident: CVE-2026-123957",
                                       "Incident: CVE-2026-83844", "Incident: no CVE yet"])
 
@@ -566,6 +573,31 @@ class EasyJargonTest(unittest.TestCase):
     def test_product_names_and_the_normal_fields_are_not_checked(self):
         reply = SSHOLE_SUMMARY | {"products": ["SQL::Abstract"], "ko": SSHOLE_SUMMARY["ko"] | {
             "easy_title": "SQL::Abstract 데이터 털림 위험", "names": ["SQL::Abstract"], "title": "SQL 주입으로 원격 코드 실행 가능"}}
+        self.assertIn("summary", self.save(reply))
+
+    # critique 13: Easy said "1.2.0 이하라면 끄고 기다리세요" while Normal said something else; Easy must not name a version
+    # the mitigation does not, nor promise a fix the mitigation says does not exist.
+    def test_an_easy_action_with_a_version_the_mitigation_lacks_is_sent_back(self):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "OpenSSH를 업데이트하세요.", "easy_action": "OpenSSH 10.6p2로 업데이트하세요."}}
+        incident = self.save(reply)
+        self.assertNotIn("summary", incident)
+        self.assertIn("Easy action", incident["summary_error"]["reason"])
+
+    def test_an_easy_action_promising_a_fix_the_mitigation_says_does_not_exist_is_sent_back(self):
+        reply = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"mitigation": "No fixed version yet; 10.6p2 is still affected.",
+                                                                 "easy_action": "Update OpenSSH to 10.6p2."}}
+        incident = self.save(reply)
+        self.assertNotIn("summary", incident)
+        self.assertIn("Easy action", incident["summary_error"]["reason"])
+
+    def test_on_the_last_try_a_mismatched_easy_action_is_dropped_so_easy_shows_the_mitigation(self):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "OpenSSH를 업데이트하세요.", "easy_action": "OpenSSH 10.6p2로 업데이트하세요."}}
+        incident = self.save(reply, tries=2)
+        self.assertEqual(incident["summary"]["ko"]["easy_action"], "")
+        self.assertEqual(incident["summary"]["en"]["easy_action"], SSHOLE_SUMMARY["en"]["easy_action"])
+
+    def test_an_easy_action_that_agrees_with_the_mitigation_passes(self):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"easy_action": "OpenSSH 10.6p2 이상으로 업데이트하세요."}}
         self.assertIn("summary", self.save(reply))
 
     def test_the_banned_words_are_the_ones_the_prompt_names(self):

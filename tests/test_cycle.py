@@ -201,12 +201,14 @@ class NvdEnrichmentTest(unittest.TestCase):
         self.assertEqual(
             incidents["CVE-2024-6387"]["products"],
             [
-                {"id": "openbsd:openssh", "name": "Openssh"},
+                {"id": "openbsd:openssh", "name": "OpenSSH"},  # a known brand keeps its casing (critique 13)
                 {"id": "redhat:enterprise_linux", "name": "Enterprise Linux"},
                 {"id": "sonicwall:sma_6200_firmware", "name": "Sma 6200 Firmware"},
             ],
         )
         self.assertEqual(self.store.read("checkpoints.json")["nvd"], "2026-11-07T13:30:00.000Z")
+        # Vendors not in web/vendors.json whose Product names lack them, with an example, for a person or agent to add.
+        self.assertEqual(self.store.read("unknown_vendors.json"), {"openbsd": "OpenSSH", "totolink": "Ca300-poe Firmware"})
 
     def test_nvd_outage_still_publishes_new_cves_and_retries_the_same_range(self):
         cvelist_get = recorded()

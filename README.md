@@ -17,6 +17,9 @@ Open http://localhost:8000/ to see the Board. The first cycle with an empty stor
 newest delta log entry; later cycles pick up everything since the last checkpoint.
 `VR_GITHUB_TOKEN` (optional, no scopes) lets GitHub search run at 30 instead of 10 requests a minute.
 
+Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle
+lists the missing ones in `unknown_vendors.json` in the store. How to add one: `docs/agents/vendors.md`.
+
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
 of its URLs (`collector/incidents.py`, ADR 0001).
 

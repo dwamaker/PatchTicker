@@ -76,6 +76,18 @@ def affected(data):
     return data.get("defaultStatus") == "affected" or any(v.get("status") == "affected" for v in data.get("versions", []))
 
 
+# Brands whose own casing title-casing mangles (critique 13: "Webmethods", "Watsonx"), and small words kept small
+# after the first ("Cloud Pak for Data"). shortcut: a short table; add a brand when a badge reads wrong.
+BRANDS = {"webmethods": "webMethods", "watsonx": "watsonx", "websphere": "WebSphere", "datastage": "DataStage",
+          "qradar": "QRadar", "db2": "Db2", "tririga": "TRIRIGA", "doors": "DOORS", "wordpress": "WordPress",
+          "woocommerce": "WooCommerce", "phpmyadmin": "phpMyAdmin", "openssh": "OpenSSH", "openssl": "OpenSSL",
+          "mysql": "MySQL", "postgresql": "PostgreSQL", "github": "GitHub", "gitlab": "GitLab", "macos": "macOS",
+          "ios": "iOS", "iphone": "iPhone", "ipados": "iPadOS"}
+SMALL_WORDS = {"a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or", "the", "to", "via", "with"}
+
+
 def display_name(product):
-    # shortcut: title-cased CPE product ("http_server" -> "Http Server"); add a name table if visitors trip on it.
-    return " ".join(w[:1].upper() + w[1:] for w in product.split("_"))
+    """A CPE product as a name: brands as written, small words small after the first, the rest title-cased
+    ("http_server" -> "Http Server")."""
+    words = product.split("_")
+    return " ".join(BRANDS.get(w) or (w if n and w in SMALL_WORDS else w[:1].upper() + w[1:]) for n, w in enumerate(words))

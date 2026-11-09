@@ -3,6 +3,8 @@
 // The filter in the page address: ?p=<product id>&p=...&q=<search>. Also the localStorage form.
 // The whole filter lives in the address hash: p product/OS picks, q search, and the panel's r risk, k exploited,
 // f/t published from/to (YYYY-MM-DD), c minimum CVSS, cv CVE yes/no, h link kinds, s sort.
+import VENDORS from './vendors.json' with { type: 'json' };
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export function filterFromQuery(search) {
   const params = new URLSearchParams(search);
@@ -154,18 +156,31 @@ export function easyAction(s) {
 // The Board's one order, for 주요 사건 and the rest alike (user, 11-08): newest first, or by risk level, or by CVSS score,
 // each falling back to newest.
 const newest = (a, b) => (publishedAt(a) < publishedAt(b) ? 1 : publishedAt(a) > publishedAt(b) ? -1 : 0);
+// No score yet (and not exploited) is not "scored low" (critique 13): it sorts above the scored 참고 rows, below 위험.
+const unscored = (i) => i.cvss == null;
+const riskRank = (i) => { const k = RISKS.indexOf(riskLevel(i)); return k === 2 && unscored(i) ? 1.5 : k; };
+const cvssKey = (i) => (unscored(i) ? 6.95 : i.cvss); // between 7.0 (위험) and 6.9: scores have one decimal
 export function orderBy(sort) {
-  return { risk: (a, b) => RISKS.indexOf(riskLevel(a)) - RISKS.indexOf(riskLevel(b)) || newest(a, b),
-    cvss: (a, b) => (b.cvss ?? -1) - (a.cvss ?? -1) || newest(a, b) }[sort] || newest;
+  return { risk: (a, b) => riskRank(a) - riskRank(b) || newest(a, b),
+    cvss: (a, b) => cvssKey(b) - cvssKey(a) || newest(a, b) }[sort] || newest;
 }
 
 // Korean words people type for systems and devices, matched as the English names sources use (critique 12: 윈도우 and
-// 공유기 found nothing). Small on purpose: product names are typed as they are.
+// 공유기 found nothing). Small on purpose: product names are typed as they are. The English names match only Product
+// names, ids and OS tags, as whole words (critique 13: 자바 found javascript, 엣지 "knowledge").
 export const SEARCH_ALIASES = {
-  윈도우: ['windows'], 윈도: ['windows'], 맥: ['macos', 'mac os'], 맥북: ['macos'], 리눅스: ['linux'], 안드로이드: ['android'],
-  아이폰: ['ios', 'iphone'], 아이패드: ['ipados', 'ipad'], 공유기: ['router'], 라우터: ['router'], 워드프레스: ['wordpress'],
-  크롬: ['chrome'], 엣지: ['edge'], 파이어폭스: ['firefox'], 자바: ['java'], 파이썬: ['python'], 오픈ssh: ['openssh'],
+  윈도우: ['Windows'], 윈도: ['Windows'], 맥: ['macOS', 'Mac OS'], 맥북: ['macOS'], 리눅스: ['Linux'], 안드로이드: ['Android'],
+  아이폰: ['iOS', 'iPhone'], 아이패드: ['iPadOS', 'iPad'], 공유기: ['router'], 라우터: ['router'], 워드프레스: ['WordPress'],
+  크롬: ['Chrome'], 엣지: ['Edge'], 파이어폭스: ['Firefox'], 자바: ['Java'], 파이썬: ['Python'], 오픈ssh: ['OpenSSH'],
 };
+// A whole word: no letter or digit on either side ("windows" in "microsoft:windows_11", not "java" in "javascript").
+const hasWord = (text, word) => new RegExp(`(^|[^\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'iu').test(text);
+// The search words that were also searched as English names, for the hint under the field ("‘맥’ … macOS").
+export function aliasesUsed(query) {
+  const key = (n) => n.replace(/\s/g, '').toLowerCase(); // "Mac OS" is said as macOS already
+  return [...new Set(query.toLowerCase().split(/\s+/))].filter((w) => SEARCH_ALIASES[w])
+    .map((word) => ({ word, names: SEARCH_ALIASES[word].filter((n, k, all) => all.findIndex((x) => key(x) === key(n)) === k) }));
+}
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
 // Returns the visible Incidents newest first, and the top ten of those published (else first seen) in the seven days before `now`.
 export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
@@ -182,9 +197,9 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
     if ((cve === 'yes' && !i.cves.length) || (cve === 'no' && i.cves.length)) return false;
     if (has.some((kind) => !i.mentions.some((m) => m.kind === kind))) return false;
     // Mention titles carry the names people use ("sshole") that a Summary may not.
-    const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, ...productsOf(i).flatMap((p) => [p.name, p.id]),
-      ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
-    return words.every((w) => [w, ...(SEARCH_ALIASES[w] || [])].some((x) => text.includes(x)));
+    const names = [...productsOf(i).flatMap((p) => [p.name, p.id]), ...(i.summary?.devices || [])].join('\n');
+    const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, names, ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
+    return words.every((w) => text.includes(w) || (SEARCH_ALIASES[w] || []).some((x) => hasWord(names, x)));
   });
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
@@ -234,7 +249,7 @@ export const cveHead = (cves = []) => (cves.length ? { id: cves[0], more: cves.l
 export const MANY_DEVICES = 4;
 export const rowTags = (i, lang = 'en') => {
   const s = i.summary;
-  const names = s?.products?.length ? s.products.map((_, k) => shownName(s, lang, k)) : (i.products || []).map((p) => p.name);
+  const names = s?.products?.length ? s.products.map((_, k) => shownName(s, lang, k)) : (i.products || []).map(withVendor);
   // A Product that is also one of the operating systems ("Android", shown in Korean as "안드로이드") is the OS badge only.
   const os = new Set((s?.platforms || []).map((p) => p.toLowerCase()));
   const own = names.filter((_, k) => !os.has(String(s?.products?.[k] ?? '').toLowerCase()));
@@ -243,6 +258,18 @@ export const rowTags = (i, lang = 'en') => {
   const rank = (p) => { const k = OSES.indexOf(p); return k < 0 ? OSES.length : k; };
   const platforms = [...(s?.platforms || [])].sort((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
   return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
+};
+
+// A vendor as people write it, from the id's vendor part. Spellings live in vendors.json (the collector reads it too and
+// lists vendors it lacks in unknown_vendors.json; how to add one: docs/agents/vendors.md). A fold line still needs a name
+// for the rest: short codes in capitals (acme → ACME), else one capital (sonatype → Sonatype).
+export const vendorName = (v) => VENDORS[v] || (v.length <= 4 ? v.toUpperCase() : v[0].toUpperCase() + v.slice(1));
+// An NVD or CVE-record name without its known vendor gets it in front ("Storage Scale" → "IBM Storage Scale"; critique 13),
+// so a badge or fold line never names a product alone. Vendors not in the file are left as they are ("grav", not
+// "Getgrav grav"): guessed casing mangles brands (D-Link, ownCloud), so they wait in unknown_vendors.json instead.
+const withVendor = (p) => {
+  const vendor = VENDORS[p.id.split(':')[0]];
+  return vendor && !p.name.toLowerCase().includes(vendor.toLowerCase()) ? `${vendor} ${p.name}` : p.name;
 };
 
 // Each name once, ignoring letter case (NVD gives "Qiskit SDK" and "Qiskit Sdk"): the first spelling stays.
@@ -255,10 +282,11 @@ export const uniqueNames = (names) => {
 // No red, amber or grey hues, so a badge is never mistaken for a risk dot.
 // Eight lines at least 0.13 apart in OKLab (11 before, but blue/navy, sky/periwinkle, teal/dark green and green/olive
 // read as the same line at badge size). Operating systems are not lines: they get an outline badge.
+// critique 13: mint (#77c4a3) was 0.05 from the dark Clear Green, so it became violet; teal darkened for white text (4.95).
 export const LINES = [
   { bg: '#0052a4', ink: '#ffffff' }, { bg: '#00a84d', ink: '#0d0f12' }, { bg: '#00a5de', ink: '#0d0f12' },
-  { bg: '#7f4f9a', ink: '#ffffff' }, { bg: '#b0ce18', ink: '#0d0f12' }, { bg: '#77c4a3', ink: '#0d0f12' },
-  { bg: '#00828f', ink: '#ffffff' }, { bg: '#c25bb8', ink: '#0d0f12' },
+  { bg: '#7f4f9a', ink: '#ffffff' }, { bg: '#b0ce18', ink: '#0d0f12' }, { bg: '#7340f2', ink: '#ffffff' },
+  { bg: '#007c88', ink: '#ffffff' }, { bg: '#c25bb8', ink: '#0d0f12' },
 ];
 
 // A Product's line from its language-free key (the Product id, "openbsd:openssh"), so it is the same on every visit,
@@ -274,7 +302,7 @@ export function productLine(key) {
 // Each row badge's line key: the Product id behind a shown name (a Summary name in either language, an NVD name);
 // a name with no Product (a device model) has none and keys by itself.
 export function lineKeys(i, lang = 'en') {
-  return new Map(productsOf(i, lang).map((p) => [p.name, p.id]));
+  return new Map(productsOf(i, lang).flatMap((p) => [[p.name, p.id], [withVendor(p), p.id]])); // "IBM Storage Scale" keeps ibm:storage_scale's line
 }
 
 // How long ago, as a value and unit for Intl.RelativeTimeFormat; null from 30 days on (the date is shown instead).

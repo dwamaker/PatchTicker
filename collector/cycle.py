@@ -9,7 +9,7 @@ import anthropic
 
 from collector import curators, cvelist, github, hn, kev, nvd, osssec, summaries
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, link, month_of, page_keys,
-                                 product_list, rejoin)
+                                 product_list, rejoin, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 
@@ -89,6 +89,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
                                       "incidents": [board_view(i) for i in incidents if i["first_seen"] >= recent_since]})
     picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
+    store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
     if changed - set(index["months"]):
         store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)
@@ -96,7 +97,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
 
 
 def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe):
-    """Collect ended batches, summarize Highlight candidates at once, batch the rest. Lets API errors
+    """Collect ended batches, summarize every Highlight candidate at once, title every row still without a Summary,
+    batch the rest's Summaries. Lets API errors
     through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
     instead of building a full one that would likely fail."""
     for pending in list(batches):
@@ -108,13 +110,16 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     # A candidate (위험 and up, KEV, buzz, curator) never waits for a batch it is already in (user, 2026-11-09).
     due = [i for i in incidents if summaries.needs_summary(i) and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
-    for incident in instant[:summaries.MAX_PER_CYCLE]:
+    for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
         summaries.summarize_now(incident, claude, http_get, stamp)
         changed.add(month_of(incident["first_seen"]))
     since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
-    # Below 위험: titles now, several Incidents a request; the Summaries wait to go out together (summaries.BATCH_MIN).
-    untitled = [i for i in rest if summaries.needs_title(i)]
+    # Every row still without a Summary gets its titles now, several a request (owner, 2026-11-09): candidates whose
+    # Summary failed first, then the rest of the window, those waiting in a batch included. Their Summaries go out
+    # together (summaries.BATCH_MIN). A row a reply left out keeps needs_title and is asked again next cycle.
+    untitled = [i for i in instant + [i for i in incidents if i not in instant and i["first_seen"] >= since]
+                if summaries.needs_title(i)]
     for n in range(0, len(untitled), summaries.TITLES_PER_CALL):
         summaries.title_now(untitled[n:n + summaries.TITLES_PER_CALL], claude, stamp)
         changed.update(month_of(i["first_seen"]) for i in untitled[n:n + summaries.TITLES_PER_CALL])

@@ -14,17 +14,17 @@ colors:
   emergency-red: "light-dark(#c4231c, #ff6b62)"
   caution-amber: "light-dark(#8a6100, #f5b400)"
   caution-amber-mark: "light-dark(#a87700, #f5b400)"
-  notice-slate: "light-dark(#5f6b76, #9aa3ad)"
+  notice-slate: "light-dark(#5a6570, #9aa3ad)"
   wayfinding-blue: "light-dark(#1a5fb4, #7cc4ff)"
-  clear-green: "light-dark(#1d7a45, #4fc48c)"
+  clear-green: "light-dark(#1f6f1f, #68c8a8)"
   scrim: "rgb(0 0 0 / 0.45)"
   line-01: "#0052a4"
   line-02: "#00a84d"
   line-03: "#00a5de"
   line-04: "#7f4f9a"
   line-05: "#b0ce18"
-  line-06: "#77c4a3"
-  line-07: "#00828f"
+  line-06: "#7340f2"
+  line-07: "#007c88"
   line-08: "#c25bb8"
   line-ink-dark: "#0d0f12"
   line-ink-light: "#ffffff"
@@ -170,7 +170,7 @@ components:
 The Board is read the way a commuter reads a Seoul subway sign: no column labels, just a
 coloured line, a bold station name and the line under it that says where it goes. Every Product rides
 its own fixed line colour, every CVE ID is set like a station name with the Incident's title under it,
-the CVSS score is a ring filled to its value, and the reader understands a row in one glance. Risk sits apart from the lines as a filled dot at the row start, so "which line"
+the CVSS score is a ring filled to its value, and the reader understands a row in one glance. Risk sits apart from the lines as an unfilled ring sign around the risk word at the row start, so "which line"
 and "how dangerous" never share a colour.
 
 Density is that of a departure board: rows of 72 px minimum, one hairline between them, generous
@@ -187,7 +187,7 @@ action line set heavier than the text around it. The sign does not change; only 
 **Key Characteristics:**
 - No column header row; the row's grid position carries the meaning.
 - Two separate colour alphabets: risk and severity (red, amber, slate) and Product lines
-  (eleven fixed hues).
+  (eight fixed hues).
 - The CVE ID as the bold name over the Incident title, like a station name over its direction.
 - CVSS as a ring filled to the score out of 10, number inside.
 - Flat rows on hairlines; only the Highlight frames carry a shadow.
@@ -199,15 +199,15 @@ A graphite-and-paper ground, a strict three-colour risk alphabet, and a subway-m
 for Products only.
 
 ### Primary
-- **Emergency Red** (`emergency-red`): the 고위험 risk dot and word, the KEV marker, the left edge
+- **Emergency Red** (`emergency-red`): the 고위험 risk sign and word, the KEV marker, the left edge
   and faint wash of a 고위험 Highlight frame. Used only for risk.
 - **Caution Amber** (`caution-amber`, text) and **Caution Amber Mark** (`caution-amber-mark`, marks): the 위험 word is
-  the dark gold (#8a6100 by day, 4.77:1+); its dot, ring arc, frame edge and wash are the brighter gold (#a87700 by day,
+  the dark gold (#8a6100 by day, 4.77:1+); its sign ring, CVSS ring arc, frame edge and wash are the brighter gold (#a87700 by day,
   non-text, 3.4:1+), so 위험 reads gold and never as the red of 고위험 (user, 11-08). By night both are #f5b400.
-- **Notice Slate** (`notice-slate`): the 참고 risk dot and word, the default Highlight edge, and the
+- **Notice Slate** (`notice-slate`): the 참고 risk sign and word (#5a6570 by day since critique 13: 4.96:1+ on the hover and group grounds), the default Highlight edge, and the
   CVSS ring below 7.0.
 - The CVSS ring uses the same three: Emergency Red at 9.0+, Caution Amber at 7.0+, Notice Slate below.
-  (A separate orange for 7.0+ was dropped on 11-08: in light theme it read as the amber dot, 1.03:1.)
+  (A separate orange for 7.0+ was dropped on 11-08: in light theme it read as the amber mark, 1.03:1.)
 
 ### Secondary
 - **Line palette** (`line-01` to `line-08`): Product line badges, after the Seoul subway map. Eight hues at least
@@ -215,7 +215,10 @@ for Products only.
   lines: they get an outline badge (Secondary Ink text, Control Edge inset ring). Light
   hues carry `line-ink-dark` text, deep hues carry `line-ink-light`. The source is `LINES` in
   `web/board.mjs`, which assigns each Product a colour by an FNV-1a hash of its Product id ("openbsd:openssh"; a device model by its
-  name), mixed before the remainder so Products spread over the eight lines.
+  name), mixed before the remainder so Products spread over the eight lines. Every line also sits 0.13+ from Clear Green
+  in both themes (a test reads `--ok` from index.html): critique 13 found mint #77c4a3 0.05 from the dark `--ok`, so
+  line-06 became violet #7340f2 (white text), line-07 teal darkened to #007c88 (white 4.95:1, was 4.58), and `--ok`
+  moved to #1f6f1f / #68c8a8.
 
 ### Tertiary
 - **Wayfinding Blue** (`wayfinding-blue`): links, the focus ring, the caret, and the text selection
@@ -283,7 +286,7 @@ numbers do not shimmer.
 
 A single centred column, 75rem wide, with a 1rem gutter (1.5rem from 768 px). The top bar is a
 three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and language buttons right;
-under 600 px the switch drops to its own full-width line. The product picker and search sit on one
+under 600 px the name, the switch and a settings button share one line. The product picker and search sit on one
 line (picker up to 24rem), stacking under 768 px.
 
 A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
@@ -319,7 +322,7 @@ details stay flat. The phone filter sheet is set apart by the Scrim (`--scrim`, 
 Three radii: gently rounded controls (8px), slightly softer frames for fields and Highlights (10px),
 and full pills for line badges and the view switch (999px). Command code uses 6px, the small
 "원문" marker 4px. Borders are 1px throughout; the only thicker edge is the 3px risk-coloured left
-edge of a Highlight frame. The risk dot is a filled 0.875rem circle, the chevron a 1.5px stroked
+edge of a Highlight frame. The risk sign is a 1.5px ring around the word (dashed while no score), the chevron a 1.5px stroked
 corner that turns when a row opens.
 
 ## Components
@@ -374,10 +377,10 @@ Restrained outlined buttons for theme, language and copying a command.
   "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "악용 발생" in red (a CISA KEV listing, or a Summary reporting attacks)
   under the risk word, and the opened Normal panel does not repeat it.
 - **Colour:** by CVSS rating: Emergency Red 9.0+, Caution Amber 7.0+, Notice Slate
-  below. Unrated shows no ring, only a quiet dash in Hint Ink ("점수 아직 없음" in its tooltip). Shown in both views.
+  below. Unrated shows an empty dashed ring with a dash in Hint Ink ("CVSS 점수 대기" as its tooltip and label). Shown in both views.
 
 ### Board row (signature)
-- **Style:** a full-width button, 72 px minimum, on a single hairline. Risk dot and word, CVE ID over
+- **Style:** a full-width button, 72 px minimum, on a single hairline. Risk sign, CVE ID over
   the Incident title, CVSS ring, line badges, published date and time, chevron.
 - **Time:** when the news first broke (the earliest source post: CVE record, HN story, oss-security
   post), in the visitor's time zone as `YYYY-MM-DD` over `HH:MM`; how long ago sits in the tooltip.
@@ -412,9 +415,10 @@ Restrained outlined buttons for theme, language and copying a command.
 
 ### Risk sign (bolder after critique 6; both views since 11-09)
 - **Not rated yet (critique 12):** an Incident with no CVSS that is not exploited keeps the last level (참고 / 주의) but
-  says "점수 대기" (Easy: "아직 평가 전") under the sign, where 악용 발생 would sit, and an empty dashed ring stands in the
-  ring's place (also on phones); the legend reads "그 밖 · 점수 대기" and the filter's risk group notes where these sit,
-  so 참고 never reads as "scored low". The rule that sets the level is unchanged.
+  draws its sign dashed and says "점수 대기" (both views; ring label "CVSS 점수 대기"; English "Score pending") at
+  14px/700 under the sign, where 악용 발생 would sit, and an empty dashed ring stands in the ring's place (also on
+  phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
+  these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
 - In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (고위험 / 심각!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
   15px/800. Rings are never filled (user, 11-09). 악용 발생 sits centred under the ring (beside it on phones), and a
@@ -440,8 +444,9 @@ Restrained outlined buttons for theme, language and copying a command.
   buttons say what they bring back ("검색 지우기 · 1건 보기"). Counts appear only in the empty state.
 - **Stale data notice:** an hour without an update (six missed 10-minute runs) puts a notice under the status line
   (its text names no age since critique 12: the status line just above says it, and fixed text is announced once):
-  Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "한 시간
-  넘게 업데이트가 없습니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." It is a status region (heard once) and is
+  Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "업데이트가
+  멈춰 있습니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." (critique 13: no "an hour"; the data may be a day old). On
+  phones it is "· 업데이트 멈춤" at the end of the status line, the full sentence kept for screen readers. It is a status region (heard once) and is
   rechecked every minute, as is the status line's age, so a tab left open goes stale visibly.
 - **All-clear sign:** when only Products are picked and none is on the Board, the empty state is a sign, not a
   sentence: a drawn check, the picked Products as line badges, "최근 7일 동안 게시된 사건이 없습니다" (or 3개월 once
@@ -476,7 +481,7 @@ Restrained outlined buttons for theme, language and copying a command.
   distinct from the opened-row white) and leads its badge cell with a "묶음" tag: square corners, ink outline, so it
   never reads as a Product (filled pill) or an OS (outlined pill). An opened fold keeps that ground for its row and
   members; its closing "IBM 묶음 접기" is an outlined house button. In 주요 사건 frames only the tag shows.
-- **Live updates (11-09, owner):** the page reads `status.json` every 10 minutes and when the tab comes back into view;
+- **Live updates (11-09, owner):** the page reads `status.json` every 30 seconds, live like a ticker, and at once when the tab or window comes back (owner, later 11-09: no conditions); the server should cache `status.json` for 30 s or less;
   only a new update time fetches the week again. New Incidents take their place in the visitor's sort and filter.
   Near the top of the page they come in with the Board's motion; further down, the rows on screen stay put (the scroll
   is corrected by what was added above) and an inverse pill at the top centre says "↑ 새 사건 N건" until they are
@@ -508,7 +513,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Phones and larger text (critique 9, 11-09):** a phone row's first line flows: risk sign, CVSS ring, date and
   chevron share it while they fit, and the date drops to its own line at the right when they do not (320px, 가+,
   a sign with 악용 발생); nothing overlaps at any step. The CVSS ring and its number grow with 가+ (`--ts`). Under 600px
-  the bar puts the 주요 사건 heading on its own short line and 모두 펼치기 | 필터 · 정렬 on one line.
+  the bar is two lines: 주요 사건 with 모두 펼치기, then 필터 and 정렬.
 - **Hardening (critique 9, 11-09):** the Product picker matches what is typed regardless of case: a whole name wins,
   one partial match is picked, several keep the text and say "맞는 제품이 N개입니다" under the fields, none searches as
   before. 이전 사건 불러오기 leaves a visible result line that takes the focus when no button is left. The load error
@@ -525,7 +530,8 @@ Restrained outlined buttons for theme, language and copying a command.
   search hint ("키워드, CVE 번호") so the words fit beside them.
 - **Motion of the frozen controls and jump buttons (owner, after critique 12):** the frozen copy of 필터 and 정렬 rises
   10px into the frozen row while its width opens (280ms ease-out), so the search field gives way smoothly; it sinks and
-  closes in 180ms when the bar comes back. 맨 위로 wears a 2px ring in the focus blue that fills clockwise with how far
+  closes in 180ms when the bar comes back (critique 13 briefly dropped the width opening; the owner had it
+  restored: the controls sit at the opening box's right edge, under the pointer from the first frame). 맨 위로 wears a 3px ring in the focus blue on a 22% track that fills clockwise with how far
   down the page is. An arrow leans 2px its way on hover; on a press it leaves the way the page goes and returns from the
   other side (440ms). The filter count pops in both places; the dashed-chip note rises in. Reduced motion: none of it.
 - **Jump buttons rest on phones (owner, after critique 12):** under 768px 맨 위로 / 맨 아래로 show while the page moves
@@ -605,6 +611,30 @@ Restrained outlined buttons for theme, language and copying a command.
   기본|쉬운 설명 switch swells to 112% and settles with a bounce, a rainbow ring spins once around it per beat, the
   word 쉬운 설명 runs through a rainbow and swells to 116%, and a rainbow band crosses the button. The rainbow belongs
   to this one moment only (it never marks risk). Reduced motion: the rainbow word and a still rainbow ring.
+- **Critique 13 (11-09):**
+  - Frozen 필터 keeps the place: the panel remembers its opener and the scroll; closed without 필터 적용 both come back.
+    From the frozen copy it opens where the reader is: the phone sheet in place, wider a panel floating under the frozen
+    row over the Scrim (modal like the sheet; a tap on the Board closes it). 필터 적용 or a sort from the copy brings the
+    bar under the frozen row. While the copy shows, the bar's 필터 and 정렬 leave the tab order.
+  - Under 360px the copied 정렬 is a 44px icon over a see-through native select; the stuck phone search says "검색".
+  - Korean search words match their English names only in Product names, ids, devices and OS tags, as whole words; the
+    typed word still matches any text. A line under the fields says it: "‘맥’으로 검색해 macOS도 함께 찾았습니다."
+  - Easy update lines name the product: "OpenEMR 8.3.0 이상으로 업데이트하세요." The collector sends back a Summary whose
+    Easy action names a version the mitigation lacks, or sends the reader to update while the mitigation says no fix
+    exists; on the last try it keeps the Summary without that Easy action, so Easy shows the mitigation.
+  - NVD names keep brand casing and small words (webMethods, watsonx, "Cloud Pak for Data"); a name from NVD or the CVE
+    record gets a known vendor in front ("IBM Storage Scale") and keeps its Product id's line.
+  - Dashed filter chips point to their note (aria-describedby); the note is a full-width line right under the chips;
+    dashed chips dim their ink too (4.5:1+). Panel selects are as wide as their words (16rem at most); on 1024px+ the
+    columns are 0.8 : 1 : 1.25 so the OS chips fit one line. Panel notes are 합니다체.
+  - Phones: the first-visit line is one line whose keys run sideways inside it; the stale notice joins the status line.
+  - 기본 is 44px wide at 320px; the name is 19px there (a 1.25 step over the 15px body).
+  - #empty is no live region; its sentence is said through the polite announcer. 이전 사건 불러오기 says the sentence the
+    screen shows. "↑ 새 사건 N건" is named "새 사건 N건, 첫 새 사건으로 이동". Folds: "IBM 묶음을 펼쳤습니다 (공지 25건)." /
+    "IBM 묶음을 접었습니다."
+  - CVE IDs never break at their hyphens in Easy text and version help. "쉬운 설명 준비 중" is plain hint words in the
+    line under the title, not a tag. The Lead link says what it is: "공식 공지 읽기 · github.com".
+  - Per-CVE 공지/분석 links on touch screens are 44px tall, with no negative margins.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts
@@ -612,7 +642,7 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Do:
 - **Do** open every source link in a new tab (`target=_blank`, `noopener noreferrer`, a hidden "새 탭에서 열림"
   for screen readers), so the Board, its filters and opened rows stay put.
-- **Do** keep a line badge on one line: a long name ends in "…" inside the pill, whole in its tooltip and to screen readers.
+- **Do** let a long line badge name wrap inside its pill; never cut it with "…" (critique 12).
 - **Do** list several 해당 조건 one per line; never join them with " · " (a condition may hold its own dot, "팩스·SMS").
 - **Do** draw the focus ring inside a framed 주요 사건 row (`outline-offset: -3px`): the frame clips anything outside it.
 - **Do** use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
@@ -621,7 +651,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Do** theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link
   underline offset (3px).
 - **Do** keep Normal view calm and let the Easy view carry the louder voice (levels 심각! / 경계 / 주의, "!" only at 심각, a plain
-  headline, one plain sentence that may end in "!", one action line at weight 600).
+  headline, one plain sentence that may end in "!", one action line at 17px/800).
 - **Do** check both themes for WCAG 2.2 AA contrast after any colour change.
 - **Do** write a device or Product badge with its vendor in front.
 

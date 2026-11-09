@@ -1,0 +1,23 @@
+{
+  "ibm": "IBM",
+  "microsoft": "Microsoft",
+  "oracle": "Oracle",
+  "cisco": "Cisco",
+  "sap": "SAP",
+  "adobe": "Adobe",
+  "apple": "Apple",
+  "google": "Google",
+  "fortinet": "Fortinet",
+  "sonicwall": "SonicWall",
+  "siemens": "Siemens",
+  "vmware": "VMware",
+  "citrix": "Citrix",
+  "ivanti": "Ivanti",
+  "juniper": "Juniper",
+  "dell": "Dell",
+  "hp": "HP",
+  "hpe": "HPE",
+  "redhat": "Red Hat",
+  "red_hat": "Red Hat",
+  "mozilla": "Mozilla"
+}

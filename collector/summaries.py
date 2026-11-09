@@ -27,14 +27,16 @@ EFFORT = "low"
 MAX_TOKENS = 8000
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
-# shortcut: at most this many instant Summaries per cycle, so a backlog cannot burst the budget.
-MAX_PER_CYCLE = 10
+# No cap on instant Summaries per cycle: a candidate is summarized in the cycle that sees it (owner, 2026-11-09).
 # shortcut: at most this many batch requests per cycle (each fetches up to three pages for its input),
 # and only Incidents first seen in the last BATCH_DAYS; raise both if a backlog after a pause clears too slowly.
 MAX_PER_BATCH = 200
 # User, 2026-11-09: below 위험 (CVSS < 7.0) Haiku writes only the row's titles in the cycle that sees the Incident, up to
 # TITLES_PER_CALL Incidents in one request; their full Summaries gather and go out in one Message Batch once BATCH_MIN
 # are waiting or the oldest has waited BATCH_WAIT_HOURS (titles cover the wait, so fewer, fuller batches cost less).
+# Owner, 2026-11-09: a 위험 row whose instant Summary failed, and a row already waiting in a batch, get titles the same
+# way, so after a cycle no row of the last BATCH_DAYS shows only its English Brief unless the API failed.
+# shortcut: rows first seen before BATCH_DAYS that never got a Summary get no titles; widen if old months matter.
 QUICK_TITLES = True
 TITLES_PER_CALL = 20
 BATCH_MIN = 100
@@ -128,7 +130,7 @@ Also:
 - stopgap_file: when the stopgap is a setting, the configuration file it goes in, copied character for character as a source writes it ("/etc/ssh/sshd_config"). Empty string when the stopgap is a command or no source names the file; never guess a path.
 - devices: when the affected products are device firmware (routers, cameras, NAS, printers), the affected device models as the sources name them, each with its vendor in front ("Synology DiskStation", "TP-Link Archer"), so a model name never stands alone. Empty list otherwise.
 - incident: true only when the input reports a security flaw or an attack on software or a device that readers install or run themselves (an app, a library, an OS, a server program, a router or other device firmware), so a reader can check whether they are affected and update or change a setting. False for a company's own breach or leak, fraud, scams, heists, lawsuits, policy, opinion, essays, how-tos and tool or feature announcements, even when the story is about security: there is nothing a reader can check or fix on their own systems.
-- platforms: every operating system, from Windows, macOS, Linux, Android, iOS, that the affected software runs on, so a reader filtering by their OS finds it. Software that runs on several lists all of them (CPython, Java servers such as Apache Axis2, Chrome: Windows, macOS, Linux; Chrome also Android). Narrow the list only when the sources limit the flaw to some (sshole needs musl libc: Linux; Microsoft Paint: Windows). If people can download and install it, it runs on something: list those systems (self-hosted servers such as Apache Allura or ForgeRock AM run on Linux at least). Empty only for online services that only the vendor runs (a bank, ChatGPT, a game's login servers) and for device firmware.
+- platforms: only the operating systems, from Windows, macOS, Linux, Android, iOS, that the affected software itself is installed on and runs natively on, so a reader filtering by their OS finds it: operating systems and their components, desktop and mobile apps, and native servers and tools. Software that runs on several lists all of them (CPython, OpenSSH, Chrome: Windows, macOS, Linux; Chrome also Android). Narrow the list only when the sources limit the flaw to some (sshole needs musl libc: Linux; Microsoft Paint: Windows). Web applications, CMS plugins (WordPress, Drupal, Joomla) and themes, PHP and JavaScript libraries and packages, and SaaS get an empty platforms list even if their host can be any OS (a WordPress plugin, Apache Allura, a PHP admin panel, an npm package). Empty also for online services that only the vendor runs (a bank, ChatGPT, a game's login servers) and for device firmware.
 - exploited: true only when a source says attackers are already using this flaw against real targets (in the wild, an attack campaign, active exploitation). False for a proof of concept, a researcher's demo or a warning that attacks are likely. The Board lifts such an Incident to its top Risk level, as a CISA KEV listing does.
 - titles_ko: for each Mention with a title (in brackets after its URL) that is not in Korean, except repositories, a short Korean rendering of that title: "url" copied exactly from the Mentions list, "title" in Korean with product names and CVE IDs kept as written ("sshole (OpenSSH 로그인 결함)"). Empty list when there are none.
 Keep every field short and do not repeat one field in another.
@@ -199,6 +201,22 @@ def missing_stopgap_step(summary):
     return ""
 
 
+NO_FIX_RE = re.compile(r"(수정|고친|고쳐진) 버전[은이]? (아직 )?없|패치[가는]? (아직 )?없|\bno (known )?(fix|patch|fixed version)\b"
+                       r"|\bnot (yet )?(been )?fixed\b", re.I)
+UPDATE_RE = re.compile(r"업데이트|업그레이드|\bupdate|\bupgrade", re.I)
+
+
+def easy_action_mismatch(summary):
+    """The Easy action must agree with the normal mitigation (critique 13: Userplace, OpenEMR): every version it names
+    is in the mitigation, and it never sends the reader to update when the mitigation says no fix exists.
+    The languages that disagree."""
+    def disagrees(fields):
+        versions = {t for t in numbers(fields["easy_action"]) if "." in t}
+        return bool(versions - numbers(fields["mitigation"])
+                    or versions and NO_FIX_RE.search(fields["mitigation"]) and UPDATE_RE.search(fields["easy_action"]))
+    return [lang for lang in ("ko", "en") if disagrees(summary[lang])]
+
+
 class Rejected(ValueError):
     """The model's reply failed the schema or the code check; the Brief stays."""
 
@@ -228,8 +246,8 @@ def hn_points(incident):
 
 
 def priority(incident):
-    """Sort key for instant candidates, so the per-cycle cap goes first to KEV, then CVSS 9.0+, then a
-    curator's pick, then CVSS 7.0+, then HN buzz; arrival order within each (the sort is stable)."""
+    """Sort key for instant candidates (all are summarized each cycle; the order decides who goes first if the API
+    stops midway): KEV, then CVSS 9.0+, then a curator's pick, then CVSS 7.0+, then HN buzz; arrival order within each."""
     curated = any(m["kind"] == "curator" for m in incident["mentions"])
     score = incident.get("cvss") or 0
     return (not incident.get("kev"), score < 9.0, not curated, score < 7.0)
@@ -332,10 +350,15 @@ def save_reply(incident, reply, text, seen, stamp):
         return
     # Jargon in the Easy view, or a stopgap without the step its mitigation says it needs, costs a retry, never the
     # Summary: the last try is kept as it is.
-    problem = easy_jargon(summary) and f"jargon in the Easy view: {easy_jargon(summary)}" or missing_stopgap_step(summary)
+    mismatch = easy_action_mismatch(summary)
+    problem = (easy_jargon(summary) and f"jargon in the Easy view: {easy_jargon(summary)}" or missing_stopgap_step(summary)
+               or mismatch and f"Easy action disagrees with the mitigation in {', '.join(mismatch)}")
     if problem and incident.get("summary_error", {}).get("tries", 0) + 1 < MAX_TRIES:
         failed(incident, problem)
         return
+    # The last try keeps the Summary, but never an Easy action that contradicts it: the Easy view then shows the mitigation.
+    for lang in mismatch:
+        summary[lang]["easy_action"] = ""
     incident["summary"] = summary | {"at": stamp}
     incident.pop("summary_error", None)
     incident["summary_basis"] = seen | {"n": incident.get("summary_basis", {}).get("n", 0) + 1}

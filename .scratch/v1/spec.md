@@ -128,7 +128,12 @@ Incidents get theirs at once. Every Incident links out to its best Mention so re
   one Batch per cycle, collected on later cycles. Re-summarize only on: new official advisory or
   fixed version, newly KEV-listed, CVE newly attached; at most three Summaries per Incident.
   A KEV listing that no Summary has covered yet goes to the regular API at once however old the
-  Incident is (still within the per-cycle cap). After the last rejected try the Brief stops saying
+  Incident is. Owner, 2026-11-09: every cycle, (1) every candidate (위험 and up: KEV, CVSS 7.0+, buzz,
+  curator) gets its full Summary at once, with no per-cycle cap; (2) every other row still without a
+  Summary (a candidate whose Summary failed, a row waiting in a batch, the rest of the last 30 days)
+  gets its quick titles in the same cycle, 20 rows a request; (3) the rest's full Summaries go out by
+  Message Batch. So after a cycle no recent row shows only its English Brief unless every API attempt
+  failed. After the last rejected try the Brief stops saying
   "Summary in preparation" and says no Summary is available, pointing to the Lead mention. The
   Board always shows the rule-based Lead mention; the model's `lead` is checked but not displayed.
 - **Prompt caching.** The fixed instructions, with a worked example, exceed the 512-token minimum

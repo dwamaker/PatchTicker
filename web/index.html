@@ -24,9 +24,9 @@
       --high: light-dark(#c4231c, #ff6b62);
       --mid: light-dark(#8a6100, #f5b400); /* 위험 text: dark gold, 4.77:1+ by day */
       --mid-mark: light-dark(#a87700, #f5b400); /* 위험 marks (sign ring, CVSS ring, frame edge): brighter gold, 3.4:1+ (non-text) */
-      --note: light-dark(#5f6b76, #9aa3ad);
+      --note: light-dark(#5a6570, #9aa3ad); /* 4.96:1+ by day on the hover and group grounds (critique 13) */
       --focus: light-dark(#1a5fb4, #7cc4ff);
-      --ok: light-dark(#1d7a45, #4fc48c); /* done / nothing found: a state, never a risk and never a badge fill */
+      --ok: light-dark(#1f6f1f, #68c8a8); /* done / nothing found: a state, never a risk and never a badge fill; 0.13+ from every line (critique 13) */
       --shadow: light-dark(rgb(20 25 30 / 0.07), rgb(0 0 0 / 0.32));
       --scrim: rgb(0 0 0 / 0.45); /* behind the phone filter sheet only */
       --sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
@@ -99,8 +99,8 @@
     }
     @media (max-width: 359px) { /* 320px: tighter name and switch keep the one header line (it wrapped by 26px) */
       .top .wrap { column-gap: 0.375rem; }
-      h1 { gap: 0.375rem; font-size: calc(1.125rem * var(--ts)); }
-      #views button { padding: 0 0.5rem; }
+      h1 { gap: 0.375rem; font-size: calc(1.1875rem * var(--ts)); } /* 19px: a 1.25 step over the 15px body (critique 13) */
+      #views button { min-width: var(--tap); padding: 0 0.5rem; } /* 기본 was 42px wide */
     }
 
     /* product picker and search on one line */
@@ -119,13 +119,22 @@
     .stuck-tools .btn { position: relative; gap: 0.375rem; padding: 0 0.75rem; }
     .stuck-tools svg { width: 16px; height: 16px; }
     .stuck-tools select { max-width: 7.5rem; }
+    .stuck-tools .sort-ic { display: none; }
+    /* under 360px the copied 정렬 is a 44px icon over a see-through native select (still the real control for readers
+       and keyboards), so the search field keeps 160px+ (critique 13: it had 123px) */
+    @media (max-width: 359px) {
+      .stuck-tools .sort { position: relative; justify-content: center; width: var(--tap); height: var(--tap); border: 1px solid var(--edge); border-radius: var(--r-ctl); color: var(--ink); }
+      .stuck-tools .sort-ic { display: block; width: 18px; height: 18px; }
+      .stuck-tools .sort select { position: absolute; inset: 0; width: 100%; max-width: none; min-height: 0; opacity: 0; cursor: pointer; }
+      .stuck-tools .sort:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+    }
     @media (max-width: 599px) { .stuck-tools select { max-width: 6.5rem; } .stuck-tools .btn { padding: 0 0.625rem; } } /* the search words keep their room at 375px */
     /* phones: 맨 위로 / 맨 아래로 show while the page moves and fade 2 s after it stops, so they do not sit on the text
        being read (owner, critique 12); a keyboard focus keeps them */
     @media (max-width: 767px) { .jump-idle .jump button:not(.off):not(:focus-visible) { opacity: 0; visibility: hidden; transition-duration: 400ms; } }
-    #pick-hint:not(:empty), .older-done, #picks .pick-note { animation: hint-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+    #pick-hint:not(:empty), #alias-hint:not(:empty), .older-done, #picks .pick-note { animation: hint-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes hint-in { from { opacity: 0; translate: 0 -4px; } }
-    @media (prefers-reduced-motion: reduce) { #pick-hint:not(:empty), .older-done, #picks .pick-note { animation-name: fade-in; } }
+    @media (prefers-reduced-motion: reduce) { #pick-hint:not(:empty), #alias-hint:not(:empty), .older-done, #picks .pick-note { animation-name: fade-in; } }
     @keyframes fade-in { from { opacity: 0; } }
     #prefs-btn svg { transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
     #prefs-btn[aria-expanded="true"] svg { transform: rotate(90deg); }
@@ -186,7 +195,7 @@
     .fp-field.wide { grid-column: 1 / -1; }
     @media (min-width: 1024px) {
       /* wide screens: risk, attacks and OS side by side, then CVSS, CVE and the dates on one line (was 598px tall) */
-      .fp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .fp-grid { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.25fr); } /* OS (five chips) and the dates get the room, so no column hangs under the others (critique 13) */
       .fp-field.wide.fp-checks { grid-column: auto; align-content: start; }
       .fp-grid > .fp-dates { grid-column: auto; }
     }
@@ -194,6 +203,8 @@
     .fp-note { flex-basis: 100%; margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     .fp-label { padding: 0; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
     .fp-field input, .fp-field select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); }
+    .fp-field select { align-self: flex-start; max-width: 16rem; } /* as wide as its words, not the column (critique 13: 356px) */
+    .fp-grid > .fp-zero-note { grid-column: 1 / -1; margin-top: -0.5rem; } /* right under the chips it explains */
     .fp-checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .fp-checks legend { flex-basis: 100%; margin-bottom: 0.375rem; }
     .fp-chip { position: relative; display: inline-flex; }
@@ -204,7 +215,7 @@
     .fp-chip.risk-high input:checked + span { background: color-mix(in srgb, var(--mid-mark) 12%, var(--panel)); border: 1.5px solid var(--mid-mark); color: var(--mid); }
     .fp-chip.risk-notice input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .fp-chip.zero span { border-style: dashed; color: var(--ink-3); } /* adding it would leave nothing (title says so) */
+    .fp-chip.zero span { border-style: dashed; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
     .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
     .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 700; }
     @media (hover: hover) { .btn.primary:hover { background: var(--ink-2); } }
@@ -216,12 +227,17 @@
       .filters:not([hidden]) { box-shadow: 0 0 0 100vmax var(--scrim); }
       .fp-head { position: sticky; top: -1.25rem; z-index: 1; margin: -1.25rem -1.25rem 0.75rem; padding: 0.75rem 1.25rem; background: var(--panel); border-bottom: 1px solid var(--rule); }
     }
+    /* wider screens, opened from the frozen copy: the panel floats right under the frozen row over the dimmed Board, so
+       the reader stays where they were (critique 13: it scrolled the page back to the bar) */
+    @media (min-width: 600px) {
+      .filters.floating { position: fixed; top: calc(var(--stick, 0px) + 0.5rem); left: 0; right: 0; z-index: 20; width: min(72rem, calc(100vw - 2rem)); max-height: calc(100dvh - var(--stick, 0px) - 1.5rem); margin: 0 auto; overflow-y: auto; overscroll-behavior: contain; box-shadow: 0 0 0 100vmax var(--scrim); }
+    }
     .row-h { margin: 0; font: inherit; }
     .pick-note { flex-basis: 100%; margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     #picks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
     #picks:empty { display: none; }
-    #pick-hint { grid-column: 1 / -1; margin: 0; }
-    #pick-hint:empty { display: none; }
+    #pick-hint, #alias-hint { grid-column: 1 / -1; margin: 0; }
+    #pick-hint:empty, #alias-hint:empty { display: none; }
     .older-done:focus { outline: none; }
     .older-done { margin: 0; align-self: center; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     .empty .load-detail { margin-top: 0.375rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 400; color: var(--ink-2); } /* the cause, apart from the plain sentence */
@@ -236,7 +252,7 @@
       #filter { display: contents; }
       #filter > .field { margin-top: 0.75rem; }
       .search-row { position: sticky; top: 0; z-index: 12; margin: 0 -1rem; padding: 0.5rem 1rem; background: var(--bg); }
-      #pick-hint, #picks { margin-top: 0.375rem; }
+      #pick-hint, #alias-hint, #picks { margin-top: 0.375rem; }
     }
     @media (max-width: 767px) { .key { display: none; } } /* no '/' key on a phone keyboard; the placeholder gets the room */
 
@@ -261,6 +277,7 @@
     .p-key dt { display: flex; }
     .p-key dd { margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); white-space: nowrap; }
     .p-key .gauge { width: calc(2.25rem * var(--ts)); height: calc(2.25rem * var(--ts)); }
+    .p-pair { display: flex; align-items: center; gap: 0.375rem; }
     .primer > .btn { flex: none; }
     .p-close { width: var(--tap); padding: 0; justify-content: center; }
     .p-close .x { position: relative; width: 12px; height: 12px; }
@@ -274,6 +291,11 @@
       /* narrow screens and large text: a key's words may wrap instead of running under the close button */
       .p-key { min-width: 0; }
       .p-key dd { white-space: normal; }
+      /* one line on phones (critique 13: four lines pushed the first row down): the keys run sideways inside the line,
+         the page itself never scrolls sideways */
+      .p-keys { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+      .p-key { flex: none; }
+      .p-key dd { white-space: nowrap; }
       .primer .p-more { display: none; }
       .p-close { position: absolute; top: 0; right: 0; border-color: transparent; }
     }
@@ -289,6 +311,12 @@
     /* stale data: a notice in Ink on Recessed Panel; amber and red stay for risk (Two Alphabets) */
     .stale { display: flex; align-items: flex-start; gap: 0.5rem; max-width: 46rem; margin: 0.5rem 0 0; padding: 0.625rem 0.875rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: var(--r-ctl); color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
     .stale svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; }
+    /* phones: the stale notice is two words on the status line; the full sentence stays for screen readers (critique 13) */
+    .stale-short { display: none; font-weight: 700; color: var(--ink); }
+    @media (max-width: 599px) {
+      .stale-short { display: inline; }
+      .stale { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    }
     /* 5: on a phone the guide is a quick reference, tighter, so it is not a screen and a half of reading */
     @media (max-width: 599px) { .legend { gap: 0.5rem; } .legend dd { font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.45; } }
     .legend .c-date { align-items: flex-start; }
@@ -347,7 +375,9 @@
     .sev-medium, .sev-low, .sev-none { color: var(--note); }
     /* not rated yet: an empty dashed ring where the score ring would be (critique 12) */
     .gauge.unrated { box-sizing: border-box; border: 2px dashed var(--rule-2); border-radius: 50%; color: var(--ink-3); font-weight: 600; }
-    .why.unrated { color: var(--ink-2); }
+    .why.unrated { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; } /* as loud as 악용 발생's size (critique 13) */
+    .loud.unrated .word { border-style: dashed; } /* no score yet: the sign is dashed like the empty score ring (critique 13) */
+    .nw { white-space: nowrap; } /* a CVE ID kept whole */
     .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
     .kev { color: var(--high); font-weight: 700; }
     .c-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 0.375rem; min-width: 0; }
@@ -407,7 +437,8 @@
     @media (hover: hover) { #to-top:hover svg { transform: translateY(-2px); } #to-bottom:hover svg { transform: translateY(2px); } } /* the arrow leans the way it goes */
     /* 맨 위로's ring fills with how far down the page is (--read, 0 to 1): where you are, at a glance */
     #to-top { position: relative; }
-    #to-top::before { content: ""; position: absolute; inset: -1px; padding: 2px; border-radius: 50%; pointer-events: none; background: conic-gradient(var(--focus) calc(var(--read, 0) * 1turn), transparent 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+    /* 3px with a faint track of the same blue, so how far round it has come reads at a glance (critique 13) */
+    #to-top::before { content: ""; position: absolute; inset: -2px; padding: 3px; border-radius: 50%; pointer-events: none; background: conic-gradient(var(--focus) calc(var(--read, 0) * 1turn), color-mix(in srgb, var(--focus) 22%, transparent) 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
     @media (hover: hover) { .jump button:hover { background: var(--panel-2); } }
     @media (prefers-reduced-motion: reduce) { .jump button, .jump button.off, .new-above.off { transform: none; translate: none; } .jump button:active, .new-above:active { transform: none; scale: none; } }
     /* 쉬운 설명 beckons as the Board arrives in 기본 (until it has been tried once; owner, 11-09: it sits at the very top,
@@ -460,7 +491,7 @@
     .cve-lines { margin: 0.375rem 0 0; padding-left: 1.25rem; max-width: 46rem; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.5; color: var(--ink-2); }
     .cve-lines li { margin: 0.25rem 0; overflow-wrap: anywhere; }
     .cve-src { white-space: nowrap; font-size: calc(var(--fs-meta) * var(--ts)); }
-    @media (pointer: coarse) { .cve-lines a { display: inline-block; padding: 0.625rem 0.375rem; margin-inline: -0.375rem; } } /* finger-sized; "공지" alone is two letters wide */
+    @media (pointer: coarse) { .cve-lines a { display: inline-flex; align-items: center; min-height: var(--tap); padding-inline: 0.25rem; } } /* finger-sized, 44px tall, no overlap with its neighbours (critique 13) */
     .details .brief-src { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); }
     .cve-lines strong { margin-right: 0.5rem; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .models ul.cve-lines { columns: auto; margin-top: 0.25rem; } /* sentences, not names: one column */
@@ -620,8 +651,9 @@
     <div id="filter">
       <div class="field"><label for="product-pick" data-t="products"></label><input id="product-pick" list="product-options" spellcheck="false" data-t-placeholder="productsHint" autocomplete="off"></div>
       <datalist id="product-options"></datalist>
-      <div class="search-row"><div class="field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" spellcheck="false" data-t-placeholder="searchHint" autocomplete="off" aria-keyshortcuts="/"><kbd class="key" aria-hidden="true">/</kbd></div><div id="stuck-tools" class="stuck-tools" hidden><button id="stuck-filter" class="btn" type="button" data-t-aria="filterBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="stuck-count" class="count" hidden></span></button><label class="sort"><span class="sr-only" data-t="sortLabel"></span><select id="stuck-sort"></select></label></div></div>
+      <div class="search-row"><div class="field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" spellcheck="false" data-t-placeholder="searchHint" autocomplete="off" aria-keyshortcuts="/"><kbd class="key" aria-hidden="true">/</kbd></div><div id="stuck-tools" class="stuck-tools" hidden><button id="stuck-filter" class="btn" type="button" aria-controls="filters" aria-expanded="false" data-t-aria="filterBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="stuck-count" class="count" hidden></span></button><label class="sort"><span class="sr-only" data-t="sortLabel"></span><svg class="sort-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v11M2.5 11 5 13.5 7.5 11M11 13.5v-11M8.5 5 11 2.5 13.5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><select id="stuck-sort"></select></label></div></div>
       <p id="pick-hint" class="pick-note" role="status"></p>
+      <p id="alias-hint" class="pick-note" role="status"></p>
       <div id="picks" data-t-aria="picked"></div>
     </div>
     <div class="statusline">
@@ -649,7 +681,7 @@
       <ol id="highlights" class="stack"></ol>
       <div id="pin-more" class="more"></div>
     </section>
-    <div id="empty" class="empty" role="status" hidden></div>
+    <div id="empty" class="empty" hidden></div>
     <div class="list-head">
       <h2 id="all-head" data-t="all" tabindex="-1"></h2>
       <button id="fold-toggle" class="btn" type="button" hidden></button>

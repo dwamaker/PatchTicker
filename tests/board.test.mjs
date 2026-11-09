@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { foldByVendor, isExploited, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { aliasesUsed, vendorName, foldByVendor, isExploited, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -30,7 +30,7 @@ test('a row\'s tags are its Products, then the Summary\'s devices, each name onc
 });
 
 test('a name that differs only in letter case shows once (Qiskit SDK / Qiskit Sdk)', () => {
-  assert.deepEqual(rowTags({ products: [{ id: 'ibm:qiskit_sdk', name: 'Qiskit SDK' }, { id: 'ibm:qiskit', name: 'Qiskit Sdk' }] }), ['Qiskit SDK']);
+  assert.deepEqual(rowTags({ products: [{ id: 'ibm:qiskit_sdk', name: 'Qiskit SDK' }, { id: 'ibm:qiskit', name: 'Qiskit Sdk' }] }), ['IBM Qiskit SDK']); // vendor in front: critique 13
   assert.deepEqual(uniqueNames(['Qiskit SDK', 'qiskit sdk', 'Perl']), ['Qiskit SDK', 'Perl']);
 });
 
@@ -535,9 +535,77 @@ test("one vendor's bulk push folds into one list item from five rows of a day, a
 
 test('search understands the Korean words people use for systems and devices (윈도우, 공유기)', () => {
   const win = { ...incident('CVE-2026-11', '2026-11-08T00:00:00Z'), products: [{ id: 'microsoft:windows_11', name: 'Microsoft Windows 11' }] };
-  const router = { ...incident('CVE-2026-12', '2026-11-08T00:00:00Z'), brief: { text: 'Buffer overflow in TP-Link Archer router firmware' } };
+  const router = { ...incident('CVE-2026-12', '2026-11-08T00:00:00Z'), products: [{ id: 'tp-link:archer_router', name: 'Archer Router' }] };
   const ids = (q) => filterBoard([win, router], [], q, NOW).list.map((i) => i.id);
   assert.deepEqual(ids('윈도우'), [win.id]);
   assert.deepEqual(ids('공유기'), [router.id]);
   assert.deepEqual(ids('리눅스'), []);
+});
+
+// critique 13: 자바 found javascript, 엣지 found "knowledge", 아이폰 found "scenarios" (substrings of free text).
+test('a Korean search word matches its English names only in Product names, ids and OS tags, as whole words', () => {
+  const at = (id, extra) => ({ ...incident(id, '2026-11-08T00:00:00Z'), ...extra });
+  const java = at('CVE-2026-21', { products: [{ id: 'oracle:java_se', name: 'Java SE' }] });
+  const js = at('CVE-2026-22', { brief: { text: 'XSS in a JavaScript widget; Java not involved', lead: '' }, products: [{ id: 'acme:javascript_widget', name: 'Javascript Widget' }] });
+  const edge = at('CVE-2026-23', { products: [{ id: 'microsoft:edge_chromium', name: 'Edge Chromium' }] });
+  const kb = at('CVE-2026-24', { brief: { text: 'Knowledge base plugin leaks posts', lead: '' } });
+  const ios = at('CVE-2026-25', { summary: { products: ['Safari'], platforms: ['iOS'], devices: [], ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) } });
+  const scenarios = at('CVE-2026-26', { brief: { text: 'Attack scenarios for routers', lead: '' } });
+  const korean = at('CVE-2026-27', { brief: { text: '자바 애플릿 문제', lead: '' } });
+  const ids = (q) => filterBoard([java, js, edge, kb, ios, scenarios, korean], [], q, NOW).list.map((i) => i.id).sort();
+  assert.deepEqual(ids('자바'), [java.id, korean.id]); // the typed word itself still matches free text
+  assert.deepEqual(ids('엣지'), [edge.id]);
+  assert.deepEqual(ids('아이폰'), [ios.id]);
+  assert.deepEqual(ids('공유기'), []); // "routers" in a description is not a Product
+});
+
+test('the alias hint names each Korean word used and what it was also searched as', () => {
+  assert.deepEqual(aliasesUsed('맥 openssh'), [{ word: '맥', names: ['macOS'] }]);
+  assert.deepEqual(aliasesUsed('아이폰'), [{ word: '아이폰', names: ['iOS', 'iPhone'] }]);
+  assert.deepEqual(aliasesUsed('openssh'), []);
+});
+
+// critique 13: 43% of rows have no score yet; sorting them last read as "lowest risk".
+test('rows with no score yet sort above scored 참고 rows, below 위험, by risk and by CVSS', () => {
+  const at = (n, cvss, extra = {}) => ({ ...incident(`CVE-2026-${n}`, `2026-11-0${n}T00:00:00Z`), cvss, ...extra });
+  const top = at(1, 9.8);
+  const high = at(2, 7.5);
+  const low = at(3, 5);
+  const none = at(4, undefined);
+  const nullScore = at(5, null);
+  const exploited = at(6, undefined, { kev: true });
+  const ids = (sort) => [low, none, high, top, nullScore, exploited].sort(orderBy(sort)).map((i) => i.id);
+  assert.deepEqual(ids('risk'), ['CVE-2026-6', 'CVE-2026-1', 'CVE-2026-2', 'CVE-2026-5', 'CVE-2026-4', 'CVE-2026-3']);
+  assert.deepEqual(ids('cvss'), ['CVE-2026-1', 'CVE-2026-2', 'CVE-2026-6', 'CVE-2026-5', 'CVE-2026-4', 'CVE-2026-3']);
+});
+
+// critique 13: IBM's NVD names ("Storage Scale") lost their vendor on badges and in fold lines.
+test("a Product name from NVD or the CVE record gets its known vendor in front when it lacks it", () => {
+  const tags = (products) => rowTags({ products });
+  assert.deepEqual(tags([{ id: 'ibm:storage_scale', name: 'Storage Scale' }]), ['IBM Storage Scale']);
+  assert.deepEqual(tags([{ id: 'ibm:qradar', name: 'IBM QRadar' }]), ['IBM QRadar']);
+  assert.deepEqual(tags([{ id: 'getgrav:grav', name: 'grav' }]), ['grav']); // an unknown vendor is left alone
+  // a Summary's own names are vendor-led already and stay as written
+  assert.deepEqual(rowTags({ products: [{ id: 'ibm:qiskit_sdk', name: 'Qiskit Sdk' }], summary: { products: ['Qiskit SDK'], devices: [] } }), ['Qiskit SDK']);
+  assert.deepEqual([vendorName('ibm'), vendorName('sonicwall'), vendorName('acme')], ['IBM', 'SonicWall', 'ACME']);
+});
+
+// Owner, 11-09: vendors are added in one file (web/vendors.json) that the collector reads too, never in code.
+test('vendor spellings come from web/vendors.json', () => {
+  const file = JSON.parse(readFileSync(new URL('../web/vendors.json', import.meta.url), 'utf8'));
+  for (const [key, name] of Object.entries(file)) assert.equal(vendorName(key), name);
+  const [key] = Object.keys(file);
+  assert.deepEqual(rowTags({ products: [{ id: `${key}:thing`, name: 'Thing' }] }), [`${file[key]} Thing`]);
+});
+
+// critique 13: the mint line was 0.05 from the dark Clear Green; a Product badge must never read as "all clear".
+test('no line colour is a near twin of Clear Green (--ok) in either theme', () => {
+  const ok = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8').match(/--ok: light-dark\((#\w{6}), (#\w{6})\)/).slice(1);
+  for (const { bg } of LINES) {
+    for (const green of ok) {
+      const [x, y] = [oklab(bg), oklab(green)];
+      const gap = Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+      assert.ok(gap >= 0.13, `${bg} and --ok ${green} are ${gap.toFixed(3)} apart`);
+    }
+  }
 });

@@ -63,12 +63,49 @@ class QuickTitleTest(unittest.TestCase):
         self.assertNotIn("quick_title", incidents[0])
         self.assertNotIn("quick_title", incidents[1])
 
-    def test_a_risky_row_is_summarized_whole_at_once_and_gets_no_title_request(self):
+    def test_a_risky_row_is_asked_for_its_whole_summary_at_once_before_any_titles(self):
         incidents = [row("CVE-2026-9", cvss=8.1)]
-        claude = FakeClaude({"not": "checked here"})
+        claude = FakeClaude({"not": "checked here"}, titles("CVE-2026-9"))  # the reply fails, so titles follow
+        self.route(incidents, claude)
+        self.assertNotIn("Titles for", claude.user_text(0))
+
+    # Owner, 2026-11-09: once a cycle has run, no row on the board shows only its English Brief unless the API failed.
+    def test_a_row_waiting_in_a_running_batch_without_titles_gets_them(self):
+        incidents = [row("CVE-2026-1")]
+        claude = FakeClaude(titles("CVE-2026-1"))
+        claude.batches.append({"id": "msgbatch_old", "requests": [], "results": None})  # still running
+        pending = {"id": "msgbatch_old", "requests": {"r0": {"incident": "CVE-2026-1", "input": "x", "basis": {}}}}
+        self.route(incidents, claude, [pending])
+        self.assertEqual(len(claude.sent), 1)
+        self.assertIn("quick_title", incidents[0])
+        self.assertEqual(len(claude.batches), 1)  # not sent again in a new batch
+
+    def test_a_risky_row_whose_summary_fails_gets_titles_first_in_the_same_cycle(self):
+        incidents = [row("CVE-2026-1"), row("CVE-2026-9", cvss=8.1)]
+        claude = FakeClaude("not json", titles("CVE-2026-1", "CVE-2026-9"))
+        self.route(incidents, claude)
+        self.assertEqual(incidents[1]["summary_error"]["tries"], 1)
+        self.assertIn("quick_title", incidents[1])
+        self.assertIn("quick_title", incidents[0])
+        asked = claude.user_text(1)
+        self.assertLess(asked.index("CVE-2026-9"), asked.index("CVE-2026-1"))  # the failed candidate leads
+
+    def test_a_risky_row_out_of_summary_tries_still_gets_titles(self):
+        incidents = [row("CVE-2026-9", cvss=8.1) | {"summary_error": {"tries": 3, "reason": "x", "final": True}}]
+        claude = FakeClaude(titles("CVE-2026-9"))
         self.route(incidents, claude)
         self.assertEqual(len(claude.sent), 1)
-        self.assertNotIn("Titles for", claude.user_text())
+        self.assertIn("quick_title", incidents[0])
+
+    def test_a_row_the_reply_left_out_is_asked_for_again_next_cycle(self):
+        incidents = [row("CVE-2026-1"), row("CVE-2026-2")]
+        claude = FakeClaude(titles("CVE-2026-1"), titles("CVE-2026-2"))
+        self.route(incidents, claude)
+        self.assertNotIn("quick_title", incidents[1])
+        self.route(incidents, claude)
+        self.assertEqual(len(claude.sent), 2)
+        self.assertNotIn("CVE-2026-1", claude.user_text(1))  # titled rows are not asked again
+        self.assertIn("quick_title", incidents[1])
 
 
 if __name__ == "__main__":

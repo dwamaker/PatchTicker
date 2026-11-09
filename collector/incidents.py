@@ -12,6 +12,7 @@ visitor sees when the news first broke, not when a cycle noticed it ("first_seen
 import json
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlsplit
 
 STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
@@ -75,6 +76,25 @@ def product_list(incidents, since):
                 for p in products_of(incident, lang):
                     found.setdefault(p["id"], {"id": p["id"]})[lang] = p["name"]
     return sorted(found.values(), key=lambda p: p["id"])
+
+
+# Vendor spellings, shared with the page (web/board.mjs prefixes names that lack their vendor). How to add one:
+# docs/agents/vendors.md.
+VENDORS = json.loads((Path(__file__).parent.parent / "web" / "vendors.json").read_text(encoding="utf-8"))
+
+
+def unknown_vendors(incidents, since):
+    """Vendor keys of Board Products since `since` that are not in VENDORS and whose name does not say the vendor
+    ("getgrav:grav"), each with one Product name as an example: the page shows those names bare until one is added."""
+    letters = lambda text: re.sub(r"[^a-z0-9]", "", text.lower())
+    found = {}
+    for incident in incidents:
+        if incident["first_seen"] >= since and on_board(incident):
+            for p in incident.get("products", []):
+                vendor = p["id"].split(":")[0]
+                if vendor not in VENDORS and letters(vendor) not in letters(p["name"]):
+                    found.setdefault(vendor, p["name"])
+    return dict(sorted(found.items()))
 
 
 def to_stamp(value):
