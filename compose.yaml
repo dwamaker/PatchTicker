@@ -1,6 +1,6 @@
 # Live collector: a cycle every 10 minutes, counted from each cycle's start, writing to R2.
 #   docker compose up -d --build              start the schedule
-#   docker compose run --rm collector         one cycle now (the image's own command)
+#   docker compose run --rm collector python -m collector   one cycle now (plain `run` starts the loop)
 #   docker compose logs -f collector          watch it
 services:
   collector:

@@ -20,7 +20,7 @@ newest delta log entry; later cycles pick up everything since the last checkpoin
 ## Run live (R2, every 10 minutes)
 
 Leave `VR_STORE_DIR` empty and set the four `VR_R2_*` settings in `.env`, then `docker compose up -d --build`
-(`compose.yaml`; one cycle now: `docker compose run --rm collector`). Every document is written as JSON with a
+(`compose.yaml`; one cycle now: `docker compose run --rm collector python -m collector`). Every document is written as JSON with a
 30-second cache.
 
 Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle

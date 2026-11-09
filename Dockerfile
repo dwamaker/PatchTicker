@@ -12,5 +12,5 @@ COPY web/vendors.json web/vendors.json
 
 USER nobody
 ENV PYTHONUNBUFFERED=1
-# One cycle. compose.yaml repeats it every 10 minutes; `docker compose run --rm collector` runs one now.
+# One cycle. compose.yaml replaces this with a loop that runs it every 10 minutes.
 CMD ["python", "-m", "collector"]
