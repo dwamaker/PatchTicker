@@ -13,7 +13,6 @@
   <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="Live: patchticker.com"></a>
   <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="Updates every 10 minutes">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="License: MIT"></a>
-  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=flat-square" alt="Buy Me a Coffee"></a>
   <a href="README.ko.md"><img src="https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-444?style=flat-square" alt="README in Korean"></a>
 </p>
 
@@ -87,6 +86,12 @@ Collector (Docker, every 10 min)  ──writes──▶  Cloudflare R2 (public J
 ```
 
 No server answers visitors. Running it yourself: [docs/development.md](docs/development.md).
+
+## Support
+
+Patch Ticker runs without ads. If it helps you, a coffee pays for the AI summaries and the server.
+
+<a href="https://buymeacoffee.com/dwamaker"><img src="docs/assets/bmc-button.png" width="182" height="51" alt="Buy Me a Coffee"></a>
 
 ## Notices and license
 

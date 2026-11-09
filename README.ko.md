@@ -13,7 +13,6 @@
   <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="사이트: patchticker.com"></a>
   <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="10분마다 갱신">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="라이선스: MIT"></a>
-  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=flat-square" alt="후원: Buy Me a Coffee"></a>
   <a href="README.md"><img src="https://img.shields.io/badge/README-English-444?style=flat-square" alt="영어 README"></a>
 </p>
 
@@ -86,6 +85,12 @@ Patch Ticker는 이 두 질문에 몇 초 안에 답합니다. 보안 담당자�
 ```
 
 방문자의 요청에 답하는 서버가 없습니다. 직접 실행하는 법: [docs/development.md](docs/development.md).
+
+## 후원
+
+Patch Ticker는 광고 없이 운영됩니다. 도움이 되셨다면 커피 한 잔으로 AI 요약 비용과 서버 유지를 도와주세요.
+
+<a href="https://buymeacoffee.com/dwamaker"><img src="docs/assets/bmc-button.png" width="182" height="51" alt="Buy Me a Coffee"></a>
 
 ## 고지와 라이선스
 
