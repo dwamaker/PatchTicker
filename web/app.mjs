@@ -1,4 +1,4 @@
-import { LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
+import { foldByVendor, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
 
 // The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
 const DATA_URL = 'data/';
@@ -30,7 +30,7 @@ const TEXT = {
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
-    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
+    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n, max) => `${v} 보안 공지 ${n}건${max ? ` · 최고 ${max}` : ''}`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
@@ -73,7 +73,7 @@ const TEXT = {
     nvd: '',
     kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
-    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
+    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n, max) => `${v} security notices (${n})${max ? ` · highest ${max}` : ''}`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution', levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
@@ -562,9 +562,11 @@ function render() {
   shownCount = count;
   $('filter-btn').setAttribute('aria-expanded', !$('filters').hidden);
   const rest = list.filter((i) => !pinned.has(i));
-  $('board').replaceChildren(...rest.slice(0, shown).map((i) => row(i, false)));
+  // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
+  const items = filter.picks.length || filter.query ? rest : foldByVendor(rest);
+  $('board').replaceChildren(...items.slice(0, shown).flatMap((i) => (i.fold ? foldRows(i) : [row(i, false)])));
   // Nothing found: the empty state below carries 이전 사건에서도 찾기 itself, so the buttons under the list stay away.
-  $('more').replaceChildren(...(loadError || !updated || !list.length ? [] : moreButtons(rest.length - shown)));
+  $('more').replaceChildren(...(loadError || !updated || !list.length ? [] : moreButtons(items.length - shown)));
   // OS picks show as pressed buttons in the quick bar, so only Products become chips here.
   const chips = filter.picks.filter((p) => !p.startsWith('os:'));
   $('picks').replaceChildren(...chips.map(chip), ...conditionChips(), ...(activeFilters() > 1 ? [clearButton(TEXT[lang].clearAll, NO_FILTER)] : []),
@@ -572,7 +574,7 @@ function render() {
   $('all-head').hidden = !list.some((i) => !pinned.has(i));
   $('all-head').textContent = TEXT[lang].fp.sorts[filter.sort]; // the list's heading says its order
   $('sort').replaceChildren(...SORTS.map((key) => Object.assign(new Option(TEXT[lang].fp.sorts[key], key), { selected: key === filter.sort })));
-  visibleIds = [...highlights, ...rest.slice(0, shown)].map((i) => i.id);
+  visibleIds = [...highlights, ...items.slice(0, shown).flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i]))].map((i) => i.id);
   $('expand-all').hidden = !visibleIds.length;
   $('expand-all').textContent = allOpen() ? TEXT[lang].collapseAll : TEXT[lang].expandAll;
   $('expand-all').setAttribute('aria-pressed', allOpen());
@@ -1382,6 +1384,28 @@ function details(incident) {
 }
 
 let rowCount = 0;
+
+// A vendor's bulk push as one line ("IBM 보안 공지 25건 · 최고 9.9"); opened, its rows follow it as ordinary rows.
+const openFolds = new Set();
+const vendorName = (v) => (v.length <= 4 ? v.toUpperCase() : v[0].toUpperCase() + v.slice(1)); // ibm → IBM, sonicwall → Sonicwall
+function foldRows(fold) {
+  const open = openFolds.has(fold.fold);
+  const li = el('li', 'vendor-fold');
+  const button = Object.assign(el('button', 'fold-btn'), { type: 'button' });
+  button.dataset.fold = fold.fold;
+  button.setAttribute('aria-expanded', open);
+  const max = Math.max(0, ...fold.incidents.map((i) => i.cvss || 0));
+  const chev = el('i', 'chev');
+  chev.setAttribute('aria-hidden', 'true');
+  button.append(el('span', '', TEXT[lang].vendorFold(vendorName(fold.vendor), fold.incidents.length, max ? max.toFixed(1) : '')), chev);
+  button.addEventListener('click', () => boardTransition(() => {
+    open ? openFolds.delete(fold.fold) : openFolds.add(fold.fold);
+    render();
+    [...document.querySelectorAll('.fold-btn')].find((b) => b.dataset.fold === fold.fold)?.focus({ preventScroll: true });
+  }));
+  li.append(button);
+  return [li, ...(open ? fold.incidents.map((i) => row(i, false)) : [])];
+}
 
 
 // One board row: a button that opens the details below it, like opening a post. A Highlight is a framed

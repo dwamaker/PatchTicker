@@ -250,3 +250,31 @@ export function relativeAge(iso, now) {
   if (minutes < 30 * 24 * 60) return { value: -Math.floor(minutes / (24 * 60)), unit: 'day' };
   return null;
 }
+
+// User, 2026-11-09: one vendor's bulk push (IBM put about 30 CVEs over 20 products in 80 minutes) folds into one list
+// item once this many of its rows share a publish day; each row stays its own Incident inside. 0 turns the fold off.
+export const VENDOR_FOLD_MIN = 5;
+export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
+
+export function foldByVendor(rows, min = VENDOR_FOLD_MIN) {
+  if (!min) return rows;
+  const key = (i) => (vendorOf(i) ? `${vendorOf(i)} ${publishedAt(i).slice(0, 10)}` : '');
+  const count = new Map();
+  for (const i of rows) if (key(i)) count.set(key(i), (count.get(key(i)) || 0) + 1);
+  const out = [];
+  const folds = new Map();
+  for (const i of rows) {
+    const k = key(i);
+    if (!k || count.get(k) < min) {
+      out.push(i);
+      continue;
+    }
+    if (!folds.has(k)) {
+      const fold = { fold: k, vendor: vendorOf(i), incidents: [] };
+      folds.set(k, fold);
+      out.push(fold); // at the place of its first row in the visitor's order
+    }
+    folds.get(k).incidents.push(i);
+  }
+  return out;
+}

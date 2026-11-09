@@ -258,6 +258,9 @@
     .c-date { grid-area: when; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.35; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { grid-area: chev; width: 0.5rem; height: 0.5rem; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
     [aria-expanded="true"] .chev { transform: rotate(45deg) translate(-2px, -2px); }
+    /* a vendor's bulk push folded into one line (board.mjs foldByVendor): a quiet bar, opened in place */
+    .fold-btn { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; min-height: var(--tap); padding: 0.75rem; border: 0; border-bottom: 1px solid var(--rule); background: var(--panel-2); color: var(--ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+    @media (hover: hover) { .fold-btn:hover { background: var(--panel); } }
 
     /* 주요 사건: stacked alerts, each framed and edged in its Risk colour, details inside the frame */
     .stack { display: grid; gap: 0.5rem; }

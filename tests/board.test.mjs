@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isExploited, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { foldByVendor, isExploited, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -474,4 +474,20 @@ test('a Latin display name that is not the product name falls back to it, so one
   assert.deepEqual(rowTags(axis, 'ko'), ['Apache Axis2/Java']);
   const paint = { summary: { products: ['Microsoft Paint'], platforms: [], devices: [], ko: { names: ['Windows 그림판'] } } };
   assert.deepEqual(rowTags(paint, 'ko'), ['Windows 그림판']); // a Korean name stays
+});
+
+test("one vendor's bulk push folds into one list item from five rows of a day, at the first row's place (user, 2026-11-09)", () => {
+  const ibm = (n, day = '2026-11-08') => ({ id: `CVE-2026-${n}`, cves: [`CVE-2026-${n}`], first_seen: `${day}T17:00:00Z`, published: `${day}T16:0${n % 10}:00Z`,
+    products: [{ id: `ibm:product_${n}`, name: `Product ${n}` }], mentions: [], brief: { text: '' } });
+  const other = { id: 'CVE-2026-900', cves: ['CVE-2026-900'], first_seen: '2026-11-08T17:00:00Z', published: '2026-11-08T16:30:00Z',
+    products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }], mentions: [], brief: { text: '' } };
+  const rows = [ibm(1), other, ibm(2), ibm(3), ibm(4), ibm(5), ibm(6, '2026-11-07')];
+  const items = foldByVendor(rows, 5);
+  assert.equal(items.length, 3);
+  assert.deepEqual(items[0].incidents.map((i) => i.id), ['CVE-2026-1', 'CVE-2026-2', 'CVE-2026-3', 'CVE-2026-4', 'CVE-2026-5']);
+  assert.equal(items[0].vendor, 'ibm');
+  assert.equal(items[1], other);
+  assert.equal(items[2].id, 'CVE-2026-6'); // another day stays a row
+  assert.equal(foldByVendor(rows, 6).length, rows.length); // below the minimum nothing folds
+  assert.equal(foldByVendor(rows, 0).length, rows.length); // 0 turns the fold off
 });
