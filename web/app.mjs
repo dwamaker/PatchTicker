@@ -1,7 +1,7 @@
 import { WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
 
-// The store's base URL. Locally the collector writes into web/data/; ticket 02 points this at R2.
-const DATA_URL = 'data/';
+// The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
+const DATA_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'data/' : 'https://patchticker-data.dwamaker.com/';
 const SAVED = 'vr-filter';
 const SAVED_LANG = 'vr-lang';
 const SAVED_VIEW = 'vr-view';
@@ -17,7 +17,7 @@ const SAVED_THEME = 'vr-theme';
 // The NVD notice keeps its required English sentence in index.html; `nvd` is the Korean line beside it.
 const TEXT = {
   ko: {
-    other: 'English', otherShort: 'EN', title: 'vuln-radar · 보안 취약점 게시판', loading: '불러오는 중…',
+    other: 'English', otherShort: 'EN', brand: 'Patch Ticker', title: 'Patch Ticker · 보안 취약점 게시판', loading: '불러오는 중…',
     notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았습니다: ${text}`,
     variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`, manyProducts: (n) => `맞는 제품이 ${n}개입니다. 목록에서 하나를 고르세요.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => (n ? `최근 3개월 사건을 모두 불러왔습니다 (${n}건 추가).` : '최근 3개월 사건을 모두 불러왔습니다. 이미 보이는 것 말고는 더 없습니다.'),
@@ -68,7 +68,7 @@ const TEXT = {
     },
   },
   en: {
-    other: '한국어', otherShort: '한', title: 'vuln-radar · vulnerability board', loading: 'Loading…',
+    other: '한국어', otherShort: '한', brand: 'Patch Ticker', title: 'Patch Ticker · vulnerability board', loading: 'Loading…',
     notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`, variants: (n) => `Also showing ${n} under a similar name.`, manyProducts: (n) => `${n} products match. Pick one from the list.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => (n ? `All Incidents of the last three months are loaded (${n} more).` : 'All Incidents of the last three months are loaded; there were no others.'),
     loadError: 'Could not load the Board. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Incidents with a score pending are under Notice unless exploited.', osNote: 'Shows everything that runs on the chosen systems, including web software such as WordPress plugins that runs anywhere.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,

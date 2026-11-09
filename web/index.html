@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>vuln-radar</title>
+  <title>Patch Ticker</title>
   <script>try { const t = localStorage.getItem('vr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     const s = Number(localStorage.getItem('vr-text-pct')); if ([87.5, 112.5, 125, 150].includes(s)) document.documentElement.style.setProperty('--ts', s / 100); } catch {}</script>
   <style>
@@ -639,7 +639,7 @@
   <a id="skip-top" class="skip" href="#board-start" data-t="skipTop"></a>
   <button id="new-above" class="new-above off" type="button" data-t-aria="toNew"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button>
   <header class="top"><div class="wrap">
-    <h1><i aria-hidden="true"></i>vuln-radar</h1>
+    <h1><i aria-hidden="true"></i><span data-t="brand">Patch Ticker</span></h1>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal"></button><button id="view-easy" type="button" aria-pressed="false" data-t="easy"></button></div>
     <button id="prefs-btn" class="btn" type="button" aria-controls="prefs" aria-expanded="false" data-t-aria="prefs"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h7M14 5h1M3 13h1M8 13h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="13" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="end" id="prefs">

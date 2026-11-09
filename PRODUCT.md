@@ -55,11 +55,11 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 - No login, no analytics, no cookies, no third-party trackers.
 - Light and dark themes: follows the system setting with a remembered toggle; both meet WCAG 2.2 AA
   (user asked for dark mode, 2026-11-08).
-- Public name: 패치레이더 (PatchRadar), owner 2026-11-09. It goes live first at `patchradar.dwamaker.com` (the owner's domain, on Cloudflare); an own domain (patchradar.kr was unregistered-looking on 11-09, unverified) may follow before launch.
+- Public name: Patch Ticker, one English name in both languages (owner, late 2026-11-09; it replaced 패치레이더 / PatchRadar, because patchradar.com is a game patch-notes site and "SyncNet Patch Radar" is a security-alert WordPress plugin). Live at `patchticker.dwamaker.com`, data at `patchticker-data.dwamaker.com` (the owner's domain, on Cloudflare); an own domain may follow before launch (patchticker.com/.io/.kr had no DNS on 11-09; registration not checked).
 
 ## Brand Commitments
 
-- Name: 패치레이더 / PatchRadar in public (owner, 2026-11-09); vuln-radar stays the repository and code name.
+- Name: Patch Ticker in public (owner, 2026-11-09); vuln-radar stays the repository and code name. The R2 bucket and Pages project keep the internal name patchradar.
 - Voice: the normal view is calm, precise, polite Korean (존댓말). The Easy view is loud and lively
   ("심각!" for the top level only, then 경계 and 주의; "어서 업데이트하세요!") but stays polite, and never overstates beyond the sources.
 
