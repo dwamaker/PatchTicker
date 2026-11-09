@@ -22,3 +22,13 @@ With only the week loaded, the Product picker could not offer a Product whose In
 "no Incident" all-clear sign was out of reach. Each cycle also writes `board/products.json`: every Product of
 Board Incidents first seen in the last 90 days, with its Korean and English names. The page adds it to the
 picker; the Board rows themselves still come only from what is loaded.
+
+## Revision (2026-11-10): one edge function for Incident pages and the RSS feed
+
+Search engines cannot read Incidents drawn by the page's script, and a shared `#i=` link has no preview of its
+own. A Cloudflare Pages Function on patchticker.com now answers `/i/*`, `/en/i/*`, the RSS feeds and the Incident
+sitemaps: it reads the collector's JSON from R2 and renders HTML or XML per request. It runs on Cloudflare's edge,
+not on our machines, and needs no deploy when data changes, so the two points above still hold. Rejected: writing
+finished HTML from the collector (the store and its SQLite backup carry JSON only, and a template change would mean
+re-rendering every page), serving pages from the data domain (worse for search and sharing), and redeploying the
+site every cycle.

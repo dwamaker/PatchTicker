@@ -50,6 +50,16 @@ file): when no source gives a time it stays unknown, and the row says "처음 �
 The page's list of Incidents: Highlights on top, then every other Incident, in one visitor-chosen order for both (newest first by default, or by risk level, or by CVSS).
 _Avoid_: leaderboard, feed, timeline
 
+**Incident page** (사건 페이지):
+One Incident as a standalone document at its own address, one per language, made once it has a Summary and kept
+90 days. Only an Incident at the 위험 level or above, exploited, or without a CVE is offered to search engines; the
+rest are for sharing.
+_Avoid_: detail page, permalink, post
+
+**RSS feed** (구독 피드):
+The newest search-worthy Incidents (the same ones offered to search engines), one feed per language, for readers who subscribe.
+_Avoid_: feed (alone: the Board is not a feed), newsletter
+
 **Brief** (속보):
 What the Board shows for an Incident the moment it arrives, built from source data alone: the original one-line description, severity, Product and Lead mention. It stands until the Summary is ready.
 _Avoid_: preview, stub, placeholder
