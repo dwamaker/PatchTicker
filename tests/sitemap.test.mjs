@@ -7,10 +7,10 @@ import { sitemapResponse } from '../edge/sitemap.mjs';
 const bucket = (doc) => ({ get: async (key) => (key === 'sitemap.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
 const NOW = Date.parse('2026-11-10T12:00:00Z'); // 90 days back: 2026-08-12T12:00Z
 const DOC = { pages: {
-  'CVE-2026-1001': ['2026-11-09T00:00:00Z', '2026-11-09T12:00:00Z'],
-  'hn-77': ['2026-10-31T23:00:00Z', '2026-11-01T08:00:00Z'],
-  'CVE-2026-1005': ['2026-08-13T00:00:00Z', '2026-08-13T00:10:00Z'],
-  'CVE-2026-1006': ['2026-08-12T00:00:00Z', '2026-08-12T00:10:00Z'], // past 90 days by now: its page answers 410
+  'CVE-2026-1001': { first_seen: '2026-11-09T00:00:00Z', changed: '2026-11-09T12:00:00Z' },
+  'hn-77': { first_seen: '2026-10-31T23:00:00Z', changed: '2026-11-01T08:00:00Z' },
+  'CVE-2026-1005': { first_seen: '2026-08-13T00:00:00Z', changed: '2026-08-13T00:10:00Z' },
+  'CVE-2026-1006': { first_seen: '2026-08-12T00:00:00Z', changed: '2026-08-12T00:10:00Z' }, // past 90 days by now: its page answers 410
 } };
 const xml = async (name, doc = DOC) => (await sitemapResponse(bucket(doc), name, NOW)).text();
 // A small well-formedness check (Node has no XML parser): balanced tags, quoted attributes, no stray < or &.
@@ -52,15 +52,34 @@ test('every URL names its last change and both languages as hreflang alternates,
 
 test('hostile entries cannot break the sitemap: odd slugs are dropped, an odd time loses its lastmod', async () => {
   const text = await xml('incidents-0.xml', { pages: {
-    '"/><script>alert(1)</script>': ['2026-11-09T00:00:00Z', '2026-11-09T00:00:00Z'],
-    '../admin': ['2026-11-09T00:00:00Z', '2026-11-09T00:00:00Z'],
-    'CVE-2026-1001': ['2026-11-09T00:00:00Z', '<b>&'],
-    'CVE-2026-1002': 'not a pair',
+    '"/><script>alert(1)</script>': { first_seen: '2026-11-09T00:00:00Z', changed: '2026-11-09T00:00:00Z' },
+    '../admin': { first_seen: '2026-11-09T00:00:00Z', changed: '2026-11-09T00:00:00Z' },
+    'CVE-2026-1001': { first_seen: '2026-11-09T00:00:00Z', changed: '<b>&' },
+    'CVE-2026-1002': 'not an entry',
+    'CVE-2026-1003': { first_seen: 20261109 },
   } });
   assert.doesNotMatch(text, /script|admin|<b>|&(?!amp;|lt;|gt;|quot;|apos;)/);
   assert.deepEqual(locs(text), ['https://patchticker.com/i/CVE-2026-1001', 'https://patchticker.com/en/i/CVE-2026-1001']);
   assert.doesNotMatch(text, /<lastmod>/);
   assertWellFormed(text);
+});
+
+test('a month over the 50,000-URL limit of one sitemap file keeps its newest pages', async () => {
+  const pages = {};
+  for (let n = 0; n <= 25000; n += 1) {
+    const at = new Date(Date.parse('2026-11-01T00:00:00Z') + n * 1000).toISOString().replace('.000', '');
+    pages[`CVE-2026-${100000 + n}`] = { first_seen: at, changed: at };
+  }
+  const found = locs(await xml('incidents-0.xml', { pages }));
+  assert.equal(found.length, 50000);
+  assert.ok(!found.includes('https://patchticker.com/i/CVE-2026-100000')); // the oldest page is the one left out
+  assert.ok(found.includes('https://patchticker.com/i/CVE-2026-125000'));
+});
+
+test('503, never an empty list, for a document without its pages', async () => {
+  for (const doc of [{}, { pages: [] }, 'pages']) {
+    assert.equal((await sitemapResponse(bucket(doc), 'incidents-0.xml', NOW)).status, 503);
+  }
 });
 
 test('answers XML with a short cache; 404 for any other name; 503 when the store cannot be read', async () => {

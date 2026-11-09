@@ -18,9 +18,9 @@ class SitemapDocumentTest(unittest.TestCase):
             story,  # without a CVE
         ])
         self.assertEqual(store.read("sitemap.json"), {"pages": {
-            "CVE-2026-1001": ["2026-11-09T00:00:00Z", "2026-11-09T12:00:00Z"],
-            "CVE-2026-1005": ["2026-08-12T00:00:00Z", "2026-11-09T12:00:00Z"],
-            "hn-77": ["2026-11-09T03:00:00Z", "2026-11-09T12:00:00Z"],
+            "CVE-2026-1001": {"first_seen": "2026-11-09T00:00:00Z", "changed": "2026-11-09T12:00:00Z"},
+            "CVE-2026-1005": {"first_seen": "2026-08-12T00:00:00Z", "changed": "2026-11-09T12:00:00Z"},
+            "hn-77": {"first_seen": "2026-11-09T03:00:00Z", "changed": "2026-11-09T12:00:00Z"},
         }})
 
     def test_the_last_change_is_the_pages_and_the_document_is_rewritten_only_when_it_changed(self):
@@ -32,8 +32,8 @@ class SitemapDocumentTest(unittest.TestCase):
         store.write("months/2026-11.json", months)
         cycle(store, now="2026-11-09T12:20:00")
         self.assertEqual(store.read("sitemap.json")["pages"], {
-            "CVE-2026-1001": ["2026-11-09T00:00:00Z", "2026-11-09T12:00:00Z"],
-            "CVE-2026-1002": ["2026-11-09T00:00:00Z", "2026-11-09T12:20:00Z"],
+            "CVE-2026-1001": {"first_seen": "2026-11-09T00:00:00Z", "changed": "2026-11-09T12:00:00Z"},
+            "CVE-2026-1002": {"first_seen": "2026-11-09T00:00:00Z", "changed": "2026-11-09T12:20:00Z"},
         })
 
 

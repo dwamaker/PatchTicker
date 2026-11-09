@@ -108,10 +108,11 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)
-    pages = write_pages(store, incidents, now, stamp)
-    write_moves(store, incidents, stamp)
-    # The Incident sitemap's document: {slug: [first_seen, last change]} of every search-worthy page (edge/sitemap.mjs).
-    sitemap = {"pages": {slug: [i["first_seen"], pages[slug][1]] for i in incidents
+    had_page = store.read("page_hashes.json") or {}  # the page set as the last cycle left it
+    pages = write_pages(store, incidents, had_page, now, stamp)
+    write_moves(store, incidents, had_page, now, stamp)
+    # The Incident sitemap's document: {slug: {first_seen, changed}} of every search-worthy page (edge/sitemap.mjs).
+    sitemap = {"pages": {slug: {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in incidents
                          if (slug := page_slug(i["id"])) in pages and search_worthy(i)}}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
@@ -159,12 +160,14 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
         batches.append(pending)
 
 
-def write_pages(store, incidents, now, stamp):
+def write_pages(store, incidents, known, now, stamp):
     """One Incident page document per slug (pages/<slug>.json, the Board's fields) for every Incident with a Summary first
     seen in the last PAGE_DAYS; the function decides on-Board, 404 and 410 from it. A page is rewritten only when its
-    fields changed: page_hashes.json keeps {slug: [hash, changed]}, so a cycle reads one document, not one per page. Returns that index."""
+    fields changed: page_hashes.json keeps {slug: {hash, changed}} (known: as the last cycle left it), so a cycle reads
+    one document, not one per page. The index holds only this cycle's page set, so it never grows past 90 days of
+    pages; the page documents left behind are deleted by the bucket's lifecycle rule (docs/development.md).
+    Returns the index."""
     since = (now - timedelta(days=PAGE_DAYS)).strftime(STAMP)
-    known = store.read("page_hashes.json") or {}
     pages = {}
     for incident in incidents:
         if not incident.get("summary") or incident["first_seen"] < since:
@@ -172,29 +175,35 @@ def write_pages(store, incidents, now, stamp):
         slug, view = page_slug(incident["id"]), board_view(incident)
         digest = hashlib.sha256(json.dumps(view, sort_keys=True).encode("utf-8")).hexdigest()[:16]
         pages[slug] = known.get(slug)
-        if (pages[slug] or [None])[0] != digest:
-            pages[slug] = [digest, stamp]
+        if (pages[slug] or {}).get("hash") != digest:
+            pages[slug] = {"hash": digest, "changed": stamp}
             store.write(f"pages/{slug}.json", view)
     if pages != known:
         store.write("page_hashes.json", pages)
     return pages
 
 
-def write_moves(store, incidents, stamp):
+def write_moves(store, incidents, had_page, now, stamp):
     """A "moved to" document in place of each absorbed Incident's page (pages/<slug>.json, so its old page stops
-    rendering): the function answers 301 to the survivor, 410 once the move or the survivor is PAGE_DAYS old.
-    moves.json keeps {slug: [survivor slug, moved]}, so a document is written only when a slug moves or its survivor
-    is absorbed in turn (the chain ends at the last survivor; "moved" stays when the address first moved)."""
+    rendering): the function answers 301 to the survivor's page, 302 to its Board row while it has no page yet, 410
+    once the move or the survivor is PAGE_DAYS old. Only an absorbed Incident that had a page (in had_page, the last
+    cycle's page index) moves; one without a page stays a 404. moves.json keeps {slug: {moved_to, moved_to_id, moved}},
+    so a document is written only when a slug moves or its survivor is absorbed in turn (the chain ends at the last
+    survivor; "moved" stays when the address first moved). Moves past PAGE_DAYS leave the index: their page answers
+    410 by then, and an expired slug is no longer in had_page, so it is never written again."""
+    since = (now - timedelta(days=PAGE_DAYS)).strftime(STAMP)
     known = store.read("moves.json") or {}
-    live = {page_slug(i["id"]) for i in incidents}  # shortcut: an ID that is an Incident again keeps its own page
-    moves = dict(known)
+    moves = {slug: move for slug, move in known.items() if move["moved"] >= since}
+    # shortcut: an absorbed ID that is an Incident again keeps its own page and loses the move; record both if a split
+    # Incident ever needs its old address to say where it went.
+    live = {page_slug(i["id"]) for i in incidents}
     for incident in incidents:
         to = page_slug(incident["id"])
         for gone in incident.get("absorbed", []):
             slug = page_slug(gone)
-            if slug in live or (known.get(slug) or [None])[0] == to:
+            if slug in live or (slug not in had_page and slug not in moves) or moves.get(slug, {}).get("moved_to") == to:
                 continue
-            moves[slug] = [to, (known.get(slug) or [None, stamp])[1]]
-            store.write(f"pages/{slug}.json", {"id": gone, "moved_to": to, "moved": moves[slug][1]})
+            moves[slug] = {"moved_to": to, "moved_to_id": incident["id"], "moved": moves.get(slug, {}).get("moved", stamp)}
+            store.write(f"pages/{slug}.json", {"id": gone, **moves[slug]})
     if moves != known:
         store.write("moves.json", moves)
