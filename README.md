@@ -47,6 +47,7 @@ readers with no security background.
 - **Folds**: one vendor's same-day notices, and fixes shipped in one update, fold into one line.
 - **Every claim links to its source**: commands are shown only when a source states them word for word.
 - **Shareable**: a link per Incident; filters live in the address. Light and dark themes, phone ready.
+- **RSS**: the newest high-risk, exploited and CVE-less Incidents in [Korean](https://patchticker.com/feed.xml) and [English](https://patchticker.com/en/feed.xml).
 
 ## Risk levels
 

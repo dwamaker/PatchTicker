@@ -9,9 +9,10 @@ import anthropic
 
 from collector import curators, cvelist, github, hn, kev, kisa, news, nvd, osssec, summaries
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, link, month_of, page_keys,
-                                 product_list, rejoin, unknown_vendors)
+                                 product_list, rejoin, search_worthy, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
+FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
@@ -101,6 +102,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
     store.write("board/recent.json", {"since": recent_since,
                                       "incidents": [board_view(i) for i in incidents if i["first_seen"] >= recent_since]})
+    newest = sorted((i for i in incidents if search_worthy(i)), key=lambda i: i.get("published") or i["first_seen"], reverse=True)
+    feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
+    if store.read("board/feed.json") != feed:
+        store.write("board/feed.json", feed)
     picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))

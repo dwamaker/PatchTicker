@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 
-from collector.incidents import VENDORS, product_list, unknown_vendors
+from collector.incidents import VENDORS, product_list, risk_level, search_worthy, unknown_vendors
 from collector.nvd import display_name
 
 CASE = json.loads((Path(__file__).parent / "fixtures" / "board" / "products-case.json").read_text(encoding="utf-8"))
@@ -48,3 +48,16 @@ class NvdNameTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+RISK = json.loads((Path(__file__).parent / "fixtures" / "board" / "risk-case.json").read_text(encoding="utf-8"))
+
+
+class RiskRuleTest(unittest.TestCase):
+    """The same cases are checked against riskLevel and searchWorthy in tests/board.test.mjs."""
+
+    def test_risk_level_and_search_worthy_match_the_page(self):
+        for case in RISK["cases"]:
+            with self.subTest(case["incident"]["id"]):
+                self.assertEqual(risk_level(case["incident"]), case["risk"])
+                self.assertEqual(search_worthy(case["incident"]), case["search_worthy"])

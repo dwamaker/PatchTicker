@@ -1,0 +1,17 @@
+{
+  "note": "riskLevel/searchWorthy (web/board.mjs) and risk_level/search_worthy (collector/incidents.py) must agree on every case.",
+  "cases": [
+    {"incident": {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "cvss": 9.8, "summary": {"incident": true}}, "risk": "highest", "search_worthy": true},
+    {"incident": {"id": "CVE-2026-2", "cves": ["CVE-2026-2"], "cvss": 7.0, "summary": {"incident": true}}, "risk": "high", "search_worthy": true},
+    {"incident": {"id": "CVE-2026-3", "cves": ["CVE-2026-3"], "cvss": 6.9, "summary": {"incident": true}}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "CVE-2026-4", "cves": ["CVE-2026-4"], "cvss": 5.0, "kev": true, "summary": {"incident": true}}, "risk": "highest", "search_worthy": true},
+    {"incident": {"id": "CVE-2026-5", "cves": ["CVE-2026-5"], "summary": {"exploited": true, "exploited_source": "https://example.com/attacks"}}, "risk": "highest", "search_worthy": true},
+    {"incident": {"id": "CVE-2026-6", "cves": ["CVE-2026-6"], "cvss": 4.3, "summary": {"exploited": true, "exploited_source": ""}}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "CVE-2026-7", "cves": ["CVE-2026-7"], "cvss": 9.1}, "risk": "highest", "search_worthy": false},
+    {"incident": {"id": "CVE-2026-8", "cves": ["CVE-2026-8"]}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "https://news.ycombinator.com/item?id=1", "cves": [], "summary": {"incident": true}}, "risk": "notice", "search_worthy": true},
+    {"incident": {"id": "https://news.ycombinator.com/item?id=2", "cves": [], "summary": {"incident": false}}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "https://www.bleepingcomputer.com/news/security/x/", "cves": []}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "https://seclists.org/oss-sec/2026/q4/563", "cves": [], "summary": {"incident": true}}, "risk": "notice", "search_worthy": true}
+  ]
+}

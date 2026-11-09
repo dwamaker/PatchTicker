@@ -72,6 +72,13 @@ project `patchradar`, for example from a copy without that folder:
 npx wrangler@4 pages deploy <copy of web without data/> --project-name patchradar --branch main
 ```
 
+Run it from the repository root: `functions/` (the Pages Function) is taken from the working directory, and it imports
+`edge/`. The function answers `/feed.xml` and `/en/feed.xml` from `board/feed.json` in R2 through the binding `DATA`
+(bucket `patchradar`), which the Pages project must have. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
+with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
+`pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
+`workerd` processes holding `.wrangler/`: end them before deleting that folder.
+
 `robots.txt` allows every crawler (AI crawlers too) and points to `sitemap.xml`; `llms.txt` lists the public data
 files for AI systems. A Cloudflare rate limiting rule on patchticker.com and data.patchticker.com blocks one IP for
 10 s after 40 requests in 10 s.

@@ -65,6 +65,27 @@ def on_board(incident):
     return bool(incident.get("summary_error", {}).get("final"))
 
 
+def is_exploited(incident):
+    """A port of isExploited in web/board.mjs: KEV, or a Summary reporting attacks with the source that reports them."""
+    summary = incident.get("summary") or {}
+    source = summary.get("exploited_source")
+    return bool(incident.get("kev") or (summary.get("exploited") is True and isinstance(source, str) and source))
+
+
+def risk_level(incident):
+    """A port of riskLevel in web/board.mjs (tests/fixtures/board/risk-case.json keeps the two in step)."""
+    cvss = incident.get("cvss")
+    if is_exploited(incident) or (cvss is not None and cvss >= 9):
+        return "highest"
+    return "high" if cvss is not None and cvss >= 7 else "notice"
+
+
+def search_worthy(incident):
+    """Offered to search engines and the RSS feed (Incident page, CONTEXT.md): on the Board with a Summary, and at the
+    위험 level or above, exploited, or without a CVE. A port of searchWorthy in web/board.mjs."""
+    return bool(incident.get("summary")) and on_board(incident) and (risk_level(incident) != "notice" or not incident["cves"])
+
+
 def products_of(incident, lang):
     """A port of productsOf in web/board.mjs (tests/fixtures/board/products-case.json keeps the two in step)."""
     found = {p["id"]: p for p in incident.get("products") or []}

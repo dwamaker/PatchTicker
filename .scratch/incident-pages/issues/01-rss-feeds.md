@@ -20,3 +20,7 @@ request, with a short edge cache. See the spec (`../spec.md`) and ADR 0002's 202
 - [ ] The Board page has `rel="alternate"` links to both feeds; the footer and both READMEs link them.
 - [ ] Tests at the cycle seam (store holds the right feed document) and the function seam (request plus fake R2 in, response out, `node --test`).
 - [ ] Deployed: the site with the function and its R2 binding first, then the collector; the live feeds validate in an RSS validator.
+
+## Comments
+
+**2026-11-10 (built, not deployed):** collector writes `board/feed.json` each cycle when it changed; the Pages Function (`functions/feed.xml.js`, `functions/en/feed.xml.js`, renderer in `edge/feed.mjs`) renders RSS 2.0 with an edge cache. GUIDs are already the future Incident page addresses (`/i/<slug>`, `/en/i/<slug>`, isPermaLink false), so ticket 03 changes only the item links. Checked with `wrangler pages dev` and a feed built from the live week: 50 items, well-formed XML, both languages. Left: the Pages project's R2 binding `DATA` and the deploy (site first, then the collector, which also ships the news and KISA sources).

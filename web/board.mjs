@@ -171,6 +171,10 @@ export function riskLevel(i) {
   return i.cvss >= 7 ? 'high' : 'notice';
 }
 
+// Offered to search engines and the RSS feed (Incident page, CONTEXT.md): on the Board with a Summary, and at the 위험
+// level or above, exploited, or without a CVE. Also in collector/incidents.py (search_worthy).
+export const searchWorthy = (i) => Boolean(i.summary) && onBoard(i) && (riskLevel(i) !== 'notice' || !i.cves.length);
+
 // The Easy view's one action: update these devices, run the source's command, or update to the fixed version.
 export function easyAction(s) {
   const stopgap = s.stopgap || '';

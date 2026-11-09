@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pluginName, aliasesUsed, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { pluginName, aliasesUsed, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -745,4 +745,13 @@ test('a vendor fold member names its vendor in the title (critique 14: Langflow 
   assert.equal(vendorLedTitle('IBM QRadar flaw', 'IBM', 'IBM QRadar'), 'IBM QRadar flaw');
   assert.equal(vendorLedTitle('Files readable without a login', 'IBM', 'IBM Langflow OSS'), 'IBM Langflow OSS: Files readable without a login');
   assert.equal(vendorLedTitle('Db2 서버 멈춤', 'IBM', 'IBM Db2 for Linux'), 'IBM Db2 서버 멈춤');
+});
+
+// The collector's feed and sitemap lists use a Python port of these rules (collector.incidents.risk_level, search_worthy).
+test("the collector's risk rule and search-worthy rule match the page's", () => {
+  const kase = JSON.parse(readFileSync(new URL('./fixtures/board/risk-case.json', import.meta.url), 'utf8'));
+  for (const c of kase.cases) {
+    assert.equal(riskLevel(c.incident), c.risk, c.incident.id);
+    assert.equal(searchWorthy(c.incident), c.search_worthy, c.incident.id);
+  }
 });
