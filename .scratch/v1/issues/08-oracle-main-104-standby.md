@@ -8,6 +8,18 @@
 
 - [ ] Failover (seam 1, fake clock and store): status 46 minutes old, the standby runs and writes; 30 minutes old, it does nothing; after the main writes again, it stands down.
 - [ ] Two collectors never both write in the same cycle window in the test.
-- [ ] Restoring from the SQLite backup rebuilds the monthly files and index.
+- [x] Restoring from the SQLite backup rebuilds the monthly files and index.
 - [ ] On the real boxes: stopping the Oracle collector leads to a .104 update within about an hour; restarting it hands back (checked once, by hand).
 - [ ] Neither box accepts inbound connections for this service; the proxy on the Oracle VM keeps working.
+
+## Comments
+
+**2026-11-09, late:**
+- Oracle main collector is live (see ticket 02 Comments). The owner put **the .104 standby, failover and each box's
+  own Anthropic key last**, after ticket 09.
+- SQLite backup done: `SqliteStore`, `BackedUpStore` (writes the backup first, reads the main store), `restore()`;
+  `python -m collector --seed-backup` and `--restore`; Compose mounts `./backup` (owned by uid 65534) and sets
+  `VR_BACKUP_DB=/backup/store.sqlite`. On Oracle: seeded 9 documents, and a restore into a folder inside a throwaway
+  container rebuilt all 9. Not tried: a restore into R2 itself.
+- Pitfall: an "is a cycle running" check that greps `/proc/*/cmdline` for `collector` matches its own shell, so it
+  never reads idle. Recreating the container then cut a running cycle; nothing was lost (no batch left unrecorded).

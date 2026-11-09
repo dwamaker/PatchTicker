@@ -22,6 +22,8 @@ newest delta log entry; later cycles pick up everything since the last checkpoin
 Leave `VR_STORE_DIR` empty and set the four `VR_R2_*` settings in `.env`, then `docker compose up -d --build`
 (`compose.yaml`; one cycle now: `docker compose run --rm collector python -m collector`). Every document is written as JSON with a
 30-second cache.
+Every write also lands in an SQLite copy (`VR_BACKUP_DB`, `./backup` in Compose); `--seed-backup` fills it once from
+the store and `--restore` rebuilds the store from it (commands in `compose.yaml`).
 
 Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle
 lists the missing ones in `unknown_vendors.json` in the store. How to add one: `docs/agents/vendors.md`.

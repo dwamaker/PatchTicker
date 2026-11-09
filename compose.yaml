@@ -2,11 +2,18 @@
 #   docker compose up -d --build              start the schedule
 #   docker compose run --rm collector python -m collector   one cycle now (plain `run` starts the loop)
 #   docker compose logs -f collector          watch it
+# SQLite backup of every document in ./backup (create it once: mkdir backup && sudo chown 65534 backup, since the
+# image runs as nobody). Seed it once: docker compose run --rm collector python -m collector --seed-backup
+# Rebuild R2 from it:             docker compose run --rm collector python -m collector --restore
 services:
   collector:
     build: .
     image: vuln-radar-collector
     env_file: .env  # VR_COLLECTOR_ID, VR_CONTACT, the four VR_R2_* settings, ANTHROPIC_API_KEY; leave VR_STORE_DIR empty
+    environment:
+      VR_BACKUP_DB: /backup/store.sqlite
+    volumes:
+      - ./backup:/backup
     restart: unless-stopped
     # A failed cycle is logged and the next one runs on time; the loop itself never exits.
     command:

@@ -1,4 +1,8 @@
-"""Run one collection cycle: python -m collector [path/to/envfile]  (default: .env)"""
+"""Run one collection cycle: python -m collector [path/to/envfile]  (default: .env)
+
+Rebuild the store from the SQLite backup instead: python -m collector --restore [path/to/envfile]
+Copy the whole store into the SQLite backup once:  python -m collector --seed-backup [path/to/envfile]
+"""
 
 import os
 import sys
@@ -10,11 +14,11 @@ import anthropic
 from collector import curators
 from collector.cycle import run_cycle
 from collector.net import make_http_get
-from collector.store import FolderStore, r2_store
+from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
 
 REQUIRED = ("VR_COLLECTOR_ID", "VR_CONTACT")
 R2 = ("VR_R2_ENDPOINT", "VR_R2_BUCKET", "VR_R2_ACCESS_KEY_ID", "VR_R2_SECRET_ACCESS_KEY")
-OPTIONAL = ("VR_STORE_DIR", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY") + R2
+OPTIONAL = ("VR_STORE_DIR", "VR_BACKUP_DB", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY") + R2
 
 
 def load_settings(path):
@@ -34,8 +38,16 @@ def load_settings(path):
     return settings
 
 
-def make_store(settings):
-    """A folder when VR_STORE_DIR is set (laptops, tests), otherwise the R2 bucket."""
+def make_store(settings, backup=True):
+    """A folder when VR_STORE_DIR is set (laptops, tests), otherwise the R2 bucket; with VR_BACKUP_DB set,
+    every write also goes into that SQLite file."""
+    store = main_store(settings)
+    if backup and settings.get("VR_BACKUP_DB"):
+        return BackedUpStore(store, SqliteStore(settings["VR_BACKUP_DB"]))
+    return store
+
+
+def main_store(settings):
     if settings.get("VR_STORE_DIR"):
         return FolderStore(settings["VR_STORE_DIR"])
     return r2_store(
@@ -47,7 +59,12 @@ def make_store(settings):
 
 
 def main():
-    settings = load_settings(sys.argv[1] if len(sys.argv) > 1 else ".env")
+    args = sys.argv[1:]
+    if args[:1] == ["--restore"]:
+        return restore_main(args[1] if len(args) > 1 else ".env")
+    if args[:1] == ["--seed-backup"]:
+        return seed_backup_main(args[1] if len(args) > 1 else ".env")
+    settings = load_settings(args[0] if args else ".env")
     key = settings.get("ANTHROPIC_API_KEY")
     run_cycle(
         make_store(settings),
@@ -61,6 +78,34 @@ def main():
         # The key is passed in, never left for the SDK to find in a login profile; no key, no Summaries.
         claude=anthropic.Anthropic(api_key=key) if key else None,
     )
+
+
+
+def restore_main(path):
+    settings = load_settings(path)
+    db = settings.get("VR_BACKUP_DB")
+    if not db or not Path(db).exists():
+        sys.exit(f"no backup to restore from: VR_BACKUP_DB={db or '(not set)'}")
+    backup = SqliteStore(db)
+    try:
+        count = restore(backup, make_store(settings, backup=False))
+    finally:
+        backup.close()
+    print(f"restored {count} documents from {db}")
+
+
+def seed_backup_main(path):
+    """Writes made before the backup was switched on are only in the main store; copy everything over once."""
+    settings = load_settings(path)
+    db = settings.get("VR_BACKUP_DB")
+    if not db:
+        sys.exit("VR_BACKUP_DB is not set")
+    backup = SqliteStore(db)
+    try:
+        count = restore(make_store(settings, backup=False), backup)
+    finally:
+        backup.close()
+    print(f"copied {count} documents into {db}")
 
 
 if __name__ == "__main__":

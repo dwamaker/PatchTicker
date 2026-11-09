@@ -2,6 +2,7 @@
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 from botocore.exceptions import ClientError
@@ -18,6 +19,9 @@ class MemoryStore:
     def write(self, name, doc):
         # Kept serialized so callers can't mutate stored docs by accident, as with a real store.
         self._docs[name] = json.dumps(doc)
+
+    def names(self):
+        return sorted(self._docs)
 
 
 class FolderStore:
@@ -36,6 +40,10 @@ class FolderStore:
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, path)  # whole-file replace, so a crash never leaves a half-written file
+
+    def names(self):
+        return sorted(p.relative_to(self.root).as_posix() for p in self.root.rglob("*")
+                      if p.is_file() and not p.name.endswith(".tmp"))
 
 
 class R2Store:
@@ -63,6 +71,67 @@ class R2Store:
             ContentType="application/json; charset=utf-8",
             CacheControl="public, max-age=30",
         )
+
+    def names(self):
+        names, token = [], {}
+        while True:  # one page holds at most 1000 keys
+            page = self.s3.list_objects_v2(Bucket=self.bucket, **token)
+            names += [o["Key"] for o in page.get("Contents", [])]
+            if not page.get("IsTruncated"):
+                return sorted(names)
+            token = {"ContinuationToken": page["NextContinuationToken"]}
+
+
+class SqliteStore:
+    """Every document in one SQLite file: the collector's own copy of the store, to rebuild R2 from."""
+
+    def __init__(self, path):
+        self.db = sqlite3.connect(path)
+        self.db.execute("CREATE TABLE IF NOT EXISTS docs (name TEXT PRIMARY KEY, body TEXT NOT NULL)")
+
+    def read(self, name):
+        row = self.db.execute("SELECT body FROM docs WHERE name = ?", (name,)).fetchone()
+        return None if row is None else json.loads(row[0])
+
+    def write(self, name, doc):
+        with self.db:  # one transaction per document, so a crash never leaves a half-written row
+            self.db.execute(
+                "INSERT INTO docs (name, body) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET body = excluded.body",
+                (name, json.dumps(doc, ensure_ascii=False)),
+            )
+
+    def names(self):
+        return [row[0] for row in self.db.execute("SELECT name FROM docs ORDER BY name")]
+
+    def close(self):
+        self.db.close()
+
+
+class BackedUpStore:
+    """Reads from the main store; writes to the backup first, so the backup is never behind what R2 got."""
+
+    def __init__(self, main, backup):
+        self.main = main
+        self.backup = backup
+
+    def read(self, name):
+        return self.main.read(name)
+
+    def write(self, name, doc):
+        self.backup.write(name, doc)
+        self.main.write(name, doc)
+
+    def names(self):
+        return self.main.names()
+
+
+def restore(backup, store):
+    """Copy every document from one store into another (months, index, board files, status); returns the count.
+    Used both ways: backup into R2 to rebuild it, R2 into the backup to seed it."""
+    names = backup.names()
+    for name in names:
+        store.write(name, backup.read(name))
+    return len(names)
 
 
 def r2_store(endpoint, access_key_id, secret_access_key, bucket):
