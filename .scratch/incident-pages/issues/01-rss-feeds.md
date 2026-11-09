@@ -10,7 +10,7 @@ request, with a short edge cache. See the spec (`../spec.md`) and ADR 0002's 202
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (built and committed f081413; deploy pending, see Comments)
 
 - [ ] The collector has a Python port of the Board's risk rule, checked against the JavaScript rule by one shared fixture of cases.
 - [ ] Each cycle writes one feed document: the newest 50 search-worthy Incidents with Summaries, newest first, only when it changed.
