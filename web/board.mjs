@@ -159,6 +159,13 @@ export function orderBy(sort) {
     cvss: (a, b) => (b.cvss ?? -1) - (a.cvss ?? -1) || newest(a, b) }[sort] || newest;
 }
 
+// Korean words people type for systems and devices, matched as the English names sources use (critique 12: 윈도우 and
+// 공유기 found nothing). Small on purpose: product names are typed as they are.
+export const SEARCH_ALIASES = {
+  윈도우: ['windows'], 윈도: ['windows'], 맥: ['macos', 'mac os'], 맥북: ['macos'], 리눅스: ['linux'], 안드로이드: ['android'],
+  아이폰: ['ios', 'iphone'], 아이패드: ['ipados', 'ipad'], 공유기: ['router'], 라우터: ['router'], 워드프레스: ['wordpress'],
+  크롬: ['chrome'], 엣지: ['edge'], 파이어폭스: ['firefox'], 자바: ['java'], 파이썬: ['python'], 오픈ssh: ['openssh'],
+};
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
 // Returns the visible Incidents newest first, and the top ten of those published (else first seen) in the seven days before `now`.
 export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
@@ -177,7 +184,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
     // Mention titles carry the names people use ("sshole") that a Summary may not.
     const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, ...productsOf(i).flatMap((p) => [p.name, p.id]),
       ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
-    return words.every((w) => text.includes(w));
+    return words.every((w) => [w, ...(SEARCH_ALIASES[w] || [])].some((x) => text.includes(x)));
   });
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
@@ -232,7 +239,16 @@ export const rowTags = (i, lang = 'en') => {
   const os = new Set((s?.platforms || []).map((p) => p.toLowerCase()));
   const own = names.filter((_, k) => !os.has(String(s?.products?.[k] ?? '').toLowerCase()));
   const devices = (s?.devices || []).length > MANY_DEVICES ? [] : s?.devices || [];
-  return [...new Set([...(s?.platforms || []), ...own, ...devices])]; // operating systems first (user, 11-08)
+  // Known systems in one fixed order on every row (Windows, macOS, Linux, Android, iOS; critique 12), others after.
+  const rank = (p) => { const k = OSES.indexOf(p); return k < 0 ? OSES.length : k; };
+  const platforms = [...(s?.platforms || [])].sort((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
+  return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
+};
+
+// Each name once, ignoring letter case (NVD gives "Qiskit SDK" and "Qiskit Sdk"): the first spelling stays.
+export const uniqueNames = (names) => {
+  const seen = new Set();
+  return names.filter((n) => { const k = n.toLocaleLowerCase(); return !seen.has(k) && seen.add(k); });
 };
 
 // Line colours for Product badges, after the Seoul subway map: fill and the text colour that reads on it.

@@ -32,6 +32,7 @@ colors:
   beckon-red: "#ff4d4d"
   beckon-orange: "#ffa02e"
   beckon-yellow: "#ffe03a"
+  beckon-yellow-light: "#d9a400" # the yellow stop on the light ground, where #ffe03a all but vanished (critique 12)
   beckon-green: "#4cd964"
   beckon-blue: "#3ab7ff"
   beckon-violet: "#7a6cff"
@@ -289,9 +290,11 @@ A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.
 badges (up to 15rem), published date over time (5.5rem), chevron. Column gap is 1.25rem. Opened details align with the
 name column. From 768 to 1023 px (tablets, landscape phones) the badges move to a second line under the title, so the name
 column is not squeezed. Under 768 px the row restacks into risk, CVSS ring and date with time on one line on top, then name
-and title, then badges, and the details drop their indent. Under 600 px the header puts the name and controls on one line
-while they fit and drops the controls under the name when they do not (320 px, larger text), with the 기본|쉬운 설명
-switch on its own line. Nothing scrolls sideways from 320 px up, also at 150% text. Hover tints apply only where a pointer
+and title, then badges, and the details drop their indent (Highlights too, critique 12); the chevron rides with the
+date, so when the date wraps under the sign the chevron goes with it and never sits alone. Under 600 px the header keeps
+name, 기본|쉬운 설명 and the settings button on one line, also at 320 px (tighter name and switch under 360 px); larger
+text may still wrap it. The bar is two lines at any phone width: 주요 사건 with 모두 펼치기, then 필터 and 정렬. Per-CVE
+공지/분석 links get finger-sized padding on touch screens. Nothing scrolls sideways from 320 px up, also at 150% text. Hover tints apply only where a pointer
 can hover, so a tapped row does not stay tinted on a phone.
 
 ### Named Rules
@@ -358,8 +361,10 @@ Restrained outlined buttons for theme, language and copying a command.
 
 ### Product line badge (signature)
 - **Style:** a pill in the Product's line colour, with dark or white text chosen per hue, Badge type,
-  at least 26 px high. Wraps rather than truncates.
-- **Names:** a badge names the vendor with the model ("SonicWall Gen7", never "Gen7" alone).
+  at least 26 px high. Wraps rather than truncates (the code truncated until critique 12; now a long name wraps inside
+  its pill). Operating-system outlines lead the cell in one fixed order: Windows, macOS, Linux, Android, iOS.
+- **Names:** a badge names the vendor with the model ("SonicWall Gen7", never "Gen7" alone). A name that differs only in
+  letter case shows once, first spelling kept ("Qiskit SDK" / "Qiskit Sdk"; critique 12).
 - **Picked products:** shown as the same badges with a drawn × inside a 44 px tap area.
 
 ### CVSS ring (signature)
@@ -406,6 +411,10 @@ Restrained outlined buttons for theme, language and copying a command.
   followed by an outlined copy button. Only commands a source states verbatim appear here.
 
 ### Risk sign (bolder after critique 6; both views since 11-09)
+- **Not rated yet (critique 12):** an Incident with no CVSS that is not exploited keeps the last level (참고 / 주의) but
+  says "점수 대기" (Easy: "아직 평가 전") under the sign, where 악용 발생 would sit, and an empty dashed ring stands in the
+  ring's place (also on phones); the legend reads "그 밖 · 점수 대기" and the filter's risk group notes where these sit,
+  so 참고 never reads as "scored low". The rule that sets the level is unchanged.
 - In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (고위험 / 심각!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
   15px/800. Rings are never filled (user, 11-09). 악용 발생 sits centred under the ring (beside it on phones), and a
@@ -429,9 +438,10 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Empty state names every narrowing:** with Products picked and a search, it says both ("고른 제품(OpenSSH) 가운데
   'zzqq'에 맞는 사건이 없습니다."), never "nothing for OpenSSH" while the search hid an OpenSSH row; its recovery
   buttons say what they bring back ("검색 지우기 · 1건 보기"). Counts appear only in the empty state.
-- **Stale data notice:** an hour without an update (six missed 10-minute runs) puts a notice under the status line:
-  Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "마지막
-  업데이트가 8시간 전입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." It is a status region (heard once) and is
+- **Stale data notice:** an hour without an update (six missed 10-minute runs) puts a notice under the status line
+  (its text names no age since critique 12: the status line just above says it, and fixed text is announced once):
+  Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "한 시간
+  넘게 업데이트가 없습니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." It is a status region (heard once) and is
   rechecked every minute, as is the status line's age, so a tab left open goes stale visibly.
 - **All-clear sign:** when only Products are picked and none is on the Board, the empty state is a sign, not a
   sentence: a drawn check, the picked Products as line badges, "최근 7일 동안 게시된 사건이 없습니다" (or 3개월 once
@@ -508,6 +518,22 @@ Restrained outlined buttons for theme, language and copying a command.
   visitor needs to judge an Incident (OS badges, counts, tags) stays visible even when a row gets busier.
 - **Headline first (owner, 11-09):** in both views a row leads with what happened (the Summary or quick title; a raw
   source line, clamped to three lines, when there is none) and the CVE ID is the line under it.
+- **필터 and 정렬 frozen too (owner, after critique 12):** "like Excel frozen panes" covers the controls as well: once the
+  bar with 필터 and 정렬 passes under the frozen row, a copy of both (filter icon with its count, a narrow sort select)
+  fades in at the end of the search line, on every width; the bar keeps the originals. The copy's 필터 opens the sheet
+  on a phone, and wider brings the bar back under the frozen row and opens the panel there. Phones use the short
+  search hint ("키워드, CVE 번호") so the words fit beside them.
+- **Jump buttons rest on phones (owner, after critique 12):** under 768px 맨 위로 / 맨 아래로 show while the page moves
+  and fade 2 s after it stops, so they do not sit on the text being read; keyboard focus keeps them.
+- **Korean search words (owner, after critique 12):** a small alias table lets 윈도우, 맥, 리눅스, 안드로이드, 아이폰,
+  공유기, 워드프레스 and a few more match the English names sources use; product names are still typed as they are.
+- **OS chips say what they mean:** the filter's OS group notes that it shows everything running on that system,
+  including web software such as WordPress plugins; a note on dashed chips shows while any chip is dashed.
+- **Easy conditions in everyday words:** Summaries carry easy_conditions (same count and order as conditions, same
+  banned-word check as the other Easy fields); the Easy panel prefers them and falls back to the conditions. New
+  Summaries only; older ones keep the source wording until regenerated (an API cost, asked first).
+- **Easy action louder, one guide entry:** the Easy panel's action line is 17px/800 in Ink (the loud Easy voice);
+  while the first-visit line shows, the status line's 읽는 법 link hides (the line has 읽는 법 자세히).
 - **Frozen search (owner, 11-09):** like frozen panes, the search stays at the top while the Board scrolls: on 768px
   and wider the whole field row (product + search, with applied product chips), on phones only the search line. Its
   height is `--stick`; `scroll-padding-top`, the new-Incidents pill and focus moves clear it. A hairline and a soft

@@ -21,6 +21,7 @@ SSHOLE_SUMMARY = {
         "summary": "musl libc로 빌드되고 PAM을 쓰지 않는 OpenSSH sshd에서 비밀번호가 `*`인 계정이 "
                    "257~1024자 비밀번호를 받아들입니다. Alpine, OpenWrt 같은 musl 시스템이 해당합니다.",
         "conditions": ["musl libc", "PAM 미사용", "비밀번호 로그인 켜짐", "비밀번호가 `*`인 계정"],
+        "easy_conditions": ["Alpine처럼 musl을 쓰는 리눅스", "PAM을 쓰지 않을 때", "비밀번호로 접속을 허용할 때", "비밀번호가 `*`인 계정이 있을 때"],
         "mitigation": "OpenSSH 10.6p2로 업데이트하세요. 당장 못 하면 PasswordAuthentication no로 비밀번호 로그인을 끄세요.",
         "easy": "Alpine이나 OpenWrt 서버에 아무 긴 비밀번호로 남이 로그인할 수 있습니다.",
         "easy_title": "Alpine·OpenWrt SSH 로그인 뚫림 위험 발견",
@@ -35,6 +36,7 @@ SSHOLE_SUMMARY = {
         "summary": "sshd built against musl libc without PAM accepts any password of 257 to 1024 characters "
                    "for accounts whose password is `*`. musl systems such as Alpine and OpenWrt are affected.",
         "conditions": ["musl libc", "PAM not used", "password logins on", "an account whose password is `*`"],
+        "easy_conditions": ["Linux built on musl, such as Alpine", "PAM is not used", "password logins are allowed", "an account has `*` as its password"],
         "mitigation": "Update to OpenSSH 10.6p2. Until then, set PasswordAuthentication no to turn password logins off.",
         "easy": "Anyone can log in to an Alpine or OpenWrt server with any long password.",
         "easy_title": "Alpine and OpenWrt SSH logins open to anyone",
@@ -489,7 +491,7 @@ HEIST = "https://www.bleepingcomputer.com/news/security/hackers-pull-off-133-mil
 
 def news_reply(ko, en):
     """A Summary reply for general news: no product, no fix, only the sentence under test."""
-    fields = {"title": "", "summary": "", "conditions": [], "mitigation": "", "easy": "", "easy_title": "", "easy_action": "", "names": []}
+    fields = {"title": "", "summary": "", "conditions": [], "easy_conditions": [], "mitigation": "", "easy": "", "easy_title": "", "easy_action": "", "names": []}
     return {"ko": fields | {"summary": ko}, "en": fields | {"summary": en},
             "products": [], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": []}
 
@@ -596,3 +598,13 @@ class ScriptPageTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EasyConditionsTest(unittest.TestCase):
+    """easy_conditions (after critique 12): the conditions in everyday words, checked like the other Easy fields."""
+
+    def test_a_banned_word_in_the_easy_conditions_is_caught(self):
+        summary = {"products": [], "devices": [], **{lang: {"names": [], "easy": "", "easy_title": "", "easy_action": "",
+                                                              "easy_conditions": []} for lang in ("ko", "en")}}
+        summary["ko"]["easy_conditions"] = ["세션 토큰을 쓸 때"]
+        self.assertEqual(summaries.easy_jargon(summary), ["세션", "토큰"])

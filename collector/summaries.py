@@ -54,6 +54,7 @@ LANG_FIELDS = {
         "title": {"type": "string"},
         "summary": {"type": "string"},
         "conditions": {"type": "array", "items": {"type": "string"}},
+        "easy_conditions": {"type": "array", "items": {"type": "string"}},
         "mitigation": {"type": "string"},
         "easy": {"type": "string"},
         "easy_title": {"type": "string"},
@@ -64,7 +65,7 @@ LANG_FIELDS = {
         "cve_lines": {"type": "array", "items": {"type": "object", "properties": {"cve": {"type": "string"}, "text": {"type": "string"}},
                                                   "required": ["cve", "text"], "additionalProperties": False}},
     },
-    "required": ["title", "summary", "conditions", "mitigation", "easy", "easy_title", "easy_action", "names", "command_for",
+    "required": ["title", "summary", "conditions", "easy_conditions", "mitigation", "easy", "easy_title", "easy_action", "names", "command_for",
                  "stopgap_then", "cve_lines"],
     "additionalProperties": False,
 }
@@ -105,6 +106,7 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
 - title: one short line naming the product and the problem. No CVE ID, no severity words.
 - summary: at most two sentences. What the problem is and who is affected. Plain words, no hype. When a source withholds the names of the affected companies ("two automakers, which we'll call Automaker #1 and #2"), say they were not named; never guess them from other names on the page (a list of earlier targets is not this one).
 - conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). Empty list when the text names none.
+- easy_conditions: the same conditions for the easy reader: as many as in conditions, in the same order, each one rewritten in everyday words with the same ban on technical terms as easy ("관리 화면을 인터넷에 열어 둔 경우", "If the admin page is reachable from the internet"). Empty list when conditions is empty.
 - mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Empty string when no source says anything a reader can act on.
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
 - When the flaw needs a condition (a system such as musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it; never widen it to every user of the product, and never narrow it either: when the sources name a kind with examples ("musl-based Linux such as Alpine or OpenWrt"), name every example (the kind itself is often a technical term), never one example alone, or a reader who runs another one thinks they are safe ("Alpine·OpenWrt SSH 서버 아무 비밀번호 통과", "SSH on Alpine or OpenWrt accepts any long password"; never "Alpine SSH 서버 …" alone).
@@ -163,7 +165,7 @@ Output:
 EASY_BANNED = ("OAuth", "SAML", "MFA", "WSDL", "CGI", "FIPS", "SQL", "API", "hash", "root", "RCE", "SSRF", "injection",
                "buffer", "protocol", "코드 실행", "임의 코드", "권한 상승", "인증 우회", "서비스 거부", "주입", "역직렬화",
                "버퍼 오버플로", "경로 조작", "세션", "토큰", "자격 증명", "취약점 악용")
-EASY_FIELDS = ("easy", "easy_title", "easy_action")
+EASY_FIELDS = ("easy", "easy_title", "easy_action", "easy_conditions")
 
 
 def easy_jargon(summary):
@@ -173,6 +175,7 @@ def easy_jargon(summary):
     for lang in ("ko", "en"):
         for field in EASY_FIELDS:
             text = summary[lang][field]
+            text = " ".join(text) if isinstance(text, list) else text  # easy_conditions is a list
             for name in names:
                 text = text.replace(name, " ")
             for word in EASY_BANNED:
@@ -529,7 +532,7 @@ def plain(value):
 
 
 def lang_text(fields):
-    return "\n".join([fields["title"], fields["summary"], *fields["conditions"], fields["mitigation"], fields["easy"], fields["easy_title"],
+    return "\n".join([fields["title"], fields["summary"], *fields["conditions"], *fields.get("easy_conditions", []), fields["mitigation"], fields["easy"], fields["easy_title"],
                       fields["easy_action"], fields["command_for"], fields["stopgap_then"], *(line["text"] for line in fields["cve_lines"])])
 
 
@@ -544,7 +547,8 @@ def parse(reply, input_text, urls):
         data = json.loads(next(b.text for b in reply.content if b.type == "text"))
         # easy_title and names came on 11-08, easy_action later that day; replies sent before then lack them and
         # the page falls back (title; the normal mitigation).
-        late = {"easy_title": "", "easy_action": "", "names": [], "command_for": "", "stopgap_then": "", "cve_lines": []}
+        # easy_conditions came after critique 12 (11-09): older replies show the normal conditions in the Easy view.
+        late = {"easy_title": "", "easy_action": "", "easy_conditions": [], "names": [], "command_for": "", "stopgap_then": "", "cve_lines": []}
         summary = {lang: {k: data[lang].get(k, late[k]) if k in late else data[lang][k] for k in LANG_FIELDS["required"]}
                    for lang in ("ko", "en")}
         summary |= {k: data[k] for k in SHARED_FIELDS}
@@ -559,11 +563,11 @@ def parse(reply, input_text, urls):
         summary["stopgap_file"] = data.get("stopgap_file", "")
         summary["titles_ko"] = data.get("titles_ko", [])
         summary["exploited"] = data.get("exploited", False)  # came late on 11-08; older replies say nothing of attacks
-        lists = [summary["ko"]["cve_lines"], summary["en"]["cve_lines"], summary["fixes"], *(f["devices"] for f in summary["fixes"]), summary["titles_ko"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"],
+        lists = [summary["ko"]["cve_lines"], summary["en"]["cve_lines"], summary["fixes"], *(f["devices"] for f in summary["fixes"]), summary["titles_ko"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"], summary["ko"]["easy_conditions"], summary["en"]["easy_conditions"],
                  summary["ko"]["names"], summary["en"]["names"]]
         strings = [summary["lead"], summary["fixed"], summary["command"], summary["stopgap"], summary["stopgap_file"], *summary["products"],
                    *(f[k] for f in summary["fixes"] for k in ("for", "version")), *(d for f in summary["fixes"] for d in f["devices"]),
-                   *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"], *(line[k] for line in summary[lang]["cve_lines"] for k in ("cve", "text")),
+                   *summary["devices"]] + [s for lang in ("ko", "en") for s in (*summary[lang]["conditions"], *summary[lang]["easy_conditions"], *(line[k] for line in summary[lang]["cve_lines"] for k in ("cve", "text")),
                                            *(summary[lang][k] for k in ("title", "summary", "mitigation", "easy", "easy_title", "easy_action", "command_for", "stopgap_then")))]
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { foldByVendor, isExploited, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { foldByVendor, isExploited, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -27,6 +27,17 @@ test('a row\'s tags are its Products, then the Summary\'s devices, each name onc
   // Each language shows the names its readers know.
   const paint = { summary: { products: ['Microsoft Paint'], devices: [], ko: { names: ['Windows 그림판'] }, en: { names: ['Microsoft Paint'] } } };
   assert.deepEqual([rowTags(paint, 'ko'), rowTags(paint, 'en')], [['Windows 그림판'], ['Microsoft Paint']]);
+});
+
+test('a name that differs only in letter case shows once (Qiskit SDK / Qiskit Sdk)', () => {
+  assert.deepEqual(rowTags({ products: [{ id: 'ibm:qiskit_sdk', name: 'Qiskit SDK' }, { id: 'ibm:qiskit', name: 'Qiskit Sdk' }] }), ['Qiskit SDK']);
+  assert.deepEqual(uniqueNames(['Qiskit SDK', 'qiskit sdk', 'Perl']), ['Qiskit SDK', 'Perl']);
+});
+
+test("operating systems lead a row's tags in one fixed order, whatever order the Summary gave", () => {
+  const i = { summary: { products: ['Perl'], platforms: ['Linux', 'Windows', 'macOS'], devices: [] } };
+  assert.deepEqual(rowTags(i), ['Windows', 'macOS', 'Linux', 'Perl']);
+  assert.deepEqual(rowTags({ summary: { products: ['X'], platforms: ['iOS', 'FreeBSD', 'Android'], devices: [] } }), ['Android', 'iOS', 'FreeBSD', 'X']);
 });
 
 test('a long device list stays off the row: past four models the badges are the product alone', () => {
@@ -485,8 +496,8 @@ test('operating systems lead the tags of a row', () => {
 test('a Product that is also an operating system shows once, as the OS badge', () => {
   const campaign = { summary: { products: ['iOS', 'Android'], platforms: ['iOS', 'Android'], devices: [],
     ko: { names: ['iOS', '안드로이드'] }, en: { names: ['iOS', 'Android'] } } };
-  assert.deepEqual(rowTags(campaign, 'ko'), ['iOS', 'Android']);
-  assert.deepEqual(rowTags(campaign, 'en'), ['iOS', 'Android']);
+  assert.deepEqual(rowTags(campaign, 'ko'), ['Android', 'iOS']);
+  assert.deepEqual(rowTags(campaign, 'en'), ['Android', 'iOS']);
 });
 
 test('one sort orders both groups: newest first, or by risk, or by score', () => {
@@ -520,4 +531,13 @@ test("one vendor's bulk push folds into one list item from five rows of a day, a
   assert.equal(items[2].id, 'CVE-2026-6'); // another day stays a row
   assert.equal(foldByVendor(rows, 6).length, rows.length); // below the minimum nothing folds
   assert.equal(foldByVendor(rows, 0).length, rows.length); // 0 turns the fold off
+});
+
+test('search understands the Korean words people use for systems and devices (윈도우, 공유기)', () => {
+  const win = { ...incident('CVE-2026-11', '2026-11-08T00:00:00Z'), products: [{ id: 'microsoft:windows_11', name: 'Microsoft Windows 11' }] };
+  const router = { ...incident('CVE-2026-12', '2026-11-08T00:00:00Z'), brief: { text: 'Buffer overflow in TP-Link Archer router firmware' } };
+  const ids = (q) => filterBoard([win, router], [], q, NOW).list.map((i) => i.id);
+  assert.deepEqual(ids('윈도우'), [win.id]);
+  assert.deepEqual(ids('공유기'), [router.id]);
+  assert.deepEqual(ids('리눅스'), []);
 });

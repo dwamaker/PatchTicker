@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-09T08:10:21.389Z",
+        "reason": "user confirmed 2026-11-09: rainbow 쉬운 설명 beckon ('색 무지개로 해'); the only gradient text in the file"
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-09T08:13:20.103Z",
+        "reason": "false positive (critique 12, assessment B): .key keycap for the '/' hint, 2px bottom edge is the keycap idiom, not a card accent"
+      }
+    ]
+  }
+}
