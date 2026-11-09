@@ -19,19 +19,19 @@
 <p align="center">
   <a href="https://patchticker.dwamaker.com">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-dark.png">
-      <img src="docs/assets/screenshot-light.png" width="860" alt="The Patch Ticker board: Highlights on top, each Incident with its risk level, CVSS score and products">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-en-dark.png">
+      <img src="docs/assets/screenshot-en-light.png" width="860" alt="The Patch Ticker board: Highlights on top, each Incident with its risk level, CVSS score and products">
     </picture>
   </a>
 </p>
 
-## 🧭 Why
+## Why
 
 When a vulnerability hits the news, you want two answers: **does it touch anything I run**, and **what do I do now**.
 Patch Ticker answers both in seconds, for security staff and just as much for home-lab owners, small-company admins and
 readers with no security background.
 
-## ✨ Features
+## Features
 
 - **Live, newest first**: collected every 10 minutes; an open page updates without a reload.
 - **Your products only**: pick what you run and the board narrows to it. Picks stay in your browser.
@@ -42,7 +42,7 @@ readers with no security background.
 - **Every claim links to its source**: commands are shown only when a source states them word for word.
 - **Shareable**: a link per Incident; filters live in the address. Light and dark themes, phone ready.
 
-## 🚦 Risk levels
+## Risk levels
 
 Rules set the level, never the AI.
 
@@ -54,7 +54,7 @@ Rules set the level, never the AI.
 
 "Exploited" always shows its evidence. Published exploit code alone is flagged as "Exploit code is public".
 
-## 📡 Data sources
+## Data sources
 
 | Source | Used for |
 | --- | --- |
@@ -67,16 +67,16 @@ Rules set the level, never the AI.
 Summaries are written by Anthropic's Claude from these sources only; one with a number or version not in its sources
 is thrown away and written again.
 
-## 🔒 Privacy
+## Privacy
 
 No login, no cookies, no analytics, no trackers. Picks and filters never leave your browser.
 
-## 🐛 Found a mistake?
+## Found a mistake?
 
 Open the Incident and press **Report a mistake**: a new issue opens here with the Incident filled in. Or
-[open an issue](https://github.com/dwamaker/vuln-radar/issues) yourself.
+[open an issue](https://github.com/dwamaker/PatchTicker/issues) yourself.
 
-## ⚙️ How it works
+## How it works
 
 ```
 Collector (Docker, every 10 min)  ──writes──▶  Cloudflare R2 (public JSON)  ◀──reads──  Web page (Cloudflare Pages)
@@ -86,7 +86,7 @@ Collector (Docker, every 10 min)  ──writes──▶  Cloudflare R2 (public J
 
 No server answers visitors. Running it yourself: [docs/development.md](docs/development.md).
 
-## 📜 Notices and license
+## Notices and license
 
 - For reference only: check each Incident's source advisory before you act.
 - This product uses data from the NVD API but is not endorsed or certified by the NVD.

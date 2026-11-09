@@ -530,7 +530,7 @@ function shareLine(incident) {
 
 // 틀린 내용 알리기: a new issue in the public repository with the Incident filled in (ticket 09). Opening it needs a
 // GitHub account; nothing is sent until the visitor submits the form there.
-const ISSUES = 'https://github.com/dwamaker/vuln-radar/issues/new';
+const ISSUES = 'https://github.com/dwamaker/PatchTicker/issues/new';
 function reportLink(incident) {
   const t = TEXT[lang];
   const titleIn = (l) => incident.summary?.[l]?.title || incident.quick_title?.[l]?.title || incident.brief.text;

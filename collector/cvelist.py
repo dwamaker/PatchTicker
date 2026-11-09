@@ -13,22 +13,32 @@ ADVISORY_TAGS = {"vendor-advisory", "release-notes"}
 WRITEUP_TAGS = {"third-party-advisory", "technical-description", "exploit"}
 
 
-def fetch(checkpoint, http_get, known=frozenset()):
+MAX_RECORDS = 500
+
+
+def fetch(checkpoint, http_get, known=frozenset(), limit=MAX_RECORDS):
     """Return (new published CVE records, next checkpoint). The checkpoint is a delta fetchTime.
 
     An updated record is read only when its CVE is in `known` (already on the Board), so a CNA adding
-    an advisory or exploit link reaches the row without pulling the hundreds of old CVEs touched daily."""
+    an advisory or exploit link reaches the row without pulling the hundreds of old CVEs touched daily.
+    A long gap (a backfill, a box that was down) is read oldest first, whole entries at a time, until `limit`
+    records; the checkpoint stops after the last entry read, so the next cycle goes on from there (owner, 11-09: a
+    7-day backfill in one cycle would have run for hours)."""
     log = json.loads(http_get(DELTA_LOG_URL))  # newest entry first
     if not log:
         return [], checkpoint
     # shortcut: with no checkpoint, start from the newest entry instead of backfilling 30 days.
     entries = [e for e in log if e["fetchTime"] > checkpoint] if checkpoint else log[:1]
     links = {}
-    for entry in entries:
+    reached = log[0]["fetchTime"]
+    for entry in reversed(entries):
         for item in entry["new"] + [u for u in entry.get("updated", []) if u["cveId"] in known]:
             links.setdefault(item["cveId"], item["githubLink"])
+        if len(links) >= limit and entry is not entries[0]:
+            reached = entry["fetchTime"]
+            break
     records = [json.loads(http_get(url)) for url in links.values()]
-    return [r for r in records if r["cveMetadata"]["state"] == "PUBLISHED"], log[0]["fetchTime"]
+    return [r for r in records if r["cveMetadata"]["state"] == "PUBLISHED"], reached
 
 
 RECORD_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"

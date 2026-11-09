@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from collector import nvd
+from collector import cvelist, nvd
 from collector.cycle import run_cycle
 from collector.cvelist import DELTA_LOG_URL
 from collector.store import MemoryStore
@@ -164,6 +164,17 @@ class CycleTest(unittest.TestCase):
             [incident("CVE-2026-120984", KEYCLOAK_TEXT, "2026-12-01T00:05:00Z", "2026-11-07T13:22:00Z")],
         )
         self.assertEqual(self.store.read("index.json"), {"months": ["2026-11", "2026-12"]})
+
+    def test_a_long_gap_is_read_oldest_first_a_bounded_number_of_records_a_cycle(self):
+        # 11-09: a 7-day backfill (about 3,760 new CVEs) in one cycle would run for hours with every 위험+ row
+        # summarized at once; whole delta entries are read oldest first until the limit, and the checkpoint stops there.
+        get = recorded()
+        first, checkpoint = cvelist.fetch("2026-11-07T12:00:00.000Z", get, limit=1)
+        self.assertEqual([r["cveMetadata"]["cveId"] for r in first], ["CVE-2026-120839"])
+        self.assertEqual(checkpoint, "2026-11-07T12:47:54.668Z")
+        rest, checkpoint = cvelist.fetch(checkpoint, get, limit=1)
+        self.assertCountEqual([r["cveMetadata"]["cveId"] for r in rest], ["CVE-2026-120984", "CVE-2026-120839"])
+        self.assertEqual(checkpoint, "2026-11-07T13:22:16.396Z")  # caught up: the newest entry
 
     def test_a_cve_cited_before_its_record_was_read_gets_the_record(self):
         # oss-security named the CVE first and the record came out before this store's first delta (11-09: nine Apache
