@@ -58,6 +58,19 @@ from rules in `riskLevel` (`web/board.mjs`), not from the model.
 `python -m collector other.env` reads a different environment file. Real environment variables
 override the file.
 
+## Deploy the page
+
+The page is static: deploy everything in `web/` except `web/data/` (local test data, git-ignored) to the Pages
+project `patchradar`, for example from a copy without that folder:
+
+```sh
+npx wrangler@4 pages deploy <copy of web without data/> --project-name patchradar --branch main
+```
+
+`robots.txt` allows every crawler (AI crawlers too) and points to `sitemap.xml`; `llms.txt` lists the public data
+files for AI systems. A Cloudflare rate limiting rule on patchticker.com and data.patchticker.com blocks one IP for
+10 s after 40 requests in 10 s.
+
 ## Tests
 
 ```sh

@@ -1,0 +1,9 @@
+# Patch Ticker: anyone may read this site and its public data, search engines and AI crawlers included.
+# The data changes every 10 minutes, so a few requests a minute is plenty. Bursts are rate limited.
+# For AI systems: https://patchticker.com/llms.txt lists the data files.
+
+User-agent: *
+Allow: /
+Crawl-delay: 10
+
+Sitemap: https://patchticker.com/sitemap.xml

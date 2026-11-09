@@ -1,0 +1,26 @@
+# Patch Ticker
+
+> A free, public, no-login board of security vulnerabilities, Korean first with English alongside. It is updated every 10 minutes from the CVE List, NVD, CISA KEV, oss-security, Hacker News and GitHub, and tells a reader whether a new vulnerability touches something they run and what to do.
+
+Each Incident (one row; it may hold several CVEs, or none yet) has a risk level set by rules, not by a model: exploited (CISA KEV, or a source that reports attacks) or CVSS 9.0 and up is "high risk", CVSS 7.0 and up is "elevated", everything else is a notice. Summaries in Korean and English are written by Claude from the linked sources only, and every Incident links to its official advisory.
+
+## Data
+
+Public JSON, refreshed every 10 minutes. Please fetch each file at most once every 10 minutes; bursts are rate limited.
+
+- [Status](https://data.patchticker.com/status.json): when the data was last updated
+- [Last 7 days](https://data.patchticker.com/board/recent.json): every Incident first seen in the last week, with risk inputs, products, summaries and source links
+- [Months](https://data.patchticker.com/index.json): the months that have data; each month is at `https://data.patchticker.com/board/YYYY-MM.json`
+- [Products](https://data.patchticker.com/board/products.json): product names seen in the last 90 days
+
+## About
+
+- [Site](https://patchticker.com/): the board itself (filters and search run in the browser)
+- [Source code](https://github.com/dwamaker/PatchTicker): how the collector and the page work
+- [Report a mistake](https://github.com/dwamaker/PatchTicker/issues): corrections come from readers
+
+## Notes
+
+- Summaries are AI-written from the sources; check the linked advisory before acting on them.
+- CVE records: Copyright © 1999–2026, The MITRE Corporation, used under the CVE Terms of Use (https://www.cve.org/Legal/TermsOfUse).
+- This product uses data from the NVD API but is not endorsed or certified by the NVD.
