@@ -1,0 +1,5 @@
+*
+!requirements.txt
+!collector/
+!web/vendors.json
+**/__pycache__

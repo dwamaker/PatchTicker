@@ -2,7 +2,7 @@
 
 A public, no-login page that lists security Incidents newest first (see `CONTEXT.md`).
 
-Needs Python 3.13 and Node 24. One dependency, the Anthropic SDK (`pip install -r requirements.txt`);
+Needs Python 3.13 and Node 24. Dependencies: the Anthropic SDK and boto3 for R2 (`pip install -r requirements.txt`);
 no build step.
 
 ## Run one cycle locally
@@ -16,6 +16,12 @@ python -m http.server 8000 -d web
 Open http://localhost:8000/ to see the Board. The first cycle with an empty store reads only the
 newest delta log entry; later cycles pick up everything since the last checkpoint.
 `VR_GITHUB_TOKEN` (optional, no scopes) lets GitHub search run at 30 instead of 10 requests a minute.
+
+## Run live (R2, every 10 minutes)
+
+Leave `VR_STORE_DIR` empty and set the four `VR_R2_*` settings in `.env`, then `docker compose up -d --build`
+(`compose.yaml`; one cycle now: `docker compose run --rm collector`). Every document is written as JSON with a
+30-second cache.
 
 Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle
 lists the missing ones in `unknown_vendors.json` in the store. How to add one: `docs/agents/vendors.md`.

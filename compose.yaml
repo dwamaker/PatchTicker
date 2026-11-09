@@ -1,0 +1,21 @@
+# Live collector: a cycle every 10 minutes, counted from each cycle's start, writing to R2.
+#   docker compose up -d --build              start the schedule
+#   docker compose run --rm collector         one cycle now (the image's own command)
+#   docker compose logs -f collector          watch it
+services:
+  collector:
+    build: .
+    image: vuln-radar-collector
+    env_file: .env  # VR_COLLECTOR_ID, VR_CONTACT, the four VR_R2_* settings, ANTHROPIC_API_KEY; leave VR_STORE_DIR empty
+    restart: unless-stopped
+    # A failed cycle is logged and the next one runs on time; the loop itself never exits.
+    command:
+      - sh
+      - -c
+      - |
+        while :; do
+          start=$$(date +%s)
+          python -m collector || echo "cycle failed with exit $$?"
+          wait=$$((start + 600 - $$(date +%s)))
+          [ "$$wait" -gt 0 ] && sleep "$$wait"
+        done
