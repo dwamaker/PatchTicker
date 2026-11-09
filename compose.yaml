@@ -1,4 +1,5 @@
-# Live collector: a cycle every 10 minutes, counted from each cycle's start, writing to R2.
+# Live collector: a cycle on every 10-minute mark of the clock (:00, :10, ... UTC), writing to R2. A restart or a
+# redeploy keeps the marks (owner, 11-09: "제깍제깍"); a cycle that runs past a mark waits for the next one.
 #   docker compose up -d --build              start the schedule
 #   docker compose run --rm collector python -m collector   one cycle now (plain `run` starts the loop)
 #   docker compose logs -f collector          watch it
@@ -21,8 +22,6 @@ services:
       - -c
       - |
         while :; do
-          start=$$(date +%s)
+          sleep $$((600 - $$(date +%s) % 600))
           python -m collector || echo "cycle failed with exit $$?"
-          wait=$$((start + 600 - $$(date +%s)))
-          [ "$$wait" -gt 0 ] && sleep "$$wait"
         done

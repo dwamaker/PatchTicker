@@ -43,13 +43,14 @@ WPTRAVELLY_TEXT = (
 
 
 def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=None, hn=None, oss=None, github=None,
-             kev=None, curators=None, web=None, hn_buzz=None):
+             kev=None, curators=None, web=None, hn_buzz=None, unpublished=()):
     """An http_get that answers from fixtures and fails on anything not recorded.
 
     NVD pages are trimmed real responses, keyed by the startIndex they answer.
     delta_log=None serves an empty delta log; a Mention source given no fixture answers empty.
     web maps a Mention's URL to its page in fixtures/pages/ (what a Summary reads).
     hn_buzz answers the HN points refresh (the search with a points filter); without it, no hits.
+    unpublished: CVE IDs whose record is not out yet, so its raw path answers 404 (FileNotFoundError here).
     """
     pages = {json.loads((NVD_FIXTURES / p).read_bytes())["startIndex"]: p for p in nvd_pages}
     names = {"hn": hn, "oss-security": oss, "github": github, "kev": kev, "curators": curators}
@@ -69,7 +70,10 @@ def recorded(delta_log="deltaLog.json", nvd_pages=("empty.json",), nvd_range=Non
         for prefix, (folder, empty) in MENTION_SOURCES.items():
             if url.startswith(prefix):
                 return (FIXTURES / folder / names[folder]).read_bytes() if names[folder] else empty
-        return (FIXTURES / "cvelist" / url.rsplit("/", 1)[-1]).read_bytes()
+        name = url.rsplit("/", 1)[-1]
+        if name.removesuffix(".json") in unpublished:
+            raise FileNotFoundError(url)
+        return (FIXTURES / "cvelist" / name).read_bytes()
 
     return get
 
@@ -160,6 +164,32 @@ class CycleTest(unittest.TestCase):
             [incident("CVE-2026-120984", KEYCLOAK_TEXT, "2026-12-01T00:05:00Z", "2026-11-07T13:22:00Z")],
         )
         self.assertEqual(self.store.read("index.json"), {"months": ["2026-11", "2026-12"]})
+
+    def test_a_cve_cited_before_its_record_was_read_gets_the_record(self):
+        # oss-security named the CVE first and the record came out before this store's first delta (11-09: nine Apache
+        # Airflow rows with no Product, so no vendor fold). The cycle reads the record itself.
+        cve = "CVE-2026-123158"
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [{
+            "id": cve, "cves": [cve], "first_seen": "2026-11-07T10:00:00Z",
+            "mentions": [{"kind": "discussion", "url": "https://seclists.org/oss-sec/2026/q4/1"}],
+            "urls": ["seclists.org/oss-sec/2026/q4/1"], "brief": {"text": "sshd on musl", "lead": "https://seclists.org/oss-sec/2026/q4/1"}}]})
+        self.store.write("index.json", {"months": ["2026-11"]})
+        run_cycle(self.store, recorded(delta_log=None), at("2026-11-07T13:30:00"), "test-box")
+
+        row = next(i for i in self.store.read("months/2026-11.json")["incidents"] if i["id"] == cve)
+        self.assertIn({"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}, row["mentions"])
+        self.assertEqual([p["id"] for p in row["products"]], ["openbsd:openssh"])
+
+    def test_a_cited_cve_with_no_record_yet_is_skipped_quietly(self):
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [{
+            "id": "CVE-2026-999999", "cves": ["CVE-2026-999999"], "first_seen": "2026-11-07T10:00:00Z",
+            "mentions": [{"kind": "discussion", "url": "https://seclists.org/oss-sec/2026/q4/2"}],
+            "urls": ["seclists.org/oss-sec/2026/q4/2"], "brief": {"text": "reserved", "lead": "https://seclists.org/oss-sec/2026/q4/2"}}]})
+        self.store.write("index.json", {"months": ["2026-11"]})
+        run_cycle(self.store, recorded(delta_log=None), at("2026-11-07T13:30:00"), "test-box")  # the fixture 404s: no error
+
+        row = self.store.read("months/2026-11.json")["incidents"][0]
+        self.assertNotIn("products", row)
 
     def test_first_cycle_without_checkpoint_takes_only_the_newest_delta(self):
         store = self.make_store()

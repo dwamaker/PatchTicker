@@ -234,11 +234,12 @@ class ReSummaryTest(unittest.TestCase):
     def test_a_new_official_advisory_brings_a_new_summary_through_the_batch(self):
         claude = FakeClaude()
         # An oss-security post names the CVEs before the record (with the release note) is published.
-        self.run_at("2026-11-05T14:00:00", claude, oss="sshole-cves.rss")
+        early = {"unpublished": (SSHOLE,)}
+        self.run_at("2026-11-05T14:00:00", claude, oss="sshole-cves.rss", **early)
         claude.end_batch({SSHOLE: plain("OpenSSH")})
-        self.run_at("2026-11-05T14:15:00", claude)
+        self.run_at("2026-11-05T14:15:00", claude, **early)
         self.assertEqual(board(self.store)[SSHOLE]["summary"]["at"], "2026-11-05T14:15:00Z")
-        self.run_at("2026-11-05T14:30:00", claude)
+        self.run_at("2026-11-05T14:30:00", claude, **early)
         self.assertEqual(len(claude.batches), 1)
 
         self.run_at("2026-11-05T16:00:00", claude, delta_log="deltaLog-sshole.json")

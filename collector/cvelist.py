@@ -31,6 +31,26 @@ def fetch(checkpoint, http_get, known=frozenset()):
     return [r for r in records if r["cveMetadata"]["state"] == "PUBLISHED"], log[0]["fetchTime"]
 
 
+RECORD_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"
+MISSING_PER_CYCLE = 20
+
+
+def fetch_missing(cves, http_get, limit=MISSING_PER_CYCLE):
+    """Records of CVEs the Board cites but never read: a Mention named the CVE before the record reached the delta
+    log this store started from, or an older CVE came up in discussion (11-09: nine Apache Airflow rows had no
+    Product). At most `limit` a cycle, newest IDs first; one not published yet (404) is asked again next cycle."""
+    records = []
+    for cve in sorted(cves, key=lambda c: [int(p) for p in c.split("-")[1:]], reverse=True)[:limit]:
+        _, year, number = cve.split("-")
+        try:
+            record = json.loads(http_get(RECORD_URL.format(year=year, group=number[:-3], cve=cve)))
+        except (OSError, ValueError):
+            continue
+        if record.get("cveMetadata", {}).get("state") == "PUBLISHED":
+            records.append(record)
+    return records
+
+
 def mention_group(record):
     """The CVE record as a Mention; references it tags as an advisory, release note, analysis or
     exploit join it (untagged references only key the Incident)."""
