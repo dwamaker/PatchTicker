@@ -13,7 +13,7 @@ ADVISORY_TAGS = {"vendor-advisory", "release-notes"}
 WRITEUP_TAGS = {"third-party-advisory", "technical-description", "exploit"}
 
 
-MAX_RECORDS = 500
+MAX_RECORDS = 250
 
 
 def fetch(checkpoint, http_get, known=frozenset(), limit=MAX_RECORDS):
