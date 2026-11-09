@@ -69,7 +69,8 @@ is thrown away and written again.
 
 ## Privacy
 
-No login, no cookies, no analytics, no trackers. Picks and filters never leave your browser.
+No login, no cookies, no ad trackers. Visits are counted anonymously by Cloudflare Web Analytics (no cookies, no
+personal data). Picks and filters never leave your browser.
 
 ## Found a mistake?
 
