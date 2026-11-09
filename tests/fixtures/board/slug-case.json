@@ -1,5 +1,5 @@
 {
-  "note": "slug (edge/feed.mjs) and page_slug (collector/incidents.py) must agree on every case: the collector names each Incident page document by it, the function finds it by it.",
+  "note": "slug (web/board.mjs) and page_slug (collector/incidents.py) must agree on every case: the collector names each Incident page document by it, the function finds it by it.",
   "cases": [
     {"id": "CVE-2026-123158", "slug": "CVE-2026-123158"},
     {"id": "cve-2026-1234", "slug": "CVE-2026-1234"},

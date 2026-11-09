@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pluginName, aliasesUsed, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { pluginName, aliasesUsed, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -754,4 +754,24 @@ test("the collector's risk rule and search-worthy rule match the page's", () => 
     assert.equal(riskLevel(c.incident), c.risk, c.incident.id);
     assert.equal(searchWorthy(c.incident), c.search_worthy, c.incident.id);
   }
+});
+
+// "Copy this Incident's link" (ticket incident-pages/03): the Incident page in the visitor's language when the Incident
+// has one (a Summary, on the Board, first seen within 90 days, as edge/page.mjs decides), else the Board's #i= link.
+test("the copy button gives the Incident page in the visitor's language, and the Board link when there is no page", async () => {
+  const now = Date.parse('2026-11-10T00:00:00Z');
+  const board = 'https://patchticker.com/';
+  const cve = { id: 'CVE-2026-123158', cves: ['CVE-2026-123158'], first_seen: '2026-11-06T00:46:00Z', summary: { ko: {}, en: {} } };
+  const s = await slug(cve.id);
+  assert.equal(shareLink(cve, s, 'ko', board, now), 'https://patchticker.com/i/CVE-2026-123158');
+  assert.equal(shareLink(cve, s, 'en', board, now), 'https://patchticker.com/en/i/CVE-2026-123158');
+  const story = { id: 'https://news.ycombinator.com/item?id=50378228', cves: [], first_seen: '2026-11-06T00:00:00Z', summary: { incident: true } };
+  assert.equal(shareLink(story, await slug(story.id), 'en', board, now), 'https://patchticker.com/en/i/hn-50378228');
+
+  const boardLink = 'https://patchticker.com/#i=CVE-2026-123158';
+  assert.equal(shareLink({ ...cve, summary: undefined }, s, 'ko', board, now), boardLink); // no Summary yet
+  assert.equal(shareLink({ ...cve, first_seen: '2026-08-11T23:59:00Z' }, s, 'ko', board, now), boardLink); // past 90 days
+  assert.equal(shareLink(cve, undefined, 'ko', board, now), boardLink); // the slug is not ready yet
+  const notIncident = { ...story, summary: { incident: false } };
+  assert.equal(shareLink(notIncident, await slug(story.id), 'ko', board, now), 'https://patchticker.com/#i=https%3A%2F%2Fnews.ycombinator.com%2Fitem%3Fid%3D50378228');
 });

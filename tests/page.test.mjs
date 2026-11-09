@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { slug } from '../edge/feed.mjs';
+import { slug } from '../web/board.mjs';
 import { pageResponse } from '../edge/page.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');

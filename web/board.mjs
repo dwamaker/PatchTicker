@@ -175,6 +175,31 @@ export function riskLevel(i) {
 // level or above, exploited, or without a CVE. Also in collector/incidents.py (search_worthy).
 export const searchWorthy = (i) => Boolean(i.summary) && onBoard(i) && (riskLevel(i) !== 'notice' || !i.cves.length);
 
+// An Incident page's address part: a CVE ID as is, an HN story as hn-<item>, any other URL ID as u-<12 hex of SHA-256>.
+// It never changes, because an Incident's ID never does (a merge keeps the survivor's ID). The Board and the Pages
+// Function (edge/) share this one rule; collector/incidents.py (page_slug) ports it, kept in step by
+// tests/fixtures/board/slug-case.json.
+const CVE_ID = /^CVE-\d{4}-\d{4,}$/i;
+const HN_ITEM = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
+export async function slug(id) {
+  if (CVE_ID.test(id)) return id.toUpperCase();
+  const hn = HN_ITEM.exec(id);
+  if (hn) return `hn-${hn[1]}`;
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id)));
+  return `u-${[...digest.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// An Incident page lives this long from first seen (also collector/cycle.py PAGE_DAYS); edge/page.mjs answers 410 after.
+export const PAGE_DAYS = 90;
+
+// "Copy this Incident's link": its Incident page in the visitor's language when it has one (a Summary, on the Board,
+// first seen within PAGE_DAYS), else the Board's #i= link. pageSlug is slug(i.id) worked out ahead, so the click writes
+// to the clipboard at once (Safari drops the click's permission across an await); undefined means not ready yet.
+export function shareLink(i, pageSlug, lang, board, now = Date.now()) {
+  const hasPage = pageSlug && i.summary && onBoard(i) && Date.parse(i.first_seen) >= now - PAGE_DAYS * DAY_MS;
+  return hasPage ? new URL(`${lang === 'en' ? '/en' : ''}/i/${pageSlug}`, board).href : `${board}#i=${encodeURIComponent(i.id)}`;
+}
+
 // The Easy view's one action: update these devices, run the source's command, or update to the fixed version.
 export function easyAction(s) {
   const stopgap = s.stopgap || '';

@@ -91,7 +91,7 @@ HN_ITEM = re.compile(r"https://news\.ycombinator\.com/item\?id=(\d+)", re.ASCII)
 
 
 def page_slug(incident_id):
-    """A port of slug in edge/feed.mjs (tests/fixtures/board/slug-case.json keeps the two in step): a CVE ID as is, an
+    """A port of slug in web/board.mjs (tests/fixtures/board/slug-case.json keeps the two in step): a CVE ID as is, an
     HN story as hn-<item>, any other URL ID as u-<12 hex of SHA-256>. It never changes, as the Incident's ID never does."""
     if re.fullmatch(r"CVE-\d{4}-\d{4,}", incident_id, re.IGNORECASE | re.ASCII):
         return incident_id.upper()

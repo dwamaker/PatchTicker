@@ -1,6 +1,7 @@
 // The RSS feeds (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
 // collector's board/feed.json from R2 and renders RSS 2.0 per request. Titles, Summaries and links come from the web
 // and a model: every text is escaped, and the only links are our own.
+import { slug } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
 const FEED_DOC = 'board/feed.json';
@@ -12,19 +13,6 @@ const TEXT = {
 
 export const escapeXml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
 
-const CVE_ID = /^CVE-\d{4}-\d{4,}$/i;
-const HN_ITEM = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
-
-// An Incident page's address part: a CVE ID as is, an HN story as hn-<item>, any other URL ID as u-<12 hex of SHA-256>.
-// It never changes, because an Incident's ID never does (a merge keeps the survivor's ID).
-export async function slug(id) {
-  if (CVE_ID.test(id)) return id.toUpperCase();
-  const hn = HN_ITEM.exec(id);
-  if (hn) return `hn-${hn[1]}`;
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id)));
-  return `u-${[...digest.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
-}
-
 export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[lang]?.title || i.brief?.text || i.id;
 const rfc822 = (stamp) => new Date(stamp).toUTCString();
 
@@ -32,11 +20,12 @@ async function item(i, lang) {
   const s = i.summary?.[lang] || {};
   const body = [s.easy, s.summary].filter(Boolean).map((t) => `<p>${escapeXml(t)}</p>`);
   if (s.mitigation) body.push(`<p><b>${TEXT[lang].act}:</b> ${escapeXml(s.mitigation)}</p>`);
+  const page = `${SITE}${TEXT[lang].page}${await slug(i.id)}`; // slug() output is [A-Za-z0-9-] only: no escaping needed
   return ['<item>',
     `<title>${escapeXml(titleOf(i, lang))}</title>`,
-    // shortcut: the Board link until Incident pages exist (ticket 03 points it at the page); the GUID is already the page.
-    `<link>${SITE}/#i=${encodeURIComponent(i.id)}</link>`,
-    `<guid isPermaLink="false">${SITE}${TEXT[lang].page}${await slug(i.id)}</guid>`,
+    `<link>${page}</link>`,
+    // The GUID has been the page address since ticket 01, so readers do not see items twice now that the link is too.
+    `<guid isPermaLink="false">${page}</guid>`,
     `<pubDate>${rfc822(i.published || i.first_seen)}</pubDate>`,
     `<description>${escapeXml(body.join(''))}</description>`,
     '</item>'].join('');

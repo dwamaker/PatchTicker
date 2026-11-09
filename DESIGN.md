@@ -582,7 +582,8 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Back undoes a filter; one Incident has an address (owner, 11-09):** every filter change the visitor makes (panel,
   chips, picks, sort, clear buttons) is a step in the browser's history, so Back and Forward walk through them with
   the Board's motion; typing in search rewrites the current step. Each opened Incident ends with "이 사건 링크 복사",
-  which copies `…#i=<id>`; opening such a link shows the Board with that row open, in view, focused and wearing the
+  which copies its Incident page (`/i/<slug>`, `/en/i/<slug>` in the visitor's language) when it has one, else
+  `…#i=<id>` (incident-pages 03); opening an `#i=` link shows the Board with that row open, in view, focused and wearing the
   blue arrival edge (a vendor fold is ungrouped, older months load if needed); a link to an Incident no longer on
   the Board says so under the fields.
 - **Version help and CVE list in the Easy panel (owner, 11-09):** the help line no longer sends readers to a "maker's

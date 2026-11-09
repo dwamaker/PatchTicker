@@ -1,7 +1,8 @@
 // The RSS feeds' renderer and response (ticket incident-pages/01), behind a fake R2 binding.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { feedResponse, slug } from '../edge/feed.mjs';
+import { feedResponse } from '../edge/feed.mjs';
+import { slug } from '../web/board.mjs';
 
 const bucket = (doc) => ({ get: async (key) => (key === 'board/feed.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
 
@@ -23,19 +24,20 @@ test('slugs never change: a CVE ID as is, an HN story by its item, any other URL
   assert.equal(other, await slug('https://www.bleepingcomputer.com/news/security/nikke/'));
 });
 
-test('the Korean and English feeds carry each Incident in their language, linked to the Board for now', async () => {
+test('the Korean and English feeds carry each Incident in their language, linked to their Incident pages', async () => {
   const doc = { incidents: [SSHOLE, STORY] };
   const ko = await (await feedResponse(bucket(doc), 'ko')).text();
   assert.match(ko, /<language>ko<\/language>/);
   assert.match(ko, /<title>OpenSSH sshd 인증 우회 \(sshole\)<\/title>/);
-  assert.match(ko, /<link>https:\/\/patchticker.com\/#i=CVE-2026-123158<\/link>/);
+  assert.match(ko, /<link>https:\/\/patchticker.com\/i\/CVE-2026-123158<\/link>/);
   assert.match(ko, /<guid isPermaLink="false">https:\/\/patchticker.com\/i\/CVE-2026-123158<\/guid>/);
   assert.match(ko, /<pubDate>Thu, 05 Nov 2026 10:00:00 GMT<\/pubDate>/);
   assert.match(ko, /&lt;b&gt;대처법:&lt;\/b&gt; 9.9p2로 업데이트하세요./);
-  assert.match(ko, /<link>https:\/\/patchticker.com\/#i=https%3A%2F%2Fnews.ycombinator.com%2Fitem%3Fid%3D50378228<\/link>/);
+  assert.match(ko, /<link>https:\/\/patchticker.com\/i\/hn-50378228<\/link>/);
   const en = await (await feedResponse(bucket(doc), 'en')).text();
   assert.match(en, /<atom:link href="https:\/\/patchticker.com\/en\/feed.xml"/);
-  assert.match(en, /<guid isPermaLink="false">https:\/\/patchticker.com\/en\/i\/hn-50378228<\/guid>/);
+  assert.match(en, /<guid isPermaLink="false">https:\/\/patchticker.com\/en\/i\/hn-50378228<\/guid>/); // unchanged since ticket 01
+  assert.match(en, /<link>https:\/\/patchticker.com\/en\/i\/hn-50378228<\/link>/);
   assert.match(en, /<title>sshole<\/title>/); // no Summary: the Brief
 });
 

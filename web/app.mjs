@@ -1,4 +1,4 @@
-import { WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
+import { WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -506,8 +506,10 @@ function shareLine(incident) {
   const icon = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2.1-2.1a3 3 0 0 0-4.2-4.2l-.7.7M9.5 6.5a3 3 0 0 0-4.2 0L3.2 8.6a3 3 0 0 0 4.2 4.2l.7-.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   const idle = () => { button.innerHTML = icon; button.append(el('span', '', TEXT[lang].share)); };
   idle();
+  let pageSlug; // ready long before a click; until then the Board link
+  slug(incident.id).then((s) => { pageSlug = s; }, () => {});
   button.addEventListener('click', async () => {
-    const url = `${location.origin}${location.pathname}#i=${encodeURIComponent(incident.id)}`;
+    const url = shareLink(incident, pageSlug, lang, `${location.origin}${location.pathname}`);
     try {
       await navigator.clipboard.writeText(url);
       const ok = el('span', 'ok');

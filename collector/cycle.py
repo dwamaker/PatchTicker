@@ -14,7 +14,7 @@ from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, g
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
-PAGE_DAYS = 90  # an Incident page lives this long from first seen; edge/page.mjs answers 410 after it
+PAGE_DAYS = 90  # an Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs)
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
