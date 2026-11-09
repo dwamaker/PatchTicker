@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Patch Ticker</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <script>try { const t = localStorage.getItem('vr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     const s = Number(localStorage.getItem('vr-text-pct')); if ([87.5, 112.5, 125, 150].includes(s)) document.documentElement.style.setProperty('--ts', s / 100); } catch {}</script>
   <style>
@@ -62,7 +63,8 @@
     #prefs-btn svg { width: 18px; height: 18px; }
     .top .wrap { min-height: 4rem; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; }
     h1 { margin: 0; display: flex; align-items: center; gap: 0.625rem; font: 700 calc(1.25rem * var(--ts))/1 var(--sans); letter-spacing: -0.02em; }
-    h1 i { width: 0.875rem; height: 0.875rem; border-radius: 50%; border: 3px solid currentColor; }
+    h1 a { display: flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; border-radius: var(--r-ctl); } /* the logo: back to the top of the Board, conditions and search cleared (app.mjs #home) */
+    h1 svg { flex: none; height: 1em; width: auto; fill: var(--focus); } /* the logo symbol (.scratch/logo), Wayfinding Blue in both themes */
     #views { display: inline-flex; padding: 3px; border: 1px solid var(--edge); border-radius: var(--r-pill); background: var(--panel-2); }
     #views button { min-height: var(--tap); padding: 0 1.25rem; border: 0; border-radius: var(--r-pill); background: none; color: var(--ink-2); font-weight: 500; cursor: pointer; }
     #views button[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 700; }
@@ -639,7 +641,7 @@
   <a id="skip-top" class="skip" href="#board-start" data-t="skipTop"></a>
   <button id="new-above" class="new-above off" type="button" data-t-aria="toNew"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button>
   <header class="top"><div class="wrap">
-    <h1><i aria-hidden="true"></i><span data-t="brand">Patch Ticker</span></h1>
+    <h1><a id="home" href="./"><svg viewBox="0 0 64 56" aria-hidden="true"><path fill-rule="evenodd" d="M17 0H44A20 20 0 0 1 44 40H34V56H17V26.5H0V13.5H17ZM53.5 20A9.5 9.5 0 1 0 34.5 20A9.5 9.5 0 1 0 53.5 20Z"/></svg><span data-t="brand">Patch Ticker</span></a></h1>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal"></button><button id="view-easy" type="button" aria-pressed="false" data-t="easy"></button></div>
     <button id="prefs-btn" class="btn" type="button" aria-controls="prefs" aria-expanded="false" data-t-aria="prefs"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h7M14 5h1M3 13h1M8 13h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="13" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="end" id="prefs">

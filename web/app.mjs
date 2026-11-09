@@ -1577,6 +1577,15 @@ addEventListener('scroll', () => {
 }, { passive: true });
 const glide = () => (reducedMotion.matches ? 'auto' : 'smooth');
 $('to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: glide() }));
+// The logo goes back to the main Board (owner, 11-09): panel conditions and search cleared, picked Products kept,
+// since they are the visitor's own setting. A modified click still opens the address in a new tab.
+$('home').addEventListener('click', (e) => {
+  if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  $('search').value = '';
+  update({ query: '', ...PANEL_EMPTY });
+  scrollTo({ top: 0, behavior: glide() });
+});
 $('to-top').addEventListener('click', (event) => launch(event.currentTarget, true));
 $('to-bottom').addEventListener('click', (event) => launch(event.currentTarget, false));
 $('to-bottom').addEventListener('click', () => scrollTo({ top: document.documentElement.scrollHeight, behavior: glide() }));
