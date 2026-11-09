@@ -68,6 +68,16 @@ export function productsOf(i, lang = 'en') {
 
 // seen: the collector's board/products.json entries ({id, ko, en}, same 90 days), so a Product with no Incident in
 // the loaded week can still be picked and show the all-clear sign; loaded Incidents name the ones they share.
+// What a visitor typed in the Product picker, matched like a person would: case does not matter, a whole label or
+// name wins, otherwise every Product whose label contains the text. label: the picker's own label (app.mjs).
+export function matchProducts(products, text, label = (p) => p.name) {
+  const want = text.trim().toLocaleLowerCase();
+  if (!want) return [];
+  const low = (p) => [label(p).toLocaleLowerCase(), p.name.toLocaleLowerCase()];
+  const whole = products.filter((p) => low(p).includes(want));
+  return whole.length ? whole : products.filter((p) => low(p).some((n) => n.includes(want)));
+}
+
 export function productList(incidents, now, lang = 'en', seen = []) {
   const since = new Date(now - 90 * DAY_MS).toISOString();
   const found = new Map(seen.map((p) => [p.id, { id: p.id, name: p[lang] || p.en }]));

@@ -446,8 +446,18 @@ Restrained outlined buttons for theme, language and copying a command.
   and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
-- **Vendor fold (trial, 11-09):** five or more list rows of one vendor on one publish day show as one Recessed Panel bar
-  ("IBM 보안 공지 25건 · 최고 9.9", weight 700, chevron) that opens in place; never with a search or a picked Product.
+- **Vendor fold (trial, 11-09):** five or more list rows of one vendor on one publish day show as one ordinary row
+  (gravest member's risk sign, highest CVSS ring, "IBM 보안 공지 25건 묶음" over the first product names, the vendor as
+  its badge, the newest date) that opens its members in place; never with a search or a picked Product. A "묶음 풀기 /
+  묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). No look of its own (user, 11-09).
+  Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item on the panel
+  ground, members in their own labelled list with the list's columns, a stronger edge below; opening announces the
+  count, closing from the bottom brings the fold row back into view.
+- **Applied filter chips (11-09):** conditions from the filter panel sit right under the bar that holds 필터; picked
+  Products stay under the picker.
+- **Bar (11-09):** 주요 사건 heading with 모두 펼치기 on the left, 필터 and 정렬 on the right; the filter panel opens under it.
+- **Reload keeps the place:** scroll position, 더 보기 counts, opened rows and folds, and loaded older months come back
+  on a reload (sessionStorage `vr-place`).
 - **Board continuity:** a redraw the visitor asked for (필터 적용, a chip's ×, clear buttons, a picked Product, 정렬,
   주요 사건 더 보기 / 접기, 더 보기, 모두 펼치기 / 접기) keeps each row's identity through a View Transition: rows that stay
   glide to their new place (260ms ease-out), new rows fade in, gone ones leave faster (140ms). Only rows on or within
@@ -459,7 +469,25 @@ Restrained outlined buttons for theme, language and copying a command.
   turns in, and a theme or language change cross-fades the page (View Transitions, 200ms, where supported).
 - **Reduced motion:** the ring fill and every movement are dropped; opened panels keep only the fade, so the
   change is still seen.
-- **Never:** loops, pulsing alerts, scroll reveals or entrance choreography; the Board is read, not watched.
+- **First visit (critique 9, 11-09):** the reading guide no longer opens by itself. A first visit gets one framed line
+  under the status line: the three risk signs and a CVSS ring, each with a few words, then 읽는 법 자세히 (opens the full
+  guide) and a close button. Closing either marks the guide seen (`vr-guide`); the line never returns. The first row
+  stays in the first viewport.
+- **Phones and larger text (critique 9, 11-09):** a phone row's first line flows: risk sign, CVSS ring, date and
+  chevron share it while they fit, and the date drops to its own line at the right when they do not (320px, 가+,
+  a sign with 악용 발생); nothing overlaps at any step. The CVSS ring and its number grow with 가+ (`--ts`). Under 600px
+  the bar puts the 주요 사건 heading on its own short line and 모두 펼치기 | 필터 · 정렬 on one line.
+- **Hardening (critique 9, 11-09):** the Product picker matches what is typed regardless of case: a whole name wins,
+  one partial match is picked, several keep the text and say "맞는 제품이 N개입니다" under the fields, none searches as
+  before. 이전 사건 불러오기 leaves a visible result line that takes the focus when no button is left. The load error
+  keeps its plain sentence and shows the technical cause on a quieter line below. While the phone filter sheet is
+  open, the rest of the page is inert.
+- **Loading (11-09, user: the reload screen was a bare splash):** until the data arrives the Board stands in its own
+  shape, four Highlight frames and six list rows of placeholder bars in the rows' cells, and one scan band runs down
+  them (1.6s, the only loop, and only while loading; reduced motion: still bars). When the rows arrive, those on
+  screen rise 8px and fade in top to bottom (360ms, 28ms apart, at most twelve) while the rings fill; reduced
+  motion: one fade. A reload plays it the same way, at the restored place.
+- **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts
 

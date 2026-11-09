@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { foldByVendor, isExploited, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
+import { foldByVendor, isExploited, matchProducts, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -256,6 +256,26 @@ test('the Product list holds each Product seen in the last 90 days once, by name
   const old = { ...incident('CVE-2026-1', '2026-08-01T00:00:00Z'), products: [{ id: 'old:only', name: 'Old Only' }, keycloak] };
   const now = new Date('2026-11-07T00:00:00Z');
   assert.deepEqual(productList([...board, old], now), [dropbear, keycloak, openssh]);
+});
+
+// The picker takes what a visitor types, not only an exact pick from the list (critique 9: "Kyv" and "kyverno" were
+// answered with "not in the list" although Kyverno was listed).
+test('the Product picker matches typed names regardless of case, whole names first, then parts', () => {
+  const kyverno = { id: 'kyverno:kyverno', name: 'Kyverno' };
+  const ssh = { id: 'openbsd:openssh', name: 'OpenSSH' };
+  const portable = { id: 'x:openssh_portable', name: 'OpenSSH Portable' };
+  const win = { id: 'os:windows', name: 'Windows' };
+  const list = [kyverno, ssh, portable, win];
+  const label = (p) => (p.id.startsWith('os:') ? `${p.name} (OS)` : p.name);
+  assert.deepEqual(matchProducts(list, 'Kyverno', label), [kyverno]);
+  assert.deepEqual(matchProducts(list, 'kyverno', label), [kyverno]);
+  assert.deepEqual(matchProducts(list, '  Kyv ', label), [kyverno]);
+  assert.deepEqual(matchProducts(list, 'openssh', label), [ssh]); // a whole name beats a longer name that contains it
+  assert.deepEqual(matchProducts(list, 'ssh', label), [ssh, portable]);
+  assert.deepEqual(matchProducts(list, 'Windows (OS)', label), [win]);
+  assert.deepEqual(matchProducts(list, 'windows', label), [win]);
+  assert.deepEqual(matchProducts(list, '공유기', label), []);
+  assert.deepEqual(matchProducts(list, '   ', label), []);
 });
 
 // The collector's board/products.json (collector.incidents.product_list) must name Products as the page does.
