@@ -4,21 +4,22 @@
 
 <h1 align="center">Patch Ticker</h1>
 
+<p align="center"><a href="README.md"><b>English</b></a> | <b>한국어</b></p>
+
 <p align="center">
   <b>새로 터진 보안 취약점을, 내가 쓰는 제품 기준으로 빠르게.</b><br>
   로그인 없이 누구나 보는 한국어 보안 취약점 게시판.
 </p>
 
 <p align="center">
-  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="사이트: patchticker.com"></a>
-  <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="10분마다 갱신">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="라이선스: MIT"></a>
-  <a href="README.md"><img src="https://img.shields.io/badge/README-English-444?style=flat-square" alt="영어 README"></a>
+  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=for-the-badge" alt="사이트: patchticker.com"></a>
+  <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=for-the-badge" alt="10분마다 갱신">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=for-the-badge" alt="라이선스: MIT"></a>
 </p>
 
 <p align="center">
   <em>도움이 되셨다면 커피 한 잔으로 응원해 주세요.</em><br>
-  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=flat-square&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
+  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>
 
 <p align="center">

@@ -4,21 +4,22 @@
 
 <h1 align="center">Patch Ticker</h1>
 
+<p align="center"><b>English</b> | <a href="README.ko.md"><b>한국어</b></a></p>
+
 <p align="center">
   <b>New security vulnerabilities, sorted by the products you run.</b><br>
   A free, no-login board, Korean first with English alongside.
 </p>
 
 <p align="center">
-  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="Live: patchticker.com"></a>
-  <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="Updates every 10 minutes">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="License: MIT"></a>
-  <a href="README.ko.md"><img src="https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-444?style=flat-square" alt="README in Korean"></a>
+  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=for-the-badge" alt="Live: patchticker.com"></a>
+  <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=for-the-badge" alt="Updates every 10 minutes">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=for-the-badge" alt="License: MIT"></a>
 </p>
 
 <p align="center">
   <em>Find it useful? A coffee keeps it running.</em><br>
-  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=flat-square&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
+  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>
 
 <p align="center">
