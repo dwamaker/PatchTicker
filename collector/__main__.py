@@ -10,10 +10,11 @@ import anthropic
 from collector import curators
 from collector.cycle import run_cycle
 from collector.net import make_http_get
-from collector.store import FolderStore
+from collector.store import FolderStore, r2_store
 
-REQUIRED = ("VR_STORE_DIR", "VR_COLLECTOR_ID", "VR_CONTACT")
-OPTIONAL = ("VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY")
+REQUIRED = ("VR_COLLECTOR_ID", "VR_CONTACT")
+R2 = ("VR_R2_ENDPOINT", "VR_R2_BUCKET", "VR_R2_ACCESS_KEY_ID", "VR_R2_SECRET_ACCESS_KEY")
+OPTIONAL = ("VR_STORE_DIR", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY") + R2
 
 
 def load_settings(path):
@@ -26,16 +27,30 @@ def load_settings(path):
                 settings[key.strip()] = value.strip()
     settings.update({k: os.environ[k] for k in REQUIRED + OPTIONAL if os.environ.get(k)})
     missing = [k for k in REQUIRED if not settings.get(k)]
+    if not settings.get("VR_STORE_DIR"):
+        missing += [k for k in R2 if not settings.get(k)]  # no folder means the R2 bucket, all four needed
     if missing:
-        sys.exit(f"missing settings in {path}: {', '.join(missing)}")
+        sys.exit(f"missing settings in {path}: {', '.join(missing)} (set VR_STORE_DIR, or all of {', '.join(R2)})")
     return settings
+
+
+def make_store(settings):
+    """A folder when VR_STORE_DIR is set (laptops, tests), otherwise the R2 bucket."""
+    if settings.get("VR_STORE_DIR"):
+        return FolderStore(settings["VR_STORE_DIR"])
+    return r2_store(
+        endpoint=settings["VR_R2_ENDPOINT"],
+        access_key_id=settings["VR_R2_ACCESS_KEY_ID"],
+        secret_access_key=settings["VR_R2_SECRET_ACCESS_KEY"],
+        bucket=settings["VR_R2_BUCKET"],
+    )
 
 
 def main():
     settings = load_settings(sys.argv[1] if len(sys.argv) > 1 else ".env")
     key = settings.get("ANTHROPIC_API_KEY")
     run_cycle(
-        FolderStore(settings["VR_STORE_DIR"]),
+        make_store(settings),
         make_http_get(f"vuln-radar/0.1 ({settings['VR_CONTACT']})"),
         datetime.now(timezone.utc),
         settings["VR_COLLECTOR_ID"],
