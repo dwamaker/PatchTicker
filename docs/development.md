@@ -76,6 +76,11 @@ Run it from the repository root: `functions/` (the Pages Function) is taken from
 `edge/`. The function answers `/feed.xml` and `/en/feed.xml` from `board/feed.json` in R2 through the binding `DATA`
 (bucket `patchradar`), which the Pages project must have. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
+It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/[slug].js`, renderer in
+`edge/page.mjs`, rules imported from `web/board.mjs`) from `pages/<slug>.json`: one document per Incident with a
+Summary first seen in the last 90 days, written by the collector only when its fields changed (`page_hashes.json` in
+the store holds each page's hash, so a cycle reads one document instead of one per page). 404 for an unknown slug or an
+Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.
 

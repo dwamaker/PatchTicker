@@ -25,7 +25,7 @@ export async function slug(id) {
   return `u-${[...digest.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
-const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[lang]?.title || i.brief?.text || i.id;
+export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[lang]?.title || i.brief?.text || i.id;
 const rfc822 = (stamp) => new Date(stamp).toUTCString();
 
 async function item(i, lang) {

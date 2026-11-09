@@ -1,5 +1,6 @@
 """One collection cycle: read the store, fetch each source, link Mentions, write changed files."""
 
+import hashlib
 import json
 import sys
 import time
@@ -9,10 +10,11 @@ import anthropic
 
 from collector import curators, cvelist, github, hn, kev, kisa, news, nvd, osssec, summaries
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, link, month_of, page_keys,
-                                 product_list, rejoin, search_worthy, unknown_vendors)
+                                 page_slug, product_list, rejoin, search_worthy, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
+PAGE_DAYS = 90  # an Incident page lives this long from first seen; edge/page.mjs answers 410 after it
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
@@ -106,6 +108,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)
+    write_pages(store, incidents, now, stamp)
     picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
@@ -148,3 +151,23 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
     if pending:
         batches.append(pending)
+
+
+def write_pages(store, incidents, now, stamp):
+    """One Incident page document per slug (pages/<slug>.json, the Board's fields) for every Incident with a Summary first
+    seen in the last PAGE_DAYS; the function decides on-Board, 404 and 410 from it. A page is rewritten only when its
+    fields changed: page_hashes.json keeps {slug: [hash, changed]}, so a cycle reads one document, not one per page."""
+    since = (now - timedelta(days=PAGE_DAYS)).strftime(STAMP)
+    known = store.read("page_hashes.json") or {}
+    pages = {}
+    for incident in incidents:
+        if not incident.get("summary") or incident["first_seen"] < since:
+            continue
+        slug, view = page_slug(incident["id"]), board_view(incident)
+        digest = hashlib.sha256(json.dumps(view, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+        pages[slug] = known.get(slug)
+        if (pages[slug] or [None])[0] != digest:
+            pages[slug] = [digest, stamp]
+            store.write(f"pages/{slug}.json", view)
+    if pages != known:
+        store.write("page_hashes.json", pages)

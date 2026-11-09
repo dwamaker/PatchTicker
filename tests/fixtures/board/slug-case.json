@@ -1,0 +1,11 @@
+{
+  "note": "slug (edge/feed.mjs) and page_slug (collector/incidents.py) must agree on every case: the collector names each Incident page document by it, the function finds it by it.",
+  "cases": [
+    {"id": "CVE-2026-123158", "slug": "CVE-2026-123158"},
+    {"id": "cve-2026-1234", "slug": "CVE-2026-1234"},
+    {"id": "https://news.ycombinator.com/item?id=50378228", "slug": "hn-50378228"},
+    {"id": "https://news.ycombinator.com/item?id=1&x=2", "slug": "u-25db65fd73ef"},
+    {"id": "https://www.bleepingcomputer.com/news/security/nikke/", "slug": "u-b1fac2768227"},
+    {"id": "https://seclists.org/oss-sec/2026/q4/563", "slug": "u-33119310b79d"}
+  ]
+}

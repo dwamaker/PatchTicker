@@ -9,6 +9,7 @@ An Incident's "published" is the earliest post time among the groups that could 
 visitor sees when the news first broke, not when a cycle noticed it ("first_seen").
 """
 
+import hashlib
 import json
 import re
 from datetime import datetime, timezone
@@ -84,6 +85,20 @@ def search_worthy(incident):
     """Offered to search engines and the RSS feed (Incident page, CONTEXT.md): on the Board with a Summary, and at the
     위험 level or above, exploited, or without a CVE. A port of searchWorthy in web/board.mjs."""
     return bool(incident.get("summary")) and on_board(incident) and (risk_level(incident) != "notice" or not incident["cves"])
+
+
+HN_ITEM = re.compile(r"https://news\.ycombinator\.com/item\?id=(\d+)", re.ASCII)  # \d as in JavaScript
+
+
+def page_slug(incident_id):
+    """A port of slug in edge/feed.mjs (tests/fixtures/board/slug-case.json keeps the two in step): a CVE ID as is, an
+    HN story as hn-<item>, any other URL ID as u-<12 hex of SHA-256>. It never changes, as the Incident's ID never does."""
+    if re.fullmatch(r"CVE-\d{4}-\d{4,}", incident_id, re.IGNORECASE | re.ASCII):
+        return incident_id.upper()
+    hn_item = HN_ITEM.fullmatch(incident_id)
+    if hn_item:
+        return f"hn-{hn_item[1]}"
+    return "u-" + hashlib.sha256(incident_id.encode("utf-8")).hexdigest()[:12]
 
 
 def products_of(incident, lang):
