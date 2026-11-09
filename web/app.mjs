@@ -1,7 +1,10 @@
 import { WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, viewFromStorage } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
-const DATA_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'data/' : 'https://patchticker-data.dwamaker.com/';
+// shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
+// drop that branch once the redirect is on.
+const DATA_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'data/'
+  : location.hostname.endsWith('.dwamaker.com') ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/';
 const SAVED = 'vr-filter';
 const SAVED_LANG = 'vr-lang';
 const SAVED_VIEW = 'vr-view';

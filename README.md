@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://patchticker.dwamaker.com"><img src="docs/assets/logo.svg" width="88" alt="Patch Ticker logo"></a>
+  <a href="https://patchticker.com"><img src="docs/assets/logo.svg" width="88" alt="Patch Ticker logo"></a>
 </p>
 
 <h1 align="center">Patch Ticker</h1>
@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://patchticker.dwamaker.com"><img src="https://img.shields.io/badge/live-patchticker.dwamaker.com-1a5fb4?style=flat-square" alt="Live: patchticker.dwamaker.com"></a>
+  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="Live: patchticker.com"></a>
   <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="Updates every 10 minutes">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="License: MIT"></a>
   <a href="README.ko.md"><img src="https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-444?style=flat-square" alt="README in Korean"></a>
 </p>
 
 <p align="center">
-  <a href="https://patchticker.dwamaker.com">
+  <a href="https://patchticker.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-en-dark.png">
       <img src="docs/assets/screenshot-en-light.png" width="860" alt="The Patch Ticker board: Highlights on top, each Incident with its risk level, CVSS score and products">

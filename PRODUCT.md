@@ -55,7 +55,7 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 - No login, no analytics, no cookies, no third-party trackers.
 - Light and dark themes: follows the system setting with a remembered toggle; both meet WCAG 2.2 AA
   (user asked for dark mode, 2026-11-08).
-- Public name: Patch Ticker, one English name in both languages (owner, late 2026-11-09; it replaced 패치레이더 / PatchRadar, because patchradar.com is a game patch-notes site and "SyncNet Patch Radar" is a security-alert WordPress plugin). Live at `patchticker.dwamaker.com`, data at `patchticker-data.dwamaker.com` (the owner's domain, on Cloudflare); an own domain may follow before launch (patchticker.com/.io/.kr had no DNS on 11-09; registration not checked).
+- Public name: Patch Ticker, one English name in both languages (owner, late 2026-11-09; it replaced 패치레이더 / PatchRadar, because patchradar.com is a game patch-notes site and "SyncNet Patch Radar" is a security-alert WordPress plugin). Live at `patchticker.com` (the owner bought it on 11-09, on Cloudflare), data at `data.patchticker.com`; `www.patchticker.com` and the first address `patchticker.dwamaker.com` redirect there.
 
 ## Brand Commitments
 

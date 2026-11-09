@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://patchticker.dwamaker.com"><img src="docs/assets/logo.svg" width="88" alt="Patch Ticker 로고"></a>
+  <a href="https://patchticker.com"><img src="docs/assets/logo.svg" width="88" alt="Patch Ticker 로고"></a>
 </p>
 
 <h1 align="center">Patch Ticker</h1>
@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://patchticker.dwamaker.com"><img src="https://img.shields.io/badge/live-patchticker.dwamaker.com-1a5fb4?style=flat-square" alt="사이트: patchticker.dwamaker.com"></a>
+  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="사이트: patchticker.com"></a>
   <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="10분마다 갱신">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="라이선스: MIT"></a>
   <a href="README.md"><img src="https://img.shields.io/badge/README-English-444?style=flat-square" alt="영어 README"></a>
 </p>
 
 <p align="center">
-  <a href="https://patchticker.dwamaker.com">
+  <a href="https://patchticker.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-ko-dark.png">
       <img src="docs/assets/screenshot-ko-light.png" width="860" alt="Patch Ticker 게시판: 위에 주요 사건, 사건마다 위험도와 CVSS 점수, 제품 표시">
