@@ -446,6 +446,8 @@ Restrained outlined buttons for theme, language and copying a command.
   and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
+- **Vendor fold (trial, 11-09):** five or more list rows of one vendor on one publish day show as one Recessed Panel bar
+  ("IBM 보안 공지 25건 · 최고 9.9", weight 700, chevron) that opens in place; never with a search or a picked Product.
 - **Board continuity:** a redraw the visitor asked for (필터 적용, a chip's ×, clear buttons, a picked Product, 정렬,
   주요 사건 더 보기 / 접기, 더 보기, 모두 펼치기 / 접기) keeps each row's identity through a View Transition: rows that stay
   glide to their new place (260ms ease-out), new rows fade in, gone ones leave faster (140ms). Only rows on or within

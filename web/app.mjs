@@ -511,7 +511,8 @@ async function loadOlder() {
   }
   loadingOlder = false;
   render();
-  if (document.activeElement === document.body) ($('empty').querySelector('button') || $('search')).focus();
+  // The button that had focus is gone: the next control in the same place takes it, and the page does not move.
+  if (document.activeElement === document.body) ($('more').querySelector('button') || $('empty').querySelector('button'))?.focus({ preventScroll: true });
 }
 
 // Under the list: more rows of what is loaded, then older months.
@@ -520,7 +521,11 @@ function moreButtons(rest) {
   const buttons = [];
   if (rest > 0) {
     const more = Object.assign(el('button', 'btn', t.showMore(rest)), { type: 'button' });
-    more.addEventListener('click', () => boardTransition(() => { shown += PAGE; render(); }));
+    more.addEventListener('click', () => boardTransition(() => {
+      shown += PAGE;
+      render();
+      $('more').querySelector('button')?.focus({ preventScroll: true }); // render() replaced it; keep the place
+    }));
     buttons.push(more);
   }
   if (olderMonths.length) {
@@ -668,7 +673,7 @@ function clearButton(text, change, counted = false) {
   button.addEventListener('click', () => {
     if ('query' in change) $('search').value = change.query;
     update(change);
-    $(change.picks ? 'product-pick' : 'search').focus();
+    $(change.picks ? 'product-pick' : 'search').focus({ preventScroll: true }); // the rows come back where the visitor is
   });
   return button;
 }
@@ -917,7 +922,7 @@ $('expand-all').addEventListener('click', () => boardTransition(() => {
   const closing = allOpen();
   for (const id of visibleIds) closing ? open.delete(id) : open.add(id);
   render();
-  $('expand-all').focus();
+  $('expand-all').focus({ preventScroll: true });
 }));
 $('filter-btn').addEventListener('click', () => {
   const form = $('filters');
