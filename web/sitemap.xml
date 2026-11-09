@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://patchticker.com/</loc>
-    <changefreq>hourly</changefreq>
-  </url>
-</urlset>
+<!-- The home page, then the Incident sitemaps: incidents-<n>.xml lists the search-worthy Incident pages first seen
+     n months ago (within the last 90 days), rendered by the Pages Function (edge/sitemap.mjs). -->
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://patchticker.com/sitemap-home.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-0.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-1.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-2.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-3.xml</loc></sitemap>
+</sitemapindex>

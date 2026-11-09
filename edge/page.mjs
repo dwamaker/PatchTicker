@@ -7,7 +7,7 @@ import { cvssRating, easyAction, easyLine, exploitReason, isExploited, isShellCo
 import { SITE, escapeXml as esc, titleOf } from './feed.mjs';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const SLUG = /^(CVE-\d{4}-\d{4,}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
+export const SLUG = /^(CVE-\d{4}-\d{4,}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
 const ISSUES = 'https://github.com/dwamaker/PatchTicker/issues/new';
 const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
 const NVD_EN = 'This product uses data from the NVD API but is not endorsed or certified by the NVD.';
