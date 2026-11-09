@@ -23,3 +23,7 @@
   container rebuilt all 9. Not tried: a restore into R2 itself.
 - Pitfall: an "is a cycle running" check that greps `/proc/*/cmdline` for `collector` matches its own shell, so it
   never reads idle. Recreating the container then cut a running cycle; nothing was lost (no batch left unrecorded).
+
+**2026-11-09 night, later:** cycles now start on the 10-minute marks; the collector reads at most 500 cvelist records
+a cycle (oldest first) and fetches the records of cited CVEs it never read; a 7-day backfill was started on Oracle.
+Still open and put last by the owner: the .104 standby with failover, and each box's own Anthropic key.

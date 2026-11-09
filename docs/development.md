@@ -71,6 +71,14 @@ npx wrangler@4 pages deploy <copy of web without data/> --project-name patchrada
 files for AI systems. A Cloudflare rate limiting rule on patchticker.com and data.patchticker.com blocks one IP for
 10 s after 40 requests in 10 s.
 
+## Redeploy the collector (Oracle VM)
+
+Pack `Dockerfile .dockerignore compose.yaml requirements.txt collector web/vendors.json`, copy it to
+`~/vuln-radar` on the box, `sudo docker build -t vuln-radar-collector .`, then recreate the container only while no
+cycle runs (`sudo docker compose up -d --force-recreate`). The idle check: inside the container, list
+`/proc/[0-9]*/cmdline` and count lines that start with `python -m collector`; a plain grep for "collector" matches the
+checking shell itself. Cycles start on the 10-minute marks, so a recreate keeps the schedule.
+
 ## Tests
 
 ```sh
