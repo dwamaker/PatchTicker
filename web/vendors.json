@@ -19,5 +19,7 @@
   "hpe": "HPE",
   "redhat": "Red Hat",
   "red_hat": "Red Hat",
-  "mozilla": "Mozilla"
+  "mozilla": "Mozilla",
+  "apache": "Apache",
+  "apache_software_foundation": "Apache"
 }

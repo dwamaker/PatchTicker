@@ -58,8 +58,13 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         for cve in incident["cves"]:
             if cve in enriched:
                 enrich(incident, enriched[cve])
-        if exploited & set(incident["cves"]):
+        listed = exploited.keys() & set(incident["cves"])
+        if listed:
             incident["kev"] = True
+            # The earliest listing day of its CVEs: the panel's "CISA KEV 등재 · 2026-11-06" (critique 14).
+            days = sorted(exploited[cve] for cve in listed if exploited[cve])
+            if days:
+                incident["kev_date"] = days[0]
         for c in citations:
             cite(incident, c)
         if json.dumps(incident) != before:

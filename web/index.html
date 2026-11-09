@@ -167,12 +167,15 @@
       .bar-head { display: contents; }
       /* two lines at any phone width: 주요 사건 with 모두 펼치기, then 필터 and 정렬 (at 320px 모두 펼치기 stood alone) */
       .bar #pinned-head { flex: 1 1 auto; }
-      .bar-tools { flex: 1 1 100%; margin-left: 0; }
+      .bar-tools { flex: 1 1 100%; flex-wrap: wrap; margin-left: 0; } /* 정렬 wraps under 필터 rather than pushing the page sideways (English, 150% text, 320px) */
       .sort > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* the select itself shows the order; screen readers keep the label */
       #filter { padding-top: 0.875rem; }
     }
     .list-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: var(--tap); margin: 1.75rem 0 0.625rem; } /* as tall with or without 묶음 풀기, so rows do not shift when it appears */
     .list-head h2 { margin: 0; }
+    .list-head { flex-wrap: wrap; gap: 0.5rem 0.75rem; } /* 0.75rem keeps 최신순 · 모두 펼치기 · 묶음 풀기 on one line at 320px (critique 14 layout) */
+    .list-head #expand-all { margin-right: auto; } /* no Highlights: 모두 펼치기 stands by 최신순, 묶음 풀기 stays right (critique 14) */
+    .list-head #fold-toggle { margin-left: auto; } /* wrapped under a long heading on a phone (English, 150% text) it still keeps the right edge */
     .list-head:has(#all-head[hidden]) { display: none; }
     .sort { display: inline-flex; align-items: center; gap: 0.5rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
     .sort select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-weight: 500; }
@@ -379,7 +382,7 @@
     .loud.unrated .word { border-style: dashed; } /* no score yet: the sign is dashed like the empty score ring (critique 13) */
     .nw { white-space: nowrap; } /* a CVE ID kept whole */
     .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
-    .kev { color: var(--high); font-weight: 700; }
+    .kev { color: var(--high); font-weight: 700; } /* also 공격 코드 공개됨 in the panel: red text, no sign (critique 14) */
     .c-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 0.375rem; min-width: 0; }
     .ln-t { min-width: 0; overflow-wrap: anywhere; } /* a long Product name wraps inside its badge, never cut (critique 12) */
     .ln { display: inline-flex; align-items: center; max-width: 100%; min-height: 1.625rem; padding: 0.1875rem 0.6875rem; border-radius: var(--r-pill); background: var(--line); color: var(--line-ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 600; line-height: 1.2; letter-spacing: 0; overflow-wrap: anywhere; }
@@ -496,13 +499,14 @@
     .cve-lines strong { margin-right: 0.5rem; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .models ul.cve-lines { columns: auto; margin-top: 0.25rem; } /* sentences, not names: one column */
     .details .cve-line span { white-space: nowrap; }
-    .details .cve-line.cve-count { margin-block: 0.625rem; } /* a group's count, between the action and the source link */
     .details .cve-fold { margin-block: 0.375rem; }
     .cve-fold ul { font-variant-numeric: tabular-nums; }
     .details .lead, .details .action { font-weight: 600; }
     .details.easy .action { font-size: calc(1.0625rem * var(--ts)); font-weight: 800; color: var(--ink); } /* Easy's one action, in its loud voice (PRODUCT.md; critique 12) */
     .details .step { font-weight: 500; } /* a second way or a follow-up: one bold action line per panel (DESIGN.md) */
-    .details .kev { color: var(--high); }
+    .details .why-line { margin-top: 0; color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; } /* why it is 악용 발생 (critique 14) */
+    .details > :first-child { margin-top: 0; } /* every panel starts at one height, whatever line leads (요약 준비 중, a red line) */
+    .details :is(.kev, .why-line) + .when { margin-top: 0.5rem; } /* Easy: the red line and its reason are one group, 이럴 때만 해당돼요 the next */
     .details .cve-line { margin-top: 0; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
     .details .caution { display: flex; align-items: flex-start; gap: 0.375rem; color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
     .more { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 1rem; }
@@ -537,7 +541,7 @@
     .mentions { list-style: none; padding: 0.75rem 0 0; margin: 0.75rem 0 0; border-top: 1px solid var(--rule); font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); max-width: 46rem; }
     .mentions li { overflow-wrap: anywhere; padding: 0.125rem 0; }
     .mentions:empty { display: none; } /* a group's links all sit on its CVE lines */
-    @media (pointer: coarse) { .mentions li a, .details .lead a { display: inline-block; padding: 0.625rem 0; } } /* finger-sized links on touch screens */
+    @media (pointer: coarse) { .mentions li a, .details .lead a, .details .why-line a { display: inline-block; padding: 0.625rem 0; } } /* finger-sized links on touch screens */
     .command { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .command code { display: inline-flex; align-items: center; min-height: var(--tap); box-sizing: border-box; font: calc(var(--fs-small) * var(--ts))/1.5 var(--mono); background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 6px; padding: 0.375rem 0.625rem; overflow-wrap: break-word; transition: background-color 700ms ease-out, border-color 700ms ease-out; }
     /* copied: the command lights up like a stamped ticket, then fades back */

@@ -10,7 +10,7 @@ export function filterFromQuery(search) {
   const params = new URLSearchParams(search);
   const day = (key) => (DAY.test(params.get(key) || '') ? params.get(key) : '');
   return {
-    picks: params.getAll('p'), query: params.get('q') || '',
+    picks: [...new Set(params.getAll('p').map(ownId))], query: params.get('q') || '',
     risk: params.getAll('r').filter((r) => RISKS.includes(r)), kev: params.get('k') === '1',
     from: day('f'), to: day('t'), cvssMin: [4, 7, 9].includes(Number(params.get('c'))) ? Number(params.get('c')) : 0,
     cve: ['yes', 'no'].includes(params.get('cv')) ? params.get('cv') : '',
@@ -53,13 +53,31 @@ function shownName(s, lang, k) {
   return local && product && !HANGUL.test(local) && local !== product ? product : local || product;
 }
 
+// A Summary-named Product's identity (critique 14: "GemBooking" and "GemBooking WordPress plugin" were two Products and
+// picking one hid the other): letter case, brackets, company words ("Technology", "Co., Ltd."), a generic suffix
+// ("WordPress plugin", "플러그인", "theme") and a known vendor in front ("IBM SevOne …" is "SevOne …") drop out. Names are
+// never translated (the Summary prompt), so there is no language step. Also collector/incidents.py (product_key).
+const SUFFIX = /\s+(?:(?:for\s+)?wordpress\s+)?(?:plugin|theme|플러그인|테마)(?:\s+for\s+wordpress)?$/u;
+const COMPANY = /(^|\s)(?:technology|technologies|inc|corp|corporation|co|ltd|limited|gmbh|llc)\.?(?=\s|$)/gu;
+const LED_BY = Object.values(VENDORS).map((v) => `${v.toLowerCase()} `);
+export function productKey(name) {
+  const plain = name.toLowerCase().replace(/[(),]/g, ' ').replace(COMPANY, '$1').replace(/\s+/g, ' ').trim();
+  const key = plain.replace(SUFFIX, '').trim() || plain;
+  const vendor = LED_BY.find((v) => key.startsWith(v) && key.length > v.length);
+  return vendor ? key.slice(vendor.length) : key;
+}
+const nameId = (name) => `name:${productKey(name)}`;
+// An id stored before critique 14 ("name:gembooking wordpress plugin" in products.json, a saved or shared pick) as the
+// Product's id now.
+const ownId = (id) => (id.startsWith('name:') ? nameId(id.slice(5)) : id);
+
 export function productsOf(i, lang = 'en') {
   const found = new Map((i.products || []).map((p) => [p.id, p]));
   (i.summary?.products || []).forEach((name, k) => {
     const shown = shownName(i.summary, lang, k);
     const same = [...found.values()].find((p) => name.toLowerCase().includes(p.name.toLowerCase()));
     if (same) found.set(same.id, { ...same, name: shown });
-    else found.set(`name:${name.toLowerCase()}`, { id: `name:${name.toLowerCase()}`, name: shown });
+    else found.set(nameId(name), { id: nameId(name), name: shown });
   });
   for (const os of i.summary?.platforms || []) {
     found.delete(`name:${os.toLowerCase()}`); // "Android" as a product and as a platform is one entry
@@ -91,7 +109,7 @@ export function mergeIncidents(current, fresh) {
 
 export function productList(incidents, now, lang = 'en', seen = []) {
   const since = new Date(now - 90 * DAY_MS).toISOString();
-  const found = new Map(seen.map((p) => [p.id, { id: p.id, name: p[lang] || p.en }]));
+  const found = new Map(seen.map((p) => [ownId(p.id), { id: ownId(p.id), name: p[lang] || p.en }]));
   for (const i of incidents) if (i.first_seen >= since) for (const p of productsOf(i, lang)) found.set(p.id, p);
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
@@ -135,7 +153,16 @@ export const viewFromStorage = (saved) => (saved === 'easy' ? 'easy' : 'normal')
 
 // Exploited: CISA lists it (KEV), or the Summary reports attacks its sources describe (user, 11-08: an attack campaign
 // with no score or KEV listing sat in grey 참고). Both read 악용 발생 and count the same everywhere.
-export const isExploited = (i) => Boolean(i.kev || i.summary?.exploited === true);
+// Owner, 11-09 (critique 14): only with the source that reports the attacks (exploited_source); Brotli wore 악용 발생 from
+// a write-up and PoC repos alone. Summaries from before then have no source and are re-made by the collector.
+const sourced = (s) => s?.exploited === true && typeof s.exploited_source === 'string' && Boolean(s.exploited_source);
+export const isExploited = (i) => Boolean(i.kev || sourced(i.summary));
+
+// Why a row is 악용 발생, for the panel: the KEV listing (with its day when known), else the source reporting attacks.
+export function exploitReason(i) {
+  if (i.kev) return { kind: 'kev', date: i.kev_date || '' };
+  return sourced(i.summary) ? { kind: 'source', url: i.summary.exploited_source } : null;
+}
 
 // The Easy view's Risk banner, set by rules: exploited (above) or the CVSS score.
 // The 9.0 cutoff is also in collector/summaries.py (is_candidate).
@@ -172,7 +199,28 @@ export const SEARCH_ALIASES = {
   윈도우: ['Windows'], 윈도: ['Windows'], 맥: ['macOS', 'Mac OS'], 맥북: ['macOS'], 리눅스: ['Linux'], 안드로이드: ['Android'],
   아이폰: ['iOS', 'iPhone'], 아이패드: ['iPadOS', 'iPad'], 공유기: ['router'], 라우터: ['router'], 워드프레스: ['WordPress'],
   크롬: ['Chrome'], 엣지: ['Edge'], 파이어폭스: ['Firefox'], 자바: ['Java'], 파이썬: ['Python'], 오픈ssh: ['OpenSSH'],
+  // critique 14: 아파치 and 깃허브 found nothing. Vendor and project names as their vendor keys and Product names write them.
+  아파치: ['Apache'], 깃허브: ['GitHub'], 깃랩: ['GitLab'], 도커: ['Docker'], 쿠버네티스: ['Kubernetes'], 엔진엑스: ['nginx'],
+  톰캣: ['Tomcat'], 노드: ['Node.js', 'nodejs'], 리액트: ['React'], 스프링: ['Spring'], 시스코: ['Cisco'], 포티넷: ['Fortinet'],
+  마이크로소프트: ['Microsoft'], 구글: ['Google'], 애플: ['Apple'],
 };
+// A typed word inside a longer word that names something else is no hit (critique 14: 자바 found 자바스크립트 in Korean
+// Summaries). Asked for by name, JavaScript is still found.
+const NOT_INSIDE = { 자바: /자바\s?스크립트/g, java: /java\s?script/g };
+// Keys a Product is known by, for matching a pick against variants of its name (critique 14). A CPE-style id gives its
+// vendor and product ("chengdu feiyuxing vw2100") and its product alone ("gemcode:gembooking" is the Summary's
+// "GemBooking"), unless that is a word every vendor uses ("firmware").
+const GENERIC = new Set(['firmware', 'router', 'server', 'app', 'application', 'camera', 'nas', 'web', 'cms', 'core']);
+function productKeys(id) {
+  if (id.startsWith('name:')) return [productKey(id.slice(5))];
+  if (id.startsWith('os:') || !id.includes(':')) return [];
+  const [vendor, product] = id.split(':').map((s) => s.replace(/_/g, ' '));
+  const alone = productKey(product);
+  return [productKey(`${vendor} ${product}`), ...(GENERIC.has(alone) ? [] : [alone])];
+}
+// Two CPE-style ids are one Product only when equal: two vendors' "Firmware" are not one.
+const sameProduct = (a, b) => a === b
+  || ((a.startsWith('name:') || b.startsWith('name:')) && productKeys(a).some((k) => productKeys(b).includes(k)));
 // A whole word: no letter or digit on either side ("windows" in "microsoft:windows_11", not "java" in "javascript").
 const hasWord = (text, word) => new RegExp(`(^|[^\\p{L}\\p{N}])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}])`, 'iu').test(text);
 // The search words that were also searched as English names, for the hint under the field ("‘맥’ … macOS").
@@ -187,8 +235,15 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   { risk = [], kev = false, from = '', to = '', cvssMin = 0, cve = '', has = [], sort = 'new' } = {}) {
   const picked = new Set(picks);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const variant = new Set(); // shown only through a variant of a picked name ("비슷한 이름 N건도 함께")
   const shown = incidents.filter((i) => {
-    if (picked.size && !productsOf(i).some((p) => picked.has(p.id))) return false;
+    if (picked.size) {
+      const own = productsOf(i);
+      if (!own.some((p) => picked.has(p.id))) {
+        if (!own.some((p) => picks.some((q) => sameProduct(q, p.id)))) return false;
+        variant.add(i);
+      }
+    }
     if (risk.length && !risk.includes(riskLevel(i))) return false;
     if (kev && !isExploited(i)) return false;
     const day = publishedAt(i).slice(0, 10); // UTC date; a visitor far from UTC may see a row one day off
@@ -199,13 +254,14 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
     // Mention titles carry the names people use ("sshole") that a Summary may not.
     const names = [...productsOf(i).flatMap((p) => [p.name, p.id]), ...(i.summary?.devices || [])].join('\n');
     const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, names, ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
-    return words.every((w) => text.includes(w) || (SEARCH_ALIASES[w] || []).some((x) => hasWord(names, x)));
+    const free = (w) => (NOT_INSIDE[w] ? text.replace(NOT_INSIDE[w], ' ') : text).includes(w);
+    return words.every((w) => free(w) || (SEARCH_ALIASES[w] || []).some((x) => hasWord(names, x)));
   });
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // A stable sort keeps newest first among equal scores.
   const highlights = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice').sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
-  return { highlights, list };
+  return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
 }
 
 // CVSS v3 qualitative rating, as a key the page words per language; null while NVD has not rated it.
@@ -234,6 +290,28 @@ export const easyLine = (text, level) => (level === 'highest' ? text : text.repl
 // The Easy headline ends in its danger; at the lowest Risk level that word is 문제/issue, not 위험/risk (user, 11-08).
 // The level comes from the rules, not the model, so the page decides the word and no Summary is re-made.
 export const easyTitle = (text, level) => (level === 'notice' ? text.replace(/위험(\s*)$/, '문제$1').replace(/\brisk(\s*)$/i, 'issue$1') : text);
+
+// The Easy headline names the product (critique 14: "서버 멈춤 위험" said whose server nowhere). names: the row's first
+// Product as shown (put in front when missing), then its other names (the Korean or English one). One word of a name
+// is enough ("Brotli" for Google Brotli, "SonicWall" for SonicWall SonicOS); words every plugin shares are not.
+const SHARED_WORDS = new Set(['wordpress', 'plugin', 'theme', 'the', 'for', 'and', 'of']);
+export function namedHeadline(title, names = []) {
+  const low = title.toLocaleLowerCase();
+  const words = names.flatMap((n) => n.toLocaleLowerCase().split(/\s+/)).filter((w) => w && !SHARED_WORDS.has(w));
+  return !names.length || words.some((w) => low.includes(w)) ? title : `${names[0]}: ${title}`;
+}
+
+// A part other programs build in (Brotli, Qt, an npm or PyPI package): its version is not on any screen the reader
+// sees, so the version help says to update the program or ask the host instead. The Summary says so (library, from
+// critique 14); older Summaries and Briefs go by the name: library, SDK, framework, package, module, or Perl's "::".
+// Device firmware is never one (IBM's "TS4500 tape library").
+const PART_NAME = /\b(librar(y|ies)|lib|sdk|framework|package|module)\b|::/i;
+export function isLibrary(i) {
+  const s = i.summary;
+  if (s?.devices?.length) return false;
+  if (s?.library === true) return true;
+  return [...(s?.products || []), ...(i.products || []).map((p) => p.name)].some((n) => PART_NAME.test(n));
+}
 
 // When the news first broke: the earliest source post time; Incidents stored before 11-08 only have first_seen.
 export const publishedAt = (i) => i.published || i.first_seen;
@@ -264,6 +342,9 @@ export const rowTags = (i, lang = 'en') => {
 // lists vendors it lacks in unknown_vendors.json; how to add one: docs/agents/vendors.md). A fold line still needs a name
 // for the rest: short codes in capitals (acme → ACME), else one capital (sonatype → Sonatype).
 export const vendorName = (v) => VENDORS[v] || (v.length <= 4 ? v.toUpperCase() : v[0].toUpperCase() + v.slice(1));
+// The vendor's own spelling, or '' when vendors.json lacks it: titles are never led by a guessed name
+// ("Apache_software_foundation Apache Axis2", critique 14).
+export const knownVendor = (v) => VENDORS[v] || '';
 // An NVD or CVE-record name without its known vendor gets it in front ("Storage Scale" → "IBM Storage Scale"; critique 13),
 // so a badge or fold line never names a product alone. Vendors not in the file are left as they are ("grav", not
 // "Getgrav grav"): guessed casing mangles brands (D-Link, ownCloud), so they wait in unknown_vendors.json instead.
@@ -271,6 +352,18 @@ const withVendor = (p) => {
   const vendor = VENDORS[p.id.split(':')[0]];
   return vendor && !p.name.toLowerCase().includes(vendor.toLowerCase()) ? `${vendor} ${p.name}` : p.name;
 };
+
+// A vendor fold's member names its vendor in the title (critique 14: "Langflow OSS …" sat in the IBM fold, unexplained):
+// the bare product name in the title becomes the vendor-led one, else the vendor-led name leads ("IBM Foo: …").
+export function vendorLedTitle(title, vendor, product = '') {
+  const low = title.toLowerCase();
+  if (!vendor || low.includes(vendor.toLowerCase())) return title;
+  const led = product.toLowerCase().startsWith(vendor.toLowerCase()) ? product : `${vendor} ${product}`.trim();
+  const bare = led.slice(vendor.length).trim().toLowerCase();
+  // the whole bare name, else its first word ("Db2" of "Db2 for Linux") when that is a name, not a short word
+  const at = [bare, bare.split(' ')[0]].filter((n) => n.length >= 3).map((n) => low.indexOf(n)).find((k) => k >= 0) ?? -1;
+  return at >= 0 ? `${title.slice(0, at)}${vendor} ${title.slice(at)}` : `${led}: ${title}`;
+}
 
 // Each name once, ignoring letter case (NVD gives "Qiskit SDK" and "Qiskit Sdk"): the first spelling stays.
 export const uniqueNames = (names) => {
@@ -318,10 +411,23 @@ export function relativeAge(iso, now) {
 // item once this many of its rows share a publish day; each row stays its own Incident inside. 0 turns the fold off.
 export const VENDOR_FOLD_MIN = 5;
 export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
+// Owner, critique 14 c.1: WordPress plugins and themes are about a quarter of the list, so they fold as one pseudo-vendor,
+// ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin.
+export const WORDPRESS = 'wordpress';
+const WP_PLUGIN = /(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme)s?\s+for\s+wordpress/i;
+export const isWordPressPlugin = (i) => {
+  const s = i.summary;
+  if (String(s?.products?.[0] ?? '').toLowerCase() === WORDPRESS) return false;
+  const words = [i.brief?.text, ...['en', 'ko'].flatMap((l) => ['title', 'summary', 'easy_title', 'easy'].map((k) => s?.[l]?.[k])), ...(i.products || []).map((p) => p.id)];
+  return WP_PLUGIN.test(words.filter(Boolean).join('\n'));
+};
+// Inside the WordPress fold the plugin words are said once, by the fold: "JWT Auth 워드프레스 플러그인" reads "JWT Auth".
+export const pluginName = (n) => n.replace(/\s+(?:(?:for\s+)?(?:wordpress|워드프레스)\s+)?(?:plugin|theme|플러그인|테마)(?:\s+for\s+wordpress)?$/iu, '');
+const foldKeyOf = (i) => (isWordPressPlugin(i) ? WORDPRESS : vendorOf(i));
 
 export function foldByVendor(rows, min = VENDOR_FOLD_MIN) {
   if (!min) return rows;
-  const key = (i) => (vendorOf(i) ? `${vendorOf(i)} ${publishedAt(i).slice(0, 10)}` : '');
+  const key = (i) => (foldKeyOf(i) ? `${foldKeyOf(i)} ${publishedAt(i).slice(0, 10)}` : '');
   const count = new Map();
   for (const i of rows) if (key(i)) count.set(key(i), (count.get(key(i)) || 0) + 1);
   const out = [];
@@ -333,7 +439,7 @@ export function foldByVendor(rows, min = VENDOR_FOLD_MIN) {
       continue;
     }
     if (!folds.has(k)) {
-      const fold = { fold: k, vendor: vendorOf(i), incidents: [] };
+      const fold = { fold: k, vendor: foldKeyOf(i), incidents: [] };
       folds.set(k, fold);
       out.push(fold); // at the place of its first row in the visitor's order
     }

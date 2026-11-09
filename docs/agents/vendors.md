@@ -16,3 +16,8 @@ front ("IBM Storage Scale") when the vendor is in `web/vendors.json`, the one li
 
 A name that already contains the spelling is shown as it is (`"IBM QRadar"` stays, never "IBM IBM QRadar").
 Vendors not in the file are never guessed: their names stay bare until someone adds them.
+
+A vendor in the file also leads a vendor fold member's title when the title lacks it ("IBM Langflow OSS …"), and in
+front of a Summary's product name it does not make another Product ("IBM SevOne …" is "SevOne …"; `productKey` in
+`web/board.mjs`, `product_key` in `collector/incidents.py`). The value is the vendor's prefix as products carry it:
+`apache_software_foundation` is `"Apache"` ("Apache Axis2"), not the foundation's full name.

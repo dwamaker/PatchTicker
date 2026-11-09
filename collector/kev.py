@@ -6,9 +6,9 @@ FEED_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulne
 
 
 def fetch(http_get):
-    """Return the set of CVE IDs in the catalog. One request per cycle.
+    """Return the catalog's CVE IDs, each with the day CISA added it ("2026-11-06", "" if absent). One request per cycle.
 
     shortcut: reads the whole catalog (~1.8 MB) every cycle so Incidents that arrive after their
     KEV listing are flagged too; send If-Modified-Since if the bandwidth starts to matter.
     """
-    return {v["cveID"].upper() for v in json.loads(http_get(FEED_URL))["vulnerabilities"]}
+    return {v["cveID"].upper(): v.get("dateAdded") or "" for v in json.loads(http_get(FEED_URL))["vulnerabilities"]}

@@ -44,6 +44,9 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
   Normal|Easy switch at the top; language toggle.
 - Risk banner set by rules: exploited (a CISA KEV listing, or a Summary whose sources report attacks; user, 2026-11-08)
   or CVSS 9.0+ is the top level, 7.0+ the next, else notice. The model only reports what sources say, never the level.
+  Evidence required (owner, 2026-11-09): a Summary counts as exploited only with the input source that states attacks in
+  the wild (`exploited_source`, checked in code), and the panel shows that reason (KEV and its date, or the reporting
+  source). Public exploit or PoC code alone is not exploited: it shows as "공격 코드 공개됨" in red text, with no sign.
 - The Easy view shows the action only: no question to answer and no tick to keep (the to-do list was removed,
   user, 2026-11-08, after critique 6). The Board stores nothing about which Incidents a visitor uses or handled.
 - Judgments are the AI's first (Summary text, Incident or not, reported attacks); corrections come from readers through

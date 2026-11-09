@@ -58,6 +58,9 @@ SSHOLE_SUMMARY = {
     "stopgap_file": "",
     "titles_ko": [],
     "exploited": False,
+    "exploited_source": "",
+    "poc_public": False,
+    "library": False,
 }
 
 
@@ -189,7 +192,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -233,6 +236,9 @@ class InstantSummaryTest(unittest.TestCase):
             "a missing Easy field": {k: v for k, v in SSHOLE_SUMMARY.items() if k != "command"},
             "a field of the wrong type": SSHOLE_SUMMARY | {"products": "OpenSSH"},
             "an exploited flag that is not true or false": SSHOLE_SUMMARY | {"exploited": "yes"},
+            "a public-exploit flag that is not true or false": SSHOLE_SUMMARY | {"poc_public": "yes"},
+            "a library flag that is not true or false": SSHOLE_SUMMARY | {"library": 1},
+            "an exploited source that is not text": SSHOLE_SUMMARY | {"exploited": True, "exploited_source": ["https://sshhole.com"]},
         }
         for case, reply in bad.items():
             with self.subTest(case):
@@ -292,12 +298,51 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertEqual((summary["ko"]["command_for"], summary["en"]["command_for"]), ("Alpine 리눅스라면", "On Alpine Linux"))
         self.assertEqual(summary["stopgap_file"], "/etc/ssh/sshd_config.d/00-no-passwords.conf")
 
-    def test_a_summary_says_whether_the_sources_report_attacks_and_old_replies_say_no(self):
-        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"exploited": True}))
-        self.assertIs(board(self.store)[HN_STORY]["summary"]["exploited"], True)
+    def test_reported_attacks_need_the_input_url_that_reports_them_and_old_replies_say_no(self):
+        # Owner, 11-09: Brotli was 악용 발생 from a write-up, an HN post and PoC repos; no source reported attacks.
+        cases = {"an input URL": ({"exploited": True, "exploited_source": "https://sshhole.com"}, (True, "https://sshhole.com")),
+                 "no source": ({"exploited": True, "exploited_source": ""}, (False, "")),
+                 "a URL not in the input": ({"exploited": True, "exploited_source": "https://example.com/attacks"}, (False, "")),
+                 "a reply from before": ({k: v for k, v in SSHOLE_SUMMARY.items() if k not in ("exploited", "exploited_source")}, (False, "")),
+                 "a source without the flag": ({"exploited_source": "https://sshhole.com"}, (False, ""))}
+        for case, (reply, want) in cases.items():
+            with self.subTest(case):
+                self.setUp()
+                base = {} if case == "a reply from before" else SSHOLE_SUMMARY
+                self.merged_sshole(FakeClaude(base | reply))
+                summary = board(self.store)[HN_STORY]["summary"]
+                self.assertEqual((summary["exploited"], summary["exploited_source"]), want)
+
+    def test_public_exploit_code_is_its_own_flag_and_never_makes_an_incident_exploited(self):
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"poc_public": True}))
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["poc_public"], summary["exploited"]), (True, False))
         self.setUp()
-        self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k != "exploited"}))
-        self.assertIs(board(self.store)[HN_STORY]["summary"]["exploited"], False)
+        self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k not in ("poc_public", "library")}))
+        summary = board(self.store)[HN_STORY]["summary"]
+        self.assertEqual((summary["poc_public"], summary["library"]), (False, False))  # replies from before say neither
+
+    def test_the_instructions_ask_for_the_attack_source_and_name_the_product_in_easy_headlines(self):
+        self.assertIn("exploited_source", summaries.INSTRUCTIONS)
+        self.assertIn("in the wild", summaries.INSTRUCTIONS)
+        self.assertIn("poc_public", summaries.INSTRUCTIONS)
+        self.assertIn("never makes it exploited", summaries.INSTRUCTIONS)
+        # Critique 14: Easy headlines dropped the product ("서버 멈춤 위험").
+        for text in (summaries.INSTRUCTIONS, summaries.TITLE_INSTRUCTIONS):
+            self.assertIn("must name the product", text)
+
+    def test_the_instructions_never_translate_product_names(self):
+        # Critique 14: "IBM SevOne 네트워크 성능 관리" on the Korean page split one Product in two.
+        self.assertIn("Never translate a product name", summaries.INSTRUCTIONS)
+        self.assertIn("IBM SevOne Network Performance Management", summaries.INSTRUCTIONS)
+
+    def test_an_exploited_summary_without_its_source_is_made_again_within_the_limit(self):
+        incident = {"id": "CVE-2026-111497", "cves": ["CVE-2026-111497"], "kev": True, "mentions": [],
+                    "summary": {"exploited": True}, "summary_basis": {"cves": ["CVE-2026-111497"], "kev": True, "advisories": [], "n": 1}}
+        self.assertTrue(summaries.needs_summary(incident))
+        self.assertFalse(summaries.needs_summary(incident | {"summary": {"exploited": True, "exploited_source": "https://x.example/"}}))
+        self.assertFalse(summaries.needs_summary(incident | {"summary": {"exploited": False, "exploited_source": ""}}))
+        self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
 
     def test_the_easy_stopgap_carries_the_step_that_makes_it_work(self):
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"stopgap_then": "바꾼 뒤 sshd를 다시 시작하세요."},

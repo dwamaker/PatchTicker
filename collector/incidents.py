@@ -27,7 +27,7 @@ URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 
 # What the Board page reads. Linking keys (urls, cites) and Summary bookkeeping stay in the collector's files:
 # at about 650 Incidents a day they were over half of each Incident's bytes.
-PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "products", "summary", "cve_texts",
+PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cvss", "kev", "kev_date", "products", "summary", "cve_texts",
                "cve_links", "quick_title")
 
 
@@ -59,7 +59,7 @@ def products_of(incident, lang):
     for k, name in enumerate(summary.get("products") or []):
         shown = (local[k] if k < len(local) else "") or name
         same = next((p for p in found.values() if p["name"].lower() in name.lower()), None)
-        key = same["id"] if same else f"name:{name.lower()}"
+        key = same["id"] if same else f"name:{product_key(name)}"
         found[key] = {**(same or {"id": key}), "name": shown}
     for os_name in summary.get("platforms") or []:
         found.pop(f"name:{os_name.lower()}", None)  # "Android" as a product and as a platform is one entry
@@ -81,6 +81,20 @@ def product_list(incidents, since):
 # Vendor spellings, shared with the page (web/board.mjs prefixes names that lack their vendor). How to add one:
 # docs/agents/vendors.md.
 VENDORS = json.loads((Path(__file__).parent.parent / "web" / "vendors.json").read_text(encoding="utf-8"))
+
+
+SUFFIX = re.compile(r"\s+(?:(?:for\s+)?wordpress\s+)?(?:plugin|theme|플러그인|테마)(?:\s+for\s+wordpress)?$")
+COMPANY = re.compile(r"(^|\s)(?:technology|technologies|inc|corp|corporation|co|ltd|limited|gmbh|llc)\.?(?=\s|$)")
+LED_BY = [f"{v.lower()} " for v in VENDORS.values()]
+
+
+def product_key(name):
+    """A port of productKey in web/board.mjs: one id however a Summary writes a Product's name (critique 14), without
+    letter case, brackets, company words, a generic suffix ("WordPress plugin", "플러그인") or a known vendor in front."""
+    plain = " ".join(COMPANY.sub(r"\1", re.sub(r"[(),]", " ", name.lower())).split())
+    key = SUFFIX.sub("", plain).strip() or plain
+    vendor = next((v for v in LED_BY if key.startswith(v) and len(key) > len(v)), None)
+    return key[len(vendor):] if vendor else key
 
 
 def unknown_vendors(incidents, since):

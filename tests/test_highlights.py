@@ -31,6 +31,7 @@ class KevTest(unittest.TestCase):
 
         incidents = self.incidents()
         self.assertIs(incidents["CVE-2026-19868"]["kev"], True)
+        self.assertEqual(incidents["CVE-2026-19868"]["kev_date"], "2026-11-06")  # the panel's "CISA KEV 등재 · 2026-11-06"
         self.assertNotIn("kev", incidents["CVE-2024-6387"])
         # KEV CVEs that are not on the Board do not become Incidents.
         self.assertEqual(sorted(incidents), ["CVE-2024-6387", "CVE-2026-19868"])

@@ -63,8 +63,8 @@ _Avoid_: simple mode, ELI5, beginner view
 
 **Risk banner** (위험 배너):
 The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model. Exploited
-(악용 발생) means a CISA KEV listing or a Summary whose sources report attacks (2026-11-08): the model reports what the
-sources say; the rule sets the level.
+(악용 발생) means a CISA KEV listing or a Summary whose sources report attacks (2026-11-08), naming the source that says
+so (2026-11-09; public exploit code alone is not exploited): the model reports what the sources say; the rule sets the level.
 _Avoid_: alert, badge, warning level
 
 **Mitigation** (대처법):
@@ -73,4 +73,7 @@ _Avoid_: fix, workaround, remediation
 
 **Product** (제품):
 A piece of software or firmware a visitor can pick in the filter, named without a version (OpenSSH, Dropbear, OpenWrt).
+One Product however a source writes its name (critique 14, 2026-11-09): letter case, a generic suffix ("WordPress
+plugin", "플러그인", "theme"), company words and a known vendor in front do not make another one ("GemBooking" and
+"GemBooking WordPress plugin" are one). Product names are never translated.
 _Avoid_: package, component, CPE (as a user-facing word)

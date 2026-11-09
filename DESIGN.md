@@ -296,7 +296,9 @@ column is not squeezed. Under 768 px the row restacks into risk, CVSS ring and d
 and title, then badges, and the details drop their indent (Highlights too, critique 12); the chevron rides with the
 date, so when the date wraps under the sign the chevron goes with it and never sits alone. Under 600 px the header keeps
 name, 기본|쉬운 설명 and the settings button on one line, also at 320 px (tighter name and switch under 360 px); larger
-text may still wrap it. The bar is two lines at any phone width: 주요 사건 with 모두 펼치기, then 필터 and 정렬. Per-CVE
+text may still wrap it. The bar is two lines at any phone width: 주요 사건 with 모두 펼치기, then 필터 and 정렬 (정렬
+wraps under 필터 when the two do not fit, as in English at 150% text on 320 px; with no Highlights 모두 펼치기 stands at
+the list head instead, critique 14). Per-CVE
 공지/분석 links get finger-sized padding on touch screens. Nothing scrolls sideways from 320 px up, also at 150% text. Hover tints apply only where a pointer
 can hover, so a tapped row does not stay tinted on a phone.
 
@@ -344,7 +346,7 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
   (on phones, under the product field next to search); the panel opens right under that row.
-- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line; one order
+- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line (모두 펼치기 at the list head when there are no Highlights); one order
   serves 주요 사건 and the list (주요 사건 is still chosen by importance), and the list heading names it.
 - **Panel:** opens under that line in Kiosk Panel with a Rail border: 게시일 시작/끝, 최소 CVSS, CVE, then chip rows
   for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS, then 정렬. Nothing changes until 필터 적용;
@@ -380,13 +382,15 @@ Restrained outlined buttons for theme, language and copying a command.
   below. Unrated shows an empty dashed ring with a dash in Hint Ink ("CVSS 점수 대기" as its tooltip and label). Shown in both views.
 
 ### Board row (signature)
-- **Style:** a full-width button, 72 px minimum, on a single hairline. Risk sign, CVE ID over
-  the Incident title, CVSS ring, line badges, published date and time, chevron.
+- **Style:** a full-width button, 72 px minimum, on a single hairline. Risk sign, the Incident title over
+  its CVE ID (owner, 11-09), CVSS ring, line badges, published date and time, chevron.
 - **Time:** when the news first broke (the earliest source post: CVE record, HN story, oss-security
   post), in the visitor's time zone as `YYYY-MM-DD` over `HH:MM`; how long ago sits in the tooltip.
   The list orders by it.
 - **Details:** both views end with the Lead link and every Mention, so links a CVE record gains later
-  appear in either view.
+  appear in either view. Every panel starts flush, whichever line leads. An 악용 발생 panel starts with its reason
+  (Easy: under the CVE IDs and the red "지금 실제 공격에 쓰이고 있어요!"), the KEV day kept whole on one line; in Easy the
+  red line and its reason are one group and "이럴 때만 해당돼요" starts the next, 0.5rem below (critique 14 polish).
 - **State:** Recessed Panel on hover; an opened row and its details take Kiosk Panel; `aria-expanded`
   turns the chevron.
 
@@ -469,7 +473,8 @@ Restrained outlined buttons for theme, language and copying a command.
   and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
-- **Vendor fold (trial, 11-09):** five or more list rows of one vendor on one publish day show as one ordinary row
+- **Vendor fold (trial, 11-09):** five or more list rows of one vendor (or of WordPress plugins and themes, one
+  pseudo-vendor since critique 14) on one publish day show as one ordinary row
   (gravest member's risk sign, highest CVSS ring, "IBM 보안 공지 25건 묶음" over the first product names, the vendor as
   its badge, the newest date) that opens its members in place; never with a search or a picked Product. A "묶음 풀기 /
   묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). No look of its own (user, 11-09).
@@ -493,6 +498,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Applied filter chips (11-09):** conditions from the filter panel sit right under the bar that holds 필터; picked
   Products stay under the picker.
 - **Bar (11-09):** 주요 사건 heading with 모두 펼치기 on the left, 필터 and 정렬 on the right; the filter panel opens under it.
+  With no Highlights, 모두 펼치기 moves to the list head beside 최신순 (critique 14).
 - **Reload keeps the place:** scroll position, 더 보기 counts, opened rows and folds, and loaded older months come back
   on a reload (sessionStorage `vr-place`).
 - **Board continuity:** a redraw the visitor asked for (필터 적용, a chip's ×, clear buttons, a picked Product, 정렬,
@@ -635,6 +641,46 @@ Restrained outlined buttons for theme, language and copying a command.
   - CVE IDs never break at their hyphens in Easy text and version help. "쉬운 설명 준비 중" is plain hint words in the
     line under the title, not a tag. The Lead link says what it is: "공식 공지 읽기 · github.com".
   - Per-CVE 공지/분석 links on touch screens are 44px tall, with no negative margins.
+- **Critique 14 (clarify, owner 11-09):**
+  - 악용 발생 needs evidence: a KEV listing, or a Summary's `exploited` with the input URL that reports the attacks
+    (`exploited_source`). The opened panel starts with the reason, Secondary Ink 14px/600: "CISA KEV 등재 · 2026-11-06"
+    (the day when the collector has it) or "공격 보고: <host>" linked. Easy's "지금 실제 공격에 쓰이고 있어요!" sits above it.
+  - Public exploit code alone (`poc_public`) gets no sign or tag: one red line (`--high`, 700) in the summary text,
+    "공격 코드 공개됨" in 기본 (after the summary), "공격 코드가 공개됐어요!" first in Easy; English "Exploit code is public".
+  - A row without a Summary reads the same in both views: its quick title (Easy: the quick Easy title) on the row, and
+    in the panel "요약 준비 중", then the source's line under a "원문(영어)" tag ("Source text"), then the links.
+  - Easy headlines name the product: a headline with no word of the row's first Product (in either language;
+    "WordPress", "plugin" do not count) is shown as "<Product>: <headline>". The collector prompt now says must.
+  - Libraries, SDKs, frameworks and packages (the Summary's `library`, else the name) get other version help: "앱에 들어
+    있는 부품이라 직접 확인이 어려워요. 쓰는 프로그램을 업데이트하거나, 서버 관리자·호스팅 업체에 물어보세요."
+  - The date cell's two spans have a space between them for screen readers; the polite announcer is emptied when the
+    language changes.
+- **Critique 14 (harden, owner 11-09):**
+  - One Product however its name is written (owner chose b.1): the collector and the page key Summary names by
+    `productKey` (letter case, brackets, company words, a "WordPress plugin" / "플러그인" / "theme" suffix and a
+    vendors.json vendor in front drop out), so "GemBooking" and "GemBooking WordPress plugin" are `name:gembooking`.
+    Old ids in a saved link or products.json read back as the new id. A pick also shows Incidents filed under a CPE id
+    of the same name ("gemcode:gembooking"; two vendors' "Firmware" never match), and says so under the chips in the
+    pick-note style: "비슷한 이름 N건도 함께 보여 줍니다." / "Also showing N under a similar name." The Summary prompt
+    never translates a product name (only names the vendor ships in Korean, such as "Windows 그림판").
+  - The count is said again for a new filter or search with the same number (0 → 0); a new sort still says only 정렬.
+  - Search aliases: 아파치, 깃허브, 깃랩, 도커, 쿠버네티스, 엔진엑스, 톰캣, 노드, 리액트, 스프링, 시스코, 포티넷, 마이크로소프트, 구글,
+    애플. 자바 and java never match inside 자바스크립트 / JavaScript.
+  - A vendor fold's member title is led by the fold's vendor when it lacks it ("IBM Langflow OSS 파일 접근 …"); only
+    vendors.json spellings lead (apache_software_foundation added as "Apache"), never a guessed name.
+  - With no Highlights, 모두 펼치기 moves beside 최신순 at the list head; it never stands alone on the 주요 사건 line.
+- **Critique 14 (layout, owner c.1, 11-09):**
+  - WordPress plugins and themes (about a quarter of the list: 67 of 265 rows on 11-09 data, 40 + 27 in two day folds)
+    fold like a vendor: the same row, ground, "묶음" tag, motion and announcements, five or more on one publish day, list
+    only. `foldByVendor` keys them as the pseudo-vendor `wordpress` (board.mjs `isWordPressPlugin`: "WordPress plugin",
+    "plugin for WordPress", "워드프레스 … 플러그인" in the brief, the Summary's title, summary or Easy lines, or a Product
+    id; WordPress itself never), so an IBM plugin sits in the WordPress fold only. Title "워드프레스 플러그인 40건 묶음" /
+    "WordPress plugins: 40, grouped" (as "IBM: 55 security notices, grouped"), badge "WordPress", the line under it names plugins without the repeated "plugin" words;
+    closing line "워드프레스 플러그인 묶음 접기". Risky and exploited plugins fold too, as in vendor folds.
+  - The list button is now "묶음 풀기 / 묶어 보기" ("Ungroup / Group again"; done: "묶음을 풀었습니다." / "다시 묶었습니다."):
+    a WordPress fold is no company.
+  - List head on phones: gap 0.75rem keeps 최신순 · 모두 펼치기 · 묶음 풀기 on one line at 320px in Korean (all three
+    sorts); a longer English heading wraps 묶음 풀기 under it at the right edge, never on top of 모두 펼치기.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts

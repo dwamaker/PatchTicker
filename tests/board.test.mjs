@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { aliasesUsed, vendorName, foldByVendor, isExploited, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { pluginName, aliasesUsed, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -409,7 +409,7 @@ test('a Product keeps its line colour, and Products spread over the lines', () =
   assert.equal(productLine('openbsd:openssh'), productLine('openbsd:openssh'));
   assert.ok(LINES.includes(productLine('')));
   // Critique 4: six of ten real Products shared one mint line. Ids as the Board keys them (CPE, CVE record, Summary name).
-  const ids = ['openbsd:openssh', 'sonicwall:sonicos', 'name:microsoft paint', 'name:cpython', 'apache:allura', 'apache:axis2',
+  const ids = ['openbsd:openssh', 'sonicwall:sonicos', 'name:paint', 'name:cpython', 'apache:allura', 'apache:axis2',
     'forgerock:access_management', 'infinitewp:infinitewp_client', 'name:hotta studio tower of fantasy', 'name:rrd::cgi::image',
     'name:perl sql::abstract', 'openwrt:openwrt', 'alpinelinux:alpine_linux', 'microsoft:windows', 'python:python',
     'redhat:keycloak', 'dropbear_ssh_project:dropbear_ssh', 'wordpress:wordpress', 'google:chrome', 'mozilla:firefox',
@@ -425,7 +425,7 @@ test('a Product\'s line follows its id, so Korean and English pages colour it th
   const paint = { products: [], summary: { products: ['Microsoft Paint'], platforms: ['Windows'],
     ko: { names: ['Windows 그림판'] }, en: { names: ['Microsoft Paint'] }, devices: ['TP-Link Archer'] } };
   const [ko, en] = ['ko', 'en'].map((lang) => lineKeys(paint, lang));
-  assert.equal(ko.get('Windows 그림판'), 'name:microsoft paint');
+  assert.equal(ko.get('Windows 그림판'), 'name:paint');
   assert.equal(ko.get('Windows 그림판'), en.get('Microsoft Paint'));
   assert.equal(ko.get('TP-Link Archer'), undefined); // devices have no id: the badge keys by the model name itself
 });
@@ -476,8 +476,21 @@ test('a row\'s age is minutes, hours or days ago, and nothing from 30 days on', 
   assert.deepEqual(relativeAge('2026-10-10T12:00:01Z', now), { value: -28, unit: 'day' });
   assert.equal(relativeAge('2026-10-09T12:00:00Z', now), null);
 });
+test('an attack a cited source reports counts as exploited; without the source it does not (critique 14)', () => {
+  const told = { exploited: true, exploited_source: 'https://example.com/campaign' };
+  const brotli = { ...incident('CVE-2026-7', '2026-11-06T00:00:00Z'), cvss: 7.5, summary: { exploited: true, poc_public: true } };
+  assert.equal(isExploited(brotli), false);
+  assert.equal(riskLevel(brotli), 'high'); // the level comes from CVSS as usual
+  assert.equal(riskLevel({ ...brotli, cvss: undefined }), 'notice');
+  assert.equal(isExploited({ ...brotli, summary: { exploited: false, exploited_source: 'https://example.com/x' } }), false);
+  assert.deepEqual(exploitReason({ ...brotli, summary: told }), { kind: 'source', url: told.exploited_source });
+  assert.deepEqual(exploitReason({ ...brotli, kev: true, kev_date: '2026-11-06', summary: told }), { kind: 'kev', date: '2026-11-06' });
+  assert.deepEqual(exploitReason({ ...brotli, kev: true }), { kind: 'kev', date: '' }); // listed before the date was kept
+  assert.equal(exploitReason(brotli), null);
+});
+
 test('an attack the sources report counts as exploited, as a KEV listing does', () => {
-  const campaign = { ...incident('CVE-2026-5', '2026-11-06T00:00:00Z'), cves: [], summary: { exploited: true, products: [], ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) } };
+  const campaign = { ...incident('CVE-2026-5', '2026-11-06T00:00:00Z'), cves: [], summary: { exploited: true, exploited_source: 'https://example.com/campaign', products: [], ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) } };
   const quiet = { ...incident('CVE-2026-6', '2026-11-06T00:00:00Z'), cvss: 5 };
   assert.equal(isExploited(campaign), true);
   assert.equal(isExploited({ ...quiet, kev: true }), true);
@@ -486,6 +499,30 @@ test('an attack the sources report counts as exploited, as a KEV listing does', 
   assert.deepEqual(filterBoard([campaign, quiet], [], '', Date.parse('2026-11-07T00:00:00Z'), { kev: true }).list.map((i) => i.id), [campaign.id]);
   // A CVE-less story with few HN points is no Highlight, unless its sources report attacks.
   assert.deepEqual(filterBoard([campaign], [], '', Date.parse('2026-11-07T00:00:00Z')).highlights.map((i) => i.id), [campaign.id]);
+});
+
+test('an Easy headline that leaves out the product gets the row\'s first Product in front (critique 14)', () => {
+  assert.equal(namedHeadline('서버 멈춤 위험', ['Brotli', 'Google Brotli']), 'Brotli: 서버 멈춤 위험');
+  assert.equal(namedHeadline('Brotli 압축기 서버 멈춤 위험', ['Google Brotli']), 'Brotli 압축기 서버 멈춤 위험'); // a word of the name is enough
+  assert.equal(namedHeadline('SonicWall VPN 장비 뚫림 위험', ['SonicWall SonicOS']), 'SonicWall VPN 장비 뚫림 위험');
+  assert.equal(namedHeadline('Windows 그림판 해킹 위험', ['Windows 그림판', 'Microsoft Paint']), 'Windows 그림판 해킹 위험');
+  assert.equal(namedHeadline('그림판 해킹 위험', ['Windows 그림판', 'Microsoft Paint']), '그림판 해킹 위험'); // its Korean name
+  assert.equal(namedHeadline('Paint can be hacked', ['Microsoft Paint']), 'Paint can be hacked');
+  // "WordPress" or "plugin" alone does not name the plugin.
+  assert.equal(namedHeadline('워드프레스 플러그인 해킹 위험', ['WP Duplicate WordPress plugin']), 'WP Duplicate WordPress plugin: 워드프레스 플러그인 해킹 위험');
+  assert.equal(namedHeadline('Home routers open to anyone', []), 'Home routers open to anyone'); // no Product: as it is
+});
+
+test('a library, SDK or framework gets the "ask your app or host" version help; apps and devices do not', () => {
+  const s = (products, extra = {}) => ({ summary: { products, devices: [], en: { title: '' }, ...extra } });
+  assert.equal(isLibrary(s(['Google Brotli'], { library: true })), true); // the Summary says so
+  assert.equal(isLibrary(s(['Qt Framework'])), true);
+  assert.equal(isLibrary(s(['IBM Qiskit SDK'])), true);
+  assert.equal(isLibrary(s(['Perl SQL::Abstract'])), true);
+  assert.equal(isLibrary(s(['RRD::CGI::Image'])), true);
+  assert.equal(isLibrary(s(['OpenSSH'])), false);
+  assert.equal(isLibrary(s(['Storage TS4500 Library'], { devices: ['IBM TS4500'] })), false); // a tape library is a device
+  assert.equal(isLibrary({ products: [{ id: 'zlib:zlib', name: 'zlib library' }] }), true); // no Summary yet: NVD's name
 });
 
 test('operating systems lead the tags of a row', () => {
@@ -531,6 +568,28 @@ test("one vendor's bulk push folds into one list item from five rows of a day, a
   assert.equal(items[2].id, 'CVE-2026-6'); // another day stays a row
   assert.equal(foldByVendor(rows, 6).length, rows.length); // below the minimum nothing folds
   assert.equal(foldByVendor(rows, 0).length, rows.length); // 0 turns the fold off
+});
+
+test('WordPress plugins and themes of a day fold like one vendor, ahead of their own vendor (owner, critique 14 c.1)', () => {
+  const at = (n) => ({ cves: [`CVE-2026-${n}`], first_seen: '2026-11-08T17:00:00Z', published: `2026-11-08T1${n % 10}:00:00Z`, mentions: [] });
+  const wp = [
+    { id: 'w1', ...at(1), brief: { text: 'The Turisbook Booking System WordPress plugin through 1.3.8 does not check' } },
+    { id: 'w2', ...at(2), brief: { text: 'The JetFormBuilder plugin for WordPress is vulnerable to XSS' } },
+    { id: 'w3', ...at(3), brief: { text: 'XSS in Welcart' }, summary: { ko: { title: 'Welcart XSS', summary: '워드프레스 쇼핑몰 플러그인 Welcart의 XSS입니다.' } } },
+    { id: 'w4', ...at(4), brief: { text: 'Stored XSS' }, summary: { en: { title: 'WordPress FV Flowplayer plugin stored XSS' } } },
+    // an IBM row that is a WordPress plugin joins the WordPress fold, not IBM's
+    { id: 'w5', ...at(5), brief: { text: 'An IBM theme for WordPress leaks data' }, products: [{ id: 'ibm:wp_theme', name: 'WP Theme' }] },
+  ];
+  const ibm = [6, 7, 8, 9].map((n) => ({ id: `i${n}`, ...at(n), brief: { text: 'IBM notice' }, products: [{ id: `ibm:p${n}`, name: `P${n}` }] }));
+  const core = { id: 'c', ...at(0), brief: { text: 'Brotli reaches stock WordPress through pingbacks' } }; // not a plugin
+  const items = foldByVendor([...wp, core, ...ibm], 5);
+  assert.equal(items[0].vendor, 'wordpress');
+  assert.deepEqual(items[0].incidents.map((i) => i.id), ['w1', 'w2', 'w3', 'w4', 'w5']);
+  assert.deepEqual(items.slice(1).map((i) => i.id), ['c', 'i6', 'i7', 'i8', 'i9']); // IBM keeps four: below five, no fold
+  const itself = { id: 'x', ...at(0), brief: { text: 'WordPress before 6.4 lets a plugin upload files' }, summary: { products: ['WordPress'] } };
+  assert.equal(foldByVendor([itself, ...wp.slice(0, 4)], 5).length, 5); // WordPress itself is not a plugin
+  assert.deepEqual(['JWT Auth 워드프레스 플러그인', 'Confection WordPress plugin', 'Hello theme for WordPress', 'WPForms'].map(pluginName),
+    ['JWT Auth', 'Confection', 'Hello', 'WPForms']); // the fold's line names plugins without repeating "plugin"
 });
 
 test('search understands the Korean words people use for systems and devices (윈도우, 공유기)', () => {
@@ -608,4 +667,79 @@ test('no line colour is a near twin of Clear Green (--ok) in either theme', () =
       assert.ok(gap >= 0.13, `${bg} and --ok ${green} are ${gap.toFixed(3)} apart`);
     }
   }
+});
+
+// Critique 14: "GemBooking" and "GemBooking WordPress plugin" were two Products (picking one hid the other), SevOne had a
+// Korean and an English name, Chengdu Feiyuxing came with and without "(Technology)".
+const fullSummary = (products) => ({ products, platforms: [], devices: [],
+  ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: '', conditions: [], mitigation: '' }])) });
+
+test('name variants of one Product share its id: generic suffixes, letter case, company words and a known vendor drop out', () => {
+  const ids = (name) => productsOf({ summary: { products: [name] } }).map((p) => p.id);
+  assert.deepEqual(ids('GemBooking WordPress plugin'), ['name:gembooking']);
+  assert.deepEqual(ids('GemBooking'), ['name:gembooking']);
+  assert.deepEqual(ids('gembooking plugin'), ['name:gembooking']);
+  assert.deepEqual(ids('Starter Theme'), ['name:starter']);
+  assert.deepEqual(ids('예약 플러그인'), ['name:예약']);
+  assert.deepEqual(ids('IBM SevOne Network Performance Management'), ids('SevOne Network Performance Management'));
+  assert.deepEqual(ids('Chengdu Feiyuxing (Technology) VW2100'), ids('Chengdu Feiyuxing VW2100'));
+  assert.deepEqual(ids('Theme'), ['name:theme']); // nothing would be left: the name stays
+});
+
+test('a picked Product also finds Incidents filed under a variant of its name, and counts them', () => {
+  const at = (id, extra) => ({ ...incident(id, '2026-11-07T00:00:00Z'), ...extra });
+  const plugin = at('CVE-2026-31', { summary: fullSummary(['GemBooking WordPress plugin']) });
+  const nvd = at('CVE-2026-32', { products: [{ id: 'gemcode:gembooking', name: 'Gembooking' }] });
+  const paint = at('CVE-2026-33', { summary: fullSummary(['Microsoft Paint']) });
+  const iptime = at('CVE-2026-34', { products: [{ id: 'iptime:firmware', name: 'Firmware' }] });
+  const tplink = at('CVE-2026-35', { products: [{ id: 'tp-link:firmware', name: 'Firmware' }] });
+  const all = [plugin, nvd, paint, iptime, tplink];
+  const pick = (...picks) => { const r = filterBoard(all, picks, '', NOW); return [r.list.map((i) => i.id).sort(), r.variants]; };
+  assert.deepEqual(pick('name:gembooking'), [[plugin.id, nvd.id], 1]); // the NVD-named one is the variant
+  assert.deepEqual(pick('name:gembooking wordpress plugin'), [[plugin.id, nvd.id], 2]); // an old saved pick
+  assert.deepEqual(pick('name:microsoft paint'), [[paint.id], 1]);
+  assert.deepEqual(pick('iptime:firmware'), [[iptime.id], 0]); // two vendors' "Firmware" are not one Product
+  assert.deepEqual(pick('os:windows'), [[], 0]);
+});
+
+test('a saved or shared pick of an old variant id reads back as the Product it now belongs to', () => {
+  assert.deepEqual(filterFromQuery('p=name%3Agembooking+wordpress+plugin&p=os%3Awindows').picks, ['name:gembooking', 'os:windows']);
+});
+
+test('the picker lists an old variant id from products.json once, under the Product it now belongs to', () => {
+  const seen = [{ id: 'name:gembooking wordpress plugin', ko: 'GemBooking', en: 'GemBooking' }];
+  const i = { ...incident('CVE-2026-36', '2026-11-07T00:00:00Z'), summary: { products: ['GemBooking'] } };
+  assert.deepEqual(productList([i], new Date('2026-11-07T12:00:00Z'), 'en', seen).map((p) => p.id), ['name:gembooking']);
+});
+
+test('Korean names of common vendors and projects find them (critique 14: 아파치 and 깃허브 found nothing)', () => {
+  const at = (id, product) => ({ ...incident(id, '2026-11-08T00:00:00Z'), products: [product] });
+  const apache = at('CVE-2026-41', { id: 'apache:http_server', name: 'Http Server' });
+  const github = at('CVE-2026-42', { id: 'github:enterprise_server', name: 'Enterprise Server' });
+  const node = at('CVE-2026-43', { id: 'nodejs:node.js', name: 'Node.js' });
+  const ids = (q) => filterBoard([apache, github, node], [], q, NOW).list.map((i) => i.id);
+  assert.deepEqual([ids('아파치'), ids('깃허브'), ids('노드')], [[apache.id], [github.id], [node.id]]);
+  for (const word of ['깃랩', '도커', '쿠버네티스', '엔진엑스', '톰캣', '리액트', '스프링', '시스코', '포티넷', '마이크로소프트', '구글', '애플', '워드프레스']) {
+    assert.ok(SEARCH_ALIASES[word]?.length, word);
+  }
+});
+
+test('자바 and java never find JavaScript, in either language (critique 14: 자바스크립트 in Korean Summaries)', () => {
+  const at = (id, text) => ({ ...incident(id, '2026-11-08T00:00:00Z'), brief: { text, lead: '' } });
+  const koJs = at('CVE-2026-51', '로그인 사용자가 자바스크립트를 저장할 수 있습니다');
+  const enJs = at('CVE-2026-52', 'Stored JavaScript in a widget');
+  const koJava = at('CVE-2026-53', '자바 입력 검사 도구 문제');
+  const enJava = at('CVE-2026-54', 'A Java input checker flaw');
+  const ids = (q) => filterBoard([koJs, enJs, koJava, enJava], [], q, NOW).list.map((i) => i.id).sort();
+  assert.deepEqual(ids('자바'), [koJava.id]);
+  assert.deepEqual(ids('java'), [enJava.id]);
+  assert.deepEqual(ids('자바스크립트'), [koJs.id]); // asked for by name, it is found
+});
+
+test('a vendor fold member names its vendor in the title (critique 14: Langflow OSS inside the IBM fold)', () => {
+  assert.equal(vendorLedTitle('Langflow OSS file access bypass', 'IBM', 'IBM Langflow OSS'), 'IBM Langflow OSS file access bypass');
+  assert.equal(vendorLedTitle('Langflow OSS 파일 접근 우회', 'IBM', 'Langflow OSS'), 'IBM Langflow OSS 파일 접근 우회');
+  assert.equal(vendorLedTitle('IBM QRadar flaw', 'IBM', 'IBM QRadar'), 'IBM QRadar flaw');
+  assert.equal(vendorLedTitle('Files readable without a login', 'IBM', 'IBM Langflow OSS'), 'IBM Langflow OSS: Files readable without a login');
+  assert.equal(vendorLedTitle('Db2 서버 멈춤', 'IBM', 'IBM Db2 for Linux'), 'IBM Db2 서버 멈춤');
 });

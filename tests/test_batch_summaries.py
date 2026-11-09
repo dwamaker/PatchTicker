@@ -18,7 +18,8 @@ def plain(name):
     fields = {"title": f"{name} flaw", "summary": f"A flaw in {name}.", "conditions": [], "easy_conditions": [],
               "mitigation": "", "easy": f"Someone could misuse {name}.", "easy_title": f"{name} risk found", "easy_action": f"Update {name}.", "names": [name], "command_for": "", "stopgap_then": "", "cve_lines": []}
     return {"ko": fields | {"title": f"{name} 취약점", "summary": f"{name}의 취약점입니다."}, "en": fields,
-            "products": [name], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": [], "stopgap_file": "", "titles_ko": [], "exploited": False}
+            "products": [name], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": [], "stopgap_file": "", "titles_ko": [], "exploited": False,
+            "exploited_source": "", "poc_public": False, "library": False}
 
 
 class BatchSummaryTest(unittest.TestCase):
@@ -138,6 +139,17 @@ class HighRiskWaitsForNoBatchTest(unittest.TestCase):
         self.assertEqual(incident["summary"], {"at": "2026-11-09T11:00:00Z"})
         self.assertNotIn("summary_error", incident)  # the "not json" reply was never read
 
+    def test_a_batch_reply_is_read_for_a_summary_that_must_be_made_again_from_the_same_sources(self):
+        # Critique 14: a Summary saying exploited with no source is redone though its sources did not change.
+        from collector import summaries
+        claude, _ = self.stub("ended")
+        incident = self.incident(5.0) | {"summary": {"exploited": True, "at": "2026-11-09T11:00:00Z"}}
+        basis = summaries.basis(incident)
+        incident["summary_basis"] = basis | {"n": 1}
+        pending = {"id": "b1", "requests": {"r0": {"incident": "CVE-2026-7", "input": "x", "basis": basis}}}
+        summaries.collect_batch(pending, [incident], claude, "2026-11-09T12:00:00Z")
+        self.assertEqual(incident["summary_error"]["tries"], 1)  # the reply was read (and, being "not json", failed)
+
 
 class BudgetStopTest(unittest.TestCase):
     run_at = BatchSummaryTest.run_at
@@ -242,3 +254,44 @@ class ReSummaryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SummaryCountTest(unittest.TestCase):
+    """Critique 14: summary_basis.n reached 16 (SonicWall) and 12 (an HN story) in a day, past MAX_SUMMARIES."""
+
+    stub, incident = HighRiskWaitsForNoBatchTest.stub, HighRiskWaitsForNoBatchTest.incident
+
+    def made(self, n, cves=("CVE-2026-7",)):
+        from collector import summaries
+        incident = self.incident(5.0) | {"summary": {"at": "2026-11-09T11:00:00Z"}}
+        incident["summary_basis"] = summaries.basis(incident | {"cves": list(cves)}) | {"n": n}
+        return incident
+
+    def save(self, incident):
+        from collector import summaries
+        reply = FakeClaude.message(plain("Keycloak"))
+        summaries.save_reply(incident, reply, "x", summaries.basis(incident), "2026-11-09T12:00:00Z")
+
+    def test_a_summary_made_again_from_the_same_sources_is_not_counted(self):
+        incident = self.made(1)  # a hand re-make after a prompt change, or a reply nothing asked for
+        self.save(incident)
+        self.assertEqual(incident["summary"]["en"]["title"], "Keycloak flaw")
+        self.assertEqual(incident["summary_basis"]["n"], 1)
+
+    def test_the_first_summary_and_each_triggered_one_count(self):
+        incident = self.incident(5.0)
+        self.save(incident)
+        self.assertEqual(incident["summary_basis"]["n"], 1)
+        incident = self.made(1, cves=())  # its CVE attached since: a re-summary trigger
+        self.save(incident)
+        self.assertEqual(incident["summary_basis"]["n"], 2)
+
+    def test_a_batch_reply_for_an_incident_at_the_limit_is_not_read_even_from_other_sources(self):
+        from collector import summaries
+        claude, _ = self.stub("ended")
+        incident = self.made(summaries.MAX_SUMMARIES, cves=())
+        pending = {"id": "b1", "requests": {"r0": {"incident": "CVE-2026-7", "input": "x", "basis": {"cves": ["CVE-2026-6"], "kev": False, "advisories": []}}}}
+        summaries.collect_batch(pending, [incident], claude, "2026-11-09T12:00:00Z")
+        self.assertEqual(incident["summary"], {"at": "2026-11-09T11:00:00Z"})
+        self.assertNotIn("summary_error", incident)
+        self.assertEqual(incident["summary_basis"]["n"], summaries.MAX_SUMMARIES)
