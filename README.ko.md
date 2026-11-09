@@ -13,6 +13,7 @@
   <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=flat-square" alt="사이트: patchticker.com"></a>
   <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=flat-square" alt="10분마다 갱신">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=flat-square" alt="라이선스: MIT"></a>
+  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-dwamaker-ffdd00?style=flat-square" alt="후원: Buy Me a Coffee"></a>
   <a href="README.md"><img src="https://img.shields.io/badge/README-English-444?style=flat-square" alt="영어 README"></a>
 </p>
 
