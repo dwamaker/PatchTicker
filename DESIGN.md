@@ -496,6 +496,38 @@ Restrained outlined buttons for theme, language and copying a command.
   before. 이전 사건 불러오기 leaves a visible result line that takes the focus when no button is left. The load error
   keeps its plain sentence and shows the technical cause on a quieter line below. While the phone filter sheet is
   open, the rest of the page is inert.
+- **Information over tidiness (owner, 11-09, after critique 10):** heuristic 8 is not chased toward minimalism; what a
+  visitor needs to judge an Incident (OS badges, counts, tags) stays visible even when a row gets busier.
+- **Headline first (owner, 11-09):** in both views a row leads with what happened (the Summary or quick title; a raw
+  source line, clamped to three lines, when there is none) and the CVE ID is the line under it.
+- **Frozen search (owner, 11-09):** like frozen panes, the search stays at the top while the Board scrolls: on 768px
+  and wider the whole field row (product + search, with applied product chips), on phones only the search line. Its
+  height is `--stick`; `scroll-padding-top`, the new-Incidents pill and focus moves clear it. A hairline and a soft
+  shadow appear once the page has scrolled.
+- **Jump buttons (owner, 11-09):** 맨 위로 and 맨 아래로 sit at the bottom right (44px circles, Panel on Edge), each shown
+  only when there is more than 60% of a screen to go that way.
+- **Phone header (critique 10, a.1):** one line with the name, 기본|쉬운 설명 and a settings button; 가−/가+, theme and
+  language open under it (Escape or a tap elsewhere closes). At 375px the first Highlight moved from 490px to 430px.
+- **쉬운 설명 beckons (owner, 11-09):** as the Board arrives in 기본, a light blue band sweeps across the 쉬운 설명 button
+  twice (1.2s each), until the visitor has tried that view once (`vr-easy-tried`); never with reduced motion.
+- **악용 발생 (critique 10, b.2):** the reason a row sits at the top is set at 14px/800, no longer the row's smallest text.
+- **Two kinds of 묶음 kept apart (owner, 11-09):** a vendor fold is "묶음" and the list button says "회사 묶음 풀기 /
+  회사별로 묶기"; a release group (CVEs fixed by one update) is one Incident tagged "함께 패치", which that button never
+  splits. The "↑ 새 사건 N건" pill now scrolls to the first new row and focuses it.
+- **Hardening 2 (critique 10, 11-09):** an Easy row without a Summary says "쉬운 설명 준비 중" only while one is coming;
+  a Summary that failed for good says "원문만 있음", and with no quick title and no Product the source's own line is
+  the title instead of a blank "새 보안 문제". 모두 펼치기 carries no pressed state beside its swapped label; 회사 묶음
+  풀기 announces what it did; a closed fold has no aria-controls; 주요 사건 더 보기 moves focus to the first Highlight it
+  added; with no result only the empty state offers 필터 모두 지우기; a reload that restores the older months restores
+  their result line; the product and search fields have spellcheck off.
+- **Clarify (critique 10, 11-09):** "위험" names a level only; the 10-point measure is "CVSS 점수" everywhere (first-visit
+  line, guide, filter field "최소 CVSS 점수"). 필터 적용 reads "필터 적용 · N건" and recounts as choices change. When
+  filters leave nothing, the empty state offers up to three single conditions back ("‘고위험’ 빼기 · 12건 보기"),
+  the ones that bring back the most first, beside 필터 모두 지우기.
+- **Layout pass (critique 10, 11-09):** the filter panel on 1024px and wider puts risk, attacks and OS side by side and
+  CVSS, CVE and the dates on one line; a checked risk chip is a ring in its level's colour on a faint tint, never a
+  filled block. The dark group ground is #1c2531 (a clear step from the opened-row panel). The guide shows the "묶음"
+  and "함께 패치" tags as the Board draws them. From 125% text the fields use their short placeholders.
 - **Loading (11-09, user: the reload screen was a bare splash):** until the data arrives the Board stands in its own
   shape, four Highlight frames and six list rows of placeholder bars in the rows' cells, and one scan band runs down
   them (1.6s, the only loop, and only while loading; reduced motion: still bars). When the rows arrive, those on
@@ -507,6 +539,13 @@ Restrained outlined buttons for theme, language and copying a command.
   members grow out of the fold row (220ms) with the first ten fading in 24ms apart, and close faster (160ms) before
   the list redraws. A row that arrives by a refresh drops 14px into its place (420ms): through the View Transition at
   the top of the Board, by itself further down. Reduced motion: cross-fades only, folds appear at once.
+- **Small motions for the new controls (owner, 11-09):** 맨 위로 / 맨 아래로 rise 8px and grow from 90% (200ms) and sink
+  away faster (140ms); the "↑ 새 사건" pill drops in (240ms) and lifts out (160ms); the settings menu fades out (120ms)
+  as it faded in; the first-visit line folds away when closed; hints ("맞는 제품이 N개", the older-months result) slide
+  in 4px; the frozen row's shadow eases in; the settings icon turns 90°; presses dip to 94-96%.
+- **쉬운 설명 beckon, louder (owner, 11-09: the first one was barely seen):** twice, 1.4s each, the word swells to 116%
+  in the interface blue and settles with a small bounce, a ring rolls 10px out of the switch and a bright band
+  crosses the button; reduced motion keeps the blue word and a still ring. The one place the Board performs.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts

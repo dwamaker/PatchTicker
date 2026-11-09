@@ -20,10 +20,10 @@ const TEXT = {
     other: 'English', otherShort: 'EN', title: 'vuln-radar · 보안 취약점 게시판', loading: '불러오는 중…',
     notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았습니다: ${text}`, manyProducts: (n) => `맞는 제품이 ${n}개입니다. 목록에서 하나를 고르세요.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => `최근 3개월 사건을 모두 불러왔습니다 (${n}건 추가).`,
-    loadError: '게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용' }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '게시판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
+    loadError: '게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '게시판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
-    search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '새 사건이 있는 맨 위로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n) => `${v} 공지 ${n}건을 펼쳤습니다.`, theme: '어두운 화면',
+    search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '회사 묶음 풀기', refold: '회사별로 묶기', groupTag: '묶음', patchTag: '함께 패치', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '새 사건이 있는 맨 위로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n) => `${v} 공지 ${n}건을 펼쳤습니다.`, theme: '어두운 화면',
     pin: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', firstSeen: '게시 시각을 모르는 사건이라 이 게시판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, unrated: '점수 아직 없음', kevReason: '악용 발생', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: (a) => `마지막 업데이트가 ${a}입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다.`, scopeWeek: '이 게시판에 최근 7일 동안 올라온 사건에서 찾았습니다.', scopeMonths: '이 게시판에 최근 3개월 동안 올라온 사건에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
@@ -36,7 +36,7 @@ const TEXT = {
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
-    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
+    conditions: '해당 조건', mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '회사 묶음을 풀었습니다.', refoldDone: '회사별로 묶었습니다.', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, easyPreparing: '쉬운 설명을 만드는 중이에요. 급하면 아래 원문 링크를 확인하세요.', views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의', levels: { highest: '고위험', high: '위험', notice: '참고' },
     command: '이 명령으로 업데이트하세요:', devices: '이 기기들을 지금 업데이트하세요!', version: (v) => `${v} 버전으로 업데이트하세요.`,
     fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`, none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', stopgap: '당장 못 하면:', copy: '복사', copied: '복사됨',
@@ -46,16 +46,16 @@ const TEXT = {
     guideBtn: '읽는 법',
     guide: {
       title: '이 게시판 읽는 법', close: '닫기',
-      primer: { highest: '실제 공격·9점 이상', high: '7점 이상', notice: '그 밖', ring: '위험 점수 (10점 만점)', more: '읽는 법 자세히', dismiss: '안내 닫기' },
-      risk: { highest: '실제 공격에 쓰이고 있거나("악용 발생"), 위험 점수가 10점 중 9점 이상', high: '위험 점수 10점 중 7점 이상', notice: '그 밖의 사건. 점수가 아직 없는 사건도 여기에 들어갑니다.' },
-      ring: '위험 점수(CVSS, 10점 만점). 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 —로 보입니다.',
+      primer: { highest: '실제 공격·9점 이상', high: '7점 이상', notice: '그 밖', ring: 'CVSS 점수 (10점 만점)', more: '읽는 법 자세히', dismiss: '안내 닫기' },
+      risk: { highest: '실제 공격에 쓰이고 있거나("악용 발생"), CVSS 점수가 10점 중 9점 이상', high: 'CVSS 점수 10점 중 7점 이상', notice: '그 밖의 사건. 점수가 아직 없는 사건도 여기에 들어갑니다.' },
+      ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기로, 제품마다 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각 (내 시간대 기준). 원문에 시각이 없으면 "처음 확인"과 함께 이 게시판이 처음 본 시각을 보여 줍니다.',
-      pin: '위험 단계 이상(실제 공격, 또는 점수 7점 이상) 가운데 최근 7일 안에 공개된 사건에서 중요한 4건을 골라 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다.',
+      pin: '‘위험’이나 ‘고위험’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 최근 7일 안에 공개된 것에서 중요한 4건을 골라 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다.',
       group: '한 번의 업데이트로 함께 고쳐진 CVE 묶음입니다. 링은 그중 가장 높은 점수이고, 펼치면 CVE마다 한 줄씩 나옵니다.',
       brief: '아직 요약 전이라 원문을 그대로 보여 주는 사건입니다. 영어일 수 있습니다.',
       open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다. 키보드로는 ↑ ↓ 키로 행 사이를 옮겨 다닙니다.',
-      fold: '한 회사가 같은 날 5건 이상 낸 공지는 한 줄로 묶습니다. 누르면 그 자리에서 펼쳐지고, 목록 제목 옆 "묶음 풀기"로 모두 풀 수 있습니다.',
+      fold: '한 회사가 같은 날 5건 이상 낸 공지는 "묶음" 한 줄로 모읍니다. 누르면 그 자리에서 펼쳐지고, 목록 제목 옆 "회사 묶음 풀기"로 모두 풀 수 있습니다. "함께 패치" 줄은 한 번의 업데이트로 고쳐진 CVE들이라 풀리지 않습니다.',
       prep: '쉬운 설명은 조금 늦게 만들어집니다. 그동안 쉬운 제목만 먼저 보여 줍니다.',
       easy: '위쪽에서 바꾸면 무엇이 위험한지와 지금 할 일을 쉬운 말로 보여줍니다.',
       filterWord: '제품 · 필터',
@@ -67,10 +67,10 @@ const TEXT = {
     other: '한국어', otherShort: '한', title: 'vuln-radar · vulnerability board', loading: 'Loading…',
     notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`, manyProducts: (n) => `${n} products match. Pick one from the list.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => `All Incidents of the last three months are loaded (${n} more).`,
-    loadError: 'Could not load the Board. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters' }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
+    loadError: 'Could not load the Board. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
-    search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group', groupTag: 'Group', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go up to the new Incidents', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n) => `Showing ${n} ${v} notices.`, theme: 'Dark theme',
+    search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup vendors', refold: 'Group by vendor', groupTag: 'Group', patchTag: 'One fix', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go up to the new Incidents', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n) => `Showing ${n} ${v} notices.`, theme: 'Dark theme',
     pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, published: 'First published', firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, unrated: 'Not rated yet', kevReason: 'Exploited', kevEasy: 'Attackers are using this right now!',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: (a) => `The last update was ${a}. Collection may have stopped, so recent Incidents can be missing.`, scopeWeek: 'Searched Incidents added to the Board in the last 7 days.', scopeMonths: 'Searched Incidents added to the Board in the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
@@ -83,7 +83,7 @@ const TEXT = {
     nvd: '',
     kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
-    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
+    conditions: 'Affected when', mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Vendor groups opened up.', refoldDone: 'Grouped by vendor again.', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, easyPreparing: 'The plain summary is on its way. If it is urgent, check the source link below.', views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution', levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' },
     command: 'Run this to update:', devices: 'Update these devices now!', version: (v) => `Update to version ${v}.`,
     fixedIn: (v) => `Fixed in version ${v}.`, none: 'We have not confirmed a fixed version yet. Check the source link below.', stopgap: 'Can\'t update yet?', copy: 'Copy', copied: 'Copied',
@@ -93,16 +93,16 @@ const TEXT = {
     guideBtn: 'How to read',
     guide: {
       title: 'How to read this Board', close: 'Close',
-      primer: { highest: 'Exploited or 9+', high: '7+', notice: 'Everything else', ring: 'Risk score (out of 10)', more: 'How to read', dismiss: 'Dismiss this note' },
-      risk: { highest: 'Exploited (attacks reported), or a risk score of 9 or more out of 10', high: 'A risk score of 7 or more out of 10', notice: 'Everything else, including Incidents with no score yet.' },
-      ring: 'The risk score (CVSS, out of 10). The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as —.',
+      primer: { highest: 'Exploited or 9+', high: '7+', notice: 'Everything else', ring: 'CVSS score (out of 10)', more: 'How to read', dismiss: 'Dismiss this note' },
+      risk: { highest: 'Exploited (attacks reported), or a CVSS score of 9 or more out of 10', high: 'A CVSS score of 7 or more out of 10', notice: 'Everything else, including Incidents with no score yet.' },
+      ring: 'The CVSS score: how severe a flaw is, out of 10, on an international standard. The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as —.',
       tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
       date: 'When it was first published, in your time zone. With no time in the source, "first seen" shows when the Board first saw it.',
       pin: 'The four most important Incidents at the Elevated level or above (exploited, or scored 7 or more) made public in the last seven days stay on top. More Highlights adds the rest below them.',
       group: 'CVEs fixed together in one update, shown as one row. The ring is the highest score among them; open it for a line on each.',
       brief: '',
       open: 'Open a row for the summary, who is affected, the fix and the source links. On a keyboard, ↑ and ↓ move between rows.',
-      fold: 'Five or more notices from one vendor on one day fold into one row. Open it in place, or use "Ungroup" beside the list heading to show them all.',
+      fold: 'Five or more notices from one vendor on one day fold into one "Group" row. Open it in place, or use "Ungroup vendors" beside the list heading to show them all. "One fix" rows are CVEs fixed by one update and stay together.',
       prep: 'Plain summaries come a little later; until then the row shows a plain title only.',
       easy: 'Switch at the top for what is dangerous and what to do now, in plain words.',
       filterWord: 'Products · Filters',
@@ -125,6 +125,13 @@ function loadView() {
 
 function setDefaultView(view) {
   defaultView = view;
+  $('view-easy').classList.remove('beckon');
+  $('views').classList.remove('beckon');
+  try {
+    if (view === 'easy') localStorage.setItem('vr-easy-tried', '1');
+  } catch {
+    // storage blocked
+  }
   try {
     localStorage.setItem(SAVED_VIEW, view);
   } catch {
@@ -170,6 +177,8 @@ function stepText(direction) {
   }
   showTextSize();
   placePill(); // the switch's labels changed width
+  pageText(); // placeholders: the short ones from 125%
+  measureStick(); // the frozen row grew or shrank with the text
 }
 function showTextSize() {
   const pct = textPct();
@@ -278,7 +287,7 @@ async function main() {
     $('search').value = filter.query;
     saveFilter();
     if (place) {
-      if (place.older && olderMonths.length) await fetchOlder().catch(() => {}); // the button stays if it fails
+      if (place.older && olderMonths.length) olderAdded = await fetchOlder().catch(() => null); // the button stays if it fails
       shown = Math.max(PAGE, Number(place.shown) || PAGE);
       pinAll = Boolean(place.pinAll);
       for (const id of place.open || []) open.add(id);
@@ -293,6 +302,18 @@ async function main() {
   render();
   if (place && !loadError) scrollTo(0, Number(place.y) || 0);
   if (!loadError) settleRows();
+  // A light sweep across 쉬운 설명 twice as the Board arrives, until the visitor has tried that view once.
+  let tried = true;
+  try {
+    tried = Boolean(localStorage.getItem('vr-easy-tried'));
+  } catch {
+    // storage blocked: no sweep, it could never stop
+  }
+  if (!loadError && defaultView === 'normal' && !tried) {
+    $('view-easy').classList.add('beckon');
+    $('views').classList.add('beckon');
+    setTimeout(() => { $('view-easy').classList.remove('beckon'); $('views').classList.remove('beckon'); }, 3800);
+  }
   setTimeout(() => document.body.classList.remove('arriving'), 1200);
 }
 
@@ -355,15 +376,20 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) chec
 function noticeAbove() {
   const above = [...document.querySelectorAll('li.fresh')].filter((li) => li.getBoundingClientRect().bottom < 0).length;
   const box = $('new-above');
-  box.hidden = !above;
-  if (above) box.querySelector('span').textContent = TEXT[lang].newAbove(above);
+  box.classList.toggle('off', !above);
+  if (above) {
+    box.querySelector('span').textContent = TEXT[lang].newAbove(above);
+    box.setAttribute('aria-label', `↑ ${TEXT[lang].newAbove(above)}`); // the name says what the pill shows
+  }
 }
 $('new-above').addEventListener('click', () => {
-  $('new-above').hidden = true;
-  scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
-  $('board-start').focus({ preventScroll: true });
+  $('new-above').classList.add('off');
+  const first = document.querySelector('li.fresh');
+  if (!first) return scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+  first.scrollIntoView({ block: 'center', behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+  first.querySelector('button.row')?.focus({ preventScroll: true });
 });
-addEventListener('scroll', () => { if (!$('new-above').hidden) noticeAbove(); }, { passive: true });
+addEventListener('scroll', () => { if (!$('new-above').classList.contains('off')) noticeAbove(); }, { passive: true });
 
 // A highlighted row loses its edge four seconds after it is mostly on screen (it fades out in CSS); rows drawn again
 // before that keep it, because the id stays in `fresh` until then.
@@ -383,7 +409,7 @@ function clearFresh(li) {
   li.classList.replace('fresh', 'fresh-out');
   li.addEventListener('animationend', () => li.classList.remove('fresh-out'), { once: true });
   setTimeout(() => li.classList.remove('fresh-out'), 700); // reduced motion or no animation: still let go
-  if (!$('new-above').hidden) noticeAbove();
+  if (!$('new-above').classList.contains('off')) noticeAbove();
 }
 function watchFresh() {
   freshSeen.disconnect();
@@ -520,7 +546,7 @@ function pageText() {
   const narrow = matchMedia('(max-width: 599px)').matches;
   for (const node of document.querySelectorAll('[data-t-placeholder]')) {
     const key = node.dataset.tPlaceholder;
-    node.placeholder = (narrow && t[`${key}Short`]) || t[key];
+    node.placeholder = ((narrow || textPct() >= 125) && t[`${key}Short`]) || t[key];
   }
   for (const node of document.querySelectorAll('[data-t-aria]')) node.setAttribute('aria-label', t[node.dataset.tAria]);
   // Full name on wide screens, a short code on phones (the header must fit 375px); screen readers get the full name.
@@ -632,10 +658,10 @@ function guide() {
   item(g.date, when);
   const group = el('span', 'cve');
   group.append('CVE-2026-124446', el('span', 'cve-more', t.moreCves(28)));
-  item(g.group, group);
+  item(g.group, patchTag(), group);
   if (t.original) item(g.brief, el('span', 'orig', t.original)); // the English page shows sources without a tag
   item(g.prep, el('span', 'orig', t.easyPrepTag));
-  item(g.fold, el('span', 'g-word', t.vendorFold('IBM', 25)));
+  item(g.fold, groupTag(), el('span', 'g-word', t.vendorFold('IBM', 25)));
   rule();
   item(g.pin, el('span', 'g-pin', t.pin));
   const chev = el('i', 'chev');
@@ -673,7 +699,7 @@ function primer() {
   const close = Object.assign(el('button', 'btn p-close'), { type: 'button' });
   close.setAttribute('aria-label', p.dismiss);
   close.append(el('span', 'x'));
-  close.addEventListener('click', () => { setGuide(false); $('guide-btn').focus({ preventScroll: true }); });
+  close.addEventListener('click', () => fold($('primer'), false, () => { setGuide(false); $('guide-btn').focus({ preventScroll: true }); }));
   box.replaceChildren(keys, more, close);
 }
 
@@ -771,7 +797,7 @@ function render() {
   // OS picks show as pressed buttons in the quick bar, so only Products become chips here.
   const chips = filter.picks.filter((p) => !p.startsWith('os:'));
   const conds = conditionChips();
-  const clearAll = activeFilters() > 1 ? [clearButton(TEXT[lang].clearAll, NO_FILTER)] : [];
+  const clearAll = activeFilters() > 1 && list.length ? [clearButton(TEXT[lang].clearAll, NO_FILTER)] : []; // with no result the empty state has its own
   $('picks').replaceChildren(...chips.map(chip), ...(conds.length ? [] : clearAll),
     ...(pickNote ? [el('p', 'pick-note', TEXT[lang].notListed(pickNote))] : []));
   $('conds').replaceChildren(...conds, ...(conds.length ? clearAll : []));
@@ -781,7 +807,6 @@ function render() {
   visibleIds = [...highlights, ...items.slice(0, shown).flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i]))].map((i) => i.id);
   $('expand-all').hidden = !visibleIds.length;
   $('expand-all').textContent = allOpen() ? TEXT[lang].collapseAll : TEXT[lang].expandAll;
-  $('expand-all').setAttribute('aria-pressed', allOpen());
   // While the data loads, the Board stands in its own shape (four Highlight frames, then list rows) under a scan line,
   // so the page does not blink from blank to full; nothing moves under it when the rows arrive.
   if (!updated && !loadError) {
@@ -803,6 +828,8 @@ function render() {
   if (check && !hadAllClear) draw(check, 420, 120);
   hadAllClear = Boolean(check);
   watchFresh();
+  measureStick();
+  placeJump();
 }
 let shownCount = 0;
 
@@ -883,6 +910,13 @@ function emptyState() {
     buttons.append(older);
   }
   if (filter.query) buttons.append(clearButton(t.clearSearch, { query: '' }, true));
+  // Filters left nothing: each condition can go on its own, the ones that bring the most back first (at most three).
+  if (quick) {
+    const count = (change) => { const n = { ...filter, ...change }; return filterBoard(incidents, n.picks, n.query, Date.now(), n).list.length; };
+    const drops = conditionList().map(([label, change]) => [label, change, count(change)]).filter(([, , n]) => n > 0)
+      .sort((a, b) => b[2] - a[2]).slice(0, 3);
+    for (const [label, change] of drops) buttons.append(clearButton(t.fp.dropCond(label), change, true));
+  }
   // 모두 지우기 only when something besides the search is set; with a search alone it would repeat 검색 지우기.
   if (activeFilters() - (filter.query ? 1 : 0) > 0) buttons.append(clearButton(t.clearAll, NO_FILTER, true));
   const actions = buttons.childElementCount ? [buttons] : [];
@@ -950,8 +984,9 @@ function pinToggle(rest) {
     pinAll = !pinAll;
     render();
     const again = $('pin-more').querySelector('button'); // render() built a new one: keep keyboard users on it
-    again?.focus({ preventScroll: true });
-    if (!pinAll) again?.scrollIntoView({ block: 'nearest' });
+    const added = pinAll && $('highlights').children[PINNED]?.querySelector('button.row');
+    (added || again)?.focus({ preventScroll: true });
+    (added || again)?.scrollIntoView({ block: 'nearest' });
   }));
   return button;
 }
@@ -1010,20 +1045,35 @@ function filterPanel() {
   const head = el('div', 'g-head fp-head');
   head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
   form.replaceChildren(head, grid, actions);
+  countDraft();
 }
 
 // Reset clears the panel only; Products picked at the top and the search stay.
 const PANEL_EMPTY_WITH_OS = () => ({ ...PANEL_EMPTY, picks: filter.picks.filter((p) => !p.startsWith('os:')) });
 
-function applyPanel(event) {
-  event.preventDefault();
+// What the panel's choices would set, read from the form (the panel applies as a whole).
+function panelDraft() {
   const data = new FormData($('filters'));
   const flags = data.getAll('flag');
-  update({
+  return {
     from: data.get('from') || '', to: data.get('to') || '', cvssMin: Number(data.get('cvssMin')) || 0, cve: data.get('cve') || '',
     risk: data.getAll('risk'), kev: flags.includes('kev'), has: flags.filter((v) => v !== 'kev'),
     picks: [...filter.picks.filter((p) => !p.startsWith('os:')), ...data.getAll('os')],
-  });
+  };
+}
+// 필터 적용 · N건: how many Incidents the choices would leave, counted as they change, so an empty combination shows
+// before the Board is lost to it (critique 10).
+function countDraft() {
+  const next = { ...filter, ...panelDraft() };
+  const n = filterBoard(incidents, next.picks, next.query, Date.now(), next).list.length;
+  const apply = $('filters').querySelector('button[type=submit]');
+  if (apply) apply.textContent = TEXT[lang].fp.applyN(n);
+}
+$('filters').addEventListener('change', countDraft);
+
+function applyPanel(event) {
+  event.preventDefault();
+  update(panelDraft());
   closePanel(); // the results are the answer; the applied conditions stay visible as chips
   // A start date before the loaded week needs the older months.
   const week = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
@@ -1045,7 +1095,7 @@ function update(change, animate = true) {
 
 // While the phone sheet covers the Board, everything else is inert (no taps, no reading) until it closes.
 function sheetInert(on) {
-  for (const node of document.querySelectorAll('header.top, footer, main > *:not(#filters):not(#announce)')) node.inert = on;
+  for (const node of document.querySelectorAll('header.top, footer, #jump, main > *:not(#filters):not(#announce)')) node.inert = on;
 }
 
 function closePanel() {
@@ -1056,11 +1106,12 @@ function closePanel() {
 }
 
 // Each applied panel condition as a removable chip under the fields, so what is filtered stays in sight.
-function conditionChips() {
+// Each applied panel condition as [label, the change that removes it].
+function conditionList() {
   const t = TEXT[lang];
   const f = t.fp;
   const words = defaultView === 'easy' ? t.easyLevels : t.levels;
-  const chips = [
+  return [
     ...filter.risk.map((r) => [words[r], { risk: filter.risk.filter((x) => x !== r) }]),
     ...(filter.kev ? [[t.qfKev, { kev: false }]] : []),
     ...filter.has.map((h) => [f.has[h], { has: filter.has.filter((x) => x !== h) }]),
@@ -1069,7 +1120,11 @@ function conditionChips() {
     ...(filter.cvssMin ? [[`CVSS ${filter.cvssMin}.0+`, { cvssMin: 0 }]] : []),
     ...(filter.cve ? [[filter.cve === 'yes' ? f.cveYes : f.cveNo, { cve: '' }]] : []),
   ];
-  return chips.map(([label, change]) => {
+}
+
+function conditionChips() {
+  const t = TEXT[lang];
+  return conditionList().map(([label, change]) => {
     const button = Object.assign(el('button', 'cond'), { type: 'button' });
     button.append(el('span', '', label), el('span', 'x'));
     button.setAttribute('aria-label', t.remove(label));
@@ -1183,6 +1238,8 @@ $('fold-toggle').addEventListener('click', () => boardTransition(() => {
   }
   render();
   $('fold-toggle').focus({ preventScroll: true });
+  clearTimeout(announcing);
+  $('announce').textContent = folding ? TEXT[lang].refoldDone : TEXT[lang].unfoldDone;
 }));
 $('expand-all').addEventListener('click', () => boardTransition(() => {
   const closing = allOpen();
@@ -1211,6 +1268,56 @@ $('filter-btn').addEventListener('click', () => {
     reveal(form);
   }
 });
+function setPrefs(open) {
+  const box = $('prefs');
+  $('prefs-btn').setAttribute('aria-expanded', open);
+  box.closing?.cancel();
+  if (open) {
+    box.classList.add('open');
+    return reveal(box, '0 -4px', 160);
+  }
+  if (!box.classList.contains('open')) return;
+  if (reducedMotion.matches) return box.classList.remove('open');
+  box.closing = box.animate([{ opacity: 1 }, { opacity: 0, translate: '0 -4px' }], { duration: 120, easing: 'cubic-bezier(0.4, 0, 1, 1)' });
+  box.closing.onfinish = () => { box.closing = null; box.classList.remove('open'); };
+}
+$('prefs-btn').addEventListener('click', () => setPrefs(!$('prefs').classList.contains('open')));
+document.addEventListener('pointerdown', (event) => {
+  if ($('prefs').classList.contains('open') && !$('prefs').contains(event.target) && !$('prefs-btn').contains(event.target)) setPrefs(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && $('prefs').classList.contains('open')) {
+    setPrefs(false);
+    $('prefs-btn').focus();
+  }
+});
+
+// The search row stays at the top while the Board scrolls (like frozen panes); its height is kept in --stick so
+// rows scrolled into view, the new-Incidents pill and the jump buttons clear it.
+const stickyPart = () => (matchMedia('(max-width: 767px)').matches ? document.querySelector('.search-row') : $('filter'));
+function measureStick() {
+  document.documentElement.style.setProperty('--stick', `${stickyPart().offsetHeight}px`);
+}
+addEventListener('resize', measureStick);
+// 맨 위로 / 맨 아래로 at the bottom right: each shows only when there is somewhere to go.
+let jumpQueued = false;
+function placeJump() {
+  jumpQueued = false;
+  const room = innerHeight * 0.6;
+  $('to-top').classList.toggle('off', scrollY < room);
+  $('to-bottom').classList.toggle('off', scrollY + innerHeight > document.documentElement.scrollHeight - room);
+  document.body.classList.toggle('scrolled', scrollY > 40);
+}
+addEventListener('scroll', () => {
+  if (!jumpQueued) {
+    jumpQueued = true;
+    requestAnimationFrame(placeJump);
+  }
+}, { passive: true });
+const glide = () => (reducedMotion.matches ? 'auto' : 'smooth');
+$('to-top').addEventListener('click', () => scrollTo({ top: 0, behavior: glide() }));
+$('to-bottom').addEventListener('click', () => scrollTo({ top: document.documentElement.scrollHeight, behavior: glide() }));
+
 $('guide-btn').addEventListener('click', () => {
   setGuide(!guideOpen);
   if (guideOpen) reveal($('guide'));
@@ -1528,12 +1635,13 @@ function titleCell(incident) {
     line.classList.add('say');
   } else if (defaultView === 'easy' && !s?.title) {
     const product = rowTags(incident, lang).find((n) => !OSES.includes(n));
-    name.append(incident.quick_title?.[lang]?.easy_title || t.easyBrief(product));
-    line.append(el('span', 'orig', t.easyPrepTag));
-  } else if (head && defaultView !== 'easy') {
-    name.append(id);
-    line.append(...describe(incident));
+    const quick = incident.quick_title?.[lang]?.easy_title;
+    // No quick title and no Product to name: the source's own line, not a blank "새 보안 문제" (critique 10).
+    name.append(quick || (product ? t.easyBrief(product) : Object.assign(el('span', '', incident.brief.text), { lang: 'en' })));
+    // A Summary that failed for good is not "coming": the row says the source is all there is.
+    line.append(el('span', 'orig', briefMarker(incident) === 'unavailable' ? t.origOnly : t.easyPrepTag));
   } else {
+    // Both views lead with what happened (owner, 11-09): the CVE ID is the line under it.
     name.append(...describe(incident));
     line.append(id);
   }
@@ -1566,10 +1674,12 @@ const isGroup = (incident) => (incident.cves?.length || 0) > 2;
 // Its tag leads the badge cell: a square-cornered outline in ink, so it never reads as a Product (filled pill) or an
 // OS (outlined pill).
 const groupTag = () => el('span', 'grp', TEXT[lang].groupTag);
+// A release group is one Incident (CVEs fixed by one update), not a fold: its own word, so 회사 묶음 풀기 leaves it alone without contradiction.
+const patchTag = () => el('span', 'grp', TEXT[lang].patchTag);
 
 function tagsCell(incident) {
   const cell = el('span', 'c-tags');
-  if (isGroup(incident)) cell.append(groupTag(), ' ');
+  if (isGroup(incident)) cell.append(patchTag(), ' ');
   const os = new Set(Array.isArray(incident.summary?.platforms) ? incident.summary.platforms : []);
   const keys = lineKeys(incident, lang);
   const names = rowTags(incident, lang);
@@ -1688,7 +1798,7 @@ function foldRows(group) {
   button.setAttribute('aria-expanded', opened);
   const vendor = vendorName(group.vendor);
   const listId = `fold-${group.fold.replace(/[^\w-]/g, '-')}`;
-  button.setAttribute('aria-controls', listId);
+  if (opened) button.setAttribute('aria-controls', listId);
   const title = el('span', 'c-title');
   const products = [...new Set(members.map((i) => rowTags(i, lang).find((n) => !OSES.includes(n))).filter(Boolean))];
   title.append(el('strong', 'title', t.vendorFold(vendor, members.length)),
