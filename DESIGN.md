@@ -546,6 +546,15 @@ Restrained outlined buttons for theme, language and copying a command.
   site" (plugins and libraries have none) or to an "AI 도우미" (reads as a product name): "내 버전은 보통 그 프로그램의
   설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 CVE-… 번호로 물어보세요." A group's "CVE N건" opens to every ID,
   each linked to its CVE record.
+- **Clarify 2 (critique 11, 11-09):** the Easy panel opens with "이럴 때만 해당돼요:" and the Summary's conditions
+  (one on the line, several as a list, Secondary Ink) before the action; quick Easy titles take the same level
+  wording as Summary titles (주의 rows never say 위험); the Easy "CVE N건" fold keeps its new-tab note for screen
+  readers only; closing a vendor fold announces "IBM 묶음을 접었습니다."; English Easy rows say "Under attack".
+- **Hardening 3 (critique 11, 11-09):** recovery buttons focus the field only when that field changed, else the first
+  returned row; in the filter panel a chip that would leave nothing is dashed and dim with a tooltip, and 필터 적용 at
+  0 drops its primary fill; a link into a closed vendor fold opens that fold only; a blocked clipboard shows the
+  address in a selected field under the button instead of a browser prompt.
+- **First-visit line at 320px / 150% (critique 11):** on phones a key's words wrap instead of running under the close ×, and the line's CVSS ring grows with the text like the Board's rings.
 - **Loading (11-09, user: the reload screen was a bare splash):** until the data arrives the Board stands in its own
   shape, four Highlight frames and six list rows of placeholder bars in the rows' cells, and one scan band runs down
   them (1.6s, the only loop, and only while loading; reduced motion: still bars). When the rows arrive, those on

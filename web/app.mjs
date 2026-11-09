@@ -20,11 +20,11 @@ const TEXT = {
     other: 'English', otherShort: 'EN', title: 'vuln-radar · 보안 취약점 게시판', loading: '불러오는 중…',
     notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았습니다: ${text}`, manyProducts: (n) => `맞는 제품이 ${n}개입니다. 목록에서 하나를 고르세요.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => `최근 3개월 사건을 모두 불러왔습니다 (${n}건 추가).`,
-    loadError: '게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '게시판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
+    loadError: '게시판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textReset: '기본 글자 크기', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfRisk: '위험 단계', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 게시판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '게시판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     search: '검색', searchHint: '키워드, CVE 번호, 버전', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '회사 묶음 풀기', refold: '회사별로 묶기', groupTag: '묶음', patchTag: '함께 패치', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '새 사건이 있는 맨 위로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n) => `${v} 공지 ${n}건을 펼쳤습니다.`, theme: '어두운 화면',
-    pin: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', firstSeen: '게시 시각을 모르는 사건이라 이 게시판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, unrated: '점수 아직 없음', kevReason: '악용 발생', kevEasy: '지금 실제 공격에 쓰이고 있어요!',
+    pin: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, published: '처음 게시', firstSeen: '게시 시각을 모르는 사건이라 이 게시판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, unrated: '점수 아직 없음', kevReason: '악용 발생', easyWhen: '이럴 때만 해당돼요:', foldClosed: (v) => `${v} 묶음을 접었습니다.`, kevEasy: '지금 실제 공격에 쓰이고 있어요!',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`, commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 게시판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: (a) => `마지막 업데이트가 ${a}입니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다.`, scopeWeek: '이 게시판에 최근 7일 동안 올라온 사건에서 찾았습니다.', scopeMonths: '이 게시판에 최근 3개월 동안 올라온 사건에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기', loadedOlder: (n) => `이전 사건 ${n}건을 더 불러왔습니다.`,
     clearWeek: '최근 7일 동안 게시된 사건이 없습니다', clearMonths: '최근 3개월 동안 게시된 사건이 없습니다', clearNote: '고른 제품은 주소에 저장됩니다. 즐겨찾기해 두면 다음에도 바로 확인할 수 있습니다.', searchOlderMonths: '이전 사건에서도 찾기 (최근 3개월)',
@@ -67,11 +67,11 @@ const TEXT = {
     other: '한국어', otherShort: '한', title: 'vuln-radar · vulnerability board', loading: 'Loading…',
     notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`, manyProducts: (n) => `${n} products match. Pick one from the list.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => `All Incidents of the last three months are loaded (${n} more).`,
-    loadError: 'Could not load the Board. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
+    loadError: 'Could not load the Board. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textReset: 'Default text size', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfRisk: 'Risk level', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     search: 'Search', searchHint: 'Keyword, CVE ID, version', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup vendors', refold: 'Group by vendor', groupTag: 'Group', patchTag: 'One fix', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go up to the new Incidents', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n) => `Showing ${n} ${v} notices.`, theme: 'Dark theme',
-    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, published: 'First published', firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, unrated: 'Not rated yet', kevReason: 'Exploited', kevEasy: 'Attackers are using this right now!',
+    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, published: 'First published', firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, unrated: 'Not rated yet', kevReason: 'Exploited', kevReasonEasy: 'Under attack', easyWhen: 'Only affects you if:', foldClosed: (v) => `Folded ${v} back.`, kevEasy: 'Attackers are using this right now!',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`, commandFor: (w) => `${w}, run this to update:`, caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: (a) => `The last update was ${a}. Collection may have stopped, so recent Incidents can be missing.`, scopeWeek: 'Searched Incidents added to the Board in the last 7 days.', scopeMonths: 'Searched Incidents added to the Board in the last 3 months.', searchOlder: 'Search older Incidents too', loadedOlder: (n) => `Loaded ${n} older Incidents.`,
     clearWeek: 'No Incident posted in the last 7 days', clearMonths: 'No Incident posted in the last 3 months', clearNote: 'Your picks are saved in the address. Bookmark it to check again next time.', searchOlderMonths: 'Search older Incidents too (last 3 months)',
@@ -465,8 +465,10 @@ async function openLinked() {
   open.add(id);
   render();
   let li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === id);
-  if (!li) { // inside a closed vendor fold
-    folding = false;
+  if (!li) { // inside a closed vendor fold: open that fold only
+    const host = [...document.querySelectorAll('li.vendor-fold')].find((x) => x.dataset.ids.split(' ').includes(id));
+    const key = host?.querySelector('button.row[data-fold]')?.dataset.fold;
+    if (key) openFolds.add(key);
     render();
     li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === id);
   }
@@ -503,7 +505,12 @@ function shareLine(incident) {
       clearTimeout(button.settle);
       button.settle = setTimeout(idle, 2000);
     } catch {
-      prompt(TEXT[lang].share, url); // clipboard blocked: show the address to copy by hand
+      // clipboard blocked: the address in a selected field under the button, to copy by hand
+      const field = p.querySelector('input') || Object.assign(document.createElement('input'), { readOnly: true, className: 'share-url' });
+      field.value = url;
+      field.setAttribute('aria-label', TEXT[lang].share);
+      p.append(field);
+      field.select();
     }
   });
   p.append(button);
@@ -954,6 +961,15 @@ function settleRows() {
 function easyPanel(incident) {
   const s = incident.summary;
   const parts = easyAnswer(s, riskLevel(incident), incident.cves?.[0]);
+  // "Does this touch me?" comes before "what to do": the Summary's conditions, in its own words, at body weight so the
+  // action stays the one heavy line. One condition on the line, several as a list.
+  const when = (s[lang].conditions || []).filter((c) => typeof c === 'string' && c);
+  if (when.length === 1) parts.unshift(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
+  if (when.length > 1) {
+    const list = el('ul', 'cond-list');
+    list.append(...when.map((c) => el('li', '', c)));
+    parts.unshift(para('when', TEXT[lang].easyWhen), list);
+  }
   if ((s.devices || []).length > MANY_DEVICES) parts.push(modelList(s.devices, fixLines(s)));
   return parts;
 }
@@ -1036,8 +1052,12 @@ function clearButton(text, change, counted = false) {
   const button = Object.assign(el('button', 'btn', n ? TEXT[lang].restore(text, n) : text), { type: 'button' });
   button.addEventListener('click', () => {
     if ('query' in change) $('search').value = change.query;
-    update(change);
-    $(change.picks ? 'product-pick' : 'search').focus({ preventScroll: true }); // the rows come back where the visitor is
+    const drawn = update(change);
+    // The field only when that field is what changed (a phone would raise its keyboard over the rows otherwise);
+    // else the first row that came back, or the top of the Board (critique 11).
+    if ('query' in change && Object.keys(change).length === 1) return $('search').focus({ preventScroll: true });
+    if (change.picks && Object.keys(change).length === 1) return $('product-pick').focus({ preventScroll: true });
+    drawn.then(() => ($('highlights').querySelector('button.row') || $('board').querySelector('button.row') || $('board-start')).focus({ preventScroll: true }));
   });
   return button;
 }
@@ -1154,10 +1174,21 @@ function panelDraft() {
 // 필터 적용 · N건: how many Incidents the choices would leave, counted as they change, so an empty combination shows
 // before the Board is lost to it (critique 10).
 function countDraft() {
-  const next = { ...filter, ...panelDraft() };
-  const n = filterBoard(incidents, next.picks, next.query, Date.now(), next).list.length;
+  const count = (draft) => { const next = { ...filter, ...draft }; return filterBoard(incidents, next.picks, next.query, Date.now(), next).list.length; };
+  const n = count(panelDraft());
   const apply = $('filters').querySelector('button[type=submit]');
-  if (apply) apply.textContent = TEXT[lang].fp.applyN(n);
+  if (apply) {
+    apply.textContent = TEXT[lang].fp.applyN(n);
+    apply.classList.toggle('primary', n > 0); // nothing to show: no longer the obvious next step
+  }
+  // A chip that would leave nothing if added (악용 발생만 with 위험, say) is marked before it is chosen.
+  for (const box of $('filters').querySelectorAll('.fp-chip input:not(:checked)')) {
+    box.checked = true;
+    const zero = count(panelDraft()) === 0;
+    box.checked = false;
+    box.closest('.fp-chip').classList.toggle('zero', zero);
+    box.closest('.fp-chip').title = zero ? TEXT[lang].fp.zeroChip : '';
+  }
 }
 $('filters').addEventListener('change', countDraft);
 
@@ -1182,8 +1213,9 @@ function update(change, animate = true) {
     render();
     if (!$('filters').hidden) filterPanel(); // an open panel always shows the filter in force, never a stale draft
   };
-  if (animate) boardTransition(redraw);
-  else redraw();
+  if (animate) return boardTransition(redraw); // resolves once the new Board is drawn
+  redraw();
+  return Promise.resolve();
 }
 
 // While the phone sheet covers the Board, everything else is inert (no taps, no reading) until it closes.
@@ -1667,7 +1699,7 @@ function riskCell(incident) {
   cell.append(el('b', 'word', easy ? TEXT[lang][level] : TEXT[lang].levels[level]));
   // Why it is this high when the score alone would not say so: exploited (KEV, or attacks its sources report) lifts it to the top level.
   // The space keeps screen readers from running the two words together ("심각!악용 발생"); flex hides it on screen.
-  if (isExploited(incident)) cell.append(' ', el('small', 'why kev', TEXT[lang].kevReason));
+  if (isExploited(incident)) cell.append(' ', el('small', 'why kev', (easy && TEXT[lang].kevReasonEasy) || TEXT[lang].kevReason));
   return cell;
 }
 
@@ -1730,7 +1762,7 @@ function titleCell(incident) {
     const product = rowTags(incident, lang).find((n) => !OSES.includes(n));
     const quick = incident.quick_title?.[lang]?.easy_title;
     // No quick title and no Product to name: the source's own line, not a blank "새 보안 문제" (critique 10).
-    name.append(quick || (product ? t.easyBrief(product) : Object.assign(el('span', '', incident.brief.text), { lang: 'en' })));
+    name.append(quick ? easyTitle(quick, riskLevel(incident)) : product ? t.easyBrief(product) : Object.assign(el('span', '', incident.brief.text), { lang: 'en' }));
     // A Summary that failed for good is not "coming": the row says the source is all there is.
     line.append(el('span', 'orig', briefMarker(incident) === 'unavailable' ? t.origOnly : t.easyPrepTag));
   } else {
@@ -1820,7 +1852,9 @@ function details(incident) {
       li.append(anchor(`https://www.cve.org/CVERecord?id=${encodeURIComponent(cve)}`, cve, false));
       ids.append(li);
     }
-    fold.append(el('summary', '', `${t.cveCount(incident.cves.length)}${t.newTabAll}`), ids);
+    const head = el('summary', '', t.cveCount(incident.cves.length));
+    head.append(el('span', 'sr-only', t.newTabAll));
+    fold.append(head, ids);
     parts.push(fold);
   }
   else if (easy && incident.cves.length) parts.unshift(idLine(incident.cves));
@@ -1919,6 +1953,8 @@ function foldRows(group) {
       const done = () => {
         openFolds.delete(group.fold);
         render();
+        clearTimeout(announcing);
+        $('announce').textContent = t.foldClosed(vendor);
         foldRow()?.focus({ preventScroll: true });
         foldRow()?.scrollIntoView({ block: 'nearest' }); // closed from the bottom: bring the row back into view
       };
