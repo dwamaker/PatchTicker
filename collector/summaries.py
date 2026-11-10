@@ -364,7 +364,8 @@ def title_now(incidents, claude, stamp):
         easy = " ".join(item[k] for k in ("ko_easy_title", "en_easy_title"))
         for name in names:
             easy = easy.replace(name, "")  # "Perl SQL::Abstract" may keep its own name
-        unknown = numbers(text) - numbers(own)
+        unknown = (ko_numbers(item["ko_title"] + " " + item["ko_easy_title"])
+                   | numbers(item["en_title"] + " " + item["en_easy_title"])) - numbers(own)
         reason = ("CVE ID inside" if CVE_ID.search(text) else f"numbers not in its line {sorted(unknown)}" if unknown
                   else "banned word" if any(w.lower() in easy.lower() for w in EASY_BANNED) else "")
         if reason:
@@ -463,7 +464,8 @@ def failed(incident, reason):
     # final: no more tries, so the page stops saying a Summary is coming (spec story 24).
     # with_reason: the next try carries this reason (retry()); revive() leaves such an error alone.
     once = {k: True for k in ("capped", "hinted") if incident.get("summary_error", {}).get(k)}  # revive() only once each
-    incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True} | once | ({"final": True} if tries >= MAX_TRIES else {})
+    # ko_words: tried with KO_DIGIT_WORDS, so revive() leaves it alone.
+    incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True, "ko_words": True} | once | ({"final": True} if tries >= MAX_TRIES else {})
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
@@ -657,7 +659,7 @@ def save_lines(incident, reply, cves):
         if not isinstance(item, dict) or not all(isinstance(item.get(k), str) and item[k].strip() for k in ("cve", "ko", "en")):
             dropped.append("malformed")
             continue
-        cve, ko, en = item["cve"], numbers(item["ko"]), numbers(item["en"])
+        cve, ko, en = item["cve"], ko_numbers(item["ko"]), numbers(item["en"])
         text = texts.get(cve, "")
         unknown = (ko | en) - numbers(text) - number_words(text)
         # Only a Korean digit the English line spells matches ("8바이트" / "eight-byte"); never the other way round.
@@ -711,9 +713,12 @@ def revive(incident):
     capped = len(incident.get("cves") or []) > CVE_LINES_MAX and not error.get("capped")
     # ...and so does one given up over a number before retries named the input's exact versions (retry()), once.
     hinted = error.get("reason", "").startswith("numbers not in the input") and not error.get("hinted")
-    if not error.get("final") or error.get("with_reason") and not capped and not hinted:
+    # ...and one given up over a number before Korean digit words (KO_DIGIT_WORDS, "제3자") stopped counting, once.
+    worded = error.get("reason", "").startswith(("Korean and English numbers differ", "numbers not in the input")) \
+        and not error.get("ko_words")
+    if not error.get("final") or error.get("with_reason") and not capped and not hinted and not worded:
         return False
-    incident["summary_error"] = ({"tries": 0, "reason": error.get("reason", ""), "with_reason": True, "hinted": True}
+    incident["summary_error"] = ({"tries": 0, "reason": error.get("reason", ""), "with_reason": True, "hinted": True, "ko_words": True}
                                  | ({"capped": True} if capped or error.get("capped") else {}))
     return True
 
@@ -893,6 +898,17 @@ def plain(value):
     return f"{value.normalize():f}"  # 133000000, not 1.33E+8
 
 
+# Owner, 2026-11-10: Korean words whose digit is part of the word, not a number ("제3자", third party: CVE-2026-106007
+# failed three times on it). To add one, append the whole word; never a pattern, so "3자리" stays a number.
+KO_DIGIT_WORDS = ("제3자",)
+KO_DIGIT_WORD_RE = re.compile("|".join(map(re.escape, KO_DIGIT_WORDS)))
+
+
+def ko_numbers(text):
+    """numbers() of Korean text, without the digits of KO_DIGIT_WORDS ("제3자에게" has none)."""
+    return numbers(KO_DIGIT_WORD_RE.sub(" ", text))
+
+
 # Owner, 2026-11-10: a per-CVE line may write as a digit a number its CVE's description spells ("division by zero",
 # "eight-byte" -> "0", "8"); the check stays exact otherwise. Only save_lines uses it, never the Summary's check.
 # No "one": it is a pronoun far too often ("one of", "no one") and would let any "1" through.
@@ -955,7 +971,7 @@ def parse(reply, input_text, urls):
     for lang in ("ko", "en") if only else ():
         allowed = set(only[1].split(", "))
         summary[lang]["cve_lines"] = [line for line in summary[lang]["cve_lines"] if isinstance(line, dict) and line.get("cve") in allowed]
-    ko, en = numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
+    ko, en = ko_numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
     unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"],
                                              *(x for f in summary["fixes"] for x in (f["version"], *f["devices"]))]))) \
         - numbers(input_text)
@@ -989,7 +1005,7 @@ def parse(reply, input_text, urls):
     # A Korean line for a Mention title is only a convenience: a bad one is dropped, never the Summary.
     known = numbers(input_text)
     summary["titles_ko"] = [t for t in summary["titles_ko"] if isinstance(t, dict) and t.get("url") in urls
-                            and isinstance(t.get("title"), str) and t["title"] and numbers(t["title"]) <= known]
+                            and isinstance(t.get("title"), str) and t["title"] and ko_numbers(t["title"]) <= known]
     # The prompt says no CVE ID in a title, but the model still adds one now and then; the row shows it above.
     for lang in ("ko", "en"):
         for key in ("title", "easy_title"):

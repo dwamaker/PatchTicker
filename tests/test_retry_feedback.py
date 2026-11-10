@@ -78,7 +78,7 @@ class RetryFeedbackTest(unittest.TestCase):
     def test_an_incident_given_up_since_the_change_is_not_revived(self):
         self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
         self.set_error({"tries": 3, "reason": "numbers not in the input: ['4.2']", "final": True, "with_reason": True,
-                        "hinted": True})
+                        "hinted": True, "ko_words": True})
         claude = FakeClaude()
 
         self.run_at("2026-11-07T12:45:00", claude)
