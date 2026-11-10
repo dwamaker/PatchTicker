@@ -70,10 +70,17 @@ test('a long CVE list shows its first IDs and folds the rest (owner, 11-10: IBM 
 
 test('a CVE record the CVE list already links is not listed again under Sources', async () => {
   const other = 'https://nvd.nist.gov/vuln/detail/CVE-2026-123158';
-  const html = await (await page({ ...SSHOLE, mentions: [...SSHOLE.mentions, { kind: 'cve_record', url: other }] })).text();
+  const cves = ['CVE-2026-123158', 'CVE-2026-123159', 'CVE-2026-123160']; // a group: more than two, as on the Board
+  const html = await (await page({ ...SSHOLE, cves, mentions: [...SSHOLE.mentions, { kind: 'cve_record', url: other }] })).text();
   const sources = html.split('id="s-mentions"')[1];
   assert.doesNotMatch(sources, /cve\.org\/CVERecord/); // already under CVE 번호
   assert.match(sources, /CVE 기록: <a href="https:\/\/nvd\.nist\.gov/); // a record elsewhere stays
+});
+
+test('a one-CVE Incident whose only Mention is its CVE record still shows Sources', async () => {
+  const html = await (await page({ ...SSHOLE, mentions: [{ kind: 'cve_record', url: 'https://www.cve.org/CVERecord?id=CVE-2026-123158' }] })).text();
+  assert.match(html, /id="s-mentions"/);
+  assert.match(html.split('id="s-mentions"')[1], /CVE 기록: <a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
 });
 
 test('the page shows what the Board panel shows, with the Board rules', async () => {
@@ -94,19 +101,37 @@ test('the page shows what the Board panel shows, with the Board rules', async ()
   assert.match(html, /<time datetime="2026-11-05T10:00:00Z">2026-11-05 19:00/); // published, Korean time
   assert.match(html, /<time datetime="2026-11-06T00:46:00Z">/); // first seen
   assert.match(html, /href="\/#i=CVE-2026-123158"/); // open on the Board
-  assert.match(html, /href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en">English</);
+  assert.match(html, /href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en" aria-label="English"><span class="full">English</);
   assert.match(html, /href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*"/);
   assert.match(html, /NVD API/);
   assert.match(html, /The MITRE Corporation/);
+  assert.match(html, /<p class="reason">CISA KEV 등재/); // a reason in Secondary Ink, not red
+  assert.match(html, /<ul class="cves"><li><a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/); // the CVE IDs in their own list
+});
+
+test('no score and no exploit: the sign is dashed and says the score is pending, as on the Board (critique 13)', async () => {
+  const unrated = { ...NOTICE, cvss: undefined };
+  const ko = await (await page(unrated, 'ko', 'CVE-2026-55555')).text();
+  assert.match(ko, /<div class="banner risk-notice unrated">/);
+  assert.match(ko, /<small class="why unrated">점수 대기<\/small>/);
+  assert.match(await (await page(unrated, 'en', 'CVE-2026-55555')).text(), /<small class="why unrated">Score pending<\/small>/);
+  const exploited = await (await page({ ...SSHOLE, cvss: undefined })).text();
+  assert.doesNotMatch(exploited, /class="why unrated"|class="banner[^"]*unrated/); // the ring alone still says "CVSS 점수 대기"
+  assert.match(exploited, /<small class="why kev">악용 발생<\/small>/);
+});
+
+test('public exploit code is the one red reason line (critique 14)', async () => {
+  const html = await (await page({ ...NOTICE, summary: { ...NOTICE.summary, poc_public: true } }, 'ko', 'CVE-2026-55555')).text();
+  assert.match(html, /<p class="reason kev">/);
 });
 
 test('source links open in a new tab and say so, as on the Board; the Board and language links stay in the tab', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, /<a href="https:\/\/www.openssh.com\/txt\/release-9.9p2" target="_blank" rel="noopener noreferrer">OpenSSH 9.9p2 release notes<span class="sr-only"> \(새 탭에서 열림\)<\/span><\/a>/);
   assert.match(html, /<a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158" target="_blank" rel="noopener noreferrer">CVE-2026-123158</);
-  assert.match(html, /<a href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*" target="_blank" rel="noopener noreferrer">틀린 내용 알리기</);
+  assert.match(html, /<a href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*" target="_blank" rel="noopener noreferrer"><svg [^>]*aria-hidden="true">[\s\S]*?<\/svg>틀린 내용 알리기</);
   assert.match(html, /<a href="\/#i=CVE-2026-123158">/);
-  assert.match(html, /<a href="\/en\/i\/CVE-2026-123158" hreflang="en"/);
+  assert.match(html, /<a class="lang" href="\/en\/i\/CVE-2026-123158" hreflang="en"/);
   assert.match(await (await page(SSHOLE, 'en')).text(), /<span class="sr-only"> \(opens in a new tab\)<\/span>/);
 });
 
@@ -120,7 +145,23 @@ test('the English page is the English Summary, canonical to itself', async () =>
   assert.match(html, />High risk</);
   assert.match(html, /Listed in CISA KEV/);
   assert.match(html, /<time datetime="2026-11-05T10:00:00Z">2026-11-05 10:00 UTC/);
-  assert.match(html, /href="\/i\/CVE-2026-123158" hreflang="ko" lang="ko">한국어</);
+  assert.match(html.split('</header>')[0], /<a class="lang" href="\/i\/CVE-2026-123158" hreflang="ko" lang="ko" aria-label="한국어"><span class="full">한국어<\/span><span class="short">한<\/span><\/a>/);
+});
+
+test('the header carries the logo home and the language switch; the links row holds the Board and report buttons', async () => {
+  const html = await (await page(SSHOLE)).text();
+  const header = html.split('</header>')[0].split('<header>')[1];
+  assert.match(header, /<a class="brand" href="\/"><svg viewBox="0 0 64 56" aria-hidden="true">[\s\S]*?<\/svg>Patch Ticker<\/a>/);
+  assert.match(header, /<a class="lang" href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en" aria-label="English"><span class="full">English<\/span><span class="short">EN<\/span><\/a>/);
+  const links = html.split('<nav class="links"')[1].split('</nav>')[0];
+  assert.deepEqual(links.match(/<a href="[^"]*/g).map((a) => a.slice(9).split('?')[0]), ['/#i=CVE-2026-123158', 'https://github.com/dwamaker/PatchTicker/issues/new']);
+  assert.doesNotMatch(links, /hreflang/); // the language switch moved up
+});
+
+test('a note (404) keeps the logo header but has no language switch', async () => {
+  const html = await (await pageResponse(bucket({}), 'ko', 'CVE-2026-99999', NOW)).text();
+  assert.match(html, /<header><div class="wrap"><a class="brand" href="\/"><svg viewBox="0 0 64 56"[\s\S]*?Patch Ticker<\/a><\/div><\/header>/);
+  assert.doesNotMatch(html, /hreflang|class="lang"/);
 });
 
 test('a 참고 page with a CVE is for sharing only: noindex', async () => {

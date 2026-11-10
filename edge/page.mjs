@@ -7,6 +7,9 @@ import { cveUrl, cvssRating, easyLine, exploitReason, isExploited, lineKeys, MEN
 import { SITE, SLUG, escapeXml as esc, failClosed, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
+// The Board's logo symbol (index.html #home) and its 틀린 내용 알리기 icon (app.mjs reportLink).
+const LOGO = '<svg viewBox="0 0 64 56" aria-hidden="true"><path fill-rule="evenodd" d="M17 0H44A20 20 0 0 1 44 40H34V56H17V26.5H0V13.5H17ZM53.5 20A9.5 9.5 0 1 0 34.5 20A9.5 9.5 0 1 0 53.5 20Z"/></svg>';
+const REPORT_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 14 13H2Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.5v3M8 11.2v.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const NVD_EN = 'This product uses data from the NVD API but is not endorsed or certified by the NVD.';
 const MITRE = 'CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation. CVE Usage: MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures (CVE&reg;). Any copy you make for such purposes is authorized provided that you reproduce MITRE\'s copyright designation and this license in any such copy. <a href="https://www.cve.org/Legal/TermsOfUse">CVE Terms of Use</a>';
 
@@ -34,52 +37,75 @@ const TEXT = {
   },
 };
 
-const CSS = `:root{color-scheme:light dark;--bg:light-dark(#f4f5f7,#121417);--panel:light-dark(#fff,#191c20);--panel-2:light-dark(#eceef1,#1f2328);--ink:light-dark(#16191d,#ececec);--ink-2:light-dark(#4f5862,#a8afb7);--ink-3:light-dark(#5f6872,#8c949d);--rule:light-dark(#dde1e5,#2a2f35);--rule-2:light-dark(#c4c9cf,#3a4048);--edge:light-dark(#858e97,#6b737c);--high:light-dark(#c4231c,#ff6b62);--mid:light-dark(#8a6100,#f5b400);--mid-mark:light-dark(#a87700,#f5b400);--note:light-dark(#5a6570,#9aa3ad);--focus:light-dark(#1a5fb4,#7cc4ff);--sans:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+// On a touch screen a list link is a 44px box, ~10px of air over its text: the list under a label pulls up by that much.
+// CVE columns: 9rem + a 1.25rem marker gap is the most that still gives two columns at 360px (328px less the list's 20px).
+const CSS = `:root{color-scheme:light dark;--bg:light-dark(#f4f5f7,#121417);--panel:light-dark(#fff,#191c20);--panel-2:light-dark(#eceef1,#1f2328);--ink:light-dark(#16191d,#ececec);--ink-2:light-dark(#4f5862,#a8afb7);--ink-3:light-dark(#5f6872,#8c949d);--rule:light-dark(#dde1e5,#2a2f35);--rule-2:light-dark(#c4c9cf,#3a4048);--edge:light-dark(#858e97,#6b737c);--shadow:light-dark(rgb(20 25 30 / 0.07),rgb(0 0 0 / 0.32));--high:light-dark(#c4231c,#ff6b62);--mid:light-dark(#8a6100,#f5b400);--mid-mark:light-dark(#a87700,#f5b400);--note:light-dark(#5a6570,#9aa3ad);--focus:light-dark(#1a5fb4,#7cc4ff);--sans:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
 *,*::before,*::after{box-sizing:border-box}
-html{background:var(--bg)}
+html{background:var(--bg);scrollbar-color:var(--rule-2) var(--bg)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 0.9375rem/1.55 var(--sans);letter-spacing:-0.005em;word-break:keep-all;overflow-wrap:anywhere;-webkit-font-smoothing:antialiased}
 a{color:var(--focus);text-underline-offset:3px}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+::selection{background:color-mix(in srgb,var(--focus) 32%,transparent)}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.wrap{max-width:45rem;margin:0 auto;padding:0 1rem}
+.wrap{max-width:45rem;margin:0 auto;padding-inline:1rem}
 header{border-bottom:1px solid var(--rule)}
-header .wrap{min-height:3.5rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem}
-.brand{color:var(--ink);font-size:1.125rem;font-weight:700;letter-spacing:-0.02em;text-decoration:none}
-main{padding:1.5rem 0 2rem}
-h1{margin:0 0 1rem;font:700 1.5rem/1.3 var(--sans);letter-spacing:-0.02em}
+header .wrap{min-height:4rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.brand{display:inline-flex;align-items:center;gap:.625rem;border-radius:8px;color:var(--ink);font:700 1.25rem/1 var(--sans);letter-spacing:-0.02em;text-decoration:none}
+.brand svg{flex:none;height:1em;width:auto;fill:var(--focus)}
+.links a,.lang{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:44px;min-width:44px;padding:0 1rem;border:1px solid var(--edge);border-radius:8px;background:none;color:var(--ink);font-size:.875rem;font-weight:500;text-decoration:none;transition:background-color 120ms ease-out,transform 100ms ease-out}
+.links svg{flex:none;width:16px;height:16px}
+@media (hover:hover){.links a:hover,.lang:hover{background:var(--panel-2)}}
+.links a:active,.lang:active{transform:scale(.96)}
+@media (prefers-reduced-motion:reduce){.links a:active,.lang:active{transform:none}}
+.lang .short{display:none}
+main{padding-block:2.5rem 2rem}
+@media (max-width:599px){.lang .full{display:none}.lang .short{display:inline}main{padding-top:1.75rem}}
+h1{margin:0 0 1rem;font:700 1.5rem/1.3 var(--sans);letter-spacing:-0.02em;text-wrap:balance}
 p{margin:.375rem 0}
 ul{margin:.25rem 0;padding-left:1.25rem}
-.banner{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem;padding:1rem;border:1px solid var(--rule);border-left:4px solid var(--note);border-radius:10px;background:var(--panel)}
-.banner.risk-highest{border-left-color:var(--high)}
-.banner.risk-high{border-left-color:var(--mid-mark)}
-.sign{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;color:var(--note)}
+.banner{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem;padding:1rem;border:1px solid var(--rule-2);border-left:3px solid var(--note);border-radius:10px;background:var(--panel);box-shadow:0 6px 18px -8px var(--shadow)}
+.banner.risk-highest{border-left-color:var(--high);background:linear-gradient(90deg,color-mix(in srgb,var(--high) 7%,transparent),transparent 40%),var(--panel)}
+.banner.risk-high{border-left-color:var(--mid-mark);background:linear-gradient(90deg,color-mix(in srgb,var(--mid-mark) 5%,transparent),transparent 40%),var(--panel)}
+.sign{margin:0;display:flex;flex-direction:column;align-items:center;gap:.125rem;color:var(--note)}
 .risk-highest .sign{color:var(--high)}
 .risk-high .sign{color:var(--mid)}
-.word{padding:.2rem .75rem;border:1.5px solid currentColor;border-radius:999px;font-weight:800}
-.why{font-size:.8125rem;font-weight:700}
-.gauge{position:relative;flex:none;width:3rem;height:3rem;display:grid;place-items:center;color:var(--note)}
+.word{padding:calc(.25rem - 1.5px) calc(.75rem - 1.5px);border:1.5px solid var(--note);border-radius:999px;font-size:.9375rem;font-weight:800;line-height:1.2}
+.risk-highest .word{border-color:var(--high)}
+.risk-high .word{border-color:var(--mid-mark)}
+.gauge{position:relative;flex:none;width:2.75rem;height:2.75rem;display:grid;place-items:center;color:var(--note)}
 .gauge svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 .gauge circle{fill:none;stroke-width:3.5}
 .gauge .track{stroke:var(--rule-2)}
 .gauge .arc{stroke:currentColor;stroke-dasharray:var(--fill) 1;stroke-linecap:round}
-.gauge b{color:var(--ink);font-size:.875rem}
-.gauge.unrated{border:2px dashed var(--rule-2);border-radius:50%;color:var(--ink-3)}
+.gauge.sev-none .arc{display:none}
+.gauge b{position:relative;color:var(--ink);font-size:.8125rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.gauge.unrated{border:2px dashed var(--rule-2);border-radius:50%;color:var(--ink-3);font-weight:600}
 .sev-critical{color:var(--high)}
 .sev-high{color:var(--mid-mark)}
-.reason{flex-basis:100%;margin:0;color:var(--ink-2);font-size:.875rem}
+.reason{flex-basis:100%;margin:0;color:var(--ink-2);font-size:.875rem;font-weight:600;font-variant-numeric:tabular-nums}
+@media (pointer:coarse){.reason a{display:inline-block;padding:.625rem 0}}
+.kev{color:var(--high);font-weight:700}
+.why.kev{font-size:.875rem;font-weight:800}
+.banner.unrated .word{border-style:dashed}
+.why.unrated{color:var(--ink-2);font-size:.875rem;font-weight:700}
 .easy{margin-top:1rem;font-size:1.0625rem;font-weight:600}
 section{margin-top:1.5rem}
 .label{margin:0 0 .375rem;color:var(--ink-2);font-size:.8125rem;font-weight:700}
+#s-summary~p,#s-todo~p{line-height:1.7}
 code{font-family:var(--mono);font-size:.875rem}
-.command{padding:.5rem .75rem;border-radius:8px;background:var(--panel-2);white-space:pre-wrap;word-break:break-all}
+.command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:.375rem .625rem;white-space:pre-wrap;overflow-wrap:break-word}
 .caution{color:var(--ink-2);font-size:.875rem}
 .tags{display:flex;flex-wrap:wrap;gap:.375rem;padding:0;list-style:none}
-.tags li{padding:.125rem .625rem;border-radius:999px;background:var(--line);color:var(--line-ink);font-size:.875rem;font-weight:600}
-.tags .os{border:1px solid var(--edge);background:none;color:var(--ink)}
-.links{display:flex;flex-wrap:wrap;gap:0 1.25rem;margin-top:2rem;padding-top:.5rem;border-top:1px solid var(--rule)}
-.links a{display:inline-flex;align-items:center;min-height:44px}
-.sources a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}
-.more summary{cursor:pointer;padding:.75rem 0;font-weight:600}
+.tags li{display:inline-flex;align-items:center;max-width:100%;min-height:1.625rem;padding:.1875rem .6875rem;border-radius:999px;background:var(--line);color:var(--line-ink);font-size:.78125rem;font-weight:600;line-height:1.2;letter-spacing:0;overflow-wrap:anywhere}
+.tags .os{background:none;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--edge);font-weight:500}
+.links{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule)}
+.sources li+li{margin-top:.25rem}
+.cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
+.cves,time,#s-todo~ul li{font-variant-numeric:tabular-nums}
+@media (pointer:coarse){:is(.sources,.cves) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
+.more summary{width:fit-content;padding:.375rem 0;color:var(--focus);font-weight:600;cursor:pointer;text-underline-offset:3px}
+@media (pointer:coarse){.more summary{padding-block:.75rem}}
+@media (hover:hover) and (pointer:fine){.more summary:hover{text-decoration:underline}}
 footer{padding:1rem 0 2rem;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.8125rem}`;
 
 const http = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
@@ -91,9 +117,9 @@ const host = (url) => { try { return new URL(url).host.replace(/^www\./, ''); } 
 const CVE_SHOWN = 10;
 const cveList = (cves, t) => {
   const links = cves.map((cve) => link(cveUrl(cve), cve, t));
-  if (links.length <= CVE_SHOWN + 2) return ul(links, 'sources'); // two more are not worth a fold
-  return ul(links.slice(0, CVE_SHOWN), 'sources')
-    + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), 'sources')}</details>`;
+  if (links.length <= CVE_SHOWN + 2) return ul(links, 'cves'); // two more are not worth a fold
+  return ul(links.slice(0, CVE_SHOWN), 'cves')
+    + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), 'cves')}</details>`;
 };
 const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
@@ -111,7 +137,10 @@ function banner(i, t) {
   const level = riskLevel(i);
   const cvss = Number.isFinite(i.cvss) ? i.cvss : null;
   const rating = cvssRating(cvss);
-  const sign = `<p class="sign"><b class="word">${esc(t.levels[level])}</b>${isExploited(i) ? ` <small class="why">${esc(t.kevReason)}</small>` : ''}</p>`;
+  // Not rated yet, as on the Board (riskCell): the sign is dashed like the empty ring, 점수 대기 under it (critique 13).
+  const pending = !isExploited(i) && !rating;
+  const under = isExploited(i) ? `<small class="why kev">${esc(t.kevReason)}</small>` : pending ? `<small class="why unrated">${esc(t.unratedWhy)}</small>` : '';
+  const sign = `<p class="sign"><b class="word">${esc(t.levels[level])}</b>${under ? ` ${under}` : ''}</p>`;
   const ring = rating
     ? `<span class="gauge sev-${rating}" role="img" aria-label="CVSS ${cvss.toFixed(1)} (${esc(t.rating[rating])})" style="--fill:${(Math.min(cvss, 10) / 10).toFixed(3)}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg><b>${cvss.toFixed(1)}</b></span>`
     : `<span class="gauge unrated" role="img" aria-label="${esc(t.unrated)}">—</span>`;
@@ -119,8 +148,9 @@ function banner(i, t) {
   let why = '';
   if (reason?.kind === 'kev') why = `${esc(t.kevListed)}${reason.date ? ` · ${esc(reason.date)}` : ''}`;
   if (reason?.kind === 'source') why = `${esc(t.attackSource)} ${link(reason.url, host(reason.url), t)}`;
-  if (!reason && i.summary?.poc_public === true) why = esc(t.poc);
-  return `<div class="banner risk-${level}">${sign}${ring}${why ? `<p class="reason">${why}</p>` : ''}</div>`;
+  const poc = !reason && i.summary?.poc_public === true; // red like the Board's .kev line, the one red reason (critique 14)
+  if (poc) why = esc(t.poc);
+  return `<div class="banner risk-${level}${pending ? ' unrated' : ''}">${sign}${ring}${why ? `<p class="reason${poc ? ' kev' : ''}">${why}</p>` : ''}</div>`;
 }
 
 function products(i, lang) {
@@ -139,7 +169,8 @@ function mentions(i, lang, t) {
   const glosses = Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : [];
   const named = (m) => (lang === 'ko' && glosses.find((g) => g?.url === m.url && typeof g.title === 'string')?.title) || m.title || host(m.url);
   const kinds = [...new Set([...MENTION_ORDER, ...i.mentions.map((m) => m.kind)])];
-  const listed = new Set(i.cves.map(cveUrl)); // the CVE section links these already (IBM API Connect had 204 twice)
+  // A group's CVE section links these already (IBM API Connect had 204 twice); with one or two, as on the Board, Sources keeps them.
+  const listed = new Set(i.cves.length > 2 ? i.cves.map(cveUrl) : []);
   return ul(kinds.flatMap((kind) => {
     const links = i.mentions.filter((m) => m.kind === kind && http(m.url) && !(kind === 'cve_record' && listed.has(m.url)))
       .map((m) => link(m.url, named(m), t));
@@ -149,7 +180,8 @@ function mentions(i, lang, t) {
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
 
-function document(lang, head, main) {
+// other: the language switch for the header; the short notes have none.
+function document(lang, head, main, other = '') {
   const t = TEXT[lang];
   return `<!doctype html>
 <html lang="${lang}">
@@ -163,7 +195,7 @@ ${head}
 <style>${CSS}</style>
 </head>
 <body>
-<header><div class="wrap"><a class="brand" href="/">Patch Ticker</a></div></header>
+<header><div class="wrap"><a class="brand" href="/">${LOGO}Patch Ticker</a>${other}</div></header>
 <main class="wrap">${main}</main>
 ${footer(t)}
 </body>
@@ -210,9 +242,10 @@ export function pageHtml(i, lang, slug) {
     section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
     '</article>',
     `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
-      + `<a href="${t.otherLang === 'en' ? '/en/i/' : '/i/'}${slug}" hreflang="${t.otherLang}" lang="${t.otherLang}">${esc(t.other)}</a>`
-      + `<a href="${esc(reportUrl(i, lang, self))}"${NEW_TAB}>${esc(t.report)}</a></nav>`].join('\n');
-  return document(lang, head, main);
+      + `<a href="${esc(reportUrl(i, lang, self))}"${NEW_TAB}>${REPORT_ICON}${esc(t.report)}</a></nav>`].join('\n');
+  const other = `<a class="lang" href="${TEXT[t.otherLang].path}${slug}" hreflang="${t.otherLang}" lang="${t.otherLang}" aria-label="${esc(t.other)}">`
+    + `<span class="full">${esc(t.other)}</span><span class="short">${esc(t.otherShort)}</span></a>`;
+  return document(lang, head, main, other);
 }
 
 // Edge cache times: a page, a move and an expired page change at most once a cycle; a missing page may appear sooner.
