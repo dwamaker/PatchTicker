@@ -25,9 +25,10 @@
   <meta property="og:locale" content="ko_KR">
   <meta property="og:locale:alternate" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
-  <!-- the module chain (app.mjs, then board.mjs) starts at once, and the data host connects early (optimize, 11-09) -->
+  <!-- the module chain (app.mjs, then board.mjs) starts at once, vendors.json too (a JSON module would otherwise wait for board.mjs), and the data host connects early (optimize, 11-09) -->
   <link rel="modulepreload" href="app.mjs">
   <link rel="modulepreload" href="board.mjs">
+  <link rel="modulepreload" href="vendors.json" as="json">
   <link rel="preconnect" href="https://data.patchticker.com" crossorigin>
   <script>try { const t = localStorage.getItem('vr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     const s = Number(localStorage.getItem('vr-text-pct')); if ([87.5, 112.5, 125, 150].includes(s)) document.documentElement.style.setProperty('--ts', s / 100); } catch {}

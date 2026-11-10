@@ -28,6 +28,7 @@ test("the CSP lets the page load its modules, its data hosts and the analytics b
     assert.ok(csp['connect-src'].includes(host), host);
   }
   assert.ok(csp['connect-src'].includes("'self'")); // vendors.json is a JSON module: connect-src
+  assert.match(html, /<link rel="modulepreload" href="vendors\.json" as="json">/); // else it waits for board.mjs (11-10)
   assert.ok(csp['img-src'].includes("'self'")); // favicon.svg
   assert.deepEqual(csp['frame-ancestors'], ["'none'"]);
   assert.equal(value('X-Content-Type-Options'), 'nosniff');
