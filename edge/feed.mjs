@@ -1,14 +1,14 @@
 // The RSS feeds (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
 // collector's board/feed.json from R2 and renders RSS 2.0 per request. Titles, Summaries and links come from the web
 // and a model: every text is escaped, and the only links are our own.
-import { easyLine, riskLevel, slug } from '../web/board.mjs';
+import { easyLine, riskLevel, slug, WORDS } from '../web/board.mjs';
 import { SITE, escapeXml, failClosed, readJson, titleOf, unavailable, whatToDo } from './shared.mjs';
 
 const FEED_DOC = 'board/feed.json';
 
 const TEXT = {
-  ko: { title: 'Patch Ticker · 보안 취약점 게시판', about: '위험 이상, 실제 악용, CVE 없는 새 보안 사건', act: '대처법', feed: '/feed.xml', page: '/i/' },
-  en: { title: 'Patch Ticker · vulnerability board', about: 'New security Incidents: high risk, exploited, or without a CVE yet', act: 'What to do', feed: '/en/feed.xml', page: '/en/i/' },
+  ko: { title: WORDS.ko.title, about: '위험 이상, 실제 악용, CVE 없는 새 보안 사건', act: '대처법', feed: '/feed.xml', page: '/i/' },
+  en: { title: WORDS.en.title, about: 'New security Incidents: high risk, exploited, or without a CVE yet', act: 'What to do', feed: '/en/feed.xml', page: '/en/i/' },
 };
 
 const rfc822 = (stamp) => new Date(stamp).toUTCString();

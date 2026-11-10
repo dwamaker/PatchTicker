@@ -1,13 +1,13 @@
 // What every Pages Function uses (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision): the site
 // address, escaping, the store read that fails closed, the edge cache, and what to do (the page and the feed alike).
-import { easyAction, easyLine, isShellCommand, OSES, riskLevel, rowTags } from '../web/board.mjs';
+import { easyAction, easyLine, firstProduct, isShellCommand, riskLevel, usableFixes, WORDS } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
 export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
 
 export const escapeXml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
 
-export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[lang]?.title || i.brief?.text || i.id;
+export { titleOf } from '../web/board.mjs';
 
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). A missing document is null.
 export async function readJson(bucket, key) {
@@ -46,21 +46,19 @@ export async function cached(context, render) {
   return head ? new Response(null, res) : res;
 }
 
-// The Board's words (web/app.mjs TEXT) for what to do.
+// What to do: the shared words (web/board.mjs WORDS), plus the edge's own.
 const TODO = {
   ko: {
-    command: '이 명령으로 업데이트하세요:', commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, devices: '이 기기들을 지금 업데이트하세요!',
-    version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
-    none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.', fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', orNewer: (v) => `${v} 이상`,
-    stopgap: '당장 못 하면:', setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
-    caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
+    ...WORDS.ko,
+    none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
+    orNewer: (v) => `${v} 이상`, // not in WORDS: the Board's keeps "이상" on the line with a no-break space
+    caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.', // not in WORDS: English differs
   },
   en: {
-    command: 'Run this to update:', commandFor: (w) => `${w}, run this to update:`, devices: 'Update these devices now!',
-    version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
-    none: 'We have not confirmed a fixed version yet. Check the source links below.', fixesIntro: 'Update to at least the version for your product:', orNewer: (v) => `${v} or later`,
-    stopgap: "Can't update yet?", setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
-    caution: 'A wrong setting can stop the service or lock you out. Check the source links below first.',
+    ...WORDS.en,
+    none: 'We have not confirmed a fixed version yet. Check the source links below.',
+    orNewer: (v) => `${v} or later`, // not in WORDS: the Board's uses no-break spaces
+    caution: 'A wrong setting can stop the service or lock you out. Check the source links below first.', // not in WORDS: the Board says "source link"
   },
 };
 
@@ -79,10 +77,10 @@ export function whatToDo(i, lang) {
   const sum = i.summary;
   const s = sum[lang] || {};
   const level = riskLevel(i);
-  const product = rowTags(i, lang).find((n) => !OSES.includes(n));
+  const product = firstProduct(i, lang);
   const action = easyAction(sum);
   const out = [p(s.mitigation)];
-  const fixes = (Array.isArray(sum.fixes) ? sum.fixes : []).filter((f) => typeof f?.for === 'string' && typeof f?.version === 'string' && f.for && f.version);
+  const fixes = usableFixes(sum);
   if (fixes.length > 1) out.push(p(t.fixesIntro), ul(fixes.map((f) => `<strong>${escapeXml(f.for)}</strong> ${escapeXml(t.orNewer(f.version))}`)));
   else if (action.kind === 'version' && !s.mitigation) out.push(p(t.version(action.fixed, product)));
   if (action.kind === 'command') {

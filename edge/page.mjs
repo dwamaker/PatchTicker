@@ -1,46 +1,34 @@
 // Incident pages (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
 // collector's pages/<slug>.json from R2 and renders one plain document per language, without script. The rules (risk
 // level, exploited reason, easy action, Product names, on the Board, search-worthy) are the Board's own, imported from
-// web/board.mjs; only the words live here. Titles, Summaries and URLs come from the web and a model: every text is
+// web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { cvssRating, easyLine, exploitReason, isExploited, lineKeys, onBoard, productLine, riskLevel, rowTags, searchWorthy, withinPageDays } from '../web/board.mjs';
+import { cveUrl, cvssRating, easyLine, exploitReason, isExploited, lineKeys, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, rowTags, searchWorthy, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
-const ISSUES = 'https://github.com/dwamaker/PatchTicker/issues/new';
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
-const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
 const NVD_EN = 'This product uses data from the NVD API but is not endorsed or certified by the NVD.';
 const MITRE = 'CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation. CVE Usage: MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures (CVE&reg;). Any copy you make for such purposes is authorized provided that you reproduce MITRE\'s copyright designation and this license in any such copy. <a href="https://www.cve.org/Legal/TermsOfUse">CVE Terms of Use</a>';
 
-// The Board's words (web/app.mjs TEXT) for what the page shows, plus the page's own.
+// The shared words (web/board.mjs WORDS) for what the page shows, plus the page's own.
 const TEXT = {
   ko: {
-    path: '/i/', locale: 'ko_KR', other: 'English', otherLang: 'en',
-    levels: { highest: '고위험', high: '위험', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
-    unrated: 'CVSS 점수 대기', rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
-    summary: '요약', conditions: '해당 조건', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
-    published: '처음 게시', firstSeen: '처음 확인', zone: '',
-    mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
-    newTab: ' (새 탭에서 열림)', board: '게시판에서 보기', report: '틀린 내용 알리기', cveRecord: 'CVE 기록 보기',
-    refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 최대 90일의 사건만 저장합니다.',
-    nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
-    kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
-    cveNote: 'CVE 정보는 MITRE의 CVE 이용 약관에 따라 사용합니다. 아래는 약관이 요구하는 저작권 표시와 라이선스 원문입니다.',
+    ...WORDS.ko,
+    path: '/i/', locale: 'ko_KR', otherLang: 'en',
+    rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
+    summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
+    firstSeen: '처음 확인', zone: '',
+    board: '게시판에서 보기', cveRecord: 'CVE 기록 보기',
     expired: '보관 기간 90일이 지났어요. 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
     down: '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '게시판으로 가기',
   },
   en: {
-    path: '/en/i/', locale: 'en_US', other: '한국어', otherLang: 'ko',
-    levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
-    unrated: 'CVSS score pending', rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
-    summary: 'Summary', conditions: 'Affected when', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
-    published: 'First published', firstSeen: 'First seen', zone: ' UTC',
-    mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
-    newTab: ' (opens in a new tab)', board: 'Open on the Board', report: 'Report a mistake', cveRecord: 'See the CVE record',
-    refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",
-    nvd: '',
-    kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
-    cveNote: 'CVE data is used under the CVE Terms of Use from MITRE; its required copyright notice and license follow.',
+    ...WORDS.en,
+    path: '/en/i/', locale: 'en_US', otherLang: 'ko',
+    rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
+    summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
+    firstSeen: 'First seen', zone: ' UTC',
+    board: 'Open on the Board', cveRecord: 'See the CVE record',
     expired: 'This Incident page has expired: pages are kept for 90 days.', missing: 'There is no Incident page at this address.',
     down: 'Incident pages cannot be loaded right now. Please try again shortly.', home: 'Go to the Board',
   },
@@ -108,7 +96,6 @@ const cveList = (cves, t) => {
     + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), 'sources')}</details>`;
 };
 const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
-const cveUrl = (cve) => `https://www.cve.org/CVERecord?id=${encodeURIComponent(cve)}`;
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
 // Korean readers get Korean time (UTC+9, no daylight saving), everyone else UTC.
@@ -158,15 +145,6 @@ function mentions(i, lang, t) {
       .map((m) => link(m.url, named(m), t));
     return links.length ? [`${esc(t.mentionKinds[kind] || kind)}: ${links.join(' · ')}`] : [];
   }), 'sources');
-}
-
-// 틀린 내용 알리기: the Board's issue form (web/app.mjs reportLink), pointing at this page.
-function reportUrl(i, lang, slug) {
-  const titleIn = (l) => titleOf(i, l);
-  const body = [`사건 / Incident: ${i.id}`, `제목: ${titleIn('ko')}`, `Title: ${titleIn('en')}`, `링크 / Link: ${pageUrl(lang, slug)}`, '',
-    '무엇이 틀렸나요? / What is wrong?', '(예: 위험도, 영향받는 제품이나 버전, 요약 내용 / e.g. the risk level, the affected products or versions, the summary)',
-    '', '', '근거가 있다면 링크를 적어 주세요. / Please add a link to your source if you have one.', ''].join('\n');
-  return `${ISSUES}?${new URLSearchParams({ title: `[오류 제보 / Mistake] ${i.id}: ${titleIn(lang)}`, body })}`;
 }
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
@@ -233,7 +211,7 @@ export function pageHtml(i, lang, slug) {
     '</article>',
     `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
       + `<a href="${t.otherLang === 'en' ? '/en/i/' : '/i/'}${slug}" hreflang="${t.otherLang}" lang="${t.otherLang}">${esc(t.other)}</a>`
-      + `<a href="${esc(reportUrl(i, lang, slug))}"${NEW_TAB}>${esc(t.report)}</a></nav>`].join('\n');
+      + `<a href="${esc(reportUrl(i, lang, self))}"${NEW_TAB}>${esc(t.report)}</a></nav>`].join('\n');
   return document(lang, head, main);
 }
 

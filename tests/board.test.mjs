@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -899,4 +899,57 @@ test('each CVE shows its Summary line, else its own record text, in the Incident
     { cve: 'CVE-2026-1003', text: 'record three' }]);
   assert.deepEqual(cveLines(incident, 'en').map((l) => l.text), ['record one', 'record three']);
   assert.deepEqual(cveLines({ cves: ['CVE-2026-1001'], cve_texts: { 'CVE-2026-1001': 'x' } }, 'ko'), []);
+});
+
+test('the first Product skips the operating systems, in the language asked', () => {
+  const i = { products: [], summary: { products: ['Android', 'Pixel Camera'], platforms: ['Android', 'Windows'], ko: { names: ['안드로이드', '픽셀 카메라'] } } };
+  assert.equal(firstProduct(i, 'en'), 'Pixel Camera');
+  assert.equal(firstProduct(i, 'ko'), '픽셀 카메라');
+  assert.equal(firstProduct({ products: [], summary: { products: [], platforms: ['Linux'] } }, 'en'), undefined);
+});
+
+test('a title falls back from the Summary to the quick title, the source line, then the id', () => {
+  const i = { id: 'CVE-2026-1', brief: { text: 'brief' }, quick_title: { en: { title: 'quick' } }, summary: { ko: { title: '요약' } } };
+  assert.equal(titleOf(i, 'ko'), '요약');
+  assert.equal(titleOf(i, 'en'), 'quick');
+  assert.equal(titleOf({ ...i, quick_title: null }, 'en'), 'brief');
+  assert.equal(titleOf({ id: 'CVE-2026-1' }, 'en'), 'CVE-2026-1');
+});
+
+test('Mentions list advisories first and repositories last', () => {
+  assert.deepEqual(MENTION_ORDER, ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo']);
+});
+
+test('a CVE record address escapes the ID', () => {
+  assert.equal(cveUrl('CVE-2026-1234'), 'https://www.cve.org/CVERecord?id=CVE-2026-1234');
+  assert.equal(cveUrl('a&b'), 'https://www.cve.org/CVERecord?id=a%26b');
+});
+
+test('only fixes with a product line and a version are usable', () => {
+  const good = { for: 'Gen7', version: '7.3.4' };
+  assert.deepEqual(usableFixes({ fixes: [good, { for: 'Gen8', version: '' }, { for: 1, version: '8' }, null, { version: '9' }] }), [good]);
+  assert.deepEqual(usableFixes({}), []);
+  assert.deepEqual(usableFixes({ fixes: 'x' }), []);
+});
+
+test('the mistake report fills the issue form with both titles and the link the visitor saw', () => {
+  const i = { id: 'CVE-2026-1', brief: { text: 'brief' }, summary: { ko: { title: '요약' }, en: { title: 'Summary' } } };
+  const url = new URL(reportUrl(i, 'ko', 'https://patchticker.com/i/CVE-2026-1'));
+  assert.equal(url.origin + url.pathname, 'https://github.com/dwamaker/PatchTicker/issues/new');
+  assert.equal(url.searchParams.get('title'), '[오류 제보 / Mistake] CVE-2026-1: 요약');
+  const body = url.searchParams.get('body').split('\n');
+  assert.deepEqual(body.slice(0, 4), ['사건 / Incident: CVE-2026-1', '제목: 요약', 'Title: Summary', '링크 / Link: https://patchticker.com/i/CVE-2026-1']);
+  assert.equal(new URL(reportUrl(i, 'en', 'x')).searchParams.get('title'), '[오류 제보 / Mistake] CVE-2026-1: Summary');
+});
+
+test('the shared words hold the same keys in both languages, each a non-empty text or a function', () => {
+  const keys = (o, at = '') => Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? keys(v, at + k + '.') : [at + k])).sort();
+  assert.deepEqual(keys(WORDS.ko), keys(WORDS.en));
+  const filled = (o, lang, at = '') => Object.entries(o).forEach(([k, v]) => {
+    if (typeof v === 'object') return filled(v, lang, at + k + '.');
+    if (lang === 'en' && at + k === 'nvd') return assert.equal(v, ''); // the required English NVD sentence is static in the page
+    assert.ok(typeof v === 'function' || (typeof v === 'string' && v), `${lang} ${at}${k}`);
+  });
+  filled(WORDS.ko, 'ko');
+  filled(WORDS.en, 'en');
 });

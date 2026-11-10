@@ -414,6 +414,65 @@ export const rowTags = (i, lang = 'en') => {
   const platforms = [...(s?.platforms || [])].sort((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
   return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
 };
+// The row's first Product that is not an operating system: what an update line, headline or fold line names.
+export const firstProduct = (i, lang = 'en') => rowTags(i, lang).find((n) => !OSES.includes(n));
+
+// An Incident's title in this language: the Summary's, else the quick title, else the source's own line, else its id.
+export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[lang]?.title || i.brief?.text || i.id;
+
+// Mentions are listed by kind in this order (the Lead order), on the Board and the Incident page alike.
+export const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
+
+// The words the Board (web/app.mjs), the Incident page and the RSS feed share, written once so they never drift apart.
+// `nvd` is the Korean line beside the NVD notice; the required English sentence is static, so English has none.
+export const WORDS = {
+  ko: {
+    title: 'Patch Ticker · 보안 취약점 게시판', other: 'English',
+    command: '이 명령으로 업데이트하세요:', commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, devices: '이 기기들을 지금 업데이트하세요!',
+    version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
+    fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
+    setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
+    levels: { highest: '고위험', high: '위험', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
+    unrated: 'CVSS 점수 대기', conditions: '해당 조건', published: '처음 게시',
+    mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
+    newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기',
+    refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 최대 90일의 사건만 저장합니다.',
+    nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
+    kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
+    cveNote: 'CVE 정보는 MITRE의 CVE 이용 약관에 따라 사용합니다. 아래는 약관이 요구하는 저작권 표시와 라이선스 원문입니다.',
+  },
+  en: {
+    title: 'Patch Ticker · vulnerability board', other: '한국어',
+    command: 'Run this to update:', commandFor: (w) => `${w}, run this to update:`, devices: 'Update these devices now!',
+    version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
+    fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
+    setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
+    levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
+    unrated: 'CVSS score pending', conditions: 'Affected when', published: 'First published',
+    mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
+    newTab: ' (opens in a new tab)', report: 'Report a mistake',
+    refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",
+    nvd: '',
+    kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
+    cveNote: 'CVE data is used under the CVE Terms of Use from MITRE; its required copyright notice and license follow.',
+  },
+};
+
+export const cveUrl = (cve) => `https://www.cve.org/CVERecord?id=${encodeURIComponent(cve)}`;
+
+// The Summary's per-line fixes a reader can act on: a product line and its version, both given.
+export const usableFixes = (s) => (Array.isArray(s.fixes) ? s.fixes : [])
+  .filter((f) => typeof f?.for === 'string' && typeof f?.version === 'string' && f.for && f.version);
+
+// 틀린 내용 알리기: a new issue in the public repository with the Incident filled in (ticket 09); link is where the visitor
+// saw it (the Board's #i= address or its Incident page). Korean then English in both languages, so anyone can follow it (owner).
+const ISSUES = 'https://github.com/dwamaker/PatchTicker/issues/new';
+export function reportUrl(i, lang, link) {
+  const body = [`사건 / Incident: ${i.id}`, `제목: ${titleOf(i, 'ko')}`, `Title: ${titleOf(i, 'en')}`, `링크 / Link: ${link}`, '',
+    '무엇이 틀렸나요? / What is wrong?', '(예: 위험도, 영향받는 제품이나 버전, 요약 내용 / e.g. the risk level, the affected products or versions, the summary)',
+    '', '', '근거가 있다면 링크를 적어 주세요. / Please add a link to your source if you have one.', ''].join('\n');
+  return `${ISSUES}?${new URLSearchParams({ title: `[오류 제보 / Mistake] ${i.id}: ${titleOf(i, lang)}`, body })}`;
+}
 
 // A vendor as people write it, from the id's vendor part. Spellings live in vendors.json (the collector reads it too and
 // lists vendors it lacks in unknown_vendors.json; how to add one: docs/agents/vendors.md). A fold line still needs a name
