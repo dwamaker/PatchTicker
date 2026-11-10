@@ -58,10 +58,7 @@ key (`products_of`). Then they fold as `link()` folds (the earlier first seen su
 survivor is due a new Summary (`merged` in its Summary basis). Every answer that named an id or had a list goes into
 `merge_log.json` in the store (newest first, last 300: `at`, `incident`, `candidates`, `same_as`, `accepted`, `why`),
 and each merge into one stderr line. An answer naming an Incident already folded away counts for the one that
-absorbed it, so rows naming each other end as one. CVE-less Board Incidents summarized before this (no
-`same_as_asked` on them) are asked once more within the seven days (`revive_same_as`): past `MAX_SUMMARIES` and not
-counted in it, never after a given-up Summary (logged once), and never twice. A rejected reply keeps the question:
-it is retried like any Summary up to `MAX_TRIES`, the old Summary staying on the page meanwhile.
+absorbed it, so rows naming each other end as one.
 
 The Board opens on `board/rows.json` (owner, 11-10): the week of `board/recent.json` as row views (marked `rows`), with
 only what a row, the filters, folds and Highlights read, and the collector's `wp_plugin` answer; the newest 100 and the
@@ -82,11 +79,10 @@ Unassigned incident seen in discussion, first seen in the last seven days) get a
 Haiku 5.5 in the same cycle (`collector/summaries.py`). The input is the Incident, its CVE records and
 the text of up to two advisory or write-up pages; a reply whose numbers, versions or Lead link are not
 in that input, or whose Korean and English numbers differ, is rejected and retried (three tries).
-A digit inside a fixed Korean word (`KO_DIGIT_WORDS`, only "제3자" so far) is not counted in Korean text; Incidents
-given up over a number before that got one more round once (`revive`, marker `ko_words`).
+A digit inside a fixed Korean word (`KO_DIGIT_WORDS`, only "제3자" so far) is not counted in Korean text.
 Each retry says why the last reply was rejected, beside the input and never inside it (so a number named there is
-still not allowed); a reply cut off at the token cap gets more room. Incidents given up before 2026-11-10 got one
-more round once (`revive`).
+still not allowed); a reply cut off at the token cap gets more room. After the third rejected try the Summary is given
+up and never asked for again; an older Summary stays on the page.
 A fixed version below the CVE records' first fixed version of the same major (the Incident's `product<version`
 fix keys, one product only) is rejected on every try, the last included (`fixed_conflict`; FreeRDP's advisory said
 3.22.2 for 3.32.2), and a stored Summary that names one is made again within the usual limits.

@@ -11,15 +11,14 @@ import http.client
 import json
 import re
 import sys
-from datetime import timedelta
 from decimal import Decimal
 from urllib.parse import urlsplit
 
 import anthropic
 from anthropic.types.messages.batch_create_params import Request
 
-from collector import hn
-from collector.incidents import STAMP, fold, is_news, month_of, on_board, products_of, published_at
+from collector import cvelist, hn
+from collector.incidents import fold, is_news, month_of, on_board, products_of, published_at, stamp_ago
 
 MODEL = "claude-haiku-5-5"
 # Decided by the 2026-11-07 low vs medium comparison (plan.md).
@@ -55,8 +54,7 @@ BATCH_DAYS = 30
 PAGE_CHARS = 8000  # shortcut: page text past this is cut; sshhole.com's Mitigation sits at ~7,000.
 MAX_PAGES = 2
 PAGE_KINDS = ("advisory", "writeup", "discussion")  # in Lead order; repos and newsletters are not read
-CVELIST_RECORD = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"
-# The same CVE JSON 5 record, for one too fresh for the raw path (three 404s in the 2026-11-08 run).
+# The CVE JSON 5 record of cvelist.record_url, for one too fresh for the raw path (three 404s in the 2026-11-08 run).
 CVE_API_RECORD = "https://cveawg.mitre.org/api/cve/{cve}"
 CVE_ID = re.compile(r"CVE-\d{4}-\d{4,}")
 
@@ -275,7 +273,7 @@ def is_candidate(incident, now):
         return True
     # The seven days and the 7.0 cutoff are repeated in web/board.mjs (filterBoard, riskLevel).
     # Counted from when the news was published (else first seen), so an old CVE seen again is not new.
-    if (incident.get("published") or incident["first_seen"]) < (now - timedelta(days=7)).strftime(STAMP):
+    if published_at(incident) < stamp_ago(now, days=7):
         return False
     kinds = {m["kind"] for m in incident["mentions"]}
     buzz = hn_points(incident) >= hn.BUZZ_POINTS
@@ -333,6 +331,11 @@ def needs_title(incident):
     return QUICK_TITLES and "summary" not in incident and "quick_title" not in incident
 
 
+def reply_json(reply):
+    """The JSON in a reply's first text block; raises StopIteration or ValueError for the caller to report."""
+    return json.loads(next(b.text for b in reply.content if b.type == "text"))
+
+
 def title_now(incidents, claude, stamp):
     """One request for these Incidents' titles; each checked title pair is kept as "quick_title" until the Summary comes.
     A title with a CVE ID, a number its own line lacks or a banned word is dropped, and the row keeps its Brief."""
@@ -344,7 +347,7 @@ def title_now(incidents, claude, stamp):
         output_config={"effort": EFFORT, "format": {"type": "json_schema", "schema": TITLE_SCHEMA}},
         messages=[{"role": "user", "content": "Titles for these Incidents:\n" + "\n".join(lines)}])
     try:
-        items = json.loads(next(b.text for b in reply.content if b.type == "text"))["items"]
+        items = reply_json(reply)["items"]
         if not isinstance(items, list):
             raise TypeError(f"items is a {type(items).__name__}")
     except (StopIteration, ValueError, KeyError, TypeError) as err:
@@ -389,8 +392,6 @@ def needs_summary(incident):
         return False
     if "summary" not in incident:
         return True
-    if incident.get("same_as_due"):  # revive_same_as: once, past MAX_SUMMARIES, and not counted in n (save_reply)
-        return True
     seen = incident.get("summary_basis")  # Summaries from before ticket 07 have none: never re-summarized
     if not seen or seen["n"] >= MAX_SUMMARIES:
         return False
@@ -411,8 +412,6 @@ def summarize_now(incident, claude, http_get, stamp, candidates=()):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
     candidates: its same_as_candidates(), listed beside the input."""
     text, seen = summary_input(incident, http_get), basis(incident)
-    if not incident["cves"]:
-        incident["same_as_asked"] = True  # asked with its candidates (none or some): revive_same_as passes it by
     try:
         reply = claude.messages.create(**params(text, candidates=same_as_text(candidates), **retry(incident, text)))
     except anthropic.APIStatusError as err:
@@ -430,9 +429,8 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     # Incident ("same_as": {id, listed}) for apply_same_as, which has every Incident, to decide right after.
     # n counts the Summaries a trigger asked for (MAX_SUMMARIES), so "due" is read before the reply changes anything:
     # a reply nothing asked for (a hand re-make after a prompt change) replaces the text but is not counted
-    # (critique 14: n reached 16 in a day, mostly from re-makes). revive_same_as's one extra ask counts only when
-    # another trigger asked too, so "due" is read without its flag; the flag goes once a Summary is stored (below).
-    due = "summary" not in incident or needs_summary({k: v for k, v in incident.items() if k != "same_as_due"})
+    # (critique 14: n reached 16 in a day, mostly from re-makes).
+    due = "summary" not in incident or needs_summary(incident)
     try:
         summary = parse(reply, text, [m["url"] for m in incident["mentions"]])
     except Rejected as err:
@@ -455,7 +453,6 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     for lang in mismatch:
         summary[lang]["easy_action"] = ""
     same = summary.pop("same_as")
-    incident.pop("same_as_due", None)  # answered ("" included): revive_same_as's question is used up
     if same or listed:
         incident["same_as"] = {"id": same, "listed": list(listed)}
     incident["summary"] = summary | {"at": stamp}
@@ -467,15 +464,9 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
 
 def failed(incident, reason):
     tries = incident.get("summary_error", {}).get("tries", 0) + 1
-    # revive_same_as's question survives a rejected or errored reply (the next cycle asks again, with the retry note)
-    # until MAX_TRIES; then the old Summary stays and the question ends.
-    if tries >= MAX_TRIES and incident.pop("same_as_due", None):
-        print(f"summaries: same_as: {incident['id']} not asked again: its Summary was given up", file=sys.stderr)
-    # final: no more tries, so the page stops saying a Summary is coming (spec story 24).
-    # with_reason: the next try carries this reason (retry()); revive() leaves such an error alone.
-    once = {k: True for k in ("capped", "hinted") if incident.get("summary_error", {}).get(k)}  # revive() only once each
-    # ko_words: tried with KO_DIGIT_WORDS, so revive() leaves it alone.
-    incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True, "ko_words": True} | once | ({"final": True} if tries >= MAX_TRIES else {})
+    # reason: the next try carries it (retry()). final: no more tries, so the page stops saying a Summary is coming
+    # (spec story 24).
+    incident["summary_error"] = {"tries": tries, "reason": reason[:200]} | ({"final": True} if tries >= MAX_TRIES else {})
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
@@ -483,9 +474,6 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
     candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
-    for incident in incidents[:limit]:
-        if not incident["cves"]:
-            incident["same_as_asked"] = True  # as in summarize_now; the cycle writes its month
     requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
                 | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
                 for n, i in enumerate(incidents[:limit])}
@@ -542,7 +530,7 @@ def same_as_candidates(incident, incidents, now):
     (else first seen) in the last SAME_AS_DAYS, newest first, at most SAME_AS_MAX. None for an Incident with a CVE."""
     if incident["cves"]:
         return []
-    since = (now - timedelta(days=SAME_AS_DAYS)).strftime(STAMP)
+    since = stamp_ago(now, days=SAME_AS_DAYS)
     found = [i for i in incidents if i is not incident and i.get("summary") and not i["cves"] and on_board(i)
              and published_at(i) >= since and len(i["id"]) <= SAME_AS_ID_CHARS]
     return sorted(found, key=published_at, reverse=True)[:SAME_AS_MAX]
@@ -606,24 +594,6 @@ def holder(incidents, incident_id):
             or next((i for i in incidents if incident_id in i.get("absorbed", [])), None))
 
 
-def revive_same_as(incident, now):
-    """Owner, 11-10 ("갈라진 줄들 합쳐줘"): a CVE-less Board Incident with a Summary, in same_as_candidates' window, whose
-    Summary request never carried the candidate list (summarized before same_as shipped) is asked once more, so its
-    same_as is decided as usual (Chrome XML zero-day, N-able N-central and Plex2Shell stayed apart). Every request for a
-    CVE-less Incident since sets "same_as_asked" (summarize_now, submit_batch), so none is asked twice. The ask passes
-    MAX_SUMMARIES and is not counted in n (save_reply); a rejected reply keeps it, retried up to MAX_TRIES (failed());
-    one given up for good is not asked, and the log says so once. Returns whether it changed."""
-    if incident["cves"] or incident.get("same_as_asked") or incident.get("same_as_due") or not incident.get("summary") \
-            or not on_board(incident) or published_at(incident) < (now - timedelta(days=SAME_AS_DAYS)).strftime(STAMP):
-        return False
-    if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
-        print(f"summaries: same_as: {incident['id']} not asked again: its Summary was given up", file=sys.stderr)
-        incident["same_as_asked"] = True  # decided: not asked
-        return True
-    incident["same_as_due"] = True
-    return True
-
-
 LINES_SCHEMA = {
     "type": "object",
     "properties": {"lines": {"type": "array", "items": {
@@ -666,7 +636,6 @@ def submit_lines(incidents, claude, limit=MAX_PER_BATCH):
                                                  "input": lines_input(incident, cves[n:n + LINES_PER_REQUEST])}
         if len(requests) > before:  # one left out by limit spends no round
             incident["cve_lines_rounds"] = incident.get("cve_lines_rounds", 0) + 1
-            incident["cve_lines_words"] = True  # this round counts number words; revive_lines() leaves it alone
             if incident.pop("cve_lines_room", False):
                 room.add(incident["id"])
     if not requests:
@@ -688,7 +657,7 @@ def save_lines(incident, reply, cves):
     if reply.stop_reason == "max_tokens":
         incident["cve_lines_room"] = True
     try:
-        items = json.loads(next(b.text for b in reply.content if b.type == "text"))["lines"]
+        items = reply_json(reply)["lines"]
         if not isinstance(items, list):
             raise TypeError(f"lines is a {type(items).__name__}")
     except (StopIteration, ValueError, KeyError, TypeError) as err:
@@ -747,36 +716,6 @@ def retry(incident, text=""):
     return {"note": note} | ({"max_tokens": MAX_TOKENS_RETRY} if reason.startswith("stop_reason max_tokens") else {})
 
 
-def revive(incident):
-    """Owner, 2026-11-10: an Incident given up before retries said why (48 of them) gets one more round of MAX_TRIES,
-    once. Failures since then carry "with_reason" and are never revived. Returns whether it changed."""
-    error = incident.get("summary_error") or {}
-    # Owner, 2026-11-10: an Incident with more CVEs than CVE_LINES_MAX given up before the cap gets one more round too.
-    capped = len(incident.get("cves") or []) > CVE_LINES_MAX and not error.get("capped")
-    # ...and so does one given up over a number before retries named the input's exact versions (retry()), once.
-    hinted = error.get("reason", "").startswith("numbers not in the input") and not error.get("hinted")
-    # ...and one given up over a number before Korean digit words (KO_DIGIT_WORDS, "제3자") stopped counting, once.
-    worded = error.get("reason", "").startswith(("Korean and English numbers differ", "numbers not in the input")) \
-        and not error.get("ko_words")
-    if not error.get("final") or error.get("with_reason") and not capped and not hinted and not worded:
-        return False
-    incident["summary_error"] = ({"tries": 0, "reason": error.get("reason", ""), "with_reason": True, "hinted": True, "ko_words": True}
-                                 | ({"capped": True} if capped or error.get("capped") else {}))
-    return True
-
-
-def revive_lines(incident):
-    """Owner, 2026-11-10: an Incident that spent its LINES_ROUNDS before lines counted number words and before a cut-off
-    reply was logged and retried (FreeRDP 29 lines missing, FFmpeg 6) gets one more round, once, with MAX_TOKENS_RETRY
-    (FreeRDP's lost replies were likely cut off). Every round since sets "cve_lines_words", so none is revived twice.
-    Returns whether it changed."""
-    if incident.get("cve_lines_words") or incident.get("cve_lines_rounds", 0) < LINES_ROUNDS \
-            or not missing_lines(incident | {"cve_lines_rounds": 0}):
-        return False
-    incident |= {"cve_lines_rounds": LINES_ROUNDS - 1, "cve_lines_room": True}
-    return True
-
-
 def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):
     """messages.create parameters; the batch path sends the same with ttl="1h". candidates (same_as_text()) and note
     (retry()) follow the input, never inside it: a reply is checked against the input alone, so a candidate's title
@@ -819,7 +758,7 @@ def summary_input(incident, http_get):
             mark = LEAD_MARK if m["url"] == lead else ""
             lines += [f"Text of {m['url']}{mark}:", page_text(page)[:PAGE_CHARS]]
     for cve in incident["cves"]:
-        record = fetch_page(http_get, cve_record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
+        record = fetch_page(http_get, cvelist.record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
             lines += [f"CVE record {cve}:", cve_fields(record)]
     return "\n".join(lines)
@@ -859,11 +798,6 @@ def sonicwall_advisory(http_get, advisory_id):
         return None
     return "<html><body>" + "".join(f"<h2>{label}</h2><div>{data.get(key) or ''}</div>"
                                     for key, label in SONICWALL_FIELDS) + "</body></html>"
-
-
-def cve_record_url(cve):
-    _, year, number = cve.split("-")
-    return CVELIST_RECORD.format(year=year, group=number[:-3], cve=cve)
 
 
 def cve_fields(raw):
@@ -975,7 +909,7 @@ def parse(reply, input_text, urls):
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
-        data = json.loads(next(b.text for b in reply.content if b.type == "text"))
+        data = reply_json(reply)
         # easy_title and names came on 11-08, easy_action later that day; replies sent before then lack them and
         # the page falls back (title; the normal mitigation).
         # easy_conditions came after critique 12 (11-09): older replies show the normal conditions in the Easy view.

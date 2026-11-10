@@ -1,8 +1,7 @@
 """Mention source: curator RSS feeds (security newsletters). An issue only joins Incidents it cites."""
 
 import html
-import sys
-import xml.etree.ElementTree as ET  # expat in Python 3.13 limits entity expansion
+
 from collector import rss
 from collector.incidents import cves_in, urls_in
 
@@ -22,19 +21,10 @@ def fetch(checkpoints, http_get, feeds, stamp):
     checkpoints = dict(checkpoints or {})
     found = []
     for feed in feeds:
-        try:
-            items = ET.fromstring(http_get(feed)).iter("item")
-            since = checkpoints.get(feed)
-            for item in items:
-                posted = rss.posted(item)
-                if since and posted <= since:
-                    continue
-                checkpoints[feed] = max(checkpoints.get(feed) or posted, posted)
-                found.append(citation(item))
-            if feed in checkpoints:  # as oss-security: a future-dated issue must not freeze the feed until that date
-                checkpoints[feed] = min(checkpoints[feed], stamp)
-        except (OSError, ET.ParseError, AttributeError, TypeError, ValueError, OverflowError) as err:
-            print(f"curators: skipped {feed}: {err!r}", file=sys.stderr)
+        cited, newest = rss.read(feed, checkpoints.get(feed), http_get, stamp, citation, "curators")
+        found += cited
+        if newest:
+            checkpoints[feed] = newest
     return found, checkpoints
 
 

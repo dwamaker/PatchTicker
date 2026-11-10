@@ -91,6 +91,19 @@ class NewsAndCuratorFeedTest(unittest.TestCase):
                 # A checkpoint stored in the future before this fix comes back to now.
                 self.assertEqual(fetch({self.URL: "2099-01-01T00:00:00Z"}, feed(rss()), [self.URL], NOW)[1], {self.URL: NOW})
 
+    def test_a_malformed_item_is_skipped_and_the_older_items_after_it_are_read(self):
+        # Feeds are newest first: one bad item used to end the feed after the checkpoint had moved past the rest.
+        body = rss(item("CVE-2026-5555 security flaw from 2099", date="Thu, 01 Jan 2099 00:00:00 +0000"),
+                   item("CVE-2026-2222 no date", date=None), item("CVE-2026-3333 no link", link=None),
+                   item("CVE-2026-4444 security flaw", date="Tue, 10 Nov 2026 10:00:00 GMT"))
+        for fetch in (news.fetch, curators.fetch):
+            with self.subTest(fetch.__module__):
+                with contextlib.redirect_stderr(io.StringIO()) as log:
+                    found, checkpoints = fetch(None, feed(body), [self.URL], NOW)
+                self.assertEqual([f["cves"] for f in found], [["CVE-2026-5555"], ["CVE-2026-4444"]])
+                self.assertEqual(checkpoints, {self.URL: NOW})
+                self.assertEqual(log.getvalue().count("skipped an item"), 2)
+
 
 class FixKeyTest(unittest.TestCase):
     def record(self, *versions):

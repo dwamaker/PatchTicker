@@ -43,6 +43,13 @@ def fetch(checkpoint, http_get, known=frozenset(), limit=MAX_RECORDS):
 
 
 RECORD_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"
+
+
+def record_url(cve):
+    _, year, number = cve.split("-")
+    return RECORD_URL.format(year=year, group=number[:-3], cve=cve)
+
+
 MISSING_PER_CYCLE = 20
 # Real CVE numbers have 4 to 7 digits; a longer token from a post must never reach int() (over 4300 digits it raises).
 CVE_ID = re.compile(r"CVE-\d{4}-\d{4,7}", re.ASCII)
@@ -54,9 +61,8 @@ def fetch_missing(cves, http_get, limit=MISSING_PER_CYCLE):
     Product). At most `limit` a cycle, newest IDs first; one not published yet (404) is asked again next cycle."""
     records = []
     for cve in sorted(filter(CVE_ID.fullmatch, cves), key=lambda c: [int(p) for p in c.split("-")[1:]], reverse=True)[:limit]:
-        _, year, number = cve.split("-")
         try:
-            record = json.loads(http_get(RECORD_URL.format(year=year, group=number[:-3], cve=cve)))
+            record = json.loads(http_get(record_url(cve)))
         except (OSError, ValueError):
             continue
         if record.get("cveMetadata", {}).get("state") == "PUBLISHED":
@@ -104,15 +110,20 @@ def mention_group(record):
 CVSS_KEYS = ("cvssV3_1", "cvssV3_0", "cvssV4_0")
 
 
-def record_fix_keys(record):
-    """Product and first fixed version pairs ("openemr:openemr<8.3.0") from the CNA's affected ranges, so CVEs one
-    release fixed together can be grouped into one Incident (incidents.group_releases)."""
-    keys = set()
+def cna_products(record):
+    """(key, product as written, affected entry) for each of the CNA's named vendor/product pairs."""
     for a in record["containers"]["cna"].get("affected", []):
         vendor, product = (a.get("vendor") or "").strip(), (a.get("product") or "").strip()
         if not vendor or not product or vendor.lower() in ("n/a", "unknown") or product.lower() in ("n/a", "unknown"):
             continue
-        key = f"{vendor}:{product}".lower().replace(" ", "_")
+        yield f"{vendor}:{product}".lower().replace(" ", "_"), product, a
+
+
+def record_fix_keys(record):
+    """Product and first fixed version pairs ("openemr:openemr<8.3.0") from the CNA's affected ranges, so CVEs one
+    release fixed together can be grouped into one Incident (incidents.group_releases)."""
+    keys = set()
+    for key, _, a in cna_products(record):
         keys |= {f"{key}<{v['lessThan']}" for v in a.get("versions", []) if v.get("status") == "affected" and v.get("lessThan")}
         # No range given (VulDB lists every affected version): the last affected one stands for the fix that follows it.
         # "0 up to 1.2.11" (lessThanOrEqual, Wordfence and IBM records) counts as 1.2.11.
@@ -129,12 +140,7 @@ def record_fix_keys(record):
 def record_products(record):
     """The CNA's affected vendor/product pairs as Products, keyed like NVD's CPE ids ("sonicwall:sonicos")
     so the two sources merge; the name is the product as the CNA writes it ("SonicOS")."""
-    found = {}
-    for a in record["containers"]["cna"].get("affected", []):
-        vendor, product = (a.get("vendor") or "").strip(), (a.get("product") or "").strip()
-        if vendor and product and vendor.lower() not in ("n/a", "unknown") and product.lower() not in ("n/a", "unknown"):
-            key = f"{vendor}:{product}".lower().replace(" ", "_")
-            found[key] = {"id": key, "name": product}
+    found = {key: {"id": key, "name": product} for key, product, _ in cna_products(record)}
     return sorted(found.values(), key=lambda p: p["id"])
 
 

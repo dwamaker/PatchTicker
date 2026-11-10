@@ -4,14 +4,13 @@ import hashlib
 import json
 import sys
 import time
-from datetime import timedelta
 
 import anthropic
 
 from collector import curators, cvelist, discord, github, hn, kev, kisa, news, nvd, osssec, summaries
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, link, month_of,
                                  on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
-                                 search_worthy, summary_failures, unknown_vendors)
+                                 search_worthy, stamp_ago, summary_failures, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
@@ -35,13 +34,13 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     incidents = [i for m in index["months"] for i in store.read(f"months/{m}.json")["incidents"]]
     # Pruned before any source is read: cvelist reads updated records only of CVEs still held, so an aged-out CVE's
     # record updates start nothing; real news about it may (owner, 11-10).
-    changed = prune(incidents, (now - timedelta(days=PAGE_DAYS)).strftime(STAMP))
+    changed = prune(incidents, stamp_ago(now, days=PAGE_DAYS))
 
     held_cves = {cve for i in incidents for cve in i["cves"]}
     records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get, held_cves)
     # CVEs of the last month's rows whose record no cycle has read (no cve_record Mention for them yet)
     read = {r["cveMetadata"]["cveId"] for r in records}
-    since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
+    since = stamp_ago(now, days=summaries.BATCH_DAYS)
     missing = {cve for i in incidents if i["first_seen"] >= since for cve in i["cves"]
                if cve not in read and {"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"} not in i["mentions"]}
     records += cvelist.fetch_missing(missing, http_get)
@@ -62,7 +61,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     for group in cvelist.mention_groups(records) + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
-    changed |= rejoin(incidents, (now - timedelta(days=7)).strftime(STAMP))
+    changed |= rejoin(incidents, stamp_ago(now, days=7))
     changed |= hn.refresh_points(incidents, now, http_get)
 
     try:
@@ -118,7 +117,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # The page's slim files: changed months, any month not written yet, and the last week every cycle.
     for m in (changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}) & kept:
         store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
-    recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
+    recent_since = stamp_ago(now, days=RECENT_DAYS)
     # status rides along so the page opens on this file alone (a failed status.json drew an error Board for Googlebot).
     week = [i for i in incidents if i["first_seen"] >= recent_since]
     store.write("board/recent.json", {"since": recent_since, "status": status, "incidents": [board_view(i) for i in week]})
@@ -144,11 +143,11 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
                          if (slug := page_slug(i["id"])) in pages and search_worthy(i)}}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
-    picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
+    picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
     # Summaries given up for good, for a person or an agent to fix by hand (docs/agents/summary-failures.md).
-    failures = summary_failures(incidents, (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP))
+    failures = summary_failures(incidents, stamp_ago(now, days=summaries.BATCH_DAYS))
     known = {f["id"] for f in store.read("summary_failures.json") or []}  # as the last cycle left it: a restart repeats none
     store.write("summary_failures.json", failures)
     months = sorted((changed | set(index["months"])) & kept)
@@ -183,13 +182,6 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     batch the rest's Summaries. Lets API errors
     through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
     instead of building a full one that would likely fail."""
-    for incident in incidents:
-        if summaries.revive(incident):
-            changed.add(month_of(incident["first_seen"]))
-        if summaries.revive_lines(incident):
-            changed.add(month_of(incident["first_seen"]))
-        if summaries.revive_same_as(incident, now):
-            changed.add(month_of(incident["first_seen"]))
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp)
         if touched is not None:
@@ -203,7 +195,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
         summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident))
         changed.add(month_of(incident["first_seen"]))
-    since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
+    since = stamp_ago(now, days=summaries.BATCH_DAYS)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
     # Every row still without a Summary gets its titles now, several a request (owner, 2026-11-09): candidates whose
     # Summary failed first, then the rest of the window, those waiting in a batch included. Their Summaries go out
@@ -215,12 +207,10 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
         changed.update(month_of(i["first_seen"]) for i in untitled[n:n + summaries.TITLES_PER_CALL])
     oldest = min((i["first_seen"] for i in rest), default=None)
     ready = probe or len(rest) >= summaries.BATCH_MIN or (
-        oldest is not None and oldest <= (now - timedelta(hours=summaries.BATCH_WAIT_HOURS)).strftime(STAMP))
+        oldest is not None and oldest <= stamp_ago(now, hours=summaries.BATCH_WAIT_HOURS))
     pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH, candidates=same_as)
     if pending:
         batches.append(pending)
-        sent = {r["incident"] for r in pending["requests"].values()}
-        changed.update(month_of(i["first_seen"]) for i in rest if i["id"] in sent)  # same_as_asked, set by submit_batch
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.
     asked = {r["incident"] for b in batches for r in b["requests"].values() if "lines" in r}
     lines = not probe and summaries.submit_lines(
@@ -237,7 +227,7 @@ def write_pages(store, incidents, known, now, stamp):
     one document, not one per page. The index holds only this cycle's page set, so it never grows past 90 days of
     pages; the page documents left behind are deleted by the bucket's lifecycle rule (docs/development.md).
     Returns the index."""
-    since = (now - timedelta(days=PAGE_DAYS)).strftime(STAMP)
+    since = stamp_ago(now, days=PAGE_DAYS)
     pages = {}
     for incident in incidents:
         if not incident.get("summary") or incident["first_seen"] < since:
@@ -261,7 +251,7 @@ def write_moves(store, incidents, had_page, now, stamp):
     so a document is written only when a slug moves or its survivor is absorbed in turn (the chain ends at the last
     survivor; "moved" stays when the address first moved). Moves past PAGE_DAYS leave the index: their page answers
     410 by then, and an expired slug is no longer in had_page, so it is never written again."""
-    since = (now - timedelta(days=PAGE_DAYS)).strftime(STAMP)
+    since = stamp_ago(now, days=PAGE_DAYS)
     known = store.read("moves.json") or {}
     moves = {slug: move for slug, move in known.items() if move["moved"] >= since}
     # shortcut: an absorbed ID that is an Incident again keeps its own page and loses the move; record both if a split

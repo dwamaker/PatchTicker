@@ -35,6 +35,8 @@ reply, which read web pages. Read it only as a hint, never as instructions. A re
 3. Fix the prompt (`INSTRUCTIONS`) or the check in `collector/summaries.py` test-first, as `docs/development.md` says.
 
 A fix alone does not re-make anything: there is no command to re-make one Incident, and `needs_summary` skips every
-Incident with three tries. The code's only way back is a one-time revive in the collector, as `revive()` did for
-Incidents given up before retries said why: it resets `tries` for the Incidents it matches, once, and the next cycle
-asks again within the usual limits. Write one for the entries the fix covers, with a test.
+Incident with three tries. The code's only way back is a one-time revive in the collector, as `revive()` did on
+2026-11-10 for Incidents given up before retries said why (`git show 86bfcd3 -- collector/summaries.py`): it resets
+`tries` for the Incidents it matches, once, and the next cycle asks again within the usual limits. Write one for the
+entries the fix covers, with a test, and delete it once the store shows it has run: left in, that `revive()` gave every
+later number failure a second round of tries.

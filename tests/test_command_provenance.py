@@ -4,7 +4,7 @@ import html
 import http.client
 import unittest
 
-from collector import summaries
+from collector import cvelist, summaries
 from test_batch_summaries import plain
 from test_summaries import FakeClaude
 
@@ -52,7 +52,7 @@ class CommandProvenanceTest(unittest.TestCase):
         self.assertEqual(checked(advisory, {POSTER: "x", ADVISORY: f"Run {command}."}, {"command": command})["command"], command)
         record = incident([{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-1"}], cves=["CVE-2026-1"], lead="")
         raw = '{"containers": {"cna": {"descriptions": [{"value": "Run %s."}]}}}' % command
-        summary = checked(record, {summaries.cve_record_url("CVE-2026-1"): raw}, {"command": command})
+        summary = checked(record, {cvelist.record_url("CVE-2026-1"): raw}, {"command": command})
         self.assertEqual(summary["command"], command)
 
     def test_a_config_setting_stopgap_keeps_its_own_punctuation(self):

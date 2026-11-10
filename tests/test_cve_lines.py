@@ -108,7 +108,6 @@ class LineCheckTest(unittest.TestCase):
         self.assertEqual(first["cve_lines_rounds"], 1)
         self.assertEqual(second.get("cve_lines_rounds"), None)
         self.assertTrue(second["cve_lines_room"])
-        self.assertNotIn("cve_lines_words", second)
 
     def test_an_unparsable_reply_is_logged_and_changes_nothing(self):
         row = lines_row()
@@ -213,44 +212,6 @@ class BatchLinesTest(unittest.TestCase):
         first, second = self.lines_batches(claude)
         self.assertEqual(first["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS)
         self.assertEqual(second["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS_RETRY)
-
-    def test_rows_that_spent_their_rounds_before_number_words_get_one_more_once(self):
-        self.summarized()
-        self.edit(cve_lines_rounds=summaries.LINES_ROUNDS)  # as FreeRDP and FFmpeg were left on 11-10
-        claude = FakeClaude()
-        bad = {"lines": [line(MANY[MAX], "9.9 이전 버전.", "Before 9.9.")]}
-        with contextlib.redirect_stderr(io.StringIO()):
-            for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
-                self.run_at(when, claude)
-                for n, b in enumerate(claude.batches):
-                    if b["results"] is None:
-                        claude.end_batch({HN_STORY: bad}, n=n)
-
-        [batch] = self.lines_batches(claude)
-        self.assertEqual(batch["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS_RETRY)
-
-
-class ReviveTest(unittest.TestCase):
-    setUp, run_at, edit = BatchLinesTest.setUp, BatchLinesTest.run_at, BatchLinesTest.edit
-
-    def test_a_many_cve_incident_given_up_before_the_cap_gets_one_more_round(self):
-        self.edit(cves=MANY, summary_error={"tries": 3, "reason": "stop_reason max_tokens", "with_reason": True, "final": True})
-        claude = FakeClaude("not json", "not json", "not json")
-
-        for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
-            self.run_at(when, claude)
-
-        self.assertEqual(len(claude.sent), 3)  # one more round, then given up for good
-        self.assertTrue(board(self.store)[HN_STORY]["summary_error"]["final"])
-        # ...and listed for a person or an agent to fix by hand (owner, 11-10).
-        [failure] = self.store.read("summary_failures.json")
-        self.assertEqual((failure["id"], failure["tries"], failure["shows"]), (HN_STORY, 3, "brief"))
-
-    def test_a_few_cve_incident_given_up_is_not_revived(self):
-        self.edit(summary_error={"tries": 3, "reason": "stop_reason max_tokens", "with_reason": True, "final": True})
-        claude = FakeClaude()
-        self.run_at("2026-11-07T12:45:00", claude)
-        self.assertEqual(claude.sent, [])
 
 
 if __name__ == "__main__":

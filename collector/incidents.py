@@ -12,11 +12,15 @@ visitor sees when the news first broke, not when a cycle noticed it ("first_seen
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
 STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
+
+
+def stamp_ago(now, days=0, hours=0):
+    return (now - timedelta(days=days, hours=hours)).strftime(STAMP)
 
 # Lead mention order (CONTEXT.md): official advisory or release note, discoverer write-up,
 # CVE record, discussion (a curator's newsletter is discussion too). A KISA notice (Korean, restating the vendor's)
@@ -436,13 +440,12 @@ def group_releases(incidents):
     GROUP_MIN_CVES CVEs or more; the earliest seen keeps its id. Each CVE's own description stays in "cve_texts" for the
     page. Returns the months changed."""
     changed = set()
-    when = lambda i: i.get("published") or i["first_seen"]
     for key in sorted({k for i in incidents for k in i.get("fix_keys", [])}):
-        members = sorted((i for i in incidents if key in i.get("fix_keys", [])), key=when)
+        members = sorted((i for i in incidents if key in i.get("fix_keys", [])), key=published_at)
         if not members:
             continue
-        start = datetime.strptime(when(members[0]), STAMP)
-        members = [i for i in members if (datetime.strptime(when(i), STAMP) - start).total_seconds() <= GROUP_HOURS * 3600]
+        start = datetime.strptime(published_at(members[0]), STAMP)
+        members = [i for i in members if (datetime.strptime(published_at(i), STAMP) - start).total_seconds() <= GROUP_HOURS * 3600]
         if len(members) < 2 or len({c for i in members for c in i["cves"]}) < GROUP_MIN_CVES:
             continue
         target = min(members, key=lambda i: i["first_seen"])

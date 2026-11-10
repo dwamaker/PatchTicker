@@ -2,8 +2,6 @@
 to one) is summarized at once, whatever its HN points. A CVE-less story still shows only once its Summary calls it an
 Incident (on_board), so general news (an arrest, a scam) stays off the Board."""
 
-import sys
-import xml.etree.ElementTree as ET  # expat in Python 3.13 limits entity expansion
 from collector import rss
 from collector.hn import SECURITY_RE
 from collector.incidents import cves_in
@@ -22,18 +20,11 @@ def fetch(checkpoints, http_get, feeds, stamp):
     checkpoints = dict(checkpoints or {})
     groups = []
     for feed in feeds:
-        try:
-            since = checkpoints.get(feed)
-            for item in ET.fromstring(http_get(feed)).iter("item"):
-                posted = rss.posted(item)
-                if since and posted <= since:
-                    continue
-                checkpoints[feed] = max(checkpoints.get(feed) or posted, posted)
-                groups.append(mention_group(item, posted))
-            if feed in checkpoints:  # as oss-security: a future-dated story must not freeze the feed until that date
-                checkpoints[feed] = min(checkpoints[feed], stamp)
-        except (OSError, ET.ParseError, AttributeError, TypeError, ValueError, OverflowError) as err:
-            print(f"news: skipped {feed}: {err!r}", file=sys.stderr)
+        found, newest = rss.read(feed, checkpoints.get(feed), http_get, stamp,
+                                 lambda item: mention_group(item, rss.posted(item)), "news")
+        groups += found
+        if newest:
+            checkpoints[feed] = newest
     return groups, checkpoints
 
 

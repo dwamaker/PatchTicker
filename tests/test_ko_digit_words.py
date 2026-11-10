@@ -8,8 +8,6 @@ from collector import summaries
 from test_batch_summaries import plain
 from test_command_provenance import POSTER, checked, incident
 from test_cve_lines import MANY, MAX, line, lines_row, saved
-import test_retry_feedback  # the module, not the class: an imported TestCase would run here again
-from test_summaries import HN_STORY, FakeClaude, board
 
 SPAM = "Widget lets attackers send SMS messages, spamming arbitrary third parties."
 
@@ -48,46 +46,6 @@ class KoreanDigitWordTest(unittest.TestCase):
         cves, log = saved(lines_row(SPAM), line(MANY[MAX], "제3자에게 스팸을 보냅니다.", "Spams arbitrary third parties."))
         self.assertEqual(cves, [MANY[MAX]])
         self.assertNotIn("dropped", log)
-
-
-class ReviveOnceTest(unittest.TestCase):
-    def test_a_number_failure_from_before_the_fix_gets_one_more_round_once(self):
-        for reason in ("Korean and English numbers differ: ['3']", "numbers not in the input: ['3']"):
-            with self.subTest(reason):
-                row = {"summary_error": {"tries": 3, "reason": reason, "with_reason": True, "hinted": True, "final": True}}
-                self.assertTrue(summaries.revive(row))
-                self.assertEqual(row["summary_error"]["tries"], 0)
-                for _ in range(summaries.MAX_TRIES):
-                    summaries.failed(row, reason)
-                self.assertTrue(row["summary_error"]["final"])
-                self.assertFalse(summaries.revive(row))
-
-    def test_other_reasons_are_not_revived(self):
-        row = {"summary_error": {"tries": 3, "reason": "stop_reason max_tokens", "with_reason": True, "final": True}}
-        self.assertFalse(summaries.revive(row))
-
-    def test_a_failure_since_the_fix_is_not_revived(self):
-        row = {}
-        for _ in range(summaries.MAX_TRIES):
-            summaries.failed(row, "Korean and English numbers differ: ['3']")
-        self.assertFalse(summaries.revive(row))
-
-
-class ReviveCycleTest(unittest.TestCase):
-    retry_test = test_retry_feedback.RetryFeedbackTest
-    setUp, run_at, set_error = retry_test.setUp, retry_test.run_at, retry_test.set_error
-
-    def test_the_cycle_revives_it_for_one_round_only(self):
-        self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
-        self.set_error({"tries": 3, "reason": "Korean and English numbers differ: ['3']", "with_reason": True,
-                        "hinted": True, "final": True})
-        claude = FakeClaude("not json", "not json", "not json")
-
-        for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
-            self.run_at(when, claude)
-
-        self.assertEqual(len(claude.sent), 3)
-        self.assertTrue(board(self.store)[HN_STORY]["summary_error"]["final"])
 
 
 if __name__ == "__main__":
