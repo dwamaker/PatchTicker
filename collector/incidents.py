@@ -42,6 +42,34 @@ def board_view(incident):
     return view
 
 
+ROW_FIELDS = ("id", "cves", "first_seen", "published", "cvss", "kev", "kev_date", "products")
+ROW_SUMMARY = ("exploited", "exploited_source", "platforms", "products", "library", "devices", "incident", "poc_public", "at")
+
+
+def rows_view(incident):
+    """board/rows.json's copy of an Incident (owner, 11-10: the Board draws first from a light file): what a row, the
+    filters, folds and Highlights read, marked rows; the opened details and the text search wait for board/recent.json."""
+    view = {k: incident[k] for k in ROW_FIELDS if k in incident}
+    if incident.get("summary_error", {}).get("final"):
+        view["summary_error"] = {"final": True}
+    view |= {"rows": True, "wp_plugin": is_wordpress_plugin(incident)}  # its regex reads text a row view no longer has
+    summary, quick = incident.get("summary") or {}, incident.get("quick_title") or {}
+    untitled = [lang for lang in ("ko", "en") if not (summary.get(lang) or {}).get("title")]
+    if untitled and quick:
+        view["quick_title"] = quick  # a row titles itself from it while the Summary has no title in that language
+    # The row falls back to the Brief only where neither the Summary nor the quick title names it (describe, titleCell).
+    bare = any(not ((quick.get(lang) or {}).get("title") and (quick.get(lang) or {}).get("easy_title")) for lang in untitled)
+    view["brief"] = {"text": incident["brief"]["text"] if bare else ""}
+    view["mentions"] = [{k: m[k] for k in ("kind", "points") if k in m} for m in incident["mentions"]]
+    if summary:
+        view["summary"] = {k: summary[k] for k in ROW_SUMMARY if k in summary}
+        for lang in ("ko", "en"):
+            text = summary.get(lang) or {}
+            view["summary"][lang] = {k: text[k] for k in ("title", "easy_title", "easy", "names") if k in text} | {
+                "summary": "" if text.get("easy") else text.get("summary", ""), "conditions": [], "mitigation": ""}
+    return view
+
+
 PICKER_DAYS = 90  # the picker lists Products of these days (board/products.json), as productList in board.mjs does
 
 
@@ -80,6 +108,34 @@ def risk_level(incident):
     if is_exploited(incident) or (cvss is not None and cvss >= 9):
         return "highest"
     return "high" if cvss is not None and cvss >= 7 else "notice"
+
+
+def published_at(incident):
+    """A port of publishedAt in web/board.mjs: when the news first broke, else first seen (stored before 11-08)."""
+    return incident.get("published") or incident["first_seen"]
+
+
+def highlight_score(incident):
+    """A port of highlightScore in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step): rows.json
+    keeps the week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more."""
+    mentions = incident["mentions"]
+    points = max([0] + [m.get("points") or 0 for m in mentions])
+    curated = sum(1 for m in mentions if m["kind"] == "curator")
+    return (100 if is_exploited(incident) else 0) + min(points / 10, 50) + 25 * min(curated, 2) + 2 * (incident.get("cvss") or 0) + len(mentions)
+
+
+# A port of WP_PLUGIN and isWordPressPlugin in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step):
+# WordPress plugins and themes fold as one, and a row view carries this answer as wp_plugin.
+WP_PLUGIN = re.compile(r"(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme)s?\s+for\s+wordpress", re.IGNORECASE)
+
+
+def is_wordpress_plugin(incident):
+    summary = incident.get("summary") or {}
+    words = [(incident.get("brief") or {}).get("text"), *((summary.get(lang) or {}).get(k) for lang in ("en", "ko")
+                                                          for k in ("title", "summary", "easy_title", "easy")),
+             *(p["id"] for p in incident.get("products") or [])]
+    first = (summary.get("products") or [""])[0]
+    return str(first if first is not None else "").lower() != "wordpress" and bool(WP_PLUGIN.search("\n".join(str(w) for w in words if w)))
 
 
 def search_worthy(incident):

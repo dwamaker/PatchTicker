@@ -50,6 +50,12 @@ file): when no source gives a time it stays unknown, and the row says "처음 �
 The page's list of Incidents: Highlights on top, then every other Incident, in one visitor-chosen order for both (newest first by default, or by risk level, or by CVSS).
 _Avoid_: leaderboard, feed, timeline
 
+**Row view** (행 보기):
+An Incident as the Board first draws it (`board/rows.json`, owner 2026-11-10): only what its row, the filters, folds
+and Highlights read, marked `rows`; no details and no text to search. Opening one or searching fetches the whole week
+first. The newest 100 and the week's Highlights come whole.
+_Avoid_: stub, preview, light Incident
+
 **Incident page** (사건 페이지):
 One Incident as a standalone document at its own address, one per language, made once it has a Summary and kept
 90 days. Only an Incident at the 위험 level or above, exploited, or without a CVE is offered to search engines; the

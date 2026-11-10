@@ -1,0 +1,779 @@
+{
+ "note": "rows_view and the ports highlight_score / is_wordpress_plugin (collector/incidents.py) against the page (web/board.mjs): each row view must draw, filter, fold and pin as its full Incident does.",
+ "now": "2026-11-10T00:00:00Z",
+ "cases": [
+  {
+   "full": {
+    "id": "CVE-2026-9001",
+    "cves": [
+     "CVE-2026-9001"
+    ],
+    "first_seen": "2026-11-08T02:00:00Z",
+    "published": "2026-11-08T01:00:00Z",
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://wordfence.com/a",
+      "title": "GemBooking <= 1.2 - SQLi"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-9001"
+     }
+    ],
+    "brief": {
+     "text": "The GemBooking plugin for WordPress is vulnerable to SQL injection.",
+     "lead": "https://wordfence.com/a"
+    },
+    "cvss": 9.8,
+    "products": [
+     {
+      "id": "gemcode:gembooking",
+      "name": "GemBooking"
+     }
+    ],
+    "summary": {
+     "ko": {
+      "title": "GemBooking 워드프레스 플러그인 SQL 주입",
+      "summary": "GemBooking 워드프레스 플러그인 SQL 주입 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "쉬운 문장.",
+      "easy_title": "GemBooking 워드프레스 플러그인 SQL 주입 (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "en": {
+      "title": "GemBooking WordPress plugin SQL injection",
+      "summary": "GemBooking WordPress plugin SQL injection 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "",
+      "easy_title": "GemBooking WordPress plugin SQL injection (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "products": [
+      "GemBooking WordPress plugin"
+     ],
+     "lead": "https://example.com/a",
+     "fixed": "2.0",
+     "command": "",
+     "stopgap": "",
+     "stopgap_file": "",
+     "devices": [],
+     "incident": true,
+     "platforms": [],
+     "at": "2026-11-08T01:00:00Z",
+     "fixes": [],
+     "titles_ko": [
+      {
+       "url": "https://example.com/a",
+       "title": "공지"
+      }
+     ],
+     "exploited": false
+    }
+   },
+   "row": {
+    "id": "CVE-2026-9001",
+    "cves": [
+     "CVE-2026-9001"
+    ],
+    "first_seen": "2026-11-08T02:00:00Z",
+    "published": "2026-11-08T01:00:00Z",
+    "cvss": 9.8,
+    "products": [
+     {
+      "id": "gemcode:gembooking",
+      "name": "GemBooking"
+     }
+    ],
+    "rows": true,
+    "wp_plugin": true,
+    "brief": {
+     "text": ""
+    },
+    "mentions": [
+     {
+      "kind": "advisory"
+     },
+     {
+      "kind": "cve_record"
+     }
+    ],
+    "summary": {
+     "exploited": false,
+     "platforms": [],
+     "products": [
+      "GemBooking WordPress plugin"
+     ],
+     "devices": [],
+     "incident": true,
+     "at": "2026-11-08T01:00:00Z",
+     "ko": {
+      "title": "GemBooking 워드프레스 플러그인 SQL 주입",
+      "easy_title": "GemBooking 워드프레스 플러그인 SQL 주입 (easy)",
+      "easy": "쉬운 문장.",
+      "names": [],
+      "summary": "",
+      "conditions": [],
+      "mitigation": ""
+     },
+     "en": {
+      "title": "GemBooking WordPress plugin SQL injection",
+      "easy_title": "GemBooking WordPress plugin SQL injection (easy)",
+      "easy": "",
+      "names": [],
+      "summary": "GemBooking WordPress plugin SQL injection 요약 / summary.",
+      "conditions": [],
+      "mitigation": ""
+     }
+    }
+   },
+   "highlight_score": 21.6,
+   "wp_plugin": true
+  },
+  {
+   "full": {
+    "id": "CVE-2026-9002",
+    "cves": [
+     "CVE-2026-9002"
+    ],
+    "first_seen": "2026-11-08T03:00:00Z",
+    "published": "2026-11-08T02:30:00Z",
+    "mentions": [
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-9002"
+     }
+    ],
+    "brief": {
+     "text": "The Tiny Forms plugin for WordPress is vulnerable to stored XSS.",
+     "lead": "https://www.cve.org/CVERecord?id=CVE-2026-9002"
+    },
+    "cvss": 6.4,
+    "products": [
+     {
+      "id": "tinyforms:tiny_forms",
+      "name": "Tiny Forms"
+     }
+    ],
+    "cve_texts": {
+     "CVE-2026-9002": "Stored XSS."
+    }
+   },
+   "row": {
+    "id": "CVE-2026-9002",
+    "cves": [
+     "CVE-2026-9002"
+    ],
+    "first_seen": "2026-11-08T03:00:00Z",
+    "published": "2026-11-08T02:30:00Z",
+    "cvss": 6.4,
+    "products": [
+     {
+      "id": "tinyforms:tiny_forms",
+      "name": "Tiny Forms"
+     }
+    ],
+    "rows": true,
+    "wp_plugin": true,
+    "brief": {
+     "text": "The Tiny Forms plugin for WordPress is vulnerable to stored XSS."
+    },
+    "mentions": [
+     {
+      "kind": "cve_record"
+     }
+    ]
+   },
+   "highlight_score": 13.8,
+   "wp_plugin": true
+  },
+  {
+   "full": {
+    "id": "CVE-2026-9003",
+    "cves": [
+     "CVE-2026-9003"
+    ],
+    "first_seen": "2026-11-08T04:00:00Z",
+    "published": "2026-11-08T03:10:00Z",
+    "mentions": [
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-9003"
+     }
+    ],
+    "brief": {
+     "text": "Missing authorization in the Easy Menus theme for WordPress.",
+     "lead": "https://www.cve.org/CVERecord?id=CVE-2026-9003"
+    },
+    "products": [
+     {
+      "id": "easymenus:easy_menus",
+      "name": "Easy Menus"
+     }
+    ],
+    "quick_title": {
+     "ko": {
+      "title": "Easy Menus 권한 확인 누락",
+      "easy_title": "Easy Menus 문제"
+     },
+     "en": {
+      "title": "Easy Menus missing authorization",
+      "easy_title": "Easy Menus issue"
+     },
+     "at": "2026-11-08T04:00:00Z"
+    }
+   },
+   "row": {
+    "id": "CVE-2026-9003",
+    "cves": [
+     "CVE-2026-9003"
+    ],
+    "first_seen": "2026-11-08T04:00:00Z",
+    "published": "2026-11-08T03:10:00Z",
+    "products": [
+     {
+      "id": "easymenus:easy_menus",
+      "name": "Easy Menus"
+     }
+    ],
+    "rows": true,
+    "wp_plugin": true,
+    "quick_title": {
+     "ko": {
+      "title": "Easy Menus 권한 확인 누락",
+      "easy_title": "Easy Menus 문제"
+     },
+     "en": {
+      "title": "Easy Menus missing authorization",
+      "easy_title": "Easy Menus issue"
+     },
+     "at": "2026-11-08T04:00:00Z"
+    },
+    "brief": {
+     "text": ""
+    },
+    "mentions": [
+     {
+      "kind": "cve_record"
+     }
+    ]
+   },
+   "highlight_score": 1.0,
+   "wp_plugin": true
+  },
+  {
+   "full": {
+    "id": "CVE-2026-9004",
+    "cves": [
+     "CVE-2026-9004",
+     "CVE-2026-9005",
+     "CVE-2026-9006"
+    ],
+    "first_seen": "2026-11-08T05:00:00Z",
+    "published": "2026-11-08T04:00:00Z",
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://msrc.microsoft.com/x"
+     },
+     {
+      "kind": "discussion",
+      "url": "https://news.ycombinator.com/item?id=7",
+      "title": "Windows zero-day",
+      "points": 250
+     },
+     {
+      "kind": "curator",
+      "url": "https://tldrsec.com/p/1",
+      "title": "tl;dr sec 300"
+     }
+    ],
+    "brief": {
+     "text": "Windows SMB remote code execution.",
+     "lead": "https://msrc.microsoft.com/x"
+    },
+    "cvss": 8.8,
+    "kev": true,
+    "kev_date": "2026-11-08",
+    "products": [
+     {
+      "id": "microsoft:windows_11",
+      "name": "Windows 11"
+     }
+    ],
+    "summary": {
+     "ko": {
+      "title": "윈도우 SMB 원격 코드 실행",
+      "summary": "윈도우 SMB 원격 코드 실행 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "",
+      "easy_title": "윈도우 SMB 원격 코드 실행 (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "en": {
+      "title": "Windows SMB remote code execution",
+      "summary": "Windows SMB remote code execution 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "Attackers use this now.",
+      "easy_title": "Windows SMB remote code execution (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "products": [
+      "Windows SMB"
+     ],
+     "lead": "https://example.com/a",
+     "fixed": "2.0",
+     "command": "winget upgrade",
+     "stopgap": "",
+     "stopgap_file": "",
+     "devices": [],
+     "incident": true,
+     "platforms": [
+      "Windows"
+     ],
+     "at": "2026-11-08T01:00:00Z",
+     "fixes": [],
+     "titles_ko": [
+      {
+       "url": "https://example.com/a",
+       "title": "공지"
+      }
+     ],
+     "exploited": true,
+     "exploited_source": "https://msrc.microsoft.com/x",
+     "poc_public": true
+    },
+    "cve_texts": {
+     "CVE-2026-9005": "Second flaw."
+    },
+    "cve_links": {
+     "CVE-2026-9005": [
+      {
+       "kind": "advisory",
+       "url": "https://msrc.microsoft.com/y"
+      }
+     ]
+    }
+   },
+   "row": {
+    "id": "CVE-2026-9004",
+    "cves": [
+     "CVE-2026-9004",
+     "CVE-2026-9005",
+     "CVE-2026-9006"
+    ],
+    "first_seen": "2026-11-08T05:00:00Z",
+    "published": "2026-11-08T04:00:00Z",
+    "cvss": 8.8,
+    "kev": true,
+    "kev_date": "2026-11-08",
+    "products": [
+     {
+      "id": "microsoft:windows_11",
+      "name": "Windows 11"
+     }
+    ],
+    "rows": true,
+    "wp_plugin": false,
+    "brief": {
+     "text": ""
+    },
+    "mentions": [
+     {
+      "kind": "advisory"
+     },
+     {
+      "kind": "discussion",
+      "points": 250
+     },
+     {
+      "kind": "curator"
+     }
+    ],
+    "summary": {
+     "exploited": true,
+     "exploited_source": "https://msrc.microsoft.com/x",
+     "platforms": [
+      "Windows"
+     ],
+     "products": [
+      "Windows SMB"
+     ],
+     "devices": [],
+     "incident": true,
+     "poc_public": true,
+     "at": "2026-11-08T01:00:00Z",
+     "ko": {
+      "title": "윈도우 SMB 원격 코드 실행",
+      "easy_title": "윈도우 SMB 원격 코드 실행 (easy)",
+      "easy": "",
+      "names": [],
+      "summary": "윈도우 SMB 원격 코드 실행 요약 / summary.",
+      "conditions": [],
+      "mitigation": ""
+     },
+     "en": {
+      "title": "Windows SMB remote code execution",
+      "easy_title": "Windows SMB remote code execution (easy)",
+      "easy": "Attackers use this now.",
+      "names": [],
+      "summary": "",
+      "conditions": [],
+      "mitigation": ""
+     }
+    }
+   },
+   "highlight_score": 170.6,
+   "wp_plugin": false
+  },
+  {
+   "full": {
+    "id": "https://news.ycombinator.com/item?id=8",
+    "cves": [],
+    "first_seen": "2026-11-07T10:00:00Z",
+    "published": "2026-11-07T09:00:00Z",
+    "mentions": [
+     {
+      "kind": "discussion",
+      "url": "https://news.ycombinator.com/item?id=8",
+      "title": "sshole: a backdoor in an SSH fork",
+      "points": 150
+     }
+    ],
+    "brief": {
+     "text": "sshole: a backdoor in an SSH fork",
+     "lead": "https://news.ycombinator.com/item?id=8"
+    },
+    "summary": {
+     "ko": {
+      "title": "SSH 포크 백도어",
+      "summary": "SSH 포크 백도어 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "",
+      "easy_title": "SSH 포크 백도어 (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "en": {
+      "title": "",
+      "summary": " 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "",
+      "easy_title": " (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "products": [
+      "sshole"
+     ],
+     "lead": "https://example.com/a",
+     "fixed": "2.0",
+     "command": "",
+     "stopgap": "",
+     "stopgap_file": "",
+     "devices": [
+      "Router X1"
+     ],
+     "incident": true,
+     "platforms": [
+      "Linux"
+     ],
+     "at": "2026-11-08T01:00:00Z",
+     "fixes": [],
+     "titles_ko": [
+      {
+       "url": "https://example.com/a",
+       "title": "공지"
+      }
+     ],
+     "exploited": false
+    }
+   },
+   "row": {
+    "id": "https://news.ycombinator.com/item?id=8",
+    "cves": [],
+    "first_seen": "2026-11-07T10:00:00Z",
+    "published": "2026-11-07T09:00:00Z",
+    "rows": true,
+    "wp_plugin": false,
+    "brief": {
+     "text": "sshole: a backdoor in an SSH fork"
+    },
+    "mentions": [
+     {
+      "kind": "discussion",
+      "points": 150
+     }
+    ],
+    "summary": {
+     "exploited": false,
+     "platforms": [
+      "Linux"
+     ],
+     "products": [
+      "sshole"
+     ],
+     "devices": [
+      "Router X1"
+     ],
+     "incident": true,
+     "at": "2026-11-08T01:00:00Z",
+     "ko": {
+      "title": "SSH 포크 백도어",
+      "easy_title": "SSH 포크 백도어 (easy)",
+      "easy": "",
+      "names": [],
+      "summary": "SSH 포크 백도어 요약 / summary.",
+      "conditions": [],
+      "mitigation": ""
+     },
+     "en": {
+      "title": "",
+      "easy_title": " (easy)",
+      "easy": "",
+      "names": [],
+      "summary": " 요약 / summary.",
+      "conditions": [],
+      "mitigation": ""
+     }
+    }
+   },
+   "highlight_score": 16.0,
+   "wp_plugin": false
+  },
+  {
+   "full": {
+    "id": "CVE-2026-9010",
+    "cves": [
+     "CVE-2026-9010"
+    ],
+    "first_seen": "2026-11-07T11:00:00Z",
+    "published": "2026-11-07T11:00:00Z",
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://wordpress.org/news/x"
+     }
+    ],
+    "brief": {
+     "text": "WordPress core before 6.8.3 lets a plugin or theme author run code.",
+     "lead": "https://wordpress.org/news/x"
+    },
+    "cvss": 7.2,
+    "products": [
+     {
+      "id": "wordpress:wordpress",
+      "name": "WordPress"
+     }
+    ],
+    "summary": {
+     "ko": {
+      "title": "워드프레스 코어 취약점",
+      "summary": "워드프레스 코어 취약점 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "",
+      "easy_title": "워드프레스 코어 취약점 (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "en": {
+      "title": "WordPress core flaw lets a plugin run code",
+      "summary": "WordPress core flaw lets a plugin run code 요약 / summary.",
+      "conditions": [
+       "Logged-in subscriber"
+      ],
+      "mitigation": "Update to 2.0.",
+      "easy": "",
+      "easy_title": "WordPress core flaw lets a plugin run code (easy)",
+      "names": [],
+      "easy_action": "Update.",
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": []
+     },
+     "products": [
+      "WordPress"
+     ],
+     "lead": "https://example.com/a",
+     "fixed": "2.0",
+     "command": "",
+     "stopgap": "",
+     "stopgap_file": "",
+     "devices": [],
+     "incident": true,
+     "platforms": [],
+     "at": "2026-11-08T01:00:00Z",
+     "fixes": [],
+     "titles_ko": [
+      {
+       "url": "https://example.com/a",
+       "title": "공지"
+      }
+     ],
+     "exploited": false,
+     "library": false
+    }
+   },
+   "row": {
+    "id": "CVE-2026-9010",
+    "cves": [
+     "CVE-2026-9010"
+    ],
+    "first_seen": "2026-11-07T11:00:00Z",
+    "published": "2026-11-07T11:00:00Z",
+    "cvss": 7.2,
+    "products": [
+     {
+      "id": "wordpress:wordpress",
+      "name": "WordPress"
+     }
+    ],
+    "rows": true,
+    "wp_plugin": false,
+    "brief": {
+     "text": ""
+    },
+    "mentions": [
+     {
+      "kind": "advisory"
+     }
+    ],
+    "summary": {
+     "exploited": false,
+     "platforms": [],
+     "products": [
+      "WordPress"
+     ],
+     "library": false,
+     "devices": [],
+     "incident": true,
+     "at": "2026-11-08T01:00:00Z",
+     "ko": {
+      "title": "워드프레스 코어 취약점",
+      "easy_title": "워드프레스 코어 취약점 (easy)",
+      "easy": "",
+      "names": [],
+      "summary": "워드프레스 코어 취약점 요약 / summary.",
+      "conditions": [],
+      "mitigation": ""
+     },
+     "en": {
+      "title": "WordPress core flaw lets a plugin run code",
+      "easy_title": "WordPress core flaw lets a plugin run code (easy)",
+      "easy": "",
+      "names": [],
+      "summary": "WordPress core flaw lets a plugin run code 요약 / summary.",
+      "conditions": [],
+      "mitigation": ""
+     }
+    }
+   },
+   "highlight_score": 15.4,
+   "wp_plugin": false
+  },
+  {
+   "full": {
+    "id": "CVE-2026-9011",
+    "cves": [
+     "CVE-2026-9011"
+    ],
+    "first_seen": "2026-11-06T11:00:00Z",
+    "mentions": [
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-9011"
+     }
+    ],
+    "brief": {
+     "text": "IBM Db2 denial of service.",
+     "lead": "https://www.cve.org/CVERecord?id=CVE-2026-9011"
+    },
+    "cvss": 7.5,
+    "products": [
+     {
+      "id": "ibm:db2",
+      "name": "Db2"
+     }
+    ],
+    "summary_error": {
+     "final": true
+    }
+   },
+   "row": {
+    "id": "CVE-2026-9011",
+    "cves": [
+     "CVE-2026-9011"
+    ],
+    "first_seen": "2026-11-06T11:00:00Z",
+    "cvss": 7.5,
+    "products": [
+     {
+      "id": "ibm:db2",
+      "name": "Db2"
+     }
+    ],
+    "summary_error": {
+     "final": true
+    },
+    "rows": true,
+    "wp_plugin": false,
+    "brief": {
+     "text": "IBM Db2 denial of service."
+    },
+    "mentions": [
+     {
+      "kind": "cve_record"
+     }
+    ]
+   },
+   "highlight_score": 16.0,
+   "wp_plugin": false
+  }
+ ]
+}

@@ -35,7 +35,7 @@
     // response once (getJson, by full URL) instead of asking only after its modules ran (~0.2 s later on a PC, owner 11-10). Same base as DATA_URL.
     try { const h = location.hostname; const base = ['localhost', '127.0.0.1'].includes(h) ? 'data/' : h.endsWith('.dwamaker.com')
       ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/'; window.vrEarly = {};
-      for (const n of ['board/recent.json', 'status.json', 'index.json', 'board/products.json']) {
+      for (const n of ['board/rows.json', 'status.json', 'index.json', 'board/products.json']) {
         const res = fetch(base + n, { cache: 'no-cache' }); res.catch(() => {}); window.vrEarly[base + n] = res; } } catch {}</script>
   <style>
     /* Graphite signage ground and its light twin; risk colours (red, amber, grey) are never used by Product lines. */

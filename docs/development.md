@@ -32,6 +32,11 @@ lists the missing ones in `unknown_vendors.json` in the store. How to add one: `
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
 of its URLs (`collector/incidents.py`, ADR 0001).
 
+The Board opens on `board/rows.json` (owner, 11-10): the week of `board/recent.json` as row views (marked `rows`), with
+only what a row, the filters, folds and Highlights read, and the collector's `wp_plugin` answer; the newest 100 and the
+week's ten Highlights stay whole (ports kept in step by `tests/fixtures/board/rows-case.json`). The page fetches
+`board/recent.json` only to open a row view or to search.
+
 Highlights (top ten of the last seven days) are scored in the page (`highlightScore` in
 `web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS and Mention count.
 Curator feeds default to tl;dr sec and Risky Business News; `VR_CURATOR_FEEDS` overrides them.
@@ -132,5 +137,7 @@ The Python tests run whole collection cycles on a memory store and check the doc
 `moves.json`) and `test_sitemap.py` (`sitemap.json`). The node tests check the Board's rules (`board.test.mjs`) and the
 Pages Function: a request's inputs and a fake R2 binding in, a `Response` out (`feed.test.mjs`, `page.test.mjs` with
 the edge cache, `sitemap.test.mjs`). The slug and risk rules live in both languages; `tests/fixtures/board/slug-case.json`
-and `risk-case.json` are checked by both suites so the two never drift.
+and `risk-case.json` are checked by both suites so the two never drift. So are `highlightScore` and the WordPress-plugin
+rule (`highlight_score`, `is_wordpress_plugin`) with `rows-case.json`, which also holds the Row view's fields
+(`rows_view` in `collector/incidents.py`).
 Tests replay recorded responses from `tests/fixtures/`; they make no network calls.

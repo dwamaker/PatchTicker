@@ -98,6 +98,8 @@ class R2StoreTest(MemoryStoreTest):
         self.assertEqual(obj["ContentEncoding"], "br")
         self.assertEqual(json.loads(brotli.decompress(obj["Body"]).decode("utf-8")), doc)
         self.assertEqual(store.read("board/recent.json"), doc)
+        store.write("board/rows.json", doc)  # the light first load (owner, 11-10)
+        self.assertEqual(self.s3.objects[("patchradar", "board/rows.json")]["ContentEncoding"], "br")
         store.write("status.json", {"updated": "a"})  # read by the Pages Functions too: never compressed
         self.assertNotIn("ContentEncoding", self.s3.objects[("patchradar", "status.json")])
 

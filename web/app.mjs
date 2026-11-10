@@ -319,7 +319,8 @@ async function main() {
     // only hides 이전 사건, and the update time also rides in recent.json: Googlebot once failed status.json alone and
     // the whole Board drew as a load error (Search Console, 11-10).
     const first = Promise.all([getJson('index.json').catch(() => ({ months: [] })),
-      getJson('status.json').catch(() => null), getJson('board/recent.json'),
+      // Row views first (owner, 11-10); rows.json missing (rollout) or failing: the full week, as before.
+      getJson('status.json').catch(() => null), getJson('board/rows.json').catch(() => getJson('board/recent.json')),
       getJson('board/products.json').catch(() => ({ products: [] }))]);
     window.vrEarly = null; // whatever is left was fetched at page start: a refresh minutes later must ask again
     const [index, st, recent, seen] = await first;
@@ -348,6 +349,11 @@ async function main() {
   // allowed). Later redraws (filters, views) do not replay it.
   document.body.classList.add('arriving');
   render();
+  // A restored search, an open row or a #i= link that is a row view (or a search field focused before the data came) needs
+  // the full week first: the restore scroll would land on another row while that row shows one loading line (owner, 11-10).
+  const rowView = (id) => incidents.find((i) => i.id === id)?.rows;
+  const linkedId = linked && new URLSearchParams(location.hash.slice(1)).get('i');
+  if (filter.query || document.activeElement === $('search') || [...open, linkedId].some(rowView)) await ensureFull().catch(() => {});
   if (place && !loadError) scrollTo(0, Number(place.y) || 0);
   if (linked) {
     await openLinked();
@@ -378,30 +384,31 @@ const CHECK_MS = 30 * 1000; // live like a ticker (owner, 2026-11-09): status.js
 const fresh = new Set(); // ids that arrived by a refresh and have not been seen yet
 let checking = false;
 async function checkForNew() {
-  if (checking || !updated || loadError) return;
+  if (checking || fullWeek || !updated || loadError) return; // the full week on its way: its merge goes first
   checking = true;
   try {
     const st = await getJson('status.json');
     if (st.updated === updated) return;
-    const [recent, seen] = await Promise.all([getJson('board/recent.json'), getJson('board/products.json').catch(() => null)]);
-    const merged = mergeIncidents(incidents, recent.incidents.filter(onBoard));
-    // the row at the top of the window, and where it is, so the page can hold it there
-    const anchor = [...document.querySelectorAll('li[data-vt]')].find((li) => li.getBoundingClientRect().bottom > 0);
-    const anchorId = anchor?.dataset.vt;
-    const anchorTop = anchor?.getBoundingClientRect().top;
+    // An open row or a search needs details: the full week, so an open row is refreshed whole with no loading flash.
+    // Otherwise the row views (owner, 11-10): mergeIncidents keeps a held full Incident unless its row changed.
+    const whole = open.size > 0 || Boolean(filter.query);
+    const week = whole ? getJson('board/recent.json') : getJson('board/rows.json').catch(() => getJson('board/recent.json')); // rows.json missing (rollout): the week
+    const [recent, seen] = await Promise.all([week, getJson('board/products.json').catch(() => null)]);
+    if (fullWeek) return; // asked for meanwhile: the next check comes after it, so two merges never cross
+    // A file with no row view is the full week (recent.json, or a week short enough to be all whole): the truth for row views.
+    const merged = mergeIncidents(incidents, recent.incidents.filter(onBoard), !recent.incidents.some((i) => i.rows));
     const atTop = scrollY < 160;
     incidents = merged.incidents;
     if (seen) seenProducts = seen.products;
     updated = st.updated;
     paused = st.summaries === 'paused';
+    fullFailed = false; // the store answers again: a waiting search or row may ask for the week again
     for (const id of merged.added) fresh.add(id);
     refreshProducts();
     lastCount = null; // the redraw's own "N건이 보입니다" stays quiet: this refresh says what is new instead
     if (atTop) await boardTransition(render);
     else {
-      render();
-      const again = anchorId && document.querySelector(`li[data-vt="${anchorId}"]`);
-      if (again) scrollBy(0, again.getBoundingClientRect().top - anchorTop);
+      holdPlace(render);
       for (const li of document.querySelectorAll('li.fresh')) {
         const box = li.getBoundingClientRect();
         if (box.bottom > 0 && box.top < innerHeight) li.animate(reducedMotion.matches ? [{ opacity: 0 }, { opacity: 1 }]
@@ -425,6 +432,39 @@ setInterval(checkForNew, CHECK_MS);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNew(); });
 // Coming back from another window (the tab stayed visible, so no visibilitychange) checks too (owner, 2026-11-09).
 addEventListener('focus', checkForNew);
+
+// A redraw that changes what stands above the window (a refresh, the full week arriving) holds the row at the top of the
+// window where it was, and a focused row keeps the focus.
+function holdPlace(redraw) {
+  const anchor = [...document.querySelectorAll('li[data-vt]')].find((li) => li.getBoundingClientRect().bottom > 0);
+  const anchorTop = anchor?.getBoundingClientRect().top;
+  const focused = document.activeElement?.matches('button.row') && document.activeElement.closest('li[data-vt]')?.dataset.vt;
+  redraw();
+  const again = anchor && document.querySelector(`li[data-vt="${anchor.dataset.vt}"]`);
+  if (again) scrollBy(0, again.getBoundingClientRect().top - anchorTop);
+  if (focused) document.querySelector(`li[data-vt="${focused}"] button.row`)?.focus({ preventScroll: true });
+}
+
+// Owner, 11-10: the Board draws from board/rows.json, whose row views (marked rows) carry no details and no search text.
+// The full week (board/recent.json) comes only when something needs it, never in the background: opening a row view, or
+// a search. Whether anything is missing is read from the Incidents held (a refresh can bring row views back), never kept
+// in a flag; nor is a fetched week kept: one fetch at a time, and every later need reads the week again.
+let fullFailed = false; // the last fetch failed: redraws stop asking; a visitor's action or a working refresh clears it
+let fullWeek = null;
+const partial = () => incidents.some((i) => i.rows);
+function ensureFull() {
+  if (!updated || loadError || !partial()) return Promise.resolve(); // nothing drawn yet, or nothing missing
+  fullFailed = false;
+  return (fullWeek ||= getJson('board/recent.json').then((recent) => {
+    incidents = mergeIncidents(incidents, recent.incidents.filter(onBoard), true).incidents;
+    refreshProducts();
+    holdPlace(render);
+  }, (err) => {
+    fullFailed = true;
+    showStatus();
+    throw err;
+  }).finally(() => { fullWeek = null; }));
+}
 
 // The notice at the top of the window: how many highlighted rows sit above it. It leaves once they are reached.
 function noticeAbove() {
@@ -754,7 +794,8 @@ function statusLine(list) {
   const t = TEXT[lang];
   if (loadError) return ''; // the message and its retry button sit in the empty-state block
   if (!updated) return t.loading;
-  return t.status(ago(updated), list.length, incidents.length) + (paused ? ` · ${t.paused}` : '');
+  const waiting = filter.query && !applied() ? ` · ${fullFailed ? t.loadError : t.loading}` : ''; // the search waits for the full week
+  return t.status(ago(updated), list.length, incidents.length) + (paused ? ` · ${t.paused}` : '') + waiting;
 }
 
 // 이 게시판 읽는 법 opens only on request. A first visit gets one line instead (the three risk signs and the ring, with
@@ -875,7 +916,8 @@ async function fetchOlder() {
   const months = await Promise.all(olderMonths.map((m) => getJson(`board/${m}.json`)));
   const byId = new Map(incidents.map((i) => [i.id, i]));
   const before = byId.size;
-  for (const i of months.flatMap((m) => m.incidents).filter(onBoard)) if (!byId.has(i.id)) byId.set(i.id, i);
+  // a month file holds the whole Incident: it replaces a row view of the week (owner, 11-10)
+  for (const i of months.flatMap((m) => m.incidents).filter(onBoard)) if (!byId.get(i.id) || byId.get(i.id).rows) byId.set(i.id, i);
   incidents = [...byId.values()];
   refreshProducts();
   olderMonths = [];
@@ -925,17 +967,22 @@ function moreButtons(rest) {
 // The last filterBoard answer: a view, language or open-row redraw asks the same question again (owner, 11-10: phones).
 // incidents is always replaced, never edited, and the minute covers the time-based parts (ages, the seven-day Highlights).
 let lastBoard = {};
+// The search in force: none while a row view is held (it has no text to search), so the list, its counts and what is said
+// about them stay as they are until the full week is there.
+const applied = (f = filter) => (partial() ? '' : f.query);
+const board = (f, now = Date.now()) => filterBoard(incidents, f.picks, applied(f), now, f);
 function filtered() {
   const now = Date.now();
   const key = JSON.stringify([filter, Math.floor(now / 60000)]);
   if (lastBoard.incidents !== incidents || lastBoard.key !== key) {
-    lastBoard = { incidents, key, result: filterBoard(incidents, filter.picks, filter.query, now, filter) };
+    lastBoard = { incidents, key, result: board(filter, now) };
   }
   return lastBoard.result;
 }
 
 function render() {
   pageText();
+  if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
   const { highlights: chosen, list, variants } = filtered();
   // 주요 사건 더 보기 adds only Highlights worth a notice: 위험 or above, or a reason the row cannot show (newsletter, HN).
   const extra = chosen.slice(PINNED); // filterBoard already keeps 주요 사건 to 위험 and above (user, 2026-11-09)
@@ -946,10 +993,10 @@ function render() {
   showStatus();
   guide();
   // A Korean word searched as English names too says so under the field (critique 13), so a hit on "macOS" for 맥 is not a puzzle.
-  const hint = aliasesUsed(filter.query).map(({ word, names }) => TEXT[lang].aliasHint(word, names)).join(' ');
+  const hint = aliasesUsed(applied()).map(({ word, names }) => TEXT[lang].aliasHint(word, names)).join(' ');
   if ($('alias-hint').textContent !== hint) $('alias-hint').textContent = hint; // unchanged: not said again (role=status)
   $('skip').hidden = !highlights.length;
-  announce(list.length, filterToQuery({ ...filter, sort: 'new' })); // a new sort says 정렬 itself
+  announce(list.length, filterToQuery({ ...filter, query: applied(), sort: 'new' })); // a new sort says 정렬 itself
   // Highlights are pinned on top like a board's notices; every other Incident follows, newest first.
   const pinned = new Set(highlights);
   rowCount = 0;
@@ -969,7 +1016,7 @@ function render() {
   for (const id of ['filter-btn', 'stuck-filter']) $(id).setAttribute('aria-expanded', !$('filters').hidden);
   const rest = list.filter((i) => !pinned.has(i));
   // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
-  const folded = filter.picks.length || filter.query ? rest : foldByVendor(rest);
+  const folded = filter.picks.length || applied() ? rest : foldByVendor(rest);
   const items = folding ? folded : rest;
   // 묶음 풀기 / 묶어 보기: only where a fold exists to undo or to bring back.
   $('fold-toggle').hidden = folded === rest || !folded.some((i) => i.fold);
@@ -1103,10 +1150,11 @@ function emptyState() {
   const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || id).join(', ');
   // Only Products picked: name them ("not affected"); any quick filter in play: speak of conditions instead.
   const quick = panelCount() > 0;
+  const query = applied(); // a search still waiting for the full week has found nothing yet
   // Picks and a search together: the search is named first, so "nothing for OpenSSH" never hides an OpenSSH row the
   // search left out (PRODUCT.md principle 2).
-  const message = filter.picks.length && filter.query && !quick ? t.noneForBoth(names, filter.query)
-    : filter.picks.length && !quick ? t.noneForPicks(names) : filter.query && !quick ? t.noneForQuery(filter.query)
+  const message = filter.picks.length && query && !quick ? t.noneForBoth(names, query)
+    : filter.picks.length && !quick ? t.noneForPicks(names) : query && !quick ? t.noneForQuery(query)
     : quick ? t.noneForFilters : t.noIncidents;
   const buttons = el('p', 'actions');
   // Say how far back this looked: "nothing" in one week is not "nothing" in three months.
@@ -1116,19 +1164,19 @@ function emptyState() {
     older.addEventListener('click', loadOlder);
     buttons.append(older);
   }
-  if (filter.query) buttons.append(clearButton(t.clearSearch, { query: '' }, true));
+  if (query) buttons.append(clearButton(t.clearSearch, { query: '' }, true));
   // Filters left nothing: each condition can go on its own, the ones that bring the most back first (at most three).
   if (quick) {
-    const count = (change) => { const n = { ...filter, ...change }; return filterBoard(incidents, n.picks, n.query, Date.now(), n).list.length; };
+    const count = (change) => board({ ...filter, ...change }).list.length;
     const drops = conditionList().map(([label, change]) => [label, change, count(change)]).filter(([, , n]) => n > 0)
       .sort((a, b) => b[2] - a[2]).slice(0, 3);
     for (const [label, change] of drops) buttons.append(clearButton(t.fp.dropCond(label), change, true));
   }
   // 모두 지우기 only when something besides the search is set; with a search alone it would repeat 검색 지우기.
-  if (activeFilters() - (filter.query ? 1 : 0) > 0) buttons.append(clearButton(t.clearAll, NO_FILTER, true));
+  if (activeFilters() - (query ? 1 : 0) > 0) buttons.append(clearButton(t.clearAll, NO_FILTER, true));
   const actions = buttons.childElementCount ? [buttons] : [];
   // Only Products picked and none on the Board: the visitor's good news, said as a sign, never as "safe".
-  if (filter.picks.length && !quick && !filter.query) return [allClear(), ...actions];
+  if (filter.picks.length && !quick && !query) return [allClear(), ...actions];
   return [para('', message), scope, ...actions];
 }
 
@@ -1149,7 +1197,7 @@ function allClear() {
 // In the empty state the button says how many Incidents it brings back, so the visitor sees which narrowing hid them.
 function clearButton(text, change, counted = false) {
   const next = { ...filter, ...change };
-  const n = counted ? filterBoard(incidents, next.picks, next.query, Date.now(), next).list.length : 0;
+  const n = counted ? board(next).list.length : 0;
   const button = Object.assign(el('button', 'btn', n ? TEXT[lang].restore(text, n) : text), { type: 'button' });
   button.addEventListener('click', () => {
     if ('query' in change) $('search').value = change.query;
@@ -1277,7 +1325,7 @@ function panelDraft() {
 // 필터 적용 · N건: how many Incidents the choices would leave, counted as they change, so an empty combination shows
 // before the Board is lost to it (critique 10).
 function countDraft() {
-  const count = (draft) => { const next = { ...filter, ...draft }; return filterBoard(incidents, next.picks, next.query, Date.now(), next).list.length; };
+  const count = (draft) => board({ ...filter, ...draft }).list.length;
   const n = count(panelDraft());
   const apply = $('filters').querySelector('button[type=submit]');
   if (apply) {
@@ -1530,6 +1578,7 @@ $('fold-toggle').addEventListener('click', () => boardTransition(() => {
 }));
 $('expand-all').addEventListener('click', () => boardTransition(() => {
   const closing = allOpen();
+  if (!closing) fullFailed = false; // opening rows is the visitor asking: row views ask for the week again
   for (const id of visibleIds) closing ? open.delete(id) : open.add(id);
   render();
   $('expand-all').focus({ preventScroll: true });
@@ -1664,7 +1713,9 @@ $('skip').addEventListener('click', (event) => {
 darkQuery.addEventListener('change', pageText);
 // Typing waits a beat before the Board redraws, so a word is one redraw, not one per letter.
 let typing;
+$('search').addEventListener('focus', () => ensureFull().catch(() => {})); // under way before the first letter
 $('search').addEventListener('input', (event) => {
+  ensureFull().catch(() => {}); // typing asks again after a failure
   clearTimeout(typing);
   typing = setTimeout(() => update({ query: event.target.value }, false), 150); // no transition under the caret
 });
@@ -2270,13 +2321,20 @@ function row(incident, pinned, vendor = '') {
   button.append(...Object.values(cells), chevron);
   // Details are built when a row first opens: every closed row's hidden details made 62% of the page's elements, and
   // a phone took half a second to redraw them on a view switch (owner, 2026-11-10).
-  const fill = () => body.childElementCount || body.append(...details(incident));
+  // A row view (rows.json) has no details: a loading line until ensureFull redraws the Board with the full Incident, the
+  // load error if that fails; after a failure a redraw shows the error and only opening the row asks again (owner, 11-10).
+  const fill = (asked = false) => {
+    if (!incident.rows) return body.childElementCount || body.append(...details(incident));
+    if (fullFailed && !asked) return body.replaceChildren(para('preparing', TEXT[lang].loadError));
+    body.replaceChildren(para('preparing', TEXT[lang].loading));
+    ensureFull().catch(() => body.replaceChildren(para('preparing', TEXT[lang].loadError)));
+  };
   button.addEventListener('click', () => {
     const opening = !open.has(incident.id);
     button.setAttribute('aria-expanded', opening);
     if (opening) {
       open.add(incident.id);
-      fill();
+      fill(true);
       body.hidden = false;
       fold(body, true);
     } else {

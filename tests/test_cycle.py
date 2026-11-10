@@ -4,9 +4,10 @@ import json
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from collector import cvelist, nvd
+from collector import cvelist, cycle, nvd
 from collector.cycle import run_cycle
 from collector.cvelist import DELTA_LOG_URL
 from collector.store import MemoryStore
@@ -135,6 +136,29 @@ class CycleTest(unittest.TestCase):
         self.assertNotIn("urls", self.store.read("board/2026-10.json")["incidents"][0])
         # The picker's Product list covers 90 days, so it is written every cycle beside recent.json.
         self.assertIn("products", self.store.read("board/products.json"))
+
+    def test_the_board_draws_first_from_row_views_with_the_newest_and_the_highlights_whole(self):
+        # Owner, 11-10: board/recent.json is 9 MB of details; rows.json holds the same week light, except the rows most
+        # likely opened first. One newest here (100 live), so the older plain row is a row view.
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [
+            incident("CVE-2026-2", "critical", "2026-11-06T00:00:00Z", "2026-11-05T00:00:00Z") | {"cvss": 9.8}]})
+        self.store.write("index.json", {"months": ["2026-11"]})
+        with patch.object(cycle, "WHOLE_NEWEST", 1):
+            run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        recent, rows = self.store.read("board/recent.json"), self.store.read("board/rows.json")
+        self.assertEqual((rows["since"], rows["status"]), (recent["since"], recent["status"]))
+        self.assertEqual([i["id"] for i in rows["incidents"]], [i["id"] for i in recent["incidents"]])
+        by_id = {i["id"]: i for i in rows["incidents"]}
+        full = {i["id"]: i for i in recent["incidents"]}
+        self.assertEqual(by_id["CVE-2026-120984"], full["CVE-2026-120984"])  # the newest
+        self.assertEqual(by_id["CVE-2026-2"], full["CVE-2026-2"])  # a Highlight
+        row = by_id["CVE-2026-120839"]
+        self.assertTrue(row["rows"])
+        self.assertIs(row["wp_plugin"], False)
+        self.assertEqual(row["mentions"], [{"kind": "cve_record"}])
+        self.assertEqual(row["brief"], {"text": WPTRAVELLY_TEXT})  # no Summary or quick title: the row's own title
+        self.assertNotIn("cve_texts", row)
 
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")

@@ -5,7 +5,8 @@ import json
 import unittest
 from pathlib import Path
 
-from collector.incidents import VENDORS, product_list, risk_level, search_worthy, unknown_vendors
+from collector.incidents import (VENDORS, highlight_score, is_wordpress_plugin, product_list, risk_level, rows_view, search_worthy,
+                                 unknown_vendors)
 from collector.nvd import display_name
 
 CASE = json.loads((Path(__file__).parent / "fixtures" / "board" / "products-case.json").read_text(encoding="utf-8"))
@@ -73,3 +74,30 @@ class RiskRuleTest(unittest.TestCase):
             with self.subTest(case["incident"]["id"]):
                 self.assertEqual(risk_level(case["incident"]), case["risk"])
                 self.assertEqual(search_worthy(case["incident"]), case["search_worthy"])
+
+
+ROWS = json.loads((Path(__file__).parent / "fixtures" / "board" / "rows-case.json").read_text(encoding="utf-8"))
+
+
+class RowsViewTest(unittest.TestCase):
+    """board/rows.json's row views and the two ports it needs; tests/board.test.mjs checks the page draws, filters, folds
+    and pins each row view as its full Incident, and that the ports match highlightScore and isWordPressPlugin."""
+
+    def test_row_views_and_ports_match_the_shared_cases(self):
+        for case in ROWS["cases"]:
+            with self.subTest(case["full"]["id"]):
+                self.assertEqual(rows_view(case["full"]), case["row"])
+                self.assertEqual(highlight_score(case["full"]), case["highlight_score"])
+                self.assertEqual(is_wordpress_plugin(case["full"]), case["wp_plugin"])
+
+    def test_a_row_view_keeps_nothing_only_the_details_or_the_search_read(self):
+        for case in ROWS["cases"]:
+            row = case["row"]
+            with self.subTest(row["id"]):
+                self.assertTrue(row["rows"])
+                for dropped in ("cve_texts", "cve_links"):
+                    self.assertNotIn(dropped, row)
+                self.assertNotIn("lead", row["brief"])
+                self.assertTrue(all(set(m) <= {"kind", "points"} for m in row["mentions"]))
+                for dropped in ("lead", "fixed", "command", "stopgap", "stopgap_file", "fixes", "titles_ko"):
+                    self.assertNotIn(dropped, row.get("summary", {}))

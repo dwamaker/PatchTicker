@@ -9,10 +9,15 @@ from datetime import timedelta
 import anthropic
 
 from collector import curators, cvelist, github, hn, kev, kisa, news, nvd, osssec, summaries
-from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, link, month_of, page_keys,
-                                 page_slug, product_list, rejoin, search_worthy, unknown_vendors)
+from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, link, month_of,
+                                 on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
+                                 search_worthy, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
+# board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
+# Highlights as filterBoard picks them (HIGHLIGHTS in web/board.mjs).
+WHOLE_NEWEST = 100
+HIGHLIGHTS = 10
 FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
 PAGE_DAYS = 90  # an Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs)
 
@@ -26,8 +31,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # shortcut: loads every month to link against; fine for v1 volumes, revisit past a year.
     incidents = [i for m in index["months"] for i in store.read(f"months/{m}.json")["incidents"]]
 
-    on_board = {cve for i in incidents for cve in i["cves"]}
-    records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get, on_board)
+    held_cves = {cve for i in incidents for cve in i["cves"]}
+    records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get, held_cves)
     # CVEs of the last month's rows whose record no cycle has read (no cve_record Mention for them yet)
     read = {r["cveMetadata"]["cveId"] for r in records}
     since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
@@ -103,9 +108,17 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
     recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
     # status rides along so the page opens on this file alone (a failed status.json drew an error Board for Googlebot).
-    store.write("board/recent.json", {"since": recent_since, "status": status,
-                                      "incidents": [board_view(i) for i in incidents if i["first_seen"] >= recent_since]})
-    newest = sorted((i for i in incidents if search_worthy(i)), key=lambda i: i.get("published") or i["first_seen"], reverse=True)
+    week = [i for i in incidents if i["first_seen"] >= recent_since]
+    store.write("board/recent.json", {"since": recent_since, "status": status, "incidents": [board_view(i) for i in week]})
+    # The Board draws first from row views (owner, 11-10: 9 MB of details held a phone's first row back about a second) and
+    # fetches recent.json only to open a row or search. The newest and the week's Highlights (filterBoard) stay whole.
+    # The Highlight window is seven days by publish time (filterBoard), the same cut as recent_since.
+    shown = sorted((i for i in week if on_board(i)), key=published_at, reverse=True)
+    top = sorted((i for i in shown if published_at(i) >= recent_since and risk_level(i) != "notice"), key=highlight_score, reverse=True)
+    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + top[:HIGHLIGHTS]}
+    store.write("board/rows.json", {"since": recent_since, "status": status,
+                                    "incidents": [board_view(i) if i["id"] in whole else rows_view(i) for i in week]})
+    newest = sorted((i for i in incidents if search_worthy(i)), key=published_at, reverse=True)
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)

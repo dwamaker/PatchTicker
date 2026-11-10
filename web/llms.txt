@@ -10,6 +10,7 @@ Public JSON, refreshed every 10 minutes. Please fetch each file at most once eve
 
 - [Status](https://data.patchticker.com/status.json): when the data was last updated
 - [Last 7 days](https://data.patchticker.com/board/recent.json): every Incident first seen in the last week, with risk inputs, products, summaries and source links
+- [Last 7 days, light](https://data.patchticker.com/board/rows.json): the same Incidents as the week file, most without details (marked `rows`), for drawing the list
 - [Months](https://data.patchticker.com/index.json): the months that have data; each month is at `https://data.patchticker.com/board/YYYY-MM.json`
 - [Products](https://data.patchticker.com/board/products.json): product names seen in the last 90 days
 

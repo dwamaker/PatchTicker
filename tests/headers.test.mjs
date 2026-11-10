@@ -42,10 +42,12 @@ test("the inline script starts the first load's four files, and getJson takes ea
   const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch });
   ctx.window = ctx;
   vm.runInContext(html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1], ctx);
-  assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['data/board/products.json', 'data/board/recent.json', 'data/index.json', 'data/status.json']);
+  assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['data/board/products.json', 'data/board/rows.json', 'data/index.json', 'data/status.json']);
   const app = read('web/app.mjs');
   const getJson = vm.runInContext(`const DATA_URL = 'data/'; ${app.match(/const getJson = async[\s\S]*?\n\};/)[0]} getJson`, ctx);
   assert.equal((await getJson('status.json')).n, 2); // the page-start fetch
   assert.equal((await getJson('status.json')).n, 5); // asked again
   assert.match(app.match(/async function main\(\)[\s\S]*?await first;/)[0], /getJson\('board\/products\.json'\)[\s\S]*window\.vrEarly = null;/);
+  // The Board draws from the row views; without rows.json (rollout, a failed fetch) the full week, as before (owner, 11-10).
+  assert.match(app.match(/async function main\(\)[\s\S]*?await first;/)[0], /getJson\('board\/rows\.json'\)\.catch\(\(\) => getJson\('board\/recent\.json'\)\)/);
 });

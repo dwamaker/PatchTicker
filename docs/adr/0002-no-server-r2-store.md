@@ -32,3 +32,12 @@ not on our machines, and needs no deploy when data changes, so the two points ab
 finished HTML from the collector (the store and its SQLite backup carry JSON only, and a template change would mean
 re-rendering every page), serving pages from the data domain (worse for search and sharing), and redeploying the
 site every cycle.
+
+## Revision (2026-11-10, late): the Board draws from row views first
+
+The 2026-11-08 Revision's "the page loads only the week" is no longer the whole story: the week is 9.2 MB decoded
+(1.2 MB on the wire) and held a phone's first row back about a second. Each cycle also writes `board/rows.json`: the
+same Incidents as Row views (CONTEXT.md), without details or search text, except the newest 100 and the week's
+Highlights, which stay whole. The page draws from it and fetches `board/recent.json` only to open a Row view or to
+search, never in the background. "Search and the Product filter cover what is loaded" still holds, but a search now
+waits for the full week first.

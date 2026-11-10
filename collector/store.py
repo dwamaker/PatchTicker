@@ -50,7 +50,7 @@ class FolderStore:
 # Stored brotli-compressed (quality 10) with Content-Encoding br: the week a phone downloads first, 1.23 MB against the
 # 1.87 MB of Cloudflare's own on-the-fly brotli (owner, 2026-11-10). Never a document the Pages Functions read through
 # the R2 binding (pages/, board/feed.json, sitemap.json), which hands them the stored bytes as they are.
-BROTLI = {"board/recent.json"}
+BROTLI = {"board/recent.json", "board/rows.json"}  # rows.json: the light first load (owner, 11-10)
 
 
 class R2Store:

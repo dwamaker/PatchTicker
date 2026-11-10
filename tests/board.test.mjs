@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -788,6 +788,67 @@ test("the collector's risk rule and search-worthy rule match the page's", () => 
     assert.equal(riskLevel(c.incident), c.risk, c.incident.id);
     assert.equal(searchWorthy(c.incident), c.search_worthy, c.incident.id);
   }
+});
+
+// Owner, 11-10: the Board draws first from board/rows.json, whose row views lack the details and the search text. The
+// collector's rows_view, highlight_score and is_wordpress_plugin are checked on the same cases in tests/test_products.py.
+test('a row view of board/rows.json draws, filters, folds and pins as its full Incident does', () => {
+  const kase = JSON.parse(readFileSync(new URL('./fixtures/board/rows-case.json', import.meta.url), 'utf8'));
+  const now = Date.parse(kase.now);
+  const full = kase.cases.map((c) => c.full);
+  const rows = kase.cases.map((c) => c.row);
+  for (const c of kase.cases) {
+    assert.equal(highlightScore(c.full), c.highlight_score, c.full.id);
+    assert.equal(isWordPressPlugin(c.full), c.wp_plugin, c.full.id);
+    for (const rule of [riskLevel, pinReason, publishedAt, isWordPressPlugin, isExploited, onBoard, briefMarker, highlightScore]) {
+      assert.deepEqual(rule(c.row), rule(c.full), `${rule.name} ${c.full.id}`);
+    }
+    for (const lang of ['ko', 'en']) assert.deepEqual([rowTags(c.row, lang), productsOf(c.row, lang)], [rowTags(c.full, lang), productsOf(c.full, lang)]);
+  }
+  const ids = (list) => list.map((i) => i.id);
+  const shape = (out) => out.map((x) => (x.fold ? [x.fold, ids(x.incidents)] : x.id));
+  for (const [picks, opts] of [[[], {}], [[], { sort: 'risk' }], [[], { sort: 'cvss' }], [[], { risk: ['highest'] }], [[], { kev: true }],
+    [[], { cvssMin: 7 }], [[], { cve: 'no' }], [[], { has: ['advisory'] }], [['os:windows'], {}], [['name:gembooking'], {}]]) {
+    const [a, b] = [filterBoard(full, picks, '', now, opts), filterBoard(rows, picks, '', now, opts)];
+    assert.deepEqual([ids(b.highlights), ids(b.list), b.variants], [ids(a.highlights), ids(a.list), a.variants], JSON.stringify([picks, opts]));
+    assert.deepEqual(shape(foldByVendor(b.list)), shape(foldByVendor(a.list)));
+  }
+  // CVE-2026-9003's row view has no text that says "theme for WordPress": the collector's answer keeps it in the fold.
+  assert.deepEqual(shape(foldByVendor(filterBoard(rows, [], '', now).list)).find(Array.isArray), ['wordpress 2026-11-08', ['CVE-2026-9003', 'CVE-2026-9002', 'CVE-2026-9001']]);
+});
+
+test('a row view replaces a held full Incident only when what its row shows changed; full Incidents replace as before', () => {
+  const fullOne = { id: 'CVE-2026-1', cves: ['CVE-2026-1'], published: '2026-11-08T01:00:00Z', cvss: 7.5,
+    products: [{ id: 'ibm:db2', name: 'Db2' }], mentions: [{ kind: 'advisory', url: 'https://a', title: 'A' }],
+    summary: { at: '2026-11-08T02:00:00Z', ko: { summary: 'whole' } } };
+  const row = { id: 'CVE-2026-1', rows: true, cves: ['CVE-2026-1'], published: '2026-11-08T01:00:00Z', cvss: 7.5,
+    products: [{ id: 'ibm:db2', name: 'Db2' }], mentions: [{ kind: 'advisory' }], summary: { at: '2026-11-08T02:00:00Z', ko: { summary: '' } } };
+  assert.equal(mergeIncidents([fullOne], [row]).incidents[0], fullOne); // unchanged: the details are still right
+  for (const changed of [{ ...row, kev: true }, { ...row, summary: { ...row.summary, at: '2026-11-09T00:00:00Z' } },
+    { ...row, mentions: [...row.mentions, { kind: 'discussion', points: 120 }] },
+    { ...row, mentions: [{ kind: 'advisory', points: 150 }] }, // HN buzz: pinReason and highlightScore read the points
+    { ...row, quick_title: { ko: { title: '새 제목' }, en: { title: 'New title' } } }]) {
+    assert.equal(mergeIncidents([fullOne], [changed]).incidents[0], changed); // owner, 11-10: a new KEV, Summary or Mention shows
+  }
+  assert.equal(mergeIncidents([row], [fullOne]).incidents[0], fullOne);
+  const fresher = { ...fullOne, cvss: 9.8 };
+  assert.equal(mergeIncidents([fullOne], [fresher]).incidents[0], fresher);
+  const newer = { ...row, cvss: 9 };
+  assert.equal(mergeIncidents([row], [newer]).incidents[0], newer);
+  assert.deepEqual(mergeIncidents([fullOne], [{ id: 'CVE-2026-2', rows: true }]).added, ['CVE-2026-2']);
+});
+
+// Owner, 11-10: the full week (board/recent.json) is the truth for row views. One it does not hold left the week or was
+// merged into another Incident since the page loaded; a reload would not show it either, and nothing could fill it.
+test('the full week replaces row views and drops the row views it does not hold; full Incidents beyond it stay', () => {
+  const row = (id) => ({ id, rows: true, cves: [id], mentions: [] });
+  const whole = (id) => ({ id, cves: [id], mentions: [{ kind: 'advisory', url: 'https://a' }] });
+  const older = whole('CVE-2026-9'); // loaded by 이전 사건 불러오기
+  const { incidents, added } = mergeIncidents([row('CVE-2026-1'), row('CVE-2026-2'), older], [whole('CVE-2026-1'), whole('CVE-2026-3')], true);
+  assert.deepEqual(incidents.map((i) => [i.id, Boolean(i.rows)]), [['CVE-2026-1', false], ['CVE-2026-9', false], ['CVE-2026-3', false]]);
+  assert.deepEqual(added, ['CVE-2026-3']);
+  // rows.json is not the whole truth: a row view it lacks stays until the full week says otherwise
+  assert.deepEqual(mergeIncidents([row('CVE-2026-2')], [row('CVE-2026-1')]).incidents.map((i) => i.id), ['CVE-2026-2', 'CVE-2026-1']);
 });
 
 // "Copy this Incident's link" (ticket incident-pages/03): the Incident page in the visitor's language when the Incident

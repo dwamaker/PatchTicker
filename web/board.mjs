@@ -103,10 +103,22 @@ export function matchProducts(products, text, label = (p) => p.name) {
 
 // A refresh while the page is open: the fresh week replaces what it holds (a Summary or exploited flag may have
 // arrived), Incidents the page already had beyond it (older months) stay, and only ids it lacked are new.
-export function mergeIncidents(current, fresh) {
+// A row view (rows.json, marked rows) replaces a held full Incident only when what its row shows changed (owner, 11-10): a
+// new KEV listing, score, Summary, quick title or HN points must show, but an unchanged one keeps the full object, whose
+// details are still right.
+const rowShows = (i) => JSON.stringify([i.summary?.at, i.kev, i.kev_date, i.cvss, i.published, i.mentions?.length,
+  Math.max(0, ...(i.mentions || []).map((m) => m.points || 0)), i.summary_error?.final, (i.products || []).map((p) => p.id),
+  i.quick_title?.ko?.title, i.quick_title?.en?.title]);
+// week: fresh is the full week (board/recent.json), the truth for row views; one it does not hold left the week or was
+// merged into another Incident, and nothing could ever fill it, so it goes. Full Incidents beyond it (older months) stay.
+export function mergeIncidents(current, fresh, week = false) {
   const byId = new Map(current.map((i) => [i.id, i]));
   const added = fresh.filter((i) => !byId.has(i.id)).map((i) => i.id);
-  for (const i of fresh) byId.set(i.id, i);
+  for (const i of fresh) {
+    const held = byId.get(i.id);
+    if (!i.rows || !held || held.rows || rowShows(i) !== rowShows(held)) byId.set(i.id, i);
+  }
+  if (week) for (const [id, i] of byId) if (i.rows) byId.delete(id); // the week's own are full by now
   return { incidents: [...byId.values()], added };
 }
 
@@ -119,7 +131,8 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 
 // Highlight score. Exploited in the wild (CISA KEV) outranks everything; then discussion (HN points,
 // up to 50 at 500 points; a curator's newsletter, 25 each for up to two); CVSS (up to 20) and the
-// number of Mentions order the rest.
+// number of Mentions order the rest. Also in collector/incidents.py (highlight_score, with HIGHLIGHTS in collector/cycle.py:
+// board/rows.json keeps the week's Highlights whole), kept in step by tests/fixtures/board/rows-case.json.
 // Highlights: up to ten are chosen, four are pinned at first so the newest list starts on the first screens of a
 // phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순.
 export const HIGHLIGHTS = 10;
@@ -287,6 +300,8 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
     if (cvssMin && !(i.cvss >= cvssMin)) return false;
     if ((cve === 'yes' && !i.cves.length) || (cve === 'no' && i.cves.length)) return false;
     if (has.some((kind) => !i.mentions.some((m) => m.kind === kind))) return false;
+    // Only a search builds the text (owner, 11-10: a row view of board/rows.json has none; the page fetches the full week first).
+    if (!words.length) return true;
     // Mention titles carry the names people use ("sshole") that a Summary may not.
     const names = [...productsOf(i).flatMap((p) => [p.name, p.id]), ...(i.summary?.devices || [])].join('\n');
     const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, names, ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
@@ -466,13 +481,15 @@ export function relativeAge(iso, now) {
 export const VENDOR_FOLD_MIN = 3;
 export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
 // Owner, critique 14 c.1: WordPress plugins and themes are about a quarter of the list, so they fold as one pseudo-vendor,
-// ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin.
+// ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin. Also in collector/incidents.py
+// (WP_PLUGIN, is_wordpress_plugin: a row view carries the answer as wp_plugin), kept in step by rows-case.json.
 export const WORDPRESS = 'wordpress';
 const WP_PLUGIN = /(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme)s?\s+for\s+wordpress/i;
 // Kept per Incident object: every redraw folds ~2,000 rows, and this regex over their text took half of a phone's
 // view switch (11-10). Fresh data arrives as new objects (mergeIncidents), never as edits, so a kept answer stays true.
 const wpPlugin = new WeakMap();
 export const isWordPressPlugin = (i) => {
+  if (typeof i.wp_plugin === 'boolean') return i.wp_plugin; // a row view (rows.json) lacks the text: the collector's answer
   if (wpPlugin.has(i)) return wpPlugin.get(i);
   const s = i.summary;
   const words = [i.brief?.text, ...['en', 'ko'].flatMap((l) => ['title', 'summary', 'easy_title', 'easy'].map((k) => s?.[l]?.[k])), ...(i.products || []).map((p) => p.id)];
