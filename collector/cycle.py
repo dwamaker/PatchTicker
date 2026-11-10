@@ -130,6 +130,9 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     batch the rest's Summaries. Lets API errors
     through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
     instead of building a full one that would likely fail."""
+    for incident in incidents:
+        if summaries.revive(incident):
+            changed.add(month_of(incident["first_seen"]))
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp)
         if touched is not None:

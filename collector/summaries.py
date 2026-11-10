@@ -25,6 +25,7 @@ EFFORT = "low"
 # Thinking counts toward max_tokens on Haiku 5.5; replies measured 500-900 tokens, but SonicWall's 38 models (listed in
 # devices and again per fix line) ran past 4000 on 11-08. A cap, not a charge: only tokens used are billed.
 MAX_TOKENS = 8000
+MAX_TOKENS_RETRY = 16000  # a reply cut off at MAX_TOKENS gets this much room on its next try (7 such on 11-10)
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
 # No cap on instant Summaries per cycle: a candidate is summarized in the cycle that sees it (owner, 2026-11-09).
@@ -353,7 +354,7 @@ def is_budget_error(err):
 def summarize_now(incident, claude, http_get, stamp):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets API errors through."""
     text, seen = summary_input(incident, http_get), basis(incident)
-    save_reply(incident, claude.messages.create(**params(text)), text, seen, stamp)
+    save_reply(incident, claude.messages.create(**params(text, **retry(incident))), text, seen, stamp)
 
 
 def save_reply(incident, reply, text, seen, stamp):
@@ -386,7 +387,8 @@ def save_reply(incident, reply, text, seen, stamp):
 def failed(incident, reason):
     tries = incident.get("summary_error", {}).get("tries", 0) + 1
     # final: no more tries, so the page stops saying a Summary is coming (spec story 24).
-    incident["summary_error"] = {"tries": tries, "reason": reason[:200]} | ({"final": True} if tries >= MAX_TRIES else {})
+    # with_reason: the next try carries this reason (retry()); revive() leaves such an error alone.
+    incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True} | ({"final": True} if tries >= MAX_TRIES else {})
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):
@@ -394,10 +396,11 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):
     The input is kept so the reply can be checked against it when the result comes in."""
     requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
                 for n, i in enumerate(incidents[:limit])}
+    by_id = {i["id"]: i for i in incidents[:limit]}
     if not requests:
         return None
     batch = claude.messages.batches.create(requests=[
-        Request(custom_id=cid, params=params(r["input"], ttl="1h")) for cid, r in requests.items()])
+        Request(custom_id=cid, params=params(r["input"], ttl="1h", **retry(by_id[r["incident"]]))) for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
 
 
@@ -426,17 +429,40 @@ def collect_batch(pending, incidents, claude, stamp):
     return touched
 
 
-def params(text, ttl=None):
-    """messages.create parameters; the batch path sends the same with ttl="1h"."""
+def retry(incident):
+    """What the last rejected try of this Incident got wrong, for the next request (owner, 2026-11-10: three blind tries
+    failed the same way; Netpbm's "10.86.51" kept coming back as "10.86"). The note is sent beside the input, never
+    inside it: a reply is checked against the input alone, so a number named here does not become allowed."""
+    reason = incident.get("summary_error", {}).get("reason", "")
+    if not reason:
+        return {}
+    note = (f"Your previous reply for this Incident was rejected: {reason}. Write every number and version exactly as the"
+            " input writes it: never shorten or round one (not 10.86 for 10.86.51, not 4.2 for 4.2.16), never add one the"
+            " input does not have, and use the same numbers in Korean and English.")
+    return {"note": note} | ({"max_tokens": MAX_TOKENS_RETRY} if reason.startswith("stop_reason max_tokens") else {})
+
+
+def revive(incident):
+    """Owner, 2026-11-10: an Incident given up before retries said why (48 of them) gets one more round of MAX_TRIES,
+    once. Failures since then carry "with_reason" and are never revived. Returns whether it changed."""
+    error = incident.get("summary_error") or {}
+    if not error.get("final") or error.get("with_reason"):
+        return False
+    incident["summary_error"] = {"tries": 0, "reason": error.get("reason", ""), "with_reason": True}
+    return True
+
+
+def params(text, ttl=None, note="", max_tokens=MAX_TOKENS):
+    """messages.create parameters; the batch path sends the same with ttl="1h". note follows the input (retry())."""
     return {
         "model": MODEL,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": max_tokens,
         # Fixed instructions first with a cache breakpoint; they exceed Haiku 5.5's 512-token minimum.
         # Batches use the one-hour TTL: their requests run over minutes to hours, past the default five.
         "system": [{"type": "text", "text": INSTRUCTIONS,
                     "cache_control": {"type": "ephemeral"} | ({"ttl": ttl} if ttl else {})}],
         "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": SCHEMA}},
-        "messages": [{"role": "user", "content": text}],
+        "messages": [{"role": "user", "content": f"{text}\n\n{note}" if note else text}],
     }
 
 

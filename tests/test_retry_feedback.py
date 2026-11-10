@@ -1,0 +1,85 @@
+"""Owner, 2026-11-10: 48 Incidents (29 at 위험 or above) were given up after three rejected Summaries, most for shortening
+a version the input states in full (Netpbm "10.86.51" written "10.86"). A retry now says why the last reply was
+rejected, a reply cut off at the token cap gets more room, and Incidents given up before this get one more round."""
+
+import copy
+import unittest
+
+from test_cycle import at, recorded
+from test_summaries import HN_STORY, PAGES, SSHOLE_SUMMARY, FakeClaude, board
+
+from collector import summaries
+from collector.cycle import run_cycle
+from collector.store import MemoryStore
+
+SHORTENED = copy.deepcopy(SSHOLE_SUMMARY)
+SHORTENED["ko"]["summary"] += " 10.86 계열이 해당합니다."
+SHORTENED["en"]["summary"] += " The 10.86 line is affected."
+
+
+class RetryFeedbackTest(unittest.TestCase):
+    def setUp(self):
+        self.store = MemoryStore()
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-07T12:00:00.000Z"})
+
+    def run_at(self, when, claude, **sources):
+        sources.setdefault("delta_log", None)
+        run_cycle(self.store, recorded(web=PAGES, **sources), at(when), "test-box", claude=claude)
+
+    def set_error(self, error):
+        month = self.store.read("months/2026-11.json")
+        next(i for i in month["incidents"] if i["id"] == HN_STORY)["summary_error"] = error
+        self.store.write("months/2026-11.json", month)
+
+    def test_a_retry_says_why_the_last_reply_was_rejected(self):
+        claude = FakeClaude(SHORTENED, SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.assertIn("numbers not in the input: ['10.86']", board(self.store)[HN_STORY]["summary_error"]["reason"])
+        self.assertNotIn("rejected", claude.user_text(0))
+
+        self.run_at("2026-11-07T12:45:00", claude)
+
+        self.assertIn("Your previous reply for this Incident was rejected: numbers not in the input: ['10.86']", claude.user_text(1))
+        self.assertIn("summary", board(self.store)[HN_STORY])
+
+    def test_a_number_named_in_the_note_is_still_not_allowed(self):
+        claude = FakeClaude(SHORTENED, SHORTENED)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.run_at("2026-11-07T12:45:00", claude)
+
+        incident = board(self.store)[HN_STORY]
+        self.assertNotIn("summary", incident)
+        self.assertEqual(incident["summary_error"]["tries"], 2)
+
+    def test_a_reply_cut_off_at_the_token_cap_gets_more_room_next_time(self):
+        self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
+        self.set_error({"tries": 1, "reason": "stop_reason max_tokens"})
+        claude = FakeClaude(SSHOLE_SUMMARY)
+
+        self.run_at("2026-11-07T12:45:00", claude)
+
+        self.assertEqual(claude.sent[0]["max_tokens"], summaries.MAX_TOKENS_RETRY)
+        self.assertGreater(summaries.MAX_TOKENS_RETRY, summaries.MAX_TOKENS)
+
+    def test_an_incident_given_up_earlier_gets_one_more_round_with_the_reason(self):
+        self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
+        self.set_error({"tries": 3, "reason": "numbers not in the input: ['4.2']", "final": True})
+        claude = FakeClaude("not json", "not json", "not json", SSHOLE_SUMMARY)
+
+        for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
+            self.run_at(when, claude)
+
+        self.assertIn("numbers not in the input: ['4.2']", claude.user_text(0))
+        self.assertEqual(len(claude.sent), 3)  # one more round of three tries, then given up for good
+        error = board(self.store)[HN_STORY]["summary_error"]
+        self.assertTrue(error["final"])
+        self.assertTrue(error["with_reason"])
+
+    def test_an_incident_given_up_since_the_change_is_not_revived(self):
+        self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
+        self.set_error({"tries": 3, "reason": "numbers not in the input: ['4.2']", "final": True, "with_reason": True})
+        claude = FakeClaude()
+
+        self.run_at("2026-11-07T12:45:00", claude)
+
+        self.assertEqual(claude.sent, [])

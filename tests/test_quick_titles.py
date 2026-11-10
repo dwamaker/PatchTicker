@@ -91,7 +91,7 @@ class QuickTitleTest(unittest.TestCase):
         self.assertLess(asked.index("CVE-2026-9"), asked.index("CVE-2026-1"))  # the failed candidate leads
 
     def test_a_risky_row_out_of_summary_tries_still_gets_titles(self):
-        incidents = [row("CVE-2026-9", cvss=8.1) | {"summary_error": {"tries": 3, "reason": "x", "final": True}}]
+        incidents = [row("CVE-2026-9", cvss=8.1) | {"summary_error": {"tries": 3, "reason": "x", "final": True, "with_reason": True}}]
         claude = FakeClaude(titles("CVE-2026-9"))
         self.route(incidents, claude)
         self.assertEqual(len(claude.sent), 1)

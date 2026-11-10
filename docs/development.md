@@ -46,6 +46,9 @@ Unassigned incident seen in discussion, first seen in the last seven days) get a
 Haiku 5.5 in the same cycle (`collector/summaries.py`). The input is the Incident, its CVE records and
 the text of up to two advisory or write-up pages; a reply whose numbers, versions or Lead link are not
 in that input, or whose Korean and English numbers differ, is rejected and retried (three tries).
+Each retry says why the last reply was rejected, beside the input and never inside it (so a number named there is
+still not allowed); a reply cut off at the token cap gets more room. Incidents given up before 2026-11-10 got one
+more round once (`revive`).
 The collector refuses to fetch non-public addresses, since Mentions name the pages it reads.
 
 Every other Incident (first seen in the last 30 days) goes into one Message Batch per cycle with the
