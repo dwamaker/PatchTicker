@@ -10,7 +10,7 @@ from collector.cycle import run_cycle
 from collector.incidents import page_slug, url_key
 from collector.store import MemoryStore
 from test_batch_summaries import plain
-from test_cycle import at, recorded
+from test_cycle import at, incident, recorded
 from test_summaries import FakeClaude, board
 
 PLEX_BC = "https://www.bleepingcomputer.com/news/security/plex2shell-flaw-lets-attackers-take-over-plex-servers/"
@@ -20,8 +20,9 @@ NCENTRAL_BC = "https://www.bleepingcomputer.com/news/security/n-able-n-central-f
 STAMP = "2026-11-09T13:30:00Z"
 
 
-def story(url, first_seen, title=None, products=(), mentions=None):
-    """A CVE-less news or HN Incident; with a title it already has a Summary naming these products."""
+def story(url, first_seen, title=None, products=(), mentions=None, asked=True):
+    """A CVE-less news or HN Incident; with a title it already has a Summary naming these products, asked with a
+    candidate list unless asked=False (summarized before same_as shipped)."""
     mentions = mentions or [{"kind": "writeup", "url": url}]
     incident = {"id": url, "cves": [], "first_seen": first_seen, "published": first_seen, "mentions": mentions,
                 "urls": sorted({url_key(m["url"]) for m in mentions}), "brief": {"text": "A story", "lead": mentions[0]["url"]}}
@@ -29,6 +30,8 @@ def story(url, first_seen, title=None, products=(), mentions=None):
         reply = plain(products[0])
         incident["summary"] = reply | {"en": reply["en"] | {"title": title}, "at": first_seen}
         incident["summary_basis"] = summaries.basis(incident) | {"n": 1}
+        if asked:
+            incident["same_as_asked"] = True
     return incident
 
 
@@ -82,7 +85,7 @@ class InstantPathTest(unittest.TestCase):
         self.assertEqual(self.store.read("merge_log.json"), [{
             "at": STAMP, "incident": {"id": PLEX_SW, "title": "Plex Media Server flaw"}, "candidates": 1,
             "same_as": {"id": PLEX_BC, "title": "Plex2Shell lets attackers take over Plex Media Server"},
-            "accepted": True, "why": "accepted"}])
+            "accepted": True, "why": "accepted", "into": PLEX_BC}])
         self.assertIn(f"summaries: same_as: merged {PLEX_SW} into {PLEX_BC}", err)
 
     def test_same_as_empty_with_candidates_merges_nothing_and_is_logged(self):
@@ -222,6 +225,139 @@ class RefusalTest(unittest.TestCase):
               [self.candidate])
         (_, log), _ = quiet(summaries.apply_same_as, self.incidents, STAMP)
         self.assertEqual(log[0]["same_as"]["title"], "")
+
+
+CHROME_SW = "https://www.securityweek.com/chrome-xml-zero-day/"
+CHROME_BC = "https://www.bleepingcomputer.com/news/security/google-chrome-xml-zero-day/"
+NC_BC = "https://www.bleepingcomputer.com/news/security/n-able-n-central-flaw/"
+NC_SW = "https://www.securityweek.com/n-able-n-central-flaw/"
+NC_TR = "https://therecord.media/n-able-n-central-flaw"
+ROUTER = "https://www.securityweek.com/acme-router-flaw/"
+
+
+class AskedAgainOnceTest(unittest.TestCase):
+    """Owner, 11-10 ("갈라진 줄들 합쳐줘"): CVE-less Incidents summarized before same_as shipped are asked once more, with
+    the candidate list, so duplicates from before then merge through apply_same_as as usual."""
+
+    def setUp(self):
+        self.store = MemoryStore()
+
+    def cycle(self, now, claude, rows=None):
+        if rows is not None:
+            seed(self.store, rows)
+        _, err = quiet(run_cycle, self.store, recorded(None), at(now), "test-box", claude=claude)
+        return err
+
+    def test_a_pair_naming_each_other_in_one_cycle_ends_as_one_row(self):
+        a = story(CHROME_SW, "2026-11-10T06:20:00Z", "Chrome XML zero-day exploited", ["Google Chrome"], asked=False)
+        b = story(CHROME_BC, "2026-11-10T08:55:00Z", "Google Chrome fixes an XML zero-day", ["Google Chrome"], asked=False)
+        claude = FakeClaude(plain("Google Chrome") | {"same_as": CHROME_BC}, plain("Google Chrome") | {"same_as": CHROME_SW})
+        self.cycle("2026-11-10T09:00:00", claude, [a, b])
+
+        self.assertIn(f"- {CHROME_BC} |", claude.user_text(0))
+        self.assertIn(f"- {CHROME_SW} |", claude.user_text(1))
+        incidents = board(self.store)
+        self.assertEqual(list(incidents), [CHROME_SW])  # the earlier first seen
+        self.assertEqual(incidents[CHROME_SW]["absorbed"], [CHROME_BC])
+        self.assertTrue(incidents[CHROME_SW]["same_as_asked"])
+        self.assertNotIn("same_as_due", incidents[CHROME_SW])
+        self.assertEqual([(e["incident"]["id"], e["why"]) for e in self.store.read("merge_log.json")],
+                         [(CHROME_BC, "already one"), (CHROME_SW, "accepted")])
+
+    def test_three_rows_of_one_event_end_as_one_row(self):
+        rows = [story(url, when, f"N-able N-central flaw {k}", ["N-able N-central"], asked=False)
+                for k, (url, when) in enumerate([(NC_BC, "2026-11-09T21:30:00Z"), (NC_SW, "2026-11-10T02:05:00Z"),
+                                                 (NC_TR, "2026-11-10T03:00:00Z")])]
+        reply = lambda same: plain("N-able N-central") | {"same_as": same}
+        self.cycle("2026-11-10T09:00:00", FakeClaude(reply(NC_SW), reply(NC_TR), reply(NC_SW)), rows)
+
+        incidents = board(self.store)
+        self.assertEqual(list(incidents), [NC_BC])
+        self.assertEqual(incidents[NC_BC]["absorbed"], [NC_SW, NC_TR])
+        self.assertEqual([e["why"] for e in self.store.read("merge_log.json")], ["already one", "accepted", "accepted"])
+
+    def test_a_later_batch_result_naming_an_incident_folded_meanwhile_joins_its_survivor(self):
+        early = story(PLEX_BC, "2026-11-06T17:10:00Z", "Plex2Shell takes over Plex Media Server", ["Plex Media Server"], asked=False)
+        later = story(PLEX_SW, "2026-11-09T13:20:00Z", "Plex Media Server flaw Plex2Shell", ["Plex Media Server"], asked=False)
+        hn = story(NCENTRAL_HN, "2026-11-09T12:00:00Z", "Plex Media Server takeover write-up", ["Plex Media Server"], asked=False,
+                   mentions=[{"kind": "writeup", "url": "https://example.org/plex-writeup"}, {"kind": "discussion", "url": NCENTRAL_HN}])
+        claude = FakeClaude(plain("Plex Media Server") | {"same_as": ""}, plain("Plex Media Server") | {"same_as": PLEX_BC})
+        self.cycle("2026-11-09T13:30:00", claude, [early, later, hn])
+        self.assertEqual(set(board(self.store)), {PLEX_BC, NCENTRAL_HN})  # later folded into early; hn waits in a batch
+        self.assertEqual(self.store.read("batches.json")[0]["requests"]["r0"]["candidates"], [PLEX_SW, PLEX_BC])
+
+        claude.end_batch({"no CVE yet": plain("Plex Media Server") | {"same_as": PLEX_SW}})
+        claude.replies.append(plain("Plex Media Server") | {"same_as": ""})  # early's re-summary: it merged
+        self.cycle("2026-11-09T13:40:00", claude)
+
+        incidents = board(self.store)
+        self.assertEqual(list(incidents), [PLEX_BC])
+        self.assertEqual(incidents[PLEX_BC]["absorbed"], [PLEX_SW, NCENTRAL_HN])
+        entry = next(e for e in self.store.read("merge_log.json") if e["incident"]["id"] == NCENTRAL_HN)
+        self.assertEqual((entry["why"], entry["into"]), ("accepted", PLEX_BC))
+
+    def test_an_unrelated_incident_is_asked_once_even_at_its_summary_limit_and_left_alone(self):
+        router = story(ROUTER, "2026-11-09T10:00:00Z", "Acme router flaw", ["Acme Router"], asked=False)
+        router["summary_basis"]["n"] = summaries.MAX_SUMMARIES
+        cve = incident("CVE-2026-5555", "A flaw", "2026-11-09T09:00:00Z", "2026-11-09T09:00:00Z") | {
+            "summary": plain("Other"), "summary_basis": {"cves": ["CVE-2026-5555"], "kev": False, "advisories": [], "n": 1}}
+        claude = FakeClaude(plain("Acme Router") | {"same_as": ""})
+        self.cycle("2026-11-09T12:00:00", claude, [router, cve])
+
+        self.assertEqual(len(claude.sent), 1)  # the Incident with a CVE is never asked
+        self.assertNotIn(summaries.SAME_AS_HEAD, claude.user_text())  # no candidates: still asked once, still marked
+        stored = board(self.store)[ROUTER]
+        self.assertEqual((stored["summary"]["en"]["title"], stored["summary_basis"]["n"]), ("Acme Router flaw", summaries.MAX_SUMMARIES))
+        self.assertTrue(stored["same_as_asked"])
+        self.assertNotIn("same_as_asked", board(self.store)["CVE-2026-5555"])
+
+        self.cycle("2026-11-09T12:10:00", claude)
+        self.assertEqual(len(claude.sent), 1)
+
+    def test_a_rejected_reply_keeps_the_question_and_the_retry_merges(self):
+        early = story(PLEX_BC, "2026-11-06T17:10:00Z", "Plex2Shell takes over Plex Media Server", ["Plex Media Server"])
+        later = story(PLEX_SW, "2026-11-09T13:20:00Z", "Able2Shell in Plex Media Server", ["Plex Media Server"], asked=False)
+        claude = FakeClaude('{"ko": {"title": "cut', plain("Plex Media Server") | {"same_as": PLEX_BC})
+        self.cycle("2026-11-09T13:30:00", claude, [early, later])
+
+        stored = board(self.store)[PLEX_SW]
+        self.assertEqual((stored["summary_error"]["tries"], stored["same_as_due"]), (1, True))
+        shown = {i["id"]: i for i in self.store.read("board/recent.json")["incidents"]}[PLEX_SW]
+        self.assertEqual(shown["summary"]["en"]["title"], "Able2Shell in Plex Media Server")  # the old Summary stays shown
+        self.assertNotIn("summary_error", shown)
+
+        self.cycle("2026-11-09T13:40:00", claude)
+        self.assertIn("Your previous reply for this Incident was rejected", claude.user_text(1))
+        self.assertIn(f"- {PLEX_BC} |", claude.user_text(1))
+        self.assertEqual(list(board(self.store)), [PLEX_BC])
+
+    def test_three_rejections_end_the_question_and_keep_the_old_summary(self):
+        router = story(ROUTER, "2026-11-09T10:00:00Z", "Acme router flaw", ["Acme Router"], asked=False)
+        claude = FakeClaude(*['{"ko": {"title": "cut'] * summaries.MAX_TRIES)
+        self.cycle("2026-11-09T12:00:00", claude, [router])
+        self.cycle("2026-11-09T12:10:00", claude)
+        err = self.cycle("2026-11-09T12:20:00", claude)
+
+        self.assertIn(f"summaries: same_as: {ROUTER} not asked again: its Summary was given up", err)
+        stored = board(self.store)[ROUTER]
+        self.assertEqual(stored["summary"]["en"]["title"], "Acme router flaw")
+        self.assertNotIn("same_as_due", stored)
+        self.assertTrue(stored["summary_error"]["final"])
+        self.assertEqual([(f["id"], f["shows"]) for f in self.store.read("summary_failures.json")], [(ROUTER, "summary")])
+
+        self.cycle("2026-11-09T12:30:00", claude)
+        self.assertEqual(len(claude.sent), summaries.MAX_TRIES)  # no fourth request
+
+    def test_a_given_up_incident_is_not_asked_but_says_so_once(self):
+        router = story(ROUTER, "2026-11-09T10:00:00Z", "Acme router flaw", ["Acme Router"], asked=False)
+        router["summary_error"] = {"tries": summaries.MAX_TRIES, "final": True, "reason": "x", "with_reason": True,
+                                   "hinted": True, "ko_words": True}
+        claude = FakeClaude()
+        err = self.cycle("2026-11-09T12:00:00", claude, [router])
+        self.assertIn(f"summaries: same_as: {ROUTER} not asked again: its Summary was given up", err)
+        err = self.cycle("2026-11-09T12:10:00", claude)
+        self.assertNotIn("not asked again", err)
+        self.assertEqual(claude.sent, [])
 
 
 if __name__ == "__main__":

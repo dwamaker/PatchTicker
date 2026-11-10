@@ -389,6 +389,8 @@ def needs_summary(incident):
         return False
     if "summary" not in incident:
         return True
+    if incident.get("same_as_due"):  # revive_same_as: once, past MAX_SUMMARIES, and not counted in n (save_reply)
+        return True
     seen = incident.get("summary_basis")  # Summaries from before ticket 07 have none: never re-summarized
     if not seen or seen["n"] >= MAX_SUMMARIES:
         return False
@@ -409,6 +411,8 @@ def summarize_now(incident, claude, http_get, stamp, candidates=()):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
     candidates: its same_as_candidates(), listed beside the input."""
     text, seen = summary_input(incident, http_get), basis(incident)
+    if not incident["cves"]:
+        incident["same_as_asked"] = True  # asked with its candidates (none or some): revive_same_as passes it by
     try:
         reply = claude.messages.create(**params(text, candidates=same_as_text(candidates), **retry(incident, text)))
     except anthropic.APIStatusError as err:
@@ -426,8 +430,9 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     # Incident ("same_as": {id, listed}) for apply_same_as, which has every Incident, to decide right after.
     # n counts the Summaries a trigger asked for (MAX_SUMMARIES), so "due" is read before the reply changes anything:
     # a reply nothing asked for (a hand re-make after a prompt change) replaces the text but is not counted
-    # (critique 14: n reached 16 in a day, mostly from re-makes).
-    due = "summary" not in incident or needs_summary(incident)
+    # (critique 14: n reached 16 in a day, mostly from re-makes). revive_same_as's one extra ask counts only when
+    # another trigger asked too, so "due" is read without its flag; the flag goes once a Summary is stored (below).
+    due = "summary" not in incident or needs_summary({k: v for k, v in incident.items() if k != "same_as_due"})
     try:
         summary = parse(reply, text, [m["url"] for m in incident["mentions"]])
     except Rejected as err:
@@ -450,6 +455,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     for lang in mismatch:
         summary[lang]["easy_action"] = ""
     same = summary.pop("same_as")
+    incident.pop("same_as_due", None)  # answered ("" included): revive_same_as's question is used up
     if same or listed:
         incident["same_as"] = {"id": same, "listed": list(listed)}
     incident["summary"] = summary | {"at": stamp}
@@ -461,6 +467,10 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
 
 def failed(incident, reason):
     tries = incident.get("summary_error", {}).get("tries", 0) + 1
+    # revive_same_as's question survives a rejected or errored reply (the next cycle asks again, with the retry note)
+    # until MAX_TRIES; then the old Summary stays and the question ends.
+    if tries >= MAX_TRIES and incident.pop("same_as_due", None):
+        print(f"summaries: same_as: {incident['id']} not asked again: its Summary was given up", file=sys.stderr)
     # final: no more tries, so the page stops saying a Summary is coming (spec story 24).
     # with_reason: the next try carries this reason (retry()); revive() leaves such an error alone.
     once = {k: True for k in ("capped", "hinted") if incident.get("summary_error", {}).get(k)}  # revive() only once each
@@ -473,6 +483,9 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
     candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
+    for incident in incidents[:limit]:
+        if not incident["cves"]:
+            incident["same_as_asked"] = True  # as in summarize_now; the cycle writes its month
     requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
                 | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
                 for n, i in enumerate(incidents[:limit])}
@@ -559,27 +572,56 @@ def apply_same_as(incidents, stamp):
     """Decide each same_as answer save_reply left on an Incident: merge the two when the id was listed in that request,
     that Incident still exists without a CVE and on the Board (and so does the asker), and the two share a Product;
     the earlier first seen survives, as in link(). Returns (months changed, merge_log.json entries, oldest first): one
-    for every answer that named an id or had candidates listed."""
+    for every answer that named an id or had candidates listed; an accepted one also says which Incident survived ("into").
+    Either side folded away meanwhile (an earlier answer this cycle, or a link() fold before a batch came back) stands
+    for the Incident that absorbed it, so answers naming each other (A names B, B names A; three rows) end as one row,
+    the second answer "already one", and no Incident is folded twice."""
     changed, log = set(), []
     for asker in [i for i in incidents if "same_as" in i]:
         wish = asker.pop("same_as")
-        other = next((i for i in incidents if i["id"] == wish["id"]), None)
-        here = any(i is asker for i in incidents)  # an earlier answer this cycle may have merged it away
+        here = holder(incidents, asker["id"])
+        other = holder(incidents, wish["id"]) if wish["id"] else None
         why = ("none named" if not wish["id"] else "not listed" if wish["id"] not in wish["listed"]
-               else "gone" if other is None or not here else "has a CVE now" if other["cves"] or asker["cves"]
-               else "not on the Board" if not (on_board(other) and on_board(asker))
-               else "no shared Product" if not product_ids(asker) & product_ids(other) else "accepted")
+               else "gone" if other is None or here is None else "already one" if other is here
+               else "has a CVE now" if other["cves"] or here["cves"]
+               else "not on the Board" if not (on_board(other) and on_board(here))
+               else "no shared Product" if not product_ids(here) & product_ids(other) else "accepted")
         title = lambda i: short(i["summary"].get("en", {}).get("title", ""), 100) if i and i.get("summary") else ""
         log.append({"at": stamp, "incident": {"id": short(asker["id"], 300), "title": title(asker)}, "candidates": len(wish["listed"]),
                     "same_as": {"id": short(wish["id"], 300), "title": title(other)} if wish["id"] else "",
                     "accepted": why == "accepted", "why": why})
         if why == "accepted":
-            survivor, gone = sorted((i for i in incidents if i is asker or i is other), key=lambda i: i["first_seen"])
+            survivor, gone = sorted((i for i in incidents if i is here or i is other), key=lambda i: i["first_seen"])
+            log[-1]["into"] = short(survivor["id"], 300)
             survivor["merged"] = survivor.get("merged", []) + [gone["id"]]  # its re-summary trigger (needs_summary)
             fold(incidents, survivor, gone)
             changed |= {month_of(survivor["first_seen"]), month_of(gone["first_seen"])}
             print(f"summaries: same_as: merged {gone['id']} into {survivor['id']}", file=sys.stderr)
     return changed, log
+
+
+def holder(incidents, incident_id):
+    """The Incident with this id, else the one that absorbed it (fold), else None."""
+    return (next((i for i in incidents if i["id"] == incident_id), None)
+            or next((i for i in incidents if incident_id in i.get("absorbed", [])), None))
+
+
+def revive_same_as(incident, now):
+    """Owner, 11-10 ("갈라진 줄들 합쳐줘"): a CVE-less Board Incident with a Summary, in same_as_candidates' window, whose
+    Summary request never carried the candidate list (summarized before same_as shipped) is asked once more, so its
+    same_as is decided as usual (Chrome XML zero-day, N-able N-central and Plex2Shell stayed apart). Every request for a
+    CVE-less Incident since sets "same_as_asked" (summarize_now, submit_batch), so none is asked twice. The ask passes
+    MAX_SUMMARIES and is not counted in n (save_reply); a rejected reply keeps it, retried up to MAX_TRIES (failed());
+    one given up for good is not asked, and the log says so once. Returns whether it changed."""
+    if incident["cves"] or incident.get("same_as_asked") or incident.get("same_as_due") or not incident.get("summary") \
+            or not on_board(incident) or published_at(incident) < (now - timedelta(days=SAME_AS_DAYS)).strftime(STAMP):
+        return False
+    if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
+        print(f"summaries: same_as: {incident['id']} not asked again: its Summary was given up", file=sys.stderr)
+        incident["same_as_asked"] = True  # decided: not asked
+        return True
+    incident["same_as_due"] = True
+    return True
 
 
 LINES_SCHEMA = {

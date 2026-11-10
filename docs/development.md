@@ -57,7 +57,11 @@ must have been listed, that Incident must still exist with no CVE and on the Boa
 key (`products_of`). Then they fold as `link()` folds (the earlier first seen survives, the other's page moves) and the
 survivor is due a new Summary (`merged` in its Summary basis). Every answer that named an id or had a list goes into
 `merge_log.json` in the store (newest first, last 300: `at`, `incident`, `candidates`, `same_as`, `accepted`, `why`),
-and each merge into one stderr line.
+and each merge into one stderr line. An answer naming an Incident already folded away counts for the one that
+absorbed it, so rows naming each other end as one. CVE-less Board Incidents summarized before this (no
+`same_as_asked` on them) are asked once more within the seven days (`revive_same_as`): past `MAX_SUMMARIES` and not
+counted in it, never after a given-up Summary (logged once), and never twice. A rejected reply keeps the question:
+it is retried like any Summary up to `MAX_TRIES`, the old Summary staying on the page meanwhile.
 
 The Board opens on `board/rows.json` (owner, 11-10): the week of `board/recent.json` as row views (marked `rows`), with
 only what a row, the filters, folds and Highlights read, and the collector's `wp_plugin` answer; the newest 100 and the

@@ -160,9 +160,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     store.write("checkpoints.json", checkpoints)
     store.write("status.json", status)
     # Owner, 11-10: news for the owner, last, so a failed post costs nothing else (docs/development.md).
-    live = {i["id"] for i in incidents}
-    merges = [d | {"into": d["incident"]["id"] if d["incident"]["id"] in live else d["same_as"]["id"]} for d in decisions if d["accepted"]]
-    text = discord.message([f for f in failures if f["id"] not in known], merges)
+    text = discord.message([f for f in failures if f["id"] not in known], [d for d in decisions if d["accepted"]])
     if notify and text:
         notify(text)
 
@@ -189,6 +187,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
         if summaries.revive(incident):
             changed.add(month_of(incident["first_seen"]))
         if summaries.revive_lines(incident):
+            changed.add(month_of(incident["first_seen"]))
+        if summaries.revive_same_as(incident, now):
             changed.add(month_of(incident["first_seen"]))
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp)
@@ -219,6 +219,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH, candidates=same_as)
     if pending:
         batches.append(pending)
+        sent = {r["incident"] for r in pending["requests"].values()}
+        changed.update(month_of(i["first_seen"]) for i in rest if i["id"] in sent)  # same_as_asked, set by submit_batch
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.
     asked = {r["incident"] for b in batches for r in b["requests"].values() if "lines" in r}
     lines = not probe and summaries.submit_lines(
