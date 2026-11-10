@@ -193,7 +193,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library", "widely_used", "same_as"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library", "same_as"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -328,10 +328,11 @@ class InstantSummaryTest(unittest.TestCase):
         # Replies from before say none of them (widely_used came on 11-11).
         self.assertEqual((summary["poc_public"], summary["library"], summary["widely_used"]), (False, False, False))
 
-    def test_a_summary_can_call_its_product_widely_used(self):
-        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"widely_used": True}))
-        self.assertIs(board(self.store)[HN_STORY]["summary"]["widely_used"], True)
-        self.assertIn("widely_used: true only when", summaries.INSTRUCTIONS)
+    def test_the_schema_does_not_ask_for_widely_used(self):
+        # 11-11: adding it made every request fail with 400 "The compiled grammar is too large"; well_known.json does the job.
+        self.assertNotIn("widely_used", summaries.SCHEMA["required"])
+        self.assertNotIn("widely_used", summaries.SCHEMA["properties"])
+        self.assertNotIn("widely_used", summaries.INSTRUCTIONS)
 
     def test_the_instructions_ask_for_the_attack_source_and_name_the_product_in_easy_headlines(self):
         self.assertIn("exploited_source", summaries.INSTRUCTIONS)

@@ -37,6 +37,6 @@ label or one of `names`, as it is or without a leading vendor word (the id's ven
 `web/vendors.json`: "Google Chrome" is "Chrome"). Names match only when equal: "PHP" is not "phpMyAdmin", "Git" is not
 "GitLab". The first label that matches wins, in file order. The file's order is also the priority: when the Highlights
 are full, a label earlier in the file (kinds in order, labels in order within a kind) goes before a later one, whatever
-the scores, and a product on no list (a Summary's `widely_used`) after them all. Moving a label up promotes its product;
+the scores, and a product on no list (a Summary's `widely_used`, which no new Summary carries since 11-11) after them all. Moving a label up promotes its product;
 keep everyday products first. To add one, add a line under its kind, check that it parses
 (`python -c "import collector.incidents"`), and run both test suites; the next cycle stamps `known` on the week's rows.

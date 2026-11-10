@@ -70,7 +70,7 @@ rest by score, at least ten and at most twenty; `pickHighlights`, owner 11-10 an
 (`highlightScore` in `web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS (an exploited Incident with no score counts as 9.0, the floor of its 최고 band) and Mention count (up to ten, so a many-CVE release does not outrank exploited Incidents); among equal scores the newer is first. Curator issues add 25 each, two at most however many issues cite the Incident; one issue cites an Incident once (by its link).
 Well known (`wellKnown`): a row at 최고, not exploited, that the collector stamped `known` on both its row and board
 views, worked out at each write and never stored (`known_label` in `collector/incidents.py`): the label of its first
-Product on `collector/well_known.json`, else, when its Summary says `widely_used`, that Product's English name; and
+Product on `collector/well_known.json`, else, when its Summary says `widely_used` (none since 11-11: the schema cannot carry it), that Product's English name; and
 `known_rank`, the label's place in that file, which orders the well-known Highlights (none for a label on no list,
 which comes last). The
 collector picks the same Highlights (`highlights` in `collector/cycle.py`, kept in step by
