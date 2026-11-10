@@ -841,3 +841,58 @@ class TitleEntityTest(unittest.TestCase):
         self.assertEqual(summary["en"]["names"], ["Contact Form 7 – Post Fields"])
         self.assertEqual(summary["products"], ["Contact Form 7 – Post Fields"])
         self.assertEqual(summary["en"]["summary"], body)
+
+
+class LanguageGapsTest(unittest.TestCase):
+    """11-11 review of 2,254 Summaries: two had en.mitigation and en.easy_action written and the Korean ones empty, one
+    had a ko.title in English. A field written in one language only, or a Korean title or summary without Hangul, costs
+    a retry, never the Summary."""
+
+    def gaps(self, ko=None, en=None):
+        return summaries.language_gaps({"ko": SSHOLE_SUMMARY["ko"] | (ko or {}), "en": SSHOLE_SUMMARY["en"] | (en or {})})
+
+    def test_a_field_written_in_one_language_only_is_a_gap(self):
+        self.assertEqual(self.gaps(ko={"mitigation": ""}), "mitigation is empty in Korean only")
+        self.assertEqual(self.gaps(en={"easy_title": ""}), "easy_title is empty in English only")
+
+    def test_a_field_empty_in_both_or_written_in_both_passes(self):
+        self.assertEqual(self.gaps(), "")
+        self.assertEqual(self.gaps(ko={"mitigation": "", "easy_action": ""}, en={"mitigation": "", "easy_action": ""}), "")
+
+    def test_a_korean_title_or_summary_without_hangul_is_a_gap(self):
+        title = "HP Poly EagleEye Cube USB management service command injection"
+        self.assertEqual(self.gaps(ko={"title": title}), "the Korean title is not in Korean")
+        self.assertEqual(self.gaps(ko={"summary": "OpenSSH 10.6p2."}), "the Korean summary is not in Korean")
+        self.assertEqual(self.gaps(ko={"title": "HP Poly EagleEye Cube USB 관리 서비스 명령 실행"}), "")
+
+    def save(self, tries=0):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        if tries:
+            incident["summary_error"] = {"tries": tries, "reason": "earlier"}
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "", "easy_action": ""}}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
+        return incident
+
+    def test_a_gap_is_sent_back_and_the_last_try_is_kept_as_it_is(self):
+        incident = self.save()
+        self.assertNotIn("summary", incident)
+        self.assertEqual(incident["summary_error"]["reason"], "mitigation is empty in Korean only")
+        kept = self.save(tries=summaries.MAX_TRIES - 1)
+        self.assertEqual(kept["summary"]["ko"]["mitigation"], "")
+        self.assertEqual(kept["summary"]["en"]["mitigation"], SSHOLE_SUMMARY["en"]["mitigation"])
+        self.assertNotIn("summary_error", kept)
+
+    def test_the_retry_note_asks_for_both_languages_and_the_failure_list_keeps_the_reason(self):
+        from collector.incidents import plain_reason
+        note = summaries.retry(self.save(), "")["note"]
+        self.assertIn("rejected: mitigation is empty in Korean only.", note)
+        self.assertIn("fill a field in both languages or in neither", note)
+        self.assertNotIn("number", note)
+        for reason in ("mitigation is empty in Korean only", "the Korean title is not in Korean"):
+            self.assertEqual(plain_reason(reason), reason)
+
+    def test_the_instructions_name_the_korean_terms_and_the_fixed_version_before_x(self):
+        for words in ("출처", "수정 버전", "제조사", "never a word of any other language", "empty in both or in neither",
+                      '"prior to X"', "a page that could not be read"):
+            self.assertIn(words, summaries.INSTRUCTIONS)

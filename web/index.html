@@ -103,6 +103,7 @@
     @media (max-width: 599px) { #repo, #support { display: none; } } /* phones: the header line is full; the footer keeps the GitHub link */
     h1 { margin: 0; display: flex; align-items: center; gap: 0.625rem; font: 700 calc(1.25rem * var(--ts))/1 var(--sans); letter-spacing: -0.02em; }
     h1 a { display: flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; border-radius: var(--r-ctl); } /* the logo: back to the top of the Board, conditions and search cleared (app.mjs #home) */
+    @media (pointer: coarse) { h1 a { min-height: var(--tap); } } /* 44px to tap; centred in the header line, which its 44px buttons already set */
     h1 svg { flex: none; height: 1em; width: auto; fill: var(--focus); } /* the logo symbol (.scratch/logo), Wayfinding Blue in both themes */
     #views { display: inline-flex; padding: 3px; border: 1px solid var(--edge); border-radius: var(--r-pill); background: var(--panel-2); }
     #views button { min-height: var(--tap); padding: 0 1.25rem; border: 0; border-radius: var(--r-pill); background: none; color: var(--ink-2); font-weight: 500; cursor: pointer; }
@@ -594,7 +595,7 @@
     .mentions { list-style: none; padding: 0.75rem 0 0; margin: 0.75rem 0 0; border-top: 1px solid var(--rule); font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); max-width: 46rem; }
     .mentions li { overflow-wrap: anywhere; padding: 0.125rem 0; }
     .mentions:empty { display: none; } /* a group's links all sit on its CVE lines */
-    @media (pointer: coarse) { .mentions li a, .details .lead a, .details .why-line a { display: inline-block; padding: 0.625rem 0; } } /* finger-sized links on touch screens */
+    @media (pointer: coarse) { .mentions li a, .details .lead a, .details .why-line a { display: inline-flex; align-items: center; min-height: var(--tap); } } /* finger-sized links on touch screens, 44px tall; no side padding, so the text stays put */
     .command { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .command code { display: inline-flex; align-items: center; min-height: var(--tap); box-sizing: border-box; font: calc(var(--fs-small) * var(--ts))/1.5 var(--mono); background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: 6px; padding: 0.375rem 0.625rem; overflow-wrap: break-word; transition: background-color 700ms ease-out, border-color 700ms ease-out; }
     /* copied: the command lights up like a stamped ticket, then fades back */
