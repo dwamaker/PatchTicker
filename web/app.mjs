@@ -909,9 +909,21 @@ function moreButtons(rest) {
   return buttons;
 }
 
+// The last filterBoard answer: a view, language or open-row redraw asks the same question again (owner, 11-10: phones).
+// incidents is always replaced, never edited, and the minute covers the time-based parts (ages, the seven-day Highlights).
+let lastBoard = {};
+function filtered() {
+  const now = Date.now();
+  const key = JSON.stringify([filter, Math.floor(now / 60000)]);
+  if (lastBoard.incidents !== incidents || lastBoard.key !== key) {
+    lastBoard = { incidents, key, result: filterBoard(incidents, filter.picks, filter.query, now, filter) };
+  }
+  return lastBoard.result;
+}
+
 function render() {
   pageText();
-  const { highlights: chosen, list, variants } = filterBoard(incidents, filter.picks, filter.query, Date.now(), filter);
+  const { highlights: chosen, list, variants } = filtered();
   // 주요 사건 더 보기 adds only Highlights worth a notice: 위험 or above, or a reason the row cannot show (newsletter, HN).
   const extra = chosen.slice(PINNED); // filterBoard already keeps 주요 사건 to 위험 and above (user, 2026-11-09)
   // Which Incidents are pinned is decided by importance (highlightScore); the order they show in is the visitor's sort.
@@ -1538,7 +1550,9 @@ document.addEventListener('keydown', (event) => {
 // rows scrolled into view, the new-Incidents pill and the jump buttons clear it.
 const stickyPart = () => (matchMedia('(max-width: 767px)').matches ? document.querySelector('.search-row') : $('filter'));
 function measureStick() {
-  document.documentElement.style.setProperty('--stick', `${stickyPart().offsetHeight}px`);
+  const stick = `${stickyPart().offsetHeight}px`;
+  // Unchanged: not written again, since a property on the root restyles the whole page (a second layout per redraw).
+  if (document.documentElement.style.getPropertyValue('--stick') !== stick) document.documentElement.style.setProperty('--stick', stick);
 }
 addEventListener('resize', measureStick);
 // 맨 위로 / 맨 아래로 at the bottom right: each shows only when there is somewhere to go.

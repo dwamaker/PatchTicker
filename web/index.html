@@ -639,6 +639,9 @@
       /* 기본 <-> 쉬운 설명: each row's old words sink and fade (160ms), the new ones rise into place (300ms) */
       .vt-view::view-transition-old(*) { animation: words-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
       .vt-view::view-transition-new(*) { animation: words-in 300ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both; }
+      /* ...but never the whole page: (*) took the root too, and the page sank and rose like a reload (owner, 11-10, phone) */
+      .vt-view::view-transition-old(root) { display: none; }
+      .vt-view::view-transition-new(root) { animation: none; }
     }
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes words-out { to { opacity: 0; transform: translateY(5px); } }
