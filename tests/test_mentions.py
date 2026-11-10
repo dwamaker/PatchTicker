@@ -140,7 +140,7 @@ class PublishedTest(unittest.TestCase):
         import urllib.error
         from collector.hn import is_repo
         from collector.net import make_http_get
-        from collector.summaries import is_hn
+        from collector.summary_input import is_hn
         self.assertFalse(is_repo("http://[broken"))
         self.assertFalse(is_hn("http://[broken"))
         with self.assertRaises(urllib.error.URLError):

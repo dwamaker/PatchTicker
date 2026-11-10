@@ -52,7 +52,7 @@ of its URLs (`collector/incidents.py`, ADR 0001).
 CVE-less stories of one event share neither (owner, 11-10), so a CVE-less Incident's Summary request also lists, beside
 the input, up to 20 Board Incidents with a Summary and no CVE published in the last seven days (id, English title,
 Products), and the reply names the same event in `same_as` or "". The model only proposes; the code decides
-(`apply_same_as` in `collector/summaries.py`, run by the cycle right after Summaries, instant and batch alike): the id
+(`apply_same_as` in `collector/same_event.py`, run by the cycle right after Summaries, instant and batch alike): the id
 must have been listed, that Incident must still exist with no CVE and on the Board, and the two must share a Product
 key (`products_of`). Then they fold as `link()` folds (the earlier first seen survives, the other's page moves) and the
 survivor is due a new Summary (`merged` in its Summary basis). Every answer that named an id or had a list goes into

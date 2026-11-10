@@ -4,7 +4,7 @@ import html
 import http.client
 import unittest
 
-from collector import cvelist, summaries
+from collector import cvelist, summaries, summary_input
 from test_batch_summaries import plain
 from test_summaries import FakeClaude
 
@@ -26,7 +26,7 @@ def checked(item, pages, reply):
         if url not in pages:
             raise OSError("not found")
         return pages[url].encode()
-    text = summaries.summary_input(item, http_get)
+    text = summary_input.summary_input(item, http_get)
     return summaries.parse(FakeClaude.message(plain("Widget") | reply), text, [m["url"] for m in item["mentions"]])
 
 
@@ -115,7 +115,7 @@ class MalformedPageTest(unittest.TestCase):
             with self.subTest(type(error).__name__):
                 def http_get(url):
                     raise error
-                self.assertIsNone(summaries.fetch_page(http_get, POSTER))
+                self.assertIsNone(summary_input.fetch_page(http_get, POSTER))
 
 
 if __name__ == "__main__":

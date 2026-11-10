@@ -4,7 +4,7 @@ A digit that is part of a fixed Korean word is not a number; the check stays exa
 
 import unittest
 
-from collector import summaries
+from collector import numbers, summaries
 from test_batch_summaries import plain
 from test_command_provenance import POSTER, checked, incident
 from test_cve_lines import MANY, MAX, line, lines_row, saved
@@ -19,10 +19,10 @@ def spam_reply(ko, en):
 
 class KoreanDigitWordTest(unittest.TestCase):
     def test_a_digit_inside_a_fixed_korean_word_is_not_a_number(self):
-        self.assertEqual(summaries.ko_numbers("제3자에게 스팸을 보낼 수 있습니다. 제3자가 받습니다."), set())
-        self.assertEqual(summaries.ko_numbers("3자리 코드"), {"3"})
-        self.assertEqual(summaries.ko_numbers("제30자리"), {"30"})
-        self.assertEqual(summaries.numbers("제3자"), {"3"})  # English text and numbers() itself are untouched
+        self.assertEqual(numbers.ko_numbers("제3자에게 스팸을 보낼 수 있습니다. 제3자가 받습니다."), set())
+        self.assertEqual(numbers.ko_numbers("3자리 코드"), {"3"})
+        self.assertEqual(numbers.ko_numbers("제30자리"), {"30"})
+        self.assertEqual(numbers.numbers("제3자"), {"3"})  # English text and numbers() itself are untouched
 
     def test_third_parties_pass_the_summary_check(self):
         item = incident([{"kind": "writeup", "url": POSTER}])

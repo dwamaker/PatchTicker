@@ -7,7 +7,8 @@ import time
 
 import anthropic
 
-from collector import curators, cvelist, discord, github, hn, kev, kisa, news, nvd, osssec, summaries
+from collector import (curators, cve_lines, cvelist, discord, github, hn, kev, kisa, model, news, nvd, osssec, same_event,
+                       summaries, summary_input)
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, link, month_of,
                                  on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors)
@@ -53,7 +54,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         # A story with no CVE in its title may still be about a known Incident; its linked page says which.
         writeup = next((m["url"] for m in story["mentions"] if m["kind"] == "writeup"), None)
         if writeup and not story["cves"] and not story["join_only"]:
-            page = summaries.fetch_page(http_get, writeup)
+            page = summary_input.fetch_page(http_get, writeup)
             if page:
                 story["page"] = page_keys(page, writeup)
 
@@ -105,7 +106,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
                 status["summaries"] = "paused"
         store.write("batches.json", batches)
         # same_as answers saved above (owner, 11-10): the code decides, and every decision is kept, newest first.
-        merged, decisions = summaries.apply_same_as(incidents, stamp)
+        merged, decisions = same_event.apply_same_as(incidents, stamp)
         changed |= merged
         if decisions:
             store.write("merge_log.json", (decisions[::-1] + (store.read("merge_log.json") or []))[:MERGE_LOG_SIZE])
@@ -191,7 +192,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     # A candidate (위험 and up, KEV, buzz, curator) never waits for a batch it is already in (user, 2026-11-09).
     due = [i for i in incidents if summaries.needs_summary(i) and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
-    same_as = lambda incident: summaries.same_as_candidates(incident, incidents, now)  # applied by run_cycle (apply_same_as)
+    same_as = lambda incident: same_event.same_as_candidates(incident, incidents, now)  # applied by run_cycle (apply_same_as)
     for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
         summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident))
         changed.add(month_of(incident["first_seen"]))
@@ -208,13 +209,13 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     oldest = min((i["first_seen"] for i in rest), default=None)
     ready = probe or len(rest) >= summaries.BATCH_MIN or (
         oldest is not None and oldest <= stamp_ago(now, hours=summaries.BATCH_WAIT_HOURS))
-    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH, candidates=same_as)
+    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else model.MAX_PER_BATCH, candidates=same_as)
     if pending:
         batches.append(pending)
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.
     asked = {r["incident"] for b in batches for r in b["requests"].values() if "lines" in r}
-    lines = not probe and summaries.submit_lines(
-        [i for i in incidents if i["first_seen"] >= since and i["id"] not in asked and summaries.missing_lines(i)], claude)
+    lines = not probe and cve_lines.submit_lines(
+        [i for i in incidents if i["first_seen"] >= since and i["id"] not in asked and cve_lines.missing_lines(i)], claude)
     if lines:
         batches.append(lines)
         changed.update(month_of(i["first_seen"]) for i in incidents if i["id"] in {r["incident"] for r in lines["requests"].values()})

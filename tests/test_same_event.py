@@ -5,7 +5,7 @@ import contextlib
 import io
 import unittest
 
-from collector import summaries
+from collector import same_event, summaries
 from collector.cycle import run_cycle
 from collector.incidents import page_slug, url_key
 from collector.store import MemoryStore
@@ -166,12 +166,12 @@ class RefusalTest(unittest.TestCase):
         self.incidents = [self.candidate, self.asker]
 
     def decide(self, reply, meanwhile=lambda: None):
-        listed = summaries.same_as_candidates(self.asker, self.incidents, at(STAMP[:-1]))
+        listed = same_event.same_as_candidates(self.asker, self.incidents, at(STAMP[:-1]))
         self.assertEqual(listed, [self.candidate])
         quiet(summaries.summarize_now, self.asker, FakeClaude(reply), no_pages, STAMP, listed)
         self.assertIn("summary", self.asker)
         meanwhile()
-        (changed, log), _ = quiet(summaries.apply_same_as, self.incidents, STAMP)
+        (changed, log), _ = quiet(same_event.apply_same_as, self.incidents, STAMP)
         self.assertEqual(self.incidents, [self.candidate, self.asker])  # nothing merged
         self.assertNotIn("same_as", self.asker)
         self.assertFalse(log[0]["accepted"])
@@ -194,10 +194,10 @@ class RefusalTest(unittest.TestCase):
         def gone():
             self.incidents.remove(self.candidate)
             self.incidents.append(self.candidate | {"id": "https://example.com/elsewhere"})
-        listed = summaries.same_as_candidates(self.asker, self.incidents, at(STAMP[:-1]))
+        listed = same_event.same_as_candidates(self.asker, self.incidents, at(STAMP[:-1]))
         quiet(summaries.summarize_now, self.asker, FakeClaude(plain("Plex Media Server") | {"same_as": PLEX_BC}), no_pages, STAMP, listed)
         gone()
-        (_, log), _ = quiet(summaries.apply_same_as, self.incidents, STAMP)
+        (_, log), _ = quiet(same_event.apply_same_as, self.incidents, STAMP)
         self.assertEqual((log[0]["why"], log[0]["accepted"]), ("gone", False))
 
     def test_no_shared_product(self):
@@ -208,7 +208,7 @@ class RefusalTest(unittest.TestCase):
         self.candidate["summary"]["products"] = ["Plex Media Server plugin"]  # product_key drops the generic suffix
         quiet(summaries.summarize_now, self.asker, FakeClaude(plain("Plex Media Server") | {"same_as": PLEX_BC}), no_pages, STAMP,
               [self.candidate])
-        (_, log), _ = quiet(summaries.apply_same_as, self.incidents, STAMP)
+        (_, log), _ = quiet(same_event.apply_same_as, self.incidents, STAMP)
         self.assertEqual(log[0]["why"], "accepted")
 
     def test_a_same_as_that_is_not_text_never_fails_the_summary(self):
@@ -216,14 +216,14 @@ class RefusalTest(unittest.TestCase):
               [self.candidate])
         self.assertIn("summary", self.asker)
         self.assertNotIn("same_as", self.asker["summary"])
-        (_, log), _ = quiet(summaries.apply_same_as, self.incidents, STAMP)
+        (_, log), _ = quiet(same_event.apply_same_as, self.incidents, STAMP)
         self.assertEqual((log[0]["same_as"], log[0]["why"]), ("", "none named"))
 
     def test_titles_in_the_log_are_short_and_printable(self):
         self.candidate["summary"]["en"]["title"] = "Bad\x1b[31m title"
         quiet(summaries.summarize_now, self.asker, FakeClaude(plain("Plex Media Server") | {"same_as": PLEX_BC}), no_pages, STAMP,
               [self.candidate])
-        (_, log), _ = quiet(summaries.apply_same_as, self.incidents, STAMP)
+        (_, log), _ = quiet(same_event.apply_same_as, self.incidents, STAMP)
         self.assertEqual(log[0]["same_as"]["title"], "")
 
 

@@ -8,7 +8,7 @@ import unittest
 import urllib.error
 from types import SimpleNamespace
 
-from collector import summaries
+from collector import summaries, summary_input
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 from test_cycle import FIXTURES, at, incident, recorded
@@ -593,7 +593,7 @@ class EasyJargonTest(unittest.TestCase):
         if tries:
             incident["summary_error"] = {"tries": tries, "reason": "earlier"}
         # The Lead's text holds every number, the command and the stopgap the replies use.
-        text = f"Text of {SSHOLE_SUMMARY['lead']}{summaries.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
         summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
         return incident
 
@@ -665,7 +665,7 @@ class ScriptPageTest(unittest.TestCase):
             asked.append(url)
             return api
 
-        text = summaries.page_text(summaries.fetch_page(http_get, "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014"))
+        text = summary_input.page_text(summary_input.fetch_page(http_get, "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014"))
         self.assertEqual(asked, ["https://psirtapi.global.sonicwall.com/api/v1/vulndetail/?advisory_id=SNWLID-2026-0014"])
         for words in ("7.3.4-7013 and higher", "8.2.3-8015 and higher", "TZ 270", "7.3.3-7015 and older"):
             self.assertIn(words, text)
@@ -673,8 +673,8 @@ class ScriptPageTest(unittest.TestCase):
     def test_the_fixed_versions_come_before_the_long_detail_so_the_page_cut_keeps_them(self):
         data = json.loads((FIXTURES / "pages" / "sonicwall-SNWLID-2026-0014.json").read_text(encoding="utf-8"))
         data["detail"] = "<p>" + "Long technical detail. " * 1000 + "</p>"
-        page = summaries.fetch_page(lambda url: json.dumps(data).encode(), "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014")
-        self.assertIn("7.3.4-7013 and higher", summaries.page_text(page)[:summaries.PAGE_CHARS])
+        page = summary_input.fetch_page(lambda url: json.dumps(data).encode(), "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014")
+        self.assertIn("7.3.4-7013 and higher", summary_input.page_text(page)[:summary_input.PAGE_CHARS])
 
 
 if __name__ == "__main__":
@@ -734,7 +734,7 @@ class FixedConflictTest(unittest.TestCase):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}], "fix_keys": ["openbsd:openssh<10.7"]}
         if tries:
             incident["summary_error"] = {"tries": tries, "reason": "earlier"}
-        text = f"Text of {SSHOLE_SUMMARY['lead']}{summaries.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
         summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
         return incident
 

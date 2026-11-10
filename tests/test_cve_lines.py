@@ -6,7 +6,7 @@ import contextlib
 import io
 import unittest
 
-from collector import summaries
+from collector import cve_lines, model, summaries, summary_input
 from test_batch_summaries import plain
 from test_command_provenance import checked, incident
 from test_cycle import at, recorded
@@ -14,7 +14,7 @@ from test_summaries import HN_STORY, PAGES, FakeClaude, board
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 
-MAX = summaries.CVE_LINES_MAX
+MAX = summary_input.CVE_LINES_MAX
 MANY = [f"CVE-2026-{n}" for n in range(10001, 10001 + MAX + 3)]
 TEXTS = {c: f"Widget before 2.{k} lets an attacker read files." for k, c in enumerate(MANY)}
 
@@ -27,8 +27,8 @@ class SummaryLinesTest(unittest.TestCase):
     def test_a_summary_writes_lines_only_for_the_first_cves(self):
         lines = {lang: [{"cve": MANY[0], "text": "x"}, {"cve": MANY[MAX], "text": "y"}] for lang in ("ko", "en")}
         reply = {lang: plain("Widget")[lang] | {"cve_lines": lines[lang]} for lang in ("ko", "en")}
-        text = summaries.summary_input(incident([], cves=MANY), lambda url: b"")
-        self.assertIn(f"{summaries.CVE_LINES_ONLY} {', '.join(MANY[:MAX])}\n", text + "\n")
+        text = summary_input.summary_input(incident([], cves=MANY), lambda url: b"")
+        self.assertIn(f"{summary_input.CVE_LINES_ONLY} {', '.join(MANY[:MAX])}\n", text + "\n")
 
         summary = checked(incident([], cves=MANY), {}, reply)
 
@@ -36,7 +36,7 @@ class SummaryLinesTest(unittest.TestCase):
         few = checked(incident([], cves=MANY[:2]), {}, reply | {
             lang: plain("Widget")[lang] | {"cve_lines": [{"cve": MANY[1], "text": "y"}]} for lang in ("ko", "en")})
         self.assertEqual(few["en"]["cve_lines"], [{"cve": MANY[1], "text": "y"}])
-        self.assertNotIn(summaries.CVE_LINES_ONLY, summaries.summary_input(incident([], cves=MANY[:2]), lambda url: b""))
+        self.assertNotIn(summary_input.CVE_LINES_ONLY, summary_input.summary_input(incident([], cves=MANY[:2]), lambda url: b""))
 
 
 WORDS = "Division by zero in a zero-width image; an eight-byte header overflows."
@@ -55,7 +55,7 @@ def saved(row, *items, stop_reason="end_turn"):
     reply.stop_reason = stop_reason
     log = io.StringIO()
     with contextlib.redirect_stderr(log):
-        summaries.save_lines(row, reply, MANY[MAX:])
+        cve_lines.save_lines(row, reply, MANY[MAX:])
     return [l["cve"] for l in row["summary"]["ko"]["cve_lines"]], log.getvalue()
 
 
@@ -104,7 +104,7 @@ class LineCheckTest(unittest.TestCase):
     def test_an_incident_left_out_by_the_limit_spends_no_round(self):
         first, second = lines_row(), lines_row() | {"id": "other", "cve_lines_room": True}
         claude = FakeClaude()
-        summaries.submit_lines([first, second], claude, limit=1)
+        cve_lines.submit_lines([first, second], claude, limit=1)
         self.assertEqual(first["cve_lines_rounds"], 1)
         self.assertEqual(second.get("cve_lines_rounds"), None)
         self.assertTrue(second["cve_lines_room"])
@@ -145,7 +145,7 @@ class BatchLinesTest(unittest.TestCase):
         self.edit(summary=summary | {"at": "2026-11-07T12:30:00Z"}, summary_basis=summaries.basis(row) | {"n": 1})
 
     def lines_batches(self, claude):
-        return [b for b in claude.batches if summaries.LINES_HEAD in b["requests"][0]["params"]["messages"][0]["content"]]
+        return [b for b in claude.batches if cve_lines.LINES_HEAD in b["requests"][0]["params"]["messages"][0]["content"]]
 
     def test_the_rest_go_out_in_a_batch_and_join_the_summary_in_cve_order(self):
         self.summarized()
@@ -185,12 +185,12 @@ class BatchLinesTest(unittest.TestCase):
                 if b["results"] is None:
                     claude.end_batch({HN_STORY: bad}, n=n)
 
-        self.assertEqual(len(self.lines_batches(claude)), summaries.LINES_ROUNDS)
+        self.assertEqual(len(self.lines_batches(claude)), cve_lines.LINES_ROUNDS)
         summary = board(self.store)[HN_STORY]["summary"]
         self.assertEqual([l["cve"] for l in summary["ko"]["cve_lines"]], MANY[:MAX])
 
     def test_lines_go_out_a_few_cves_a_request(self):
-        many = [f"CVE-2026-{n}" for n in range(20001, 20001 + MAX + summaries.LINES_PER_REQUEST + 1)]
+        many = [f"CVE-2026-{n}" for n in range(20001, 20001 + MAX + cve_lines.LINES_PER_REQUEST + 1)]
         row = self.edit(cves=many, cve_texts={c: "Widget lets an attacker read files." for c in many})
         self.edit(summary=plain("Widget") | {"at": "2026-11-07T12:30:00Z"}, summary_basis=summaries.basis(row) | {"n": 1})
         claude = FakeClaude()
@@ -210,8 +210,8 @@ class BatchLinesTest(unittest.TestCase):
             self.run_at("2026-11-07T13:00:00", claude)
 
         first, second = self.lines_batches(claude)
-        self.assertEqual(first["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS)
-        self.assertEqual(second["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS_RETRY)
+        self.assertEqual(first["requests"][0]["params"]["max_tokens"], model.MAX_TOKENS)
+        self.assertEqual(second["requests"][0]["params"]["max_tokens"], model.MAX_TOKENS_RETRY)
 
 
 if __name__ == "__main__":

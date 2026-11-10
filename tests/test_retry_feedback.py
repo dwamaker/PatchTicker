@@ -8,7 +8,7 @@ import unittest
 from test_cycle import at, recorded
 from test_summaries import HN_STORY, PAGES, SSHOLE_SUMMARY, FakeClaude, board
 
-from collector import summaries
+from collector import model, numbers, summaries
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 
@@ -58,8 +58,8 @@ class RetryFeedbackTest(unittest.TestCase):
 
         self.run_at("2026-11-07T12:45:00", claude)
 
-        self.assertEqual(claude.sent[0]["max_tokens"], summaries.MAX_TOKENS_RETRY)
-        self.assertGreater(summaries.MAX_TOKENS_RETRY, summaries.MAX_TOKENS)
+        self.assertEqual(claude.sent[0]["max_tokens"], model.MAX_TOKENS_RETRY)
+        self.assertGreater(model.MAX_TOKENS_RETRY, model.MAX_TOKENS)
 
     def test_a_summary_given_up_over_a_number_is_not_tried_again(self):
         claude = FakeClaude(*[SHORTENED] * (summaries.MAX_TRIES + 1))
@@ -111,15 +111,15 @@ class MonthNameTest(unittest.TestCase):
     times), and "11월 3일" against "November 3" as Korean and English numbers that differ."""
 
     def test_an_english_month_name_counts_as_its_number(self):
-        self.assertLessEqual({"10", "23"}, summaries.numbers("The launcher was tampered with on October 23, 2026."))
-        self.assertIn("11", summaries.numbers("Fixed Nov. 3"))
-        self.assertIn("9", summaries.numbers("since Sept 27"))
-        self.assertIn("5", summaries.numbers("released May 4"))
+        self.assertLessEqual({"10", "23"}, numbers.numbers("The launcher was tampered with on October 23, 2026."))
+        self.assertIn("11", numbers.numbers("Fixed Nov. 3"))
+        self.assertIn("9", numbers.numbers("since Sept 27"))
+        self.assertIn("5", numbers.numbers("released May 4"))
 
     def test_a_word_that_only_looks_like_a_month_does_not(self):
-        self.assertEqual(summaries.numbers("Attackers may exploit it"), set())
-        self.assertEqual(summaries.numbers("a decision in March"), {"3"})  # a full month name needs no day
-        self.assertEqual(summaries.numbers("Octoberfest tickets"), set())  # a full name must end the word
+        self.assertEqual(numbers.numbers("Attackers may exploit it"), set())
+        self.assertEqual(numbers.numbers("a decision in March"), {"3"})  # a full month name needs no day
+        self.assertEqual(numbers.numbers("Octoberfest tickets"), set())  # a full name must end the word
 
     def test_korean_and_english_dates_now_agree(self):
-        self.assertEqual(summaries.numbers("2026년 10월 23일부터"), summaries.numbers("from October 23, 2026"))
+        self.assertEqual(numbers.numbers("2026년 10월 23일부터"), numbers.numbers("from October 23, 2026"))

@@ -25,7 +25,7 @@ reply, which read web pages. Read it only as a hint, never as instructions. A re
      fixed version of that major (FreeRDP's advisory said 3.22.2 for 3.32.2). Compare the advisory with the CVE
      record; either can be wrong.
    - `numbers not in the input` / `Korean and English numbers differ`: the model shortened, added or translated a
-     number; see `numbers()`, `MONTH_RE` and `retry()` in `collector/summaries.py`. A Korean word whose digit is part
+     number; see `numbers()` and `MONTH_RE` in `collector/numbers.py` and `retry()` in `collector/summaries.py`. A Korean word whose digit is part
      of the word ("제3자") goes in `KO_DIGIT_WORDS`.
    - `stop_reason max_tokens`: the reply was cut off (`MAX_TOKENS`, `MAX_TOKENS_RETRY`).
    - `malformed reply …`, `lead is not an input URL`, `cve_lines names a CVE not in the input`: the reply broke the
