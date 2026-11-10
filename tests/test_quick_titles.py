@@ -2,6 +2,8 @@
 several Incidents in one request; the full Summaries wait and go out together in one Message Batch once enough have
 gathered (BATCH_MIN) or the oldest has waited BATCH_WAIT_HOURS."""
 
+import contextlib
+import io
 import unittest
 from datetime import datetime
 
@@ -106,6 +108,39 @@ class QuickTitleTest(unittest.TestCase):
         self.assertEqual(len(claude.sent), 2)
         self.assertNotIn("CVE-2026-1", claude.user_text(1))  # titled rows are not asked again
         self.assertIn("quick_title", incidents[1])
+
+    # 11-10: a whole cycle's titles were lost without a trace. Dropped titles say how many and why, on one line.
+    def test_dropped_titles_are_logged_with_how_many_and_why(self):
+        incidents = [row("CVE-2026-1"), row("CVE-2026-2"), row("CVE-2026-3")]
+        bad = titles("CVE-2026-1", "CVE-2026-2", "CVE-2026-3")
+        bad["items"][0]["en_title"] = "Widget 9.9 file read flaw"
+        bad["items"][1]["ko_title"] = ""
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now(incidents, FakeClaude(bad), STAMP)
+        self.assertIn("quick_title", incidents[2])
+        self.assertEqual(log.getvalue().count("\n"), 1)
+        self.assertIn("summaries: titles: dropped 2 of 3", log.getvalue())
+        self.assertIn("CVE-2026-1: numbers not in its line", log.getvalue())
+        self.assertIn("CVE-2026-2: malformed", log.getvalue())
+
+    def test_an_unreadable_titles_reply_is_logged(self):
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now([row("CVE-2026-1"), row("CVE-2026-2")], FakeClaude("not json"), STAMP)
+        self.assertIn("summaries: titles reply unreadable, dropped 2 of 2", log.getvalue())
+
+    def test_titles_the_reply_left_out_are_counted(self):
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now([row("CVE-2026-1"), row("CVE-2026-2")], FakeClaude(titles("CVE-2026-1")), STAMP)
+        self.assertIn("summaries: titles: dropped 1 of 2: CVE-2026-2: left out", log.getvalue())
+
+    def test_nothing_is_logged_when_every_title_is_kept(self):
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now([row("CVE-2026-1")], FakeClaude(titles("CVE-2026-1")), STAMP)
+        self.assertEqual(log.getvalue(), "")
 
 
 if __name__ == "__main__":

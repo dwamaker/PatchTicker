@@ -12,11 +12,11 @@ FEEDS = ("https://rss.beehiiv.com/feeds/xgTKUmMmUm.xml", "https://risky.biz/feed
 CONTENT = "{http://purl.org/rss/1.0/modules/content/}encoded"
 
 
-def fetch(checkpoints, http_get, feeds):
+def fetch(checkpoints, http_get, feeds, stamp):
     """Return (citations in items newer than each feed's checkpoint, next checkpoints).
 
-    Checkpoints are {feed URL: newest pubDate seen, ISO-8601 UTC}. One request per feed per cycle;
-    a feed that fails is skipped, so one dead newsletter never stops the Board.
+    Checkpoints are {feed URL: newest pubDate seen, ISO-8601 UTC}, never later than the cycle's stamp. One request per
+    feed per cycle; a feed that fails is skipped, so one dead newsletter never stops the Board.
     """
     checkpoints = dict(checkpoints or {})
     found = []
@@ -30,6 +30,8 @@ def fetch(checkpoints, http_get, feeds):
                     continue
                 checkpoints[feed] = max(checkpoints.get(feed) or posted, posted)
                 found.append(citation(item))
+            if feed in checkpoints:  # as oss-security: a future-dated issue must not freeze the feed until that date
+                checkpoints[feed] = min(checkpoints[feed], stamp)
         except (OSError, ET.ParseError, AttributeError, TypeError, ValueError, OverflowError) as err:
             print(f"curators: skipped {feed}: {err!r}", file=sys.stderr)
     return found, checkpoints

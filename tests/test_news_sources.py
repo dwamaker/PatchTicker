@@ -14,6 +14,7 @@ from collector.store import MemoryStore
 
 NIKKE = "https://www.bleepingcomputer.com/news/security/nikke-pc-game-launcher-hacked-to-spread-remote-access-data-stealing-malware/"
 FEED = news.FEEDS[0]
+STAMP = "2026-11-10T12:00:00Z"
 
 
 def rss(*items):
@@ -42,18 +43,18 @@ def kisa_link(n):
 
 class NewsSourceTest(unittest.TestCase):
     def test_a_news_story_with_a_security_word_may_start_an_incident_and_others_only_join(self):
-        groups, checkpoints = news.fetch(None, lambda url, headers=None: NEWS_FEED, [FEED])
+        groups, checkpoints = news.fetch(None, lambda url, headers=None: NEWS_FEED, [FEED], STAMP)
 
         self.assertEqual([g["join_only"] for g in groups], [False, True])
         self.assertEqual(groups[0]["mentions"], [{"kind": "writeup", "url": NIKKE, "title": groups[0]["text"]}])
         self.assertEqual(checkpoints, {FEED: "2026-11-04T17:00:00Z"})
-        again, _ = news.fetch(checkpoints, lambda url, headers=None: NEWS_FEED, [FEED])
+        again, _ = news.fetch(checkpoints, lambda url, headers=None: NEWS_FEED, [FEED], STAMP)
         self.assertEqual(again, [])
 
     def test_a_dead_news_feed_is_skipped(self):
         def get(url, headers=None):
             raise OSError("down")
-        self.assertEqual(news.fetch({FEED: "x"}, get, [FEED]), ([], {FEED: "x"}))
+        self.assertEqual(news.fetch({FEED: "x"}, get, [FEED], STAMP), ([], {FEED: "x"}))
 
     def test_a_date_past_year_9999_in_utc_skips_the_feed_not_the_cycle(self):
         # astimezone raises OverflowError, which the per-feed handler did not catch (audit 8).
@@ -61,7 +62,7 @@ class NewsSourceTest(unittest.TestCase):
                 b"<pubDate>Fri, 31 Dec 9999 23:00:00 -0500</pubDate></item></channel></rss>")
         for fetch in (news.fetch, curators.fetch):
             with self.subTest(fetch.__module__):
-                self.assertEqual(fetch({}, lambda url, headers=None: feed, [FEED])[0], [])
+                self.assertEqual(fetch({}, lambda url, headers=None: feed, [FEED], STAMP)[0], [])
 
     def test_supply_chain_attack_is_a_security_word(self):
         story = hn.mention_group({"objectID": "1", "title": "The Gacha game I play everyday, Nikke, was targeted by a supply chain attack",

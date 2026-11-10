@@ -17,11 +17,13 @@ services:
       - ./backup:/backup
     restart: unless-stopped
     # A failed cycle is logged and the next one runs on time; the loop itself never exits.
+    # A cycle is stopped after 50 min (audit run-1: one that hangs blocked every later one): the slowest real cycles,
+    # 500-record backfills, took 30-40 min, and a stopped cycle writes no checkpoint, so the limit must stay above them.
     command:
       - sh
       - -c
       - |
         while :; do
           sleep $$((600 - $$(date +%s) % 600))
-          python -m collector || echo "cycle failed with exit $$?"
+          timeout -k 60 3000 python -m collector || { c=$$?; if [ $$c = 124 ]; then echo "cycle timed out after 3000 s"; else echo "cycle failed with exit $$c"; fi; }
         done

@@ -42,7 +42,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get, stamp)
     stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
     repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
-    articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds)
+    articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds, stamp)
 
     for story in stories + articles:
         # A story with no CVE in its title may still be about a known Incident; its linked page says which.
@@ -54,7 +54,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
 
     changed = set()
     # Join-only repos go last, so they can join Incidents that started this cycle.
-    for group in [cvelist.mention_group(r) for r in records] + posts + stories + articles + repos:
+    for group in cvelist.mention_groups(records) + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
     changed |= rejoin(incidents, (now - timedelta(days=7)).strftime(STAMP))
@@ -67,7 +67,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         print(f"nvd: skipped this cycle: {err!r}", file=sys.stderr)
         enriched = {}
     exploited = kev.fetch(http_get)
-    citations, checkpoints["curators"] = curators.fetch(checkpoints.get("curators"), http_get, curator_feeds)
+    citations, checkpoints["curators"] = curators.fetch(checkpoints.get("curators"), http_get, curator_feeds, stamp)
     notices, checkpoints["kisa"] = kisa.fetch(checkpoints.get("kisa"), http_get, kisa_feed)
     citations += notices
     for incident in incidents:

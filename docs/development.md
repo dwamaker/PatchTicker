@@ -22,7 +22,8 @@ newest delta log entry; later cycles pick up everything since the last checkpoin
 
 Leave `VR_STORE_DIR` empty and set the four `VR_R2_*` settings in `.env`, then `docker compose up -d --build`
 (`compose.yaml`; one cycle now: `docker compose run --rm collector python -m collector`). Every document is written as JSON with a
-30-second cache.
+30-second cache. The loop stops a cycle after 50 minutes (`timeout` in `compose.yaml`; logged "cycle timed out") so a
+hung source cannot block later cycles.
 Every write also lands in an SQLite copy (`VR_BACKUP_DB`, `./backup` in Compose); `--seed-backup` fills it once from
 the store and `--restore` rebuilds the store from it (commands in `compose.yaml`).
 
@@ -98,7 +99,9 @@ document cannot be rendered. When an Incident that had a page is absorbed into a
 store, `{slug: {moved_to, moved_to_id, moved}}`, drops moves past 90 days): 301 to the survivor's page in the same
 language, 302 to the survivor's row on the Board (`/#i=<id>`) while the survivor has no page yet, 410 once the move or
 the survivor is past 90 days. The edge cache keeps 200, 301, 302 and 410 answers for 5 minutes and 404s for 1 minute,
-never a 503.
+never a 503. Every function answers HEAD as it answers GET, without the body (`cached()` reads and keeps it under GET's
+cache entry); without a HEAD handler Pages would serve `index.html` for it, a 200 `text/html` even for a feed or an
+unknown slug.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
 search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`

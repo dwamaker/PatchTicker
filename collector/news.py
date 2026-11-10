@@ -13,10 +13,11 @@ from collector.incidents import cves_in
 FEEDS = ("https://www.bleepingcomputer.com/feed/", "https://www.securityweek.com/feed/")
 
 
-def fetch(checkpoints, http_get, feeds):
+def fetch(checkpoints, http_get, feeds, stamp):
     """Return (Mention groups for stories newer than each feed's checkpoint, next checkpoints).
 
-    Checkpoints are {feed URL: newest pubDate seen}. A feed that fails is skipped, so one dead site never stops the Board.
+    Checkpoints are {feed URL: newest pubDate seen}, never later than the cycle's stamp. A feed that fails is skipped,
+    so one dead site never stops the Board.
     """
     checkpoints = dict(checkpoints or {})
     groups = []
@@ -29,6 +30,8 @@ def fetch(checkpoints, http_get, feeds):
                     continue
                 checkpoints[feed] = max(checkpoints.get(feed) or posted, posted)
                 groups.append(mention_group(item, posted))
+            if feed in checkpoints:  # as oss-security: a future-dated story must not freeze the feed until that date
+                checkpoints[feed] = min(checkpoints[feed], stamp)
         except (OSError, ET.ParseError, AttributeError, TypeError, ValueError, OverflowError) as err:
             print(f"news: skipped {feed}: {err!r}", file=sys.stderr)
     return groups, checkpoints

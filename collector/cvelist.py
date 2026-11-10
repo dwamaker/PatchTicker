@@ -2,6 +2,7 @@
 
 import re
 import json
+import sys
 
 from collector.hn import is_repo
 from collector.incidents import is_http, to_stamp
@@ -61,6 +62,19 @@ def fetch_missing(cves, http_get, limit=MISSING_PER_CYCLE):
         if record.get("cveMetadata", {}).get("state") == "PUBLISHED":
             records.append(record)
     return records
+
+
+def mention_groups(records):
+    """One Mention group per record; a malformed record is skipped and logged, never the rest of the cycle's records."""
+    groups = []
+    for record in records:
+        try:
+            groups.append(mention_group(record))
+        except (AttributeError, KeyError, TypeError, ValueError) as err:
+            meta = record.get("cveMetadata") if isinstance(record, dict) else None
+            cve = meta.get("cveId") if isinstance(meta, dict) else "?"
+            print(f"cvelist: skipped record {cve}: {err!r}"[:300], file=sys.stderr)
+    return groups
 
 
 def mention_group(record):

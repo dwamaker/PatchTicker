@@ -342,12 +342,18 @@ def title_now(incidents, claude, stamp):
         messages=[{"role": "user", "content": "Titles for these Incidents:\n" + "\n".join(lines)}])
     try:
         items = json.loads(next(b.text for b in reply.content if b.type == "text"))["items"]
-    except (StopIteration, ValueError, KeyError, TypeError):
+        if not isinstance(items, list):
+            raise TypeError(f"items is a {type(items).__name__}")
+    except (StopIteration, ValueError, KeyError, TypeError) as err:
+        print(f"summaries: titles reply unreadable, dropped {len(incidents)} of {len(incidents)} "
+              f"(stop_reason {reply.stop_reason}): {err!r}"[:300], file=sys.stderr)
         return
     by_id = {i["id"]: i for i in incidents}
-    for item in items if isinstance(items, list) else []:
+    dropped, kept = [], set()
+    for item in items:
         incident = by_id.get(item.get("id")) if isinstance(item, dict) else None
         if incident is None or not all(isinstance(item.get(k), str) and item[k].strip() for k in TITLE_FIELDS):
+            dropped.append(f"{incident['id']}: malformed" if incident else "malformed or not asked")
             continue
         names = [p["name"] for p in incident.get("products", [])]
         own = " ".join([incident["brief"]["text"], *names])
@@ -355,10 +361,19 @@ def title_now(incidents, claude, stamp):
         easy = " ".join(item[k] for k in ("ko_easy_title", "en_easy_title"))
         for name in names:
             easy = easy.replace(name, "")  # "Perl SQL::Abstract" may keep its own name
-        if CVE_ID.search(text) or numbers(text) - numbers(own) or any(w.lower() in easy.lower() for w in EASY_BANNED):
+        unknown = numbers(text) - numbers(own)
+        reason = ("CVE ID inside" if CVE_ID.search(text) else f"numbers not in its line {sorted(unknown)}" if unknown
+                  else "banned word" if any(w.lower() in easy.lower() for w in EASY_BANNED) else "")
+        if reason:
+            dropped.append(f"{incident['id']}: {reason}")
             continue
+        kept.add(incident["id"])
         incident["quick_title"] = {"ko": {"title": item["ko_title"], "easy_title": item["ko_easy_title"]},
                                    "en": {"title": item["en_title"], "easy_title": item["en_easy_title"]}, "at": stamp}
+    dropped += [f"{i['id']}: left out" for i in incidents
+                if i["id"] not in kept and not any(d.startswith(f"{i['id']}: ") for d in dropped)]
+    if dropped:
+        print(f"summaries: titles: dropped {len(dropped)} of {len(incidents)}: {'; '.join(dropped)}"[:1000], file=sys.stderr)
 
 
 def needs_summary(incident):
