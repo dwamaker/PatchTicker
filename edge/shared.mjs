@@ -3,7 +3,7 @@
 import { easyAction, easyLine, isShellCommand, OSES, riskLevel, rowTags } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
-export const SLUG = /^(CVE-\d{4}-\d{4,}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
+export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
 
 export const escapeXml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
 

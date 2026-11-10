@@ -23,7 +23,8 @@ STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
 # and repositories are listed but come last.
 LEAD_ORDER = ["advisory", "writeup", "cve_record", "discussion", "curator", "notice", "repo"]
 
-CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
+# At most 7 digits, never the first 7 of a longer run: such a token is junk, not a CVE (audit 7: page names, int()).
+CVE_RE = re.compile(r"CVE-\d{4}-\d{4,7}(?!\d)", re.IGNORECASE | re.ASCII)
 URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 
 
@@ -93,7 +94,7 @@ HN_ITEM = re.compile(r"https://news\.ycombinator\.com/item\?id=(\d+)", re.ASCII)
 def page_slug(incident_id):
     """A port of slug in web/board.mjs (tests/fixtures/board/slug-case.json keeps the two in step): a CVE ID as is, an
     HN story as hn-<item>, any other URL ID as u-<12 hex of SHA-256>. It never changes, as the Incident's ID never does."""
-    if re.fullmatch(r"CVE-\d{4}-\d{4,}", incident_id, re.IGNORECASE | re.ASCII):
+    if re.fullmatch(r"CVE-\d{4}-\d{4,7}", incident_id, re.IGNORECASE | re.ASCII):
         return incident_id.upper()
     hn_item = HN_ITEM.fullmatch(incident_id)
     if hn_item:
@@ -156,9 +157,18 @@ def unknown_vendors(incidents, since):
         if incident["first_seen"] >= since and on_board(incident):
             for p in incident.get("products", []):
                 vendor = p["id"].split(":")[0]
-                if vendor not in VENDORS and letters(vendor) not in letters(p["name"]):
+                if vendor not in VENDORS and letters(vendor) not in letters(p["name"]) and plain_vendor(vendor, p["name"]):
                     found.setdefault(vendor, p["name"])
     return dict(sorted(found.items()))
+
+
+VENDOR_KEY = re.compile(r"[a-z0-9][a-z0-9_.\-]{0,63}", re.ASCII)
+
+
+def plain_vendor(key, name):
+    """CNA-written text goes to an operator's agent through unknown_vendors.json (docs/agents/vendors.md), so only a
+    short plain key and a short printable example name are listed."""
+    return bool(VENDOR_KEY.fullmatch(key)) and len(name) < 200 and name.isprintable()
 
 
 def to_stamp(value):
@@ -225,18 +235,27 @@ def link(incidents, group, stamp):
     target = min(hits, key=lambda i: i["first_seen"])  # min keeps the first of equal times
     before = json.dumps(target)
     changed = set()
-    # Only a Mention that may start an Incident and cites a CVE ties existing Incidents together;
-    # any other joins the earliest one (a PoC repo naming several CVEs must not merge their rows).
-    merge = proto["cves"] and not group.get("join_only")
+    # Only a CVE record, an oss-security advisory or a Mention naming one CVE ties CVEs together; any other joins the
+    # earliest Incident and adds no CVE to it (a PoC repo, an HN story or a headline naming several CVEs must not merge
+    # their rows or lend a row another CVE's record: anyone can submit one, and a fold is permanent).
+    trusted = ties(mentions[0]) or len(proto["cves"]) == 1
+    merge = proto["cves"] and not group.get("join_only") and trusted
     for other in [i for i in hits if i is not target] if merge else []:
         fold(incidents, target, other)
         changed.add(month_of(other["first_seen"]))
+    if not trusted:
+        proto["cves"] = [c for c in proto["cves"] if c in target["cves"]]
     if group.get("join_only"):
         proto.pop("published", None)  # an old PoC repo or a reply joining later says nothing about when the news broke
     absorb(target, proto)
     if json.dumps(target) != before:
         changed.add(month_of(target["first_seen"]))
     return changed
+
+
+def ties(mention):
+    """A group led by a CVE record or an oss-security post (seclists.org) may fold the Incidents it names (ADR 0001)."""
+    return mention["kind"] == "cve_record" or mention["url"].startswith("https://seclists.org/oss-sec/")
 
 
 MAX_CITED_LINKS = 50  # the public monthly file carries these for a week; most pages cite a handful

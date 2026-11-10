@@ -29,7 +29,7 @@ def fetch(checkpoints, http_get, feeds):
                     continue
                 checkpoints[feed] = max(checkpoints.get(feed) or posted, posted)
                 groups.append(mention_group(item, posted))
-        except (OSError, ET.ParseError, AttributeError, TypeError, ValueError) as err:
+        except (OSError, ET.ParseError, AttributeError, TypeError, ValueError, OverflowError) as err:
             print(f"news: skipped {feed}: {err!r}", file=sys.stderr)
     return groups, checkpoints
 

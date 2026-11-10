@@ -7,7 +7,7 @@ from datetime import datetime
 from test_cycle import at, incident, recorded
 from test_summaries import FakeClaude, board
 
-from collector import hn, kisa, news, summaries
+from collector import curators, hn, kisa, news, summaries
 from collector.cycle import run_cycle
 from collector.incidents import on_board
 from collector.store import MemoryStore
@@ -54,6 +54,14 @@ class NewsSourceTest(unittest.TestCase):
         def get(url, headers=None):
             raise OSError("down")
         self.assertEqual(news.fetch({FEED: "x"}, get, [FEED]), ([], {FEED: "x"}))
+
+    def test_a_date_past_year_9999_in_utc_skips_the_feed_not_the_cycle(self):
+        # astimezone raises OverflowError, which the per-feed handler did not catch (audit 8).
+        feed = (b"<rss><channel><item><title>x</title><link>https://example.com/x</link>"
+                b"<pubDate>Fri, 31 Dec 9999 23:00:00 -0500</pubDate></item></channel></rss>")
+        for fetch in (news.fetch, curators.fetch):
+            with self.subTest(fetch.__module__):
+                self.assertEqual(fetch({}, lambda url, headers=None: feed, [FEED])[0], [])
 
     def test_supply_chain_attack_is_a_security_word(self):
         story = hn.mention_group({"objectID": "1", "title": "The Gacha game I play everyday, Nikke, was targeted by a supply chain attack",

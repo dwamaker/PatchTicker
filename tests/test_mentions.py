@@ -295,6 +295,68 @@ class LinkingTest(unittest.TestCase):
         self.assertEqual(incident["cvss"], 6.1)
         self.assertEqual([p["id"] for p in incident["products"]], ["apache:axis2", "apache:axis2_openapi"])
 
+    def test_an_hn_story_or_news_headline_naming_two_cves_does_not_merge_their_rows(self):
+        # Audit item 6: anyone can submit an HN story whose URL names many CVEs; only a CVE record or an oss-security
+        # advisory ties existing rows together (the Axis2 test above).
+        from collector.incidents import link
+        record = lambda cve: {"mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}],
+                              "cves": [cve], "urls": [], "text": cve}
+        story = {"mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=1", "title": "test"},
+                              {"kind": "writeup", "url": "https://example.test/CVE-2026-0001/CVE-2026-0002"}],
+                 "cves": ["CVE-2026-0001", "CVE-2026-0002"], "urls": [], "text": "test", "join_only": False}
+        news = {"mentions": [{"kind": "writeup", "url": "https://www.bleepingcomputer.com/news/security/x/"}],
+                "cves": ["CVE-2026-0002", "CVE-2026-0001"], "urls": [], "text": "x", "join_only": False}
+        incidents = []
+        link(incidents, record("CVE-2026-0001"), "2026-10-05T00:00:00Z")
+        link(incidents, record("CVE-2026-0002"), "2026-11-05T00:00:00Z")
+        link(incidents, story, "2026-11-06T00:00:00Z")
+        link(incidents, news, "2026-11-06T00:15:00Z")
+        self.assertEqual([i["cves"] for i in incidents], [["CVE-2026-0001"], ["CVE-2026-0002"]])
+        self.assertNotIn("absorbed", incidents[0])
+        self.assertIn("https://news.ycombinator.com/item?id=1", [m["url"] for m in incidents[0]["mentions"]])  # joins the earliest
+        # A later record of the second CVE still finds only its own row.
+        link(incidents, record("CVE-2026-0002"), "2026-11-06T00:30:00Z")
+        self.assertEqual([i["cves"] for i in incidents], [["CVE-2026-0001"], ["CVE-2026-0002"]])
+
+    def test_an_hn_story_naming_one_cve_still_merges_the_unassigned_row_into_it(self):
+        # ADR 0001: an Unassigned incident is merged when its CVE lands, here through a story naming the CVE.
+        from collector.incidents import link
+        story = lambda n, cves: {"mentions": [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={n}", "title": "t"},
+                                              {"kind": "writeup", "url": "https://sshole.example/"}],
+                                 "cves": cves, "urls": [], "text": "t", "join_only": False}
+        record = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-123158"},
+                               {"kind": "advisory", "url": "https://vendor.example/adv"}],
+                  "cves": ["CVE-2026-123158"], "urls": [], "text": "rec"}
+        incidents = []
+        link(incidents, story(1, []), "2026-11-05T00:00:00Z")
+        link(incidents, record, "2026-11-05T06:00:00Z")
+        link(incidents, story(2, ["CVE-2026-123158"]), "2026-11-05T08:00:00Z")
+        self.assertEqual([(i["id"], i["cves"]) for i in incidents],
+                         [("https://news.ycombinator.com/item?id=1", ["CVE-2026-123158"])])
+
+    def test_an_hn_story_naming_several_cves_attaches_none_that_its_row_lacks(self):
+        # Audit item 6: else the named CVE's record joins that row, lends it its CVSS, and group_releases folds its
+        # release's rows into it.
+        from collector.incidents import group_releases, link
+        record = lambda cve, fix_keys=(), cvss=None: {
+            "mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}], "cves": [cve],
+            "urls": [], "text": cve, "published": "2026-11-05T02:00:00Z",
+            **({"fix_keys": list(fix_keys)} if fix_keys else {}), **({"cvss": cvss} if cvss else {})}
+        story = lambda *cves: {"mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=9", "title": "t"},
+                                            {"kind": "writeup", "url": "https://example.test/" + "/".join(cves)}],
+                               "cves": list(cves), "urls": [], "text": "t", "join_only": False}
+        incidents = []
+        link(incidents, record("CVE-2026-1000", cvss=3.1), "2026-11-05T00:00:00Z")
+        link(incidents, story("CVE-2026-1000", "CVE-2026-9999", "CVE-2026-2003"), "2026-11-05T01:00:00Z")
+        self.assertEqual(incidents[0]["cves"], ["CVE-2026-1000"])
+        link(incidents, record("CVE-2026-9999", cvss=10.0), "2026-11-05T02:00:00Z")
+        for cve in ("CVE-2026-2001", "CVE-2026-2002", "CVE-2026-2003"):
+            link(incidents, record(cve, ["acme:router<2.0"]), "2026-11-05T03:00:00Z")
+        group_releases(incidents)
+        self.assertEqual([(i["cves"], i.get("cvss")) for i in incidents],
+                         [(["CVE-2026-1000"], 3.1), (["CVE-2026-9999"], 10.0),
+                          (["CVE-2026-2001", "CVE-2026-2002", "CVE-2026-2003"], None)])
+
     def test_oss_security_posts_start_incidents_and_unmatched_replies_do_not(self):
         run_cycle(self.store, recorded(None, oss="oss-sec.rss"), at("2026-11-07T06:00:00"), "test-box")
 

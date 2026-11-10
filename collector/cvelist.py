@@ -43,6 +43,8 @@ def fetch(checkpoint, http_get, known=frozenset(), limit=MAX_RECORDS):
 
 RECORD_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"
 MISSING_PER_CYCLE = 20
+# Real CVE numbers have 4 to 7 digits; a longer token from a post must never reach int() (over 4300 digits it raises).
+CVE_ID = re.compile(r"CVE-\d{4}-\d{4,7}", re.ASCII)
 
 
 def fetch_missing(cves, http_get, limit=MISSING_PER_CYCLE):
@@ -50,7 +52,7 @@ def fetch_missing(cves, http_get, limit=MISSING_PER_CYCLE):
     log this store started from, or an older CVE came up in discussion (11-09: nine Apache Airflow rows had no
     Product). At most `limit` a cycle, newest IDs first; one not published yet (404) is asked again next cycle."""
     records = []
-    for cve in sorted(cves, key=lambda c: [int(p) for p in c.split("-")[1:]], reverse=True)[:limit]:
+    for cve in sorted(filter(CVE_ID.fullmatch, cves), key=lambda c: [int(p) for p in c.split("-")[1:]], reverse=True)[:limit]:
         _, year, number = cve.split("-")
         try:
             record = json.loads(http_get(RECORD_URL.format(year=year, group=number[:-3], cve=cve)))
@@ -103,7 +105,9 @@ def record_fix_keys(record):
         listed = [v.get("lessThanOrEqual") or v["version"] for v in a.get("versions", [])
                   if v.get("status") == "affected" and v.get("version") and not v.get("lessThan")]
         if listed and not any(k.startswith(f"{key}<") for k in keys):
-            top = max(listed, key=lambda v: [int(p) if p.isdigit() else -1 for p in re.split(r"[.\-]", v)])
+            # ASCII digits only and short: isdigit() passes "²", which int() rejects, as it does over 4300 digits.
+            top = max(listed, key=lambda v: [int(p) if p.isascii() and p.isdigit() and len(p) < 20 else -1
+                                             for p in re.split(r"[.\-]", v)])
             keys.add(f"{key}<={top}")
     return sorted(keys)
 

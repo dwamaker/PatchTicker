@@ -185,6 +185,48 @@ class BudgetStopTest(unittest.TestCase):
         self.assertIn(KEYCLOAK, board(self.store))
         self.assertNotIn("summaries", self.store.read("status.json"))
 
+    def test_a_request_the_api_always_rejects_counts_a_try_and_the_others_go_on(self):
+        # Audit item 10: a too-long prompt for one KEV Incident blocked every lower one and the batch, each cycle.
+        from datetime import datetime
+        from types import SimpleNamespace as NS
+        from collector import summaries
+        from collector.cycle import route_summaries
+
+        def incident(cve, **extra):
+            return {"id": cve, "cves": [cve], "first_seen": "2026-11-09T10:00:00Z", "published": "2026-11-09T09:00:00Z",
+                    "mentions": [], "brief": {"text": cve, "lead": ""}} | extra
+        poisoned, other, low = incident("CVE-2026-1", kev=True), incident("CVE-2026-2", cvss=9.0), incident("CVE-2026-3", cvss=5.0)
+        batched = []
+
+        def create(**params):
+            if "CVE-2026-1" in params["messages"][0]["content"]:
+                raise api_error(400, "invalid_request_error", "prompt is too long: 250000 tokens > 200000 maximum")
+            return FakeClaude.message(plain("Widget"))
+        claude = NS(messages=NS(create=create, batches=NS(create=lambda requests: batched.append(requests) or NS(id="b1"))))
+        now = datetime(2026, 11, 9, 12)
+        for n in range(1, summaries.MAX_TRIES + 1):
+            route_summaries([poisoned, other, low], [], claude, lambda url: b"", now, "2026-11-09T12:00:00Z", set(), probe=True)
+            self.assertEqual(poisoned["summary_error"]["tries"], n)
+        self.assertTrue(poisoned["summary_error"]["final"])
+        self.assertFalse(summaries.needs_summary(poisoned))
+        self.assertIn("summary", other)
+        self.assertEqual(len(batched), summaries.MAX_TRIES)  # the batch still went out every cycle
+        # The account's own limits still stop the cycle (and pause), never cost an Incident a try.
+        poisoned.pop("summary_error")
+        claude.messages.create = lambda **params: (_ for _ in ()).throw(SPEND_LIMIT)
+        with self.assertRaises(anthropic.APIStatusError):
+            route_summaries([poisoned], [], claude, lambda url: b"", now, "2026-11-09T12:00:00Z", set(), probe=False)
+        self.assertNotIn("summary_error", poisoned)
+        # A 400 every request gets (a parameter the API stopped accepting) is the account's, not one Incident's: the
+        # cycle stops, as before, and no candidate is given up for it.
+        kev = [incident(f"CVE-2026-{n}", kev=True) for n in range(10, 15)]
+        claude.messages.create = lambda **params: (_ for _ in ()).throw(
+            api_error(400, "invalid_request_error", "output_config.effort: Extra inputs are not permitted"))
+        for _ in range(summaries.MAX_TRIES):
+            with self.assertRaises(anthropic.APIStatusError):
+                route_summaries(kev, [], claude, lambda url: b"", now, "2026-11-09T12:00:00Z", set(), probe=False)
+        self.assertEqual([i.get("summary_error") for i in kev], [None] * 5)
+
 
 SSHOLE = "CVE-2026-123158"
 

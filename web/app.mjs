@@ -163,7 +163,7 @@ function setDefaultView(view) {
 function loadLang() {
   try {
     const saved = localStorage.getItem(SAVED_LANG);
-    if (saved in TEXT) return saved;
+    if (Object.hasOwn(TEXT, saved ?? '')) return saved; // `in` would take "constructor" as a language
   } catch {
     // storage blocked: fall back to the browser's language
   }

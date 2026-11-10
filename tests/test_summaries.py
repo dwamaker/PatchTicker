@@ -300,7 +300,10 @@ class InstantSummaryTest(unittest.TestCase):
 
     def test_reported_attacks_need_the_input_url_that_reports_them_and_old_replies_say_no(self):
         # Owner, 11-09: Brotli was 악용 발생 from a write-up, an HN post and PoC repos; no source reported attacks.
-        cases = {"an input URL": ({"exploited": True, "exploited_source": "https://sshhole.com"}, (True, "https://sshhole.com")),
+        advisory = "https://www.openssh.com/txt/release-10.6p2"
+        cases = {"an input URL": ({"exploited": True, "exploited_source": advisory}, (True, advisory)),
+                 # Audit run-1 item 1: an HN poster's page below the Lead cannot lift the row to its top Risk level.
+                 "a write-up below the Lead": ({"exploited": True, "exploited_source": "https://sshhole.com"}, (False, "")),
                  "no source": ({"exploited": True, "exploited_source": ""}, (False, "")),
                  "a URL not in the input": ({"exploited": True, "exploited_source": "https://example.com/attacks"}, (False, "")),
                  "a reply from before": ({k: v for k, v in SSHOLE_SUMMARY.items() if k not in ("exploited", "exploited_source")}, (False, "")),
@@ -589,7 +592,8 @@ class EasyJargonTest(unittest.TestCase):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
         if tries:
             incident["summary_error"] = {"tries": tries, "reason": "earlier"}
-        text = json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)  # holds every number the replies use
+        # The Lead's text holds every number, the command and the stopgap the replies use.
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summaries.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
         summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
         return incident
 

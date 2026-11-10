@@ -3,7 +3,10 @@
 // The filter in the page address: ?p=<product id>&p=...&q=<search>. Also the localStorage form.
 // The whole filter lives in the address hash: p product/OS picks, q search, and the panel's r risk, k exploited,
 // f/t published from/to (YYYY-MM-DD), c minimum CVSS, cv CVE yes/no, h link kinds, s sort.
-import VENDORS from './vendors.json' with { type: 'json' };
+import vendors from './vendors.json' with { type: 'json' };
+
+// Vendor keys come from CVE records: without a prototype, "constructor" or "__proto__" finds no vendor (audit 2).
+const VENDORS = Object.assign(Object.create(null), vendors);
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export function filterFromQuery(search) {
@@ -179,7 +182,7 @@ export const searchWorthy = (i) => Boolean(i.summary) && onBoard(i) && (riskLeve
 // It never changes, because an Incident's ID never does (a merge keeps the survivor's ID). The Board and the Pages
 // Function (edge/) share this one rule; collector/incidents.py (page_slug) ports it, kept in step by
 // tests/fixtures/board/slug-case.json.
-const CVE_ID = /^CVE-\d{4}-\d{4,}$/i;
+const CVE_ID = /^CVE-\d{4}-\d{4,7}$/i;
 const HN_ITEM = /^https:\/\/news\.ycombinator\.com\/item\?id=(\d+)$/;
 export async function slug(id) {
   if (CVE_ID.test(id)) return id.toUpperCase();
@@ -219,14 +222,16 @@ const unscored = (i) => i.cvss == null;
 const riskRank = (i) => { const k = RISKS.indexOf(riskLevel(i)); return k === 2 && unscored(i) ? 1.5 : k; };
 const cvssKey = (i) => (unscored(i) ? 6.95 : i.cvss); // between 7.0 (위험) and 6.9: scores have one decimal
 export function orderBy(sort) {
-  return { risk: (a, b) => riskRank(a) - riskRank(b) || newest(a, b),
+  return { __proto__: null, risk: (a, b) => riskRank(a) - riskRank(b) || newest(a, b),
     cvss: (a, b) => cvssKey(b) - cvssKey(a) || newest(a, b) }[sort] || newest;
 }
 
 // Korean words people type for systems and devices, matched as the English names sources use (critique 12: 윈도우 and
 // 공유기 found nothing). Small on purpose: product names are typed as they are. The English names match only Product
 // names, ids and OS tags, as whole words (critique 13: 자바 found javascript, 엣지 "knowledge").
+// No prototype: the typed word is the key, and "constructor" must find no alias list (audit 13).
 export const SEARCH_ALIASES = {
+  __proto__: null,
   윈도우: ['Windows'], 윈도: ['Windows'], 맥: ['macOS', 'Mac OS'], 맥북: ['macOS'], 리눅스: ['Linux'], 안드로이드: ['Android'],
   아이폰: ['iOS', 'iPhone'], 아이패드: ['iPadOS', 'iPad'], 공유기: ['router'], 라우터: ['router'], 워드프레스: ['WordPress'],
   크롬: ['Chrome'], 엣지: ['Edge'], 파이어폭스: ['Firefox'], 자바: ['Java'], 파이썬: ['Python'], 오픈ssh: ['OpenSSH'],
@@ -237,7 +242,7 @@ export const SEARCH_ALIASES = {
 };
 // A typed word inside a longer word that names something else is no hit (critique 14: 자바 found 자바스크립트 in Korean
 // Summaries). Asked for by name, JavaScript is still found.
-const NOT_INSIDE = { 자바: /자바\s?스크립트/g, java: /java\s?script/g };
+const NOT_INSIDE = { __proto__: null, 자바: /자바\s?스크립트/g, java: /java\s?script/g };
 // Keys a Product is known by, for matching a pick against variants of its name (critique 14). A CPE-style id gives its
 // vendor and product ("chengdu feiyuxing vw2100") and its product alone ("gemcode:gembooking" is the Summary's
 // "GemBooking"), unless that is a word every vendor uses ("firmware").
@@ -316,8 +321,12 @@ export function onBoard(i) {
 
 // A command or stopgap a reader may paste into a terminal: it starts with a package manager or service tool.
 // Anything else ("PasswordAuthentication no") is a line for a config file and must not look runnable.
-const SHELL = /^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|snap|flatpak|winget|choco|npm|npx|pnpm|yarn|pip3?|pipx|gem|cargo|go|composer|docker|podman|kubectl|helm|systemctl|service|rc-service|launchctl)\s/;
-export const isShellCommand = (text) => SHELL.test(text.trim());
+const SHELL = /^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|snap|flatpak|winget|choco|npm|pnpm|yarn|pip3?|pipx|gem|cargo|go|composer|docker|podman|kubectl|helm|systemctl|service|rc-service|launchctl)\s/;
+// One plain invocation that installs or restarts: a source's page could chain "&& curl … | sh", quote a hook
+// option, install from its own URL or run a package (audit 1). shortcut: an attacker-named package from a
+// registry still passes; the collector must keep only commands from trusted sources (summaries.py parse).
+const UNSAFE = /[;&|`<>\r\n$'"\\]|:\/\/|\s(run|exec|dlx|apply)\s/;
+export const isShellCommand = (text) => SHELL.test(text.trim()) && !UNSAFE.test(text);
 
 // The Easy sentence shouts only for the top Risk level: "!" everywhere teaches readers to ignore it.
 export const easyLine = (text, level) => (level === 'highest' ? text : text.replace(/!+(\s*)$/, '.$1'));

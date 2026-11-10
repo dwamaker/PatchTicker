@@ -34,7 +34,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     missing = {cve for i in incidents if i["first_seen"] >= since for cve in i["cves"]
                if cve not in read and {"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"} not in i["mentions"]}
     records += cvelist.fetch_missing(missing, http_get)
-    posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get)
+    posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get, stamp)
     stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
     repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
     articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds)

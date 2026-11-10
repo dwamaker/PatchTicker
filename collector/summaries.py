@@ -7,6 +7,7 @@ reaches the Board.
 """
 
 import html.parser
+import http.client
 import json
 import re
 import sys
@@ -14,6 +15,7 @@ from datetime import timedelta
 from decimal import Decimal
 from urllib.parse import urlsplit
 
+import anthropic
 from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn
@@ -352,9 +354,18 @@ def is_budget_error(err):
 
 
 def summarize_now(incident, claude, http_get, stamp):
-    """Ask for this Incident's Summary and store it, or count a failed try. Lets API errors through."""
+    """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through."""
     text, seen = summary_input(incident, http_get), basis(incident)
-    save_reply(incident, claude.messages.create(**params(text, **retry(incident))), text, seen, stamp)
+    try:
+        reply = claude.messages.create(**params(text, **retry(incident)))
+    except anthropic.APIStatusError as err:
+        # Too long for this request alone: a counted try, or it blocks every later one each cycle. Any other 400 may be
+        # the same for every request (a parameter the API stopped accepting), so it stops the cycle and costs no try.
+        if not (err.status_code == 413 or err.status_code == 400 and "prompt is too long" in err.message):
+            raise
+        failed(incident, f"request rejected: {err.status_code} {err.message}")
+        return
+    save_reply(incident, reply, text, seen, stamp)
 
 
 def save_reply(incident, reply, text, seen, stamp):
@@ -466,6 +477,9 @@ def params(text, ttl=None, note="", max_tokens=MAX_TOKENS):
     }
 
 
+LEAD_MARK = " (the Lead: its numbers win when sources disagree)"
+
+
 def summary_input(incident, http_get):
     lines = [
         f"Incident: {', '.join(incident['cves']) or 'no CVE yet'}",
@@ -485,7 +499,7 @@ def summary_input(incident, http_get):
     for m in readable[:MAX_PAGES]:
         page = fetch_page(http_get, m["url"])
         if page:
-            mark = " (the Lead: its numbers win when sources disagree)" if m["url"] == lead else ""
+            mark = LEAD_MARK if m["url"] == lead else ""
             lines += [f"Text of {m['url']}{mark}:", page_text(page)[:PAGE_CHARS]]
     for cve in incident["cves"]:
         record = fetch_page(http_get, cve_record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
@@ -511,7 +525,7 @@ def fetch_page(http_get, url):
         return sonicwall_advisory(http_get, advisory.group(1))
     try:
         raw = http_get(url)
-    except (OSError, ValueError) as err:
+    except (OSError, ValueError, http.client.HTTPException) as err:  # HTTPException: a cited page's malformed answer
         print(f"summaries: skipped {url}: {err!r}", file=sys.stderr)
         return None
     return None if b"\0" in raw[:1024] else raw.decode("utf-8", errors="replace")  # binary: not text
@@ -617,7 +631,7 @@ def lang_text(fields):
 def parse(reply, input_text, urls):
     """The checked Summary from a reply, or Rejected: broken JSON or shape, a number or version not
     in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ.
-    An Easy command or stopgap not found verbatim in the input is dropped, so the page falls back to
+    An Easy command or stopgap that is not one invocation found verbatim in a trusted source (trusted()) is dropped, so the page falls back to
     "update to version X" and never shows a made-up command."""
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
@@ -674,10 +688,14 @@ def parse(reply, input_text, urls):
         raise Rejected(f"lead is not an input URL: {summary['lead']}")
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
     # never the Summary.
-    if not (summary["exploited"] and summary["exploited_source"] in urls):
+    trusted_text, reporters = trusted(input_text)
+    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters):
         summary["exploited"], summary["exploited_source"] = False, ""
     for key in ("command", "stopgap"):
-        if summary[key] not in input_text:
+        # A visitor may paste it into a shell: one invocation, from a trusted source (audit run-1 item 1). A stopgap
+        # setting is shown without a Copy button, and its ; & < > belong to the config syntax.
+        shell = key == "command" or SHELL_COMMAND.search(summary[key].strip())
+        if summary[key] not in trusted_text or shell and SHELL_CHAIN.search(summary[key]):
             summary[key] = ""
     # The whole path, not the start of a longer one ("/etc/ssh/sshd_config" inside "/etc/ssh/sshd_config.d/x.conf").
     if summary["stopgap_file"] and not re.search(re.escape(summary["stopgap_file"]) + r"(?![\w./-])", input_text):
@@ -694,3 +712,23 @@ def parse(reply, input_text, urls):
 
 
 CVE_IN_TITLE = re.compile(r"\s*[(\[]?\bCVE-\d{4}-\d{4,}\b[)\]]?", re.I)
+# UNSAFE and SHELL in web/board.mjs (kept equal by a test). SHELL_CHAIN: what chains, redirects or escapes a second
+# command (; & | backticks $ newlines < > quotes, \ as in $'\x3b'), a URL to install from, or a subcommand that runs code.
+SHELL_CHAIN = re.compile(r"""[;&|`<>\r\n$'"\\]|:\/\/|\s(run|exec|dlx|apply)\s""")
+# A value the Board shows with a Copy button when SHELL_CHAIN finds nothing in it.
+SHELL_COMMAND = re.compile(r"^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|snap|flatpak|winget|choco|npm|pnpm|yarn|pip3?|pipx|gem|cargo|go|composer|docker|podman|kubectl|helm|systemctl|service|rc-service|launchctl)\s")
+# summary_input's source headers, each over the one line of text it read (page_text and cve_fields hold no newline).
+SOURCE_RE = re.compile(rf"^(?:Text of (\S+)({re.escape(LEAD_MARK)})?|CVE record \S+):\n(.*)$", re.M)
+MENTION_LINE = re.compile(r"^- (\w+) (\S+)", re.M)
+
+
+def trusted(input_text):
+    """The text a command or stopgap may come from: the Lead's, the official advisories' and the CVE records'. And the
+    URLs whose report of attacks counts: advisories, CVE records, curators and news sites. Not a write-up, the Lead
+    included: any HN poster's page can be the Lead, with or without a CVE in the story title."""
+    blocks = list(SOURCE_RE.finditer(input_text))
+    head = input_text[:blocks[0].start()] if blocks else input_text  # the Mentions list; no page text can forge a line
+    kinds = {url: kind for kind, url in MENTION_LINE.findall(head)}
+    text = "\n".join(b[3] for b in blocks if not b[1] or b[2] or kinds.get(b[1]) == "advisory")
+    reporters = {url for url, kind in kinds.items() if kind in ("advisory", "cve_record", "curator") or is_news(url)}
+    return text, reporters
