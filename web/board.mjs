@@ -136,10 +136,14 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 // campaigns sank under every exploited CVE); one with a score keeps it. Also in
 // collector/incidents.py (highlight_score, with HIGHLIGHTS in collector/cycle.py: board/rows.json keeps the week's
 // Highlights whole), kept in step by tests/fixtures/board/rows-case.json.
-// Highlights: up to ten are chosen, four are pinned at first so the newest list starts on the first screens of a
-// phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순.
+// Highlights: every exploited candidate of the week is chosen, at least HIGHLIGHTS and at most HIGHLIGHTS_MAX in all
+// (owner, 11-10: the week's eleventh exploited Incident was cut off); four are pinned at first so the newest list starts
+// on the first screens of a phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순.
 export const HIGHLIGHTS = 10;
+export const HIGHLIGHTS_MAX = 20;
 export const PINNED = 4;
+// How many of the score-sorted candidates are Highlights; exploited ones score 100 more, so they lead. Also collector/cycle.py.
+export const highlightCount = (candidates) => Math.min(HIGHLIGHTS_MAX, Math.max(HIGHLIGHTS, candidates.filter(isExploited).length));
 // Owner, 11-10: a release counts a record, an advisory and a write-up per CVE, so uncapped FFmpeg (331 Mentions), Chrome,
 // IBM API Connect and FreeRDP took all four pins over 15 exploited Incidents. Also in collector/incidents.py.
 const MENTION_CAP = 10;
@@ -287,19 +291,22 @@ export function aliasesUsed(query) {
     .map((word) => ({ word, names: SEARCH_ALIASES[word].filter((n, k, all) => all.findIndex((x) => key(x) === key(n)) === k) }));
 }
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
-// Returns the visible Incidents newest first, and the top ten of those published (else first seen) in the seven days before `now`.
+// Returns the visible Incidents newest first, and the Highlights (highlightCount) of those published (else first seen) in
+// the seven days before `now`.
+// Picks: any picked Product and any picked OS, both when both kinds are picked (owner, 11-10: OpenSSH with Linux meant
+// OpenSSH on Linux, not everything on Linux too).
 export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   { risk = [], kev = false, from = '', to = '', cvssMin = 0, cve = '', has = [], sort = 'new' } = {}) {
-  const picked = new Set(picks);
+  const oses = picks.filter((p) => p.startsWith('os:'));
+  const products = picks.filter((p) => !p.startsWith('os:'));
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const variant = new Set(); // shown only through a variant of a picked name ("비슷한 이름 N건도 함께")
   const shown = incidents.filter((i) => {
-    if (picked.size) {
-      const own = productsOf(i);
-      if (!own.some((p) => picked.has(p.id))) {
-        if (!own.some((p) => picks.some((q) => sameProduct(q, p.id)))) return false;
-        variant.add(i);
-      }
+    const own = picks.length ? productsOf(i) : [];
+    if (oses.length && !own.some((p) => oses.includes(p.id))) return false;
+    if (products.length && !own.some((p) => products.includes(p.id))) {
+      if (!own.some((p) => products.some((q) => sameProduct(q, p.id)))) return false;
+      variant.add(i);
     }
     if (risk.length && !risk.includes(riskLevel(i))) return false;
     if (kev && !isExploited(i)) return false;
@@ -319,8 +326,9 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
-  const highlights = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
-    .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b)).slice(0, HIGHLIGHTS);
+  const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
+    .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
+  const highlights = candidates.slice(0, highlightCount(candidates));
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
 }
 

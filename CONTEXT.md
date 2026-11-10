@@ -36,7 +36,7 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주요 사건):
-(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. At most four (ten until 2026-11-08, when the pinned frames ran past 1,900px on a phone), chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09) and shown in the visitor's sort order (newest first by default, 2026-11-08); 더 보기 appends the rest below the first four,
+(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09): every exploited one, at least ten and at most twenty in all (owner, 2026-11-10). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), shown in the visitor's sort order (newest first by default, 2026-11-08); 더 보기 appends the rest below the first four,
 which keep their place (2026-11-09); the rest stay in the list below.
 _Avoid_: featured, top, hot, pinned item
 
@@ -92,5 +92,6 @@ _Avoid_: fix, workaround, remediation
 A piece of software or firmware a visitor can pick in the filter, named without a version (OpenSSH, Dropbear, OpenWrt).
 One Product however a source writes its name (critique 14, 2026-11-09): letter case, a generic suffix ("WordPress
 plugin", "플러그인", "theme"), company words and a known vendor in front do not make another one ("GemBooking" and
-"GemBooking WordPress plugin" are one). Product names are never translated.
+"GemBooking WordPress plugin" are one). Product names are never translated. Picked Products show Incidents of any of
+them, picked operating systems likewise; with both picked, an Incident must have one of each (owner, 2026-11-10).
 _Avoid_: package, component, CPE (as a user-facing word)

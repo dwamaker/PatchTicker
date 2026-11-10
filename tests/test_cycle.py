@@ -164,7 +164,7 @@ class CycleTest(unittest.TestCase):
 
     def test_among_equal_highlight_scores_the_newer_stays_whole(self):
         # Owner, 11-10: the newer first among equal scores, as filterBoard picks them.
-        older, newer = (incident(cve, "x", seen, seen) | {"cvss": 9.8, "kev": True}
+        older, newer = (incident(cve, "x", seen, seen) | {"cvss": 9.8}  # not exploited: every exploited one stays whole
                         for cve, seen in (("CVE-2026-7001", "2026-11-05T00:00:00Z"), ("CVE-2026-7002", "2026-11-06T00:00:00Z")))
         self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [older, newer]})
         self.store.write("index.json", {"months": ["2026-11"]})
@@ -174,6 +174,21 @@ class CycleTest(unittest.TestCase):
         by_id = {i["id"]: i for i in self.store.read("board/rows.json")["incidents"]}
         self.assertNotIn("rows", by_id["CVE-2026-7002"])
         self.assertTrue(by_id["CVE-2026-7001"]["rows"])
+
+    def test_every_exploited_highlight_of_the_week_stays_whole(self):
+        # Owner, 11-10: the week had eleven exploited Incidents and the eleventh was cut off at ten.
+        exploited = [incident(f"CVE-2026-71{n:02d}", "x", f"2026-11-0{1 + n // 2}T{n:02d}:00:00Z") | {"kev": True}
+                     for n in range(11)]
+        critical = incident("CVE-2026-7200", "x", "2026-11-06T12:00:00Z") | {"cvss": 9.8}
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [*exploited, critical]})
+        self.store.write("index.json", {"months": ["2026-11"]})
+        with patch.object(cycle, "WHOLE_NEWEST", 0):
+            run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        by_id = {i["id"]: i for i in self.store.read("board/rows.json")["incidents"]}
+        for i in exploited:
+            self.assertNotIn("rows", by_id[i["id"]], i["id"])
+        self.assertTrue(by_id["CVE-2026-7200"]["rows"])  # the twelfth candidate, not exploited
 
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")

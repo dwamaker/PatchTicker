@@ -461,6 +461,20 @@ test('the sshole replay Incident becomes a Highlight ahead of ten CVSS 9.8 Incid
   assert.equal(highlights[0].id, sshole.id);
 });
 
+// Owner, 11-10: the week had eleven exploited Incidents and the eleventh was cut off at ten.
+test('Highlights hold every exploited candidate, at least ten and at most twenty', () => {
+  const week = (exploited, plain) => [
+    ...Array.from({ length: exploited }, (_, n) => ({ ...incident(`CVE-2026-7${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), kev: true })),
+    ...Array.from({ length: plain }, (_, n) => ({ ...incident(`CVE-2026-8${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), cvss: 9.8 })),
+  ];
+  const chosen = (list) => filterBoard(list, [], '', NOW).highlights;
+  assert.equal(chosen(week(3, 20)).length, 10);
+  assert.ok(chosen(week(12, 20)).every(isExploited));
+  assert.equal(chosen(week(12, 20)).length, 12);
+  assert.equal(chosen(week(25, 5)).length, 20);
+  assert.equal(chosen(week(2, 4)).length, 6);
+});
+
 test('a Product keeps its line colour, and Products spread over the lines', () => {
   assert.equal(productLine('openbsd:openssh'), productLine('openbsd:openssh'));
   assert.ok(LINES.includes(productLine('')));
@@ -756,6 +770,25 @@ test('a picked Product also finds Incidents filed under a variant of its name, a
   assert.deepEqual(pick('name:microsoft paint'), [[paint.id], 1]);
   assert.deepEqual(pick('iptime:firmware'), [[iptime.id], 0]); // two vendors' "Firmware" are not one Product
   assert.deepEqual(pick('os:windows'), [[], 0]);
+});
+
+// Owner, 11-10: OpenSSH with Linux showed 427 Incidents, everything on Linux too.
+test('picked Products are either-of, picked operating systems are either-of, and both kinds must hold', () => {
+  const at = (id, products, platforms) => ({ ...incident(id, '2026-11-07T00:00:00Z'), products, summary: { products: [], platforms } });
+  const sshLinux = at('CVE-2026-41', [openssh], ['Linux']);
+  const sshWindows = at('CVE-2026-42', [openssh], ['Windows']);
+  const chromeLinux = at('CVE-2026-43', [{ id: 'google:chrome', name: 'Chrome' }], ['Linux']);
+  const kernel = at('CVE-2026-44', [], ['Linux']);
+  const gem = at('CVE-2026-45', [{ id: 'gemcode:gembooking', name: 'Gembooking' }], ['Linux']);
+  const all = [sshLinux, sshWindows, chromeLinux, kernel, gem];
+  const pick = (...picks) => { const r = filterBoard(all, picks, '', NOW); return [r.list.map((i) => i.id).sort(), r.variants]; };
+  assert.deepEqual(pick(openssh.id), [[sshLinux.id, sshWindows.id], 0]);
+  assert.deepEqual(pick('os:windows'), [[sshWindows.id], 0]);
+  assert.deepEqual(pick(openssh.id, 'google:chrome'), [[sshLinux.id, sshWindows.id, chromeLinux.id], 0]);
+  assert.deepEqual(pick('os:linux', 'os:windows'), [all.map((i) => i.id).sort(), 0]);
+  assert.deepEqual(pick(openssh.id, 'os:linux'), [[sshLinux.id], 0]);
+  assert.deepEqual(pick('os:linux', openssh.id, 'google:chrome'), [[sshLinux.id, chromeLinux.id], 0]);
+  assert.deepEqual(pick('name:gembooking', 'os:linux'), [[gem.id], 1]); // an OS pick never makes a variant exact
 });
 
 test('a saved or shared pick of an old variant id reads back as the Product it now belongs to', () => {

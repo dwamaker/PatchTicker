@@ -62,10 +62,11 @@ absorbed it, so rows naming each other end as one.
 
 The Board opens on `board/rows.json` (owner, 11-10): the week of `board/recent.json` as row views (marked `rows`), with
 only what a row, the filters, folds and Highlights read, and the collector's `wp_plugin` answer; the newest 100 and the
-week's ten Highlights stay whole (ports kept in step by `tests/fixtures/board/rows-case.json`). The page fetches
+week's Highlights stay whole (ports kept in step by `tests/fixtures/board/rows-case.json`). The page fetches
 `board/recent.json` only to open a row view or to search.
 
-Highlights (top ten of the last seven days) are scored in the page (`highlightScore` in
+Highlights (of the last seven days: every exploited one, at least ten and at most twenty, `highlightCount`; owner,
+11-10) are scored in the page (`highlightScore` in
 `web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS (an exploited Incident with no score counts as 9.0, the floor of its 최고 band) and Mention count (up to ten, so a many-CVE release does not outrank exploited Incidents); among equal scores the newer is first. Curator issues add 25 each, two at most however many issues cite the Incident; one issue cites an Incident once (by its link).
 Curator feeds default to tl;dr sec and the Risky Business News newsletter (`news.risky.biz/rss/`; the `risky.biz` feed is the podcast, with no text to cite from); `VR_CURATOR_FEEDS` overrides them.
 Security news sites (BleepingComputer and SecurityWeek, `collector/news.py`) start Incidents like HN stories: a story,

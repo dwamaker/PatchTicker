@@ -9,15 +9,16 @@ import anthropic
 
 from collector import (curators, cve_lines, cvelist, discord, github, hn, kev, kisa, model, news, nvd, osssec, same_event,
                        summaries, summary_input)
-from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, link, month_of,
+from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
-# Highlights as filterBoard picks them (HIGHLIGHTS in web/board.mjs).
+# Highlights as filterBoard picks them (HIGHLIGHTS, HIGHLIGHTS_MAX and highlightCount in web/board.mjs).
 WHOLE_NEWEST = 100
 HIGHLIGHTS = 10
+HIGHLIGHTS_MAX = 20
 FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
 # An Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs). The
 # store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
@@ -129,7 +130,9 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # Newest first among equal scores, as filterBoard picks them.
     top = sorted((i for i in shown if published_at(i) >= recent_since and risk_level(i) != "notice"),
                  key=lambda i: (highlight_score(i), published_at(i)), reverse=True)
-    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + top[:HIGHLIGHTS]}
+    # Every exploited candidate, within HIGHLIGHTS..HIGHLIGHTS_MAX (owner, 11-10); exploited ones lead the order.
+    count = min(HIGHLIGHTS_MAX, max(HIGHLIGHTS, sum(1 for i in top if is_exploited(i))))
+    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + top[:count]}
     store.write("board/rows.json", {"since": recent_since, "status": status,
                                     "incidents": [board_view(i) if i["id"] in whole else rows_view(i) for i in week]})
     newest = sorted((i for i in incidents if search_worthy(i)), key=published_at, reverse=True)

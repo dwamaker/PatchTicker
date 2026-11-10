@@ -23,6 +23,7 @@ class SharedConstantsTest(unittest.TestCase):
 
     def test_the_numbers_match(self):
         for python, js in ((cycle.PAGE_DAYS, "PAGE_DAYS"), (cycle.HIGHLIGHTS, "HIGHLIGHTS"),
+                           (cycle.HIGHLIGHTS_MAX, "HIGHLIGHTS_MAX"),
                            (incidents.MENTION_CAP, "MENTION_CAP"), (incidents.HIGHEST_CVSS, "HIGHEST_CVSS"),
                            (hn.BUZZ_POINTS, "HN_BUZZ")):
             with self.subTest(js):
