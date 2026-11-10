@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 
+import brotli
 from botocore.exceptions import ClientError
 
 from collector.__main__ import load_settings, make_store, restore_main, seed_backup_main
@@ -87,6 +88,18 @@ class R2StoreTest(MemoryStoreTest):
         self.assertEqual(obj["ContentType"], "application/json; charset=utf-8")
         self.assertEqual(obj["CacheControl"], "public, max-age=30")
         self.assertEqual(json.loads(obj["Body"].decode("utf-8")), {"updated": "a"})
+
+    def test_the_week_the_page_opens_on_goes_out_brotli_compressed(self):
+        # Cloudflare's own brotli made it 1.87 MB; at quality 10 it is 1.23 MB (owner, 11-10: a phone's first load).
+        store = self.make_store()
+        doc = {"since": "2026-11-03T04:30:02Z", "incidents": [{"id": "CVE-2026-1", "brief": {"text": "요약 준비 중"}}]}
+        store.write("board/recent.json", doc)
+        obj = self.s3.objects[("patchradar", "board/recent.json")]
+        self.assertEqual(obj["ContentEncoding"], "br")
+        self.assertEqual(json.loads(brotli.decompress(obj["Body"]).decode("utf-8")), doc)
+        self.assertEqual(store.read("board/recent.json"), doc)
+        store.write("status.json", {"updated": "a"})  # read by the Pages Functions too: never compressed
+        self.assertNotIn("ContentEncoding", self.s3.objects[("patchradar", "status.json")])
 
     def test_other_errors_are_not_read_as_missing(self):
         store = self.make_store()

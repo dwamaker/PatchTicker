@@ -5,6 +5,7 @@ import os
 import sqlite3
 from pathlib import Path
 
+import brotli
 from botocore.exceptions import ClientError
 
 
@@ -46,6 +47,12 @@ class FolderStore:
                       if p.is_file() and not p.name.endswith(".tmp"))
 
 
+# Stored brotli-compressed (quality 10) with Content-Encoding br: the week a phone downloads first, 1.23 MB against the
+# 1.87 MB of Cloudflare's own on-the-fly brotli (owner, 2026-11-10). Never a document the Pages Functions read through
+# the R2 binding (pages/, board/feed.json, sitemap.json), which hands them the stored bytes as they are.
+BROTLI = {"board/recent.json"}
+
+
 class R2Store:
     """An R2 bucket through its S3 API; the page reads the same object names through the bucket's custom domain."""
 
@@ -60,16 +67,18 @@ class R2Store:
             if e.response["Error"]["Code"] == "NoSuchKey":
                 return None
             raise  # a denied or failed read must not look like an empty store, or a cycle would overwrite real data
-        return json.loads(body)
+        return json.loads(brotli.decompress(body) if name in BROTLI else body)
 
     def write(self, name, doc):
         # A single PUT replaces the object whole. Short cache: the page checks status.json every 30 s.
+        body = json.dumps(doc, ensure_ascii=False).encode("utf-8")
+        packed = {"Body": brotli.compress(body, quality=10), "ContentEncoding": "br"} if name in BROTLI else {"Body": body}
         self.s3.put_object(
             Bucket=self.bucket,
             Key=name,
-            Body=json.dumps(doc, ensure_ascii=False).encode("utf-8"),
             ContentType="application/json; charset=utf-8",
             CacheControl="public, max-age=30",
+            **packed,
         )
 
     def names(self):
