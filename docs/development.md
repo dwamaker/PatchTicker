@@ -46,6 +46,10 @@ With `VR_DISCORD_WEBHOOK` set (a `https://discord.com/api/webhooks/...` address 
 start-up, and the value is never logged), a cycle that newly gives up a Summary (an id not in the last cycle's
 `summary_failures.json`) or merges by `same_as` posts one short Korean message there (`collector/discord.py`; no pings,
 at most about 1,800 characters). A failed post is one stderr line and is not retried.
+The same message says when the Summary step stops on an API error (the error's type and its message, cut to 200
+characters; new rows show their source text as the title until it is fixed) and when it works again, once each:
+`status.json` keeps `"summaries": "paused"` (a budget error) or `"stopped"` (any other), and a cycle compares with the
+state the last cycle left, so a stop that lasts says nothing more.
 
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
 of its URLs (`collector/incidents.py`, ADR 0001).
@@ -102,7 +106,9 @@ same request and a one-hour prompt cache; a later cycle collects the results (`b
 store holds the pending batches and their inputs). Expired or errored requests are sent again. A new
 official advisory, a new KEV listing or a newly attached CVE brings a new Summary, at most three per
 Incident. A credit-exhausted or spend-limit error stops Summaries for the cycle and sets
-`"summaries": "paused"` in `status.json`, which the page shows as a short notice; Briefs keep flowing.
+`"summaries": "paused"` in `status.json`, which the page shows as a short notice; Briefs keep flowing. The next cycle
+then sends a one-request batch to test the budget. Any other API error sets `"stopped"`, which the page does not show,
+and the next cycle asks again in full.
 
 The same request fills the Easy view (a tab on each Incident, normal by default, remembered per
 Incident): one or two plain sentences per language, the fixed version, a device list, and an update
@@ -165,6 +171,13 @@ Pack `Dockerfile .dockerignore compose.yaml requirements.txt collector web/vendo
 cycle runs (`sudo docker compose up -d --force-recreate`). The idle check: inside the container, list
 `/proc/[0-9]*/cmdline` and count lines that start with `python -m collector`; a plain grep for "collector" matches the
 checking shell itself. Cycles start on the 10-minute marks, so a recreate keeps the schedule.
+Unit tests cannot see what Anthropic accepts (2026-11-11: one more required field in the Summary schema made every
+request fail with "The compiled grammar is too large"), so a change to a schema or a prompt is checked with
+`python -m collector --smoke`: with the collector's own settings and key, one small real request of each shape (the
+Summary, quick titles, per-CVE lines; batches send the same parameters), one line each, exit 1 on a rejection, nothing
+read from or written to the store. `.scratch/checks/recreate.sh` runs it from the new image
+(`docker compose run --rm -T --no-deps collector python -m collector --smoke`) before its wait loop and does not
+recreate when it fails.
 
 ## Tests
 

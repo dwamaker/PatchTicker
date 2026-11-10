@@ -8,7 +8,7 @@ import unittest
 from collector import discord
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
-from test_batch_summaries import plain
+from test_batch_summaries import SPEND_LIMIT, api_error, plain
 from test_cycle import at, incident, recorded
 from test_same_event import PLEX_BC, PLEX_SW, story
 from test_summaries import FakeClaude
@@ -126,6 +126,70 @@ class CycleNotifyTest(unittest.TestCase):
         self.assertNotIn("secret-token", err)
         self.assertEqual(self.store.read("status.json")["collector"], "test-box")
         self.assertEqual(self.store.read("summary_failures.json")[0]["id"], "CVE-2026-1001")
+
+
+def failing(error):
+    claude = FakeClaude()
+    claude.error = error
+    return claude
+
+
+class SummaryStopNotifyTest(unittest.TestCase):
+    """2026-11-11: a schema Anthropic would not compile stopped every Summary and quick title for two cycles, and only a
+    stderr line said so. The owner hears once when the Summary step stops and once when it works again."""
+    setUp = CycleNotifyTest.setUp
+    GRAMMAR = api_error(400, "invalid_request_error", "The compiled grammar is too large `x` " + "y" * 300)
+
+    def rows(self):
+        return [incident("CVE-2026-1", "One", "2026-11-09T00:00:00Z"), incident("CVE-2026-2", "Two", "2026-11-09T00:00:00Z")]
+
+    def status(self):
+        return self.store.read("status.json").get("summaries")
+
+    def test_a_stop_is_told_once_in_the_cycles_one_message_and_the_recovery_once(self):
+        cycle(self.store, self.rows() + [given_up(1)], self.notify, claude=failing(self.GRAMMAR))
+        self.assertEqual(self.status(), "stopped")
+        [(_, payload)] = self.post.posts  # one message: the stop and the given-up Summary together
+        text = payload["content"]
+        self.assertIn("요약 포기", text)
+        self.assertIn("요약 단계 멈춤", text)
+        self.assertIn("`APIStatusError`", text)
+        # The API's message cut to 200 characters, in a code span a backtick cannot leave.
+        self.assertIn("`The compiled grammar is too large 'x' " + "y" * 162 + "`", text)
+
+        cycle(self.store, self.rows(), self.notify, now="2026-11-09T12:10:00", claude=failing(self.GRAMMAR))
+        self.assertEqual(self.status(), "stopped")
+        self.assertEqual(len(self.post.posts), 1)  # still stopped: nothing new to say
+
+        claude = FakeClaude()
+        cycle(self.store, self.rows(), self.notify, now="2026-11-09T12:20:00", claude=claude)
+        self.assertIsNone(self.status())
+        self.assertEqual(len(self.post.posts), 2)
+        self.assertIn("요약 단계 다시 작동", self.post.posts[1][1]["content"])
+        self.assertEqual(len(claude.batches[0]["requests"]), 2)  # retried in full, no probe
+
+        cycle(self.store, self.rows(), self.notify, now="2026-11-09T12:30:00", claude=claude)
+        self.assertEqual(len(self.post.posts), 2)
+
+    def test_a_budget_error_still_pauses_and_probes_and_is_told_like_any_stop(self):
+        cycle(self.store, self.rows(), self.notify, claude=failing(SPEND_LIMIT))
+        self.assertEqual(self.status(), "paused")
+        self.assertIn("요약 단계 멈춤", self.post.posts[0][1]["content"])
+        cycle(self.store, self.rows(), self.notify, now="2026-11-09T12:10:00", claude=failing(SPEND_LIMIT))
+        self.assertEqual(self.status(), "paused")
+        self.assertEqual(len(self.post.posts), 1)
+
+        claude = FakeClaude()
+        cycle(self.store, self.rows(), self.notify, now="2026-11-09T12:20:00", claude=claude)
+        self.assertEqual(len(claude.batches[0]["requests"]), 1)  # the probe, as before
+        self.assertIsNone(self.status())
+        self.assertIn("요약 단계 다시 작동", self.post.posts[1][1]["content"])
+
+    def test_no_webhook_still_writes_the_state(self):
+        cycle(self.store, self.rows(), None, claude=failing(self.GRAMMAR))
+        self.assertEqual(self.status(), "stopped")
+        cycle(self.store, self.rows(), None, now="2026-11-09T12:10:00", claude=FakeClaude())
+        self.assertIsNone(self.status())
 
 
 class MessageTextTest(unittest.TestCase):

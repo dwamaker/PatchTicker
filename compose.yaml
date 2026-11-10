@@ -3,6 +3,8 @@
 #   docker compose up -d --build              start the schedule
 #   docker compose run --rm collector python -m collector   one cycle now (plain `run` starts the loop)
 #   docker compose logs -f collector          watch it
+#   docker compose run --rm -T --no-deps collector python -m collector --smoke   one small real request of every
+#                                             request shape; exit 1 when Anthropic rejects one (.scratch/checks/recreate.sh)
 # SQLite backup of every document in ./backup (create it once: mkdir backup && sudo chown 65534 backup, since the
 # image runs as nobody). Seed it once: docker compose run --rm collector python -m collector --seed-backup
 # Rebuild R2 from it:             docker compose run --rm collector python -m collector --restore

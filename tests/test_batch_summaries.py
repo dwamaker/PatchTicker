@@ -183,7 +183,13 @@ class BudgetStopTest(unittest.TestCase):
         self.run_at("2026-11-07T12:30:00", claude, delta_log="deltaLog.json")
 
         self.assertIn(KEYCLOAK, board(self.store))
+        self.assertEqual(self.store.read("status.json")["summaries"], "stopped")  # not "paused": the page shows nothing
+
+        # The next cycle asks again in full, not with a one-request probe batch.
+        claude.error = None
+        self.run_at("2026-11-07T12:45:00", claude)
         self.assertNotIn("summaries", self.store.read("status.json"))
+        self.assertEqual(len(claude.batches[0]["requests"]), 2)
 
     def test_a_request_the_api_always_rejects_counts_a_try_and_the_others_go_on(self):
         # Audit item 10: a too-long prompt for one KEV Incident blocked every lower one and the batch, each cycle.

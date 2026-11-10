@@ -65,6 +65,12 @@ SSHOLE_SUMMARY = {
 }
 
 
+def cut(text):
+    """A reply cut off at max_tokens after `text`, for FakeClaude."""
+    return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], stop_reason="max_tokens",
+                           usage=SimpleNamespace(input_tokens=0, output_tokens=0))
+
+
 class FakeClaude:
     """Stands in for anthropic.Anthropic: answers messages.create with the given replies in turn
     (a dict is sent as JSON, a string as is) and records what each request sent.
@@ -88,6 +94,8 @@ class FakeClaude:
 
     @staticmethod
     def message(reply):
+        if isinstance(reply, SimpleNamespace):  # a whole reply, cut() say
+            return reply
         text = reply if isinstance(reply, str) else json.dumps(reply, ensure_ascii=False)
         return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)], stop_reason="end_turn",
                                usage=SimpleNamespace(input_tokens=0, output_tokens=0))

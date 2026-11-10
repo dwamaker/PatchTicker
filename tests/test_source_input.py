@@ -86,6 +86,34 @@ class CveRecordTest(unittest.TestCase):
                          [("acme:contact_form_7_&#8211;_post_fields", "Contact Form 7 – Post Fields"),
                           ("acme:blocks_&amp;_patterns", "Blocks & Patterns")])
 
+    @staticmethod
+    def assigned(assigner, vendor, product):
+        return {"cveMetadata": {"assignerShortName": assigner}, "containers": {"cna": {"affected": [
+            {"vendor": vendor, "product": product, "versions": [{"version": "0", "lessThan": "32.0", "status": "affected"}]}]}}}
+
+    def test_a_cna_writing_n_a_for_its_own_product_is_the_vendor(self):
+        # 11-11: Intel writes vendor "n/a" (CVE-2026-20756), so 35 Intel rows had no Product and did not fold.
+        intel = self.assigned("intel", "n/a", "Intel(R) Graphics Driver software installers")
+        key = "intel:intel(r)_graphics_driver_software_installers"
+        self.assertEqual(cvelist.record_products(intel), [{"id": key, "name": "Intel(R) Graphics Driver software installers"}])
+        self.assertEqual(cvelist.record_fix_keys(intel), [f"{key}<32.0"])
+        for mark in ("", "(R)", "®", "™"):  # an assigner not in web/vendors.json that leads the product name
+            self.assertEqual(cvelist.record_products(self.assigned("Acme", "", f"Acme{mark} Widget")),
+                             [{"id": f"acme:acme{mark.lower()}_widget", "name": f"Acme{mark} Widget"}])
+        # An assigner in web/vendors.json is the vendor whatever the product is called (CVE-2026-35060, 11-11).
+        self.assertEqual(cvelist.record_products(self.assigned("intel", "n/a", "AI Playground software")),
+                         [{"id": "intel:ai_playground_software", "name": "AI Playground software"}])
+        self.assertEqual(cvelist.record_products(self.assigned("ibm", "unknown", "Widget")), [{"id": "ibm:widget", "name": "Widget"}])
+
+    def test_n_a_stays_skipped_when_the_assigner_is_neither_a_known_vendor_nor_leads_the_product_name(self):
+        for assigner, vendor, product in (("WPScan", "n/a", "FV Flowplayer Video Player"),  # a third party's product
+                                          ("acme", "n/a", "Graphics Driver"),
+                                          ("intel", "n/a", "n/a")):
+            with self.subTest(assigner=assigner, product=product):
+                self.assertEqual(cvelist.record_products(self.assigned(assigner, vendor, product)), [])
+        self.assertEqual(cvelist.record_products(self.assigned("intel", "Acme", "Intel Widget")),
+                         [{"id": "acme:intel_widget", "name": "Intel Widget"}])
+
 
 class NewsAndCuratorFeedTest(unittest.TestCase):
     URL = "https://example.com/feed"

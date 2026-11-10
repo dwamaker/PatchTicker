@@ -1,5 +1,6 @@
-"""Discord webhook (owner, 11-10: "내가 쌓였는지 알 방법이 없잖아"): one message a cycle when a Summary is newly given up
-or a same_as merge happened, so the owner knows without opening summary_failures.json or merge_log.json."""
+"""Discord webhook (owner, 11-10: "내가 쌓였는지 알 방법이 없잖아"): one message a cycle when a Summary is newly given up,
+a same_as merge happened, or the Summary step stopped or works again, so the owner knows without opening
+summary_failures.json, merge_log.json or the logs."""
 
 import re
 import sys
@@ -33,14 +34,19 @@ def make_notifier(url, post):
     return notify
 
 
-def message(failures, merges):
+def message(failures, merges, stopped=None, resumed=False):
     """The message for newly given-up Summaries (summary_failures entries; one still showing an older Summary first) and
     accepted same_as merges (merge_log entries plus "into", the survivor's id), or "" when there is none. Text sits in
-    code spans so Discord makes no markdown or link of it; each item's one link is in <> so it makes no embed."""
+    code spans so Discord makes no markdown or link of it; each item's one link is in <> so it makes no embed.
+    stopped: the anthropic.APIError that newly stopped the Summary step this cycle; resumed: it works again. Either
+    comes first, with the API's own message (never the key) cut to 200 characters."""
     code = lambda text: f"`{(text or '-').replace('`', chr(39))}`"
     link = lambda incident_id: f"<{BOARD}{quote(incident_id, safe='')}>"
-    lines = [f"- 요약 포기 · {'주의: 옛 요약 노출' if f['shows'] == 'summary' else '속보만 노출'} · {code(f['id'])} · {code(f['reason'])} {link(f['id'])}"
-             for f in sorted(failures, key=lambda f: f["shows"] != "summary")]
+    lines = [f"- 요약 단계 멈춤 · {code(type(stopped).__name__)} · {code(' '.join(stopped.message.split())[:200])} · "
+             "고칠 때까지 새 행은 출처 원문이 제목으로 보입니다"] if stopped else []
+    lines += ["- 요약 단계 다시 작동 · 새 행의 요약과 제목을 다시 만듭니다"] if resumed else []
+    lines += [f"- 요약 포기 · {'주의: 옛 요약 노출' if f['shows'] == 'summary' else '속보만 노출'} · {code(f['id'])} · {code(f['reason'])} {link(f['id'])}"
+              for f in sorted(failures, key=lambda f: f["shows"] != "summary")]
     lines += [f"- 같은 사건 합침 · {code(m['incident']['title'])} + {code(m['same_as']['title'])} {link(m['into'])}" for m in merges]
     if not lines:
         return ""

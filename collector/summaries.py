@@ -357,21 +357,32 @@ def needs_title(incident):
     return QUICK_TITLES and "summary" not in incident and "quick_title" not in incident
 
 
-def title_now(incidents, claude, stamp):
-    """One request for these Incidents' titles; each checked title pair is kept as "quick_title" until the Summary comes.
-    A title with a CVE ID, a number its own line lacks or a banned word is dropped, and the row keeps its Brief."""
+def title_params(incidents):
+    """messages.create parameters for these Incidents' titles (python -m collector --smoke sends them too)."""
     lines = [f"id: {i['id']} | products: {', '.join(p['name'] for p in i.get('products', [])) or 'unknown'} | {i['brief']['text']}"
              for i in incidents]
-    reply = claude.messages.create(
-        model=MODEL, max_tokens=MAX_TOKENS,
-        system=[{"type": "text", "text": TITLE_INSTRUCTIONS}],
-        output_config={"effort": EFFORT, "format": {"type": "json_schema", "schema": TITLE_SCHEMA}},
-        messages=[{"role": "user", "content": "Titles for these Incidents:\n" + "\n".join(lines)}])
+    return {"model": MODEL, "max_tokens": MAX_TOKENS,
+            "system": [{"type": "text", "text": TITLE_INSTRUCTIONS}],
+            "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": TITLE_SCHEMA}},
+            "messages": [{"role": "user", "content": "Titles for these Incidents:\n" + "\n".join(lines)}]}
+
+
+def title_now(incidents, claude, stamp):
+    """One request for these Incidents' titles; each checked title pair is kept as "quick_title" until the Summary comes.
+    A title with a CVE ID, a number its own line lacks or a banned word is dropped, and the row keeps its Brief.
+    A reply cut at max_tokens is asked again in two halves, down to one Incident."""
+    reply = claude.messages.create(**title_params(incidents))
     try:
         items = reply_json(reply)["items"]
         if not isinstance(items, list):
             raise TypeError(f"items is a {type(items).__name__}")
     except (StopIteration, ValueError, KeyError, TypeError) as err:
+        if reply.stop_reason == "max_tokens" and len(incidents) > 1:
+            # 2026-11-11: thinking counts toward max_tokens, and twenty long lines left two replies no room; halves fit.
+            half = len(incidents) // 2
+            title_now(incidents[:half], claude, stamp)
+            title_now(incidents[half:], claude, stamp)
+            return
         print(f"summaries: titles reply unreadable, dropped {len(incidents)} of {len(incidents)} "
               f"(stop_reason {reply.stop_reason}): {err!r}"[:300], file=sys.stderr)
         return

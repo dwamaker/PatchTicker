@@ -9,7 +9,7 @@ from datetime import datetime
 
 from collector import summaries
 from collector.cycle import route_summaries
-from test_summaries import FakeClaude
+from test_summaries import FakeClaude, cut
 
 NOW = datetime(2026, 11, 9, 12, 0)
 STAMP = "2026-11-09T12:00:00Z"
@@ -129,6 +129,34 @@ class QuickTitleTest(unittest.TestCase):
         with contextlib.redirect_stderr(log):
             summaries.title_now([row("CVE-2026-1"), row("CVE-2026-2")], FakeClaude("not json"), STAMP)
         self.assertIn("summaries: titles reply unreadable, dropped 2 of 2", log.getvalue())
+
+    # 2026-11-11, 01:40 KST: two requests of 20 long lines were both cut at max_tokens (thinking counts toward it) and 40
+    # rows kept their English source text; the same rows five at a time all came back.
+    def test_a_reply_cut_at_max_tokens_is_asked_again_in_halves(self):
+        incidents = [row(f"CVE-2026-{n}") for n in range(1, 5)]
+        claude = FakeClaude(cut('{"items": [{"id": "CVE-2026-1", "ko_title": "위젯'), titles("CVE-2026-1", "CVE-2026-2"),
+                            titles("CVE-2026-3", "CVE-2026-4"))
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now(incidents, claude, STAMP)
+        self.assertEqual(len(claude.sent), 3)
+        self.assertTrue(all("quick_title" in i for i in incidents))
+        self.assertEqual(log.getvalue(), "")
+
+    def test_a_reply_for_one_incident_still_cut_is_dropped_and_logged_once(self):
+        claude = FakeClaude(cut('{"items": ['))
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now([row("CVE-2026-1")], claude, STAMP)
+        self.assertEqual(len(claude.sent), 1)
+        self.assertEqual(log.getvalue().count("\n"), 1)
+        self.assertIn("summaries: titles reply unreadable, dropped 1 of 1 (stop_reason max_tokens)", log.getvalue())
+
+    def test_a_malformed_reply_not_cut_is_not_asked_again(self):
+        claude = FakeClaude("not json", titles("CVE-2026-1"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.title_now([row("CVE-2026-1"), row("CVE-2026-2")], claude, STAMP)
+        self.assertEqual(len(claude.sent), 1)
 
     def test_titles_the_reply_left_out_are_counted(self):
         log = io.StringIO()

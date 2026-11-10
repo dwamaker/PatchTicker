@@ -6,7 +6,7 @@ import json
 import sys
 
 from collector.hn import is_repo
-from collector.incidents import is_http, to_stamp
+from collector.incidents import VENDORS, is_http, to_stamp
 
 DELTA_LOG_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/deltaLog.json"
 # CVE JSON 5 reference tags that mark the product's own advisory or release note.
@@ -114,8 +114,14 @@ CVSS_KEYS = ("cvssV3_1", "cvssV3_0", "cvssV4_0")
 def cna_products(record):
     """(key, product, affected entry) for each of the CNA's named vendor/product pairs. The product's HTML entities
     are unescaped ("Contact Form 7 &#8211; Post Fields" showed as written, 11-11); the key stays the raw one's."""
+    assigner = (record.get("cveMetadata", {}).get("assignerShortName") or "").lower()
     for a in record["containers"]["cna"].get("affected", []):
         vendor, product = (a.get("vendor") or "").strip(), (a.get("product") or "").strip()
+        # A CNA writing "n/a" for its own product is the vendor: a known vendor ("intel", "AI Playground software") or
+        # one that leads the name ("Acme(R) Widget"), 11-11. A third party's "n/a" (WPScan, a WordPress plugin) is skipped.
+        if vendor.lower() in ("", "n/a", "unknown") and assigner and product and (
+                assigner in VENDORS or re.sub(r"(\(r\)|®|™)$", "", product.split()[0].lower()) == assigner):
+            vendor = assigner
         if not vendor or not product or vendor.lower() in ("n/a", "unknown") or product.lower() in ("n/a", "unknown"):
             continue
         yield f"{vendor}:{product}".lower().replace(" ", "_"), html.unescape(product), a

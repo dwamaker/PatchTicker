@@ -61,12 +61,18 @@ def submit_lines(incidents, claude, limit=MAX_PER_BATCH):
                 room.add(incident["id"])
     if not requests:
         return None
-    batch = claude.messages.batches.create(requests=[Request(custom_id=cid, params={
-        "model": MODEL, "max_tokens": MAX_TOKENS_RETRY if r["incident"] in room else MAX_TOKENS,
-        "system": [{"type": "text", "text": LINES_INSTRUCTIONS}],
-        "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": LINES_SCHEMA}},
-        "messages": [{"role": "user", "content": r["input"]}]}) for cid, r in requests.items()])
+    batch = claude.messages.batches.create(requests=[Request(
+        custom_id=cid, params=lines_params(r["input"], MAX_TOKENS_RETRY if r["incident"] in room else MAX_TOKENS))
+        for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
+
+
+def lines_params(text, max_tokens=MAX_TOKENS):
+    """One line request's parameters (lines_input() as text); python -m collector --smoke sends them directly."""
+    return {"model": MODEL, "max_tokens": max_tokens,
+            "system": [{"type": "text", "text": LINES_INSTRUCTIONS}],
+            "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": LINES_SCHEMA}},
+            "messages": [{"role": "user", "content": text}]}
 
 
 def save_lines(incident, reply, cves):

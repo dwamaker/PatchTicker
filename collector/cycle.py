@@ -114,16 +114,19 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
 
     status = {"updated": stamp, "collector": collector_id}
     batches = store.read("batches.json") or []
-    decisions = []
+    decisions, stopped, resumed = [], None, False
     if claude:
-        was_paused = (store.read("status.json") or {}).get("summaries") == "paused"
+        # "paused" (a budget error; the page shows a notice) or "stopped" (any other API error), as the last cycle left it.
+        was = (store.read("status.json") or {}).get("summaries")
         try:
-            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was_paused)
+            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused")
         except anthropic.APIError as err:
-            # Briefs still go out; the next cycle asks again.
+            # Briefs still go out; the next cycle asks again (in full after "stopped", with a probe after "paused").
             print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
-            if summaries.is_budget_error(err):
-                status["summaries"] = "paused"
+            status["summaries"] = "paused" if summaries.is_budget_error(err) else "stopped"
+            # 2026-11-11: a rejected schema stopped every Summary for two cycles and only stderr said so. Told once.
+            stopped = None if was else err
+        resumed = bool(was) and "summaries" not in status
         store.write("batches.json", batches)
         # same_as answers saved above (owner, 11-10): the code decides, and every decision is kept, newest first.
         merged, decisions = same_event.apply_same_as(incidents, stamp)
@@ -178,7 +181,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     store.write("checkpoints.json", checkpoints)
     store.write("status.json", status)
     # Owner, 11-10: news for the owner, last, so a failed post costs nothing else (docs/development.md).
-    text = discord.message([f for f in failures if f["id"] not in known], [d for d in decisions if d["accepted"]])
+    text = discord.message([f for f in failures if f["id"] not in known], [d for d in decisions if d["accepted"]],
+                           stopped, resumed)
     if notify and text:
         notify(text)
 

@@ -2,6 +2,7 @@
 
 Rebuild the store from the SQLite backup instead: python -m collector --restore [path/to/envfile]
 Copy the whole store into the SQLite backup once:  python -m collector --seed-backup [path/to/envfile]
+Send one small real request of every schema request shape: python -m collector --smoke [path/to/envfile]  (exit 1 on a rejection)
 """
 
 import os
@@ -11,7 +12,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import curators, discord, kisa, news
+from collector import curators, cve_lines, discord, kisa, news, summaries
 from collector.cycle import run_cycle
 from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -65,6 +66,8 @@ def main():
         return restore_main(args[1] if len(args) > 1 else ".env")
     if args[:1] == ["--seed-backup"]:
         return seed_backup_main(args[1] if len(args) > 1 else ".env")
+    if args[:1] == ["--smoke"]:
+        sys.exit(smoke_main(args[1] if len(args) > 1 else ".env"))
     settings = load_settings(args[0] if args else ".env")
     key = settings.get("ANTHROPIC_API_KEY")
     agent = f"vuln-radar/0.1 ({settings['VR_CONTACT']})"
@@ -84,6 +87,42 @@ def main():
         notify=discord.make_notifier(settings.get("VR_DISCORD_WEBHOOK"), make_http_post(agent)),
     )
 
+
+
+SMOKE_TOKENS = 100  # a reply cut here still passes: the request was accepted, which is all --smoke checks
+SMOKE_TEXT = "A made-up flaw in Widget 1.0 lets a visitor read any file."
+SMOKE_INCIDENT = {"id": "CVE-2026-0001", "cves": ["CVE-2026-0001"], "products": [{"name": "Widget"}],
+                  "brief": {"text": SMOKE_TEXT, "lead": ""}, "cve_texts": {"CVE-2026-0001": SMOKE_TEXT}}
+
+
+def smoke(claude):
+    """One small real request of every shape the collector sends with a schema, built by the cycle's own functions
+    (2026-11-11: one more required Summary field made Anthropic reject every request, "The compiled grammar is too
+    large", which no unit test can see). Batch requests send these same parameters, so no batch is made. Prints one
+    line a shape and returns the exit code: 0 when all are accepted, 1 when any is rejected."""
+    shapes = {
+        "summary": summaries.params(f"Incident: CVE-2026-0001\nProducts: Widget\n{SMOKE_TEXT}"),
+        "quick titles": summaries.title_params([SMOKE_INCIDENT]),
+        "cve lines": cve_lines.lines_params(cve_lines.lines_input(SMOKE_INCIDENT, SMOKE_INCIDENT["cves"])),
+    }
+    code = 0
+    for name, params in shapes.items():
+        try:
+            claude.messages.create(**params | {"max_tokens": SMOKE_TOKENS})
+            print(f"smoke: {name} ok")
+        except anthropic.APIError as err:
+            print(f"smoke: {name} FAILED: {type(err).__name__}: {' '.join(err.message.split())[:200]}")
+            code = 1
+    return code
+
+
+def smoke_main(path):
+    """The collector's own settings and key; reads nothing from the store and writes nothing to it."""
+    key = load_settings(path).get("ANTHROPIC_API_KEY")
+    if not key:
+        print("smoke: ANTHROPIC_API_KEY is not set; nothing was checked")
+        return 1
+    return smoke(anthropic.Anthropic(api_key=key))
 
 
 def restore_main(path):
