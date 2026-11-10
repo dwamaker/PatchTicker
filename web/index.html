@@ -438,7 +438,6 @@
     /* 최신순: plain rows on one hairline each */
     .list { border-top: 1px solid var(--rule-2); }
     .list > li { border-bottom: 1px solid var(--rule); }
-    #board > li { content-visibility: auto; contain-intrinsic-size: auto 76px; } /* off-screen rows skip layout: a phone redrew ~100 rows on a view switch (11-10) */
     .list .row[aria-expanded="true"], .list .details { background: var(--panel); }
     /* an opened vendor fold: its row, members and closing line share the panel ground; members keep the list's columns */
     .list li.grouped, .list li.vendor-fold { background: var(--group); }
@@ -636,15 +635,16 @@
     li.fresh { view-transition-class: fresh; }
     @media (prefers-reduced-motion: no-preference) {
       ::view-transition-new(*.fresh):only-child { animation: fresh-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-      /* 기본 <-> 쉬운 설명: each row's old words sink and fade (160ms), the new ones rise into place (300ms) */
-      .vt-view::view-transition-old(*) { animation: words-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
-      .vt-view::view-transition-new(*) { animation: words-in 300ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both; }
+      /* 기본 <-> 쉬운 설명: each row's old words fade out (120ms), then the new ones fade in (180ms), never both at once:
+         overlapping, they read as two titles on top of each other (owner, 11-10, phone recording) */
+      .vt-view::view-transition-old(*) { animation: fade-out 120ms ease-in both; }
+      .vt-view::view-transition-new(*) { animation: fade-in 180ms ease-out 110ms both; }
       /* ...but never the whole page: (*) took the root too, and the page sank and rose like a reload (owner, 11-10, phone) */
       .vt-view::view-transition-old(root) { display: none; }
       .vt-view::view-transition-new(root) { animation: none; }
     }
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
-    @keyframes words-out { to { opacity: 0; transform: translateY(5px); } }
+    @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
     @media (prefers-reduced-motion: reduce) { .chev, .models summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
