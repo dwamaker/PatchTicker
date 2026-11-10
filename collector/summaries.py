@@ -587,14 +587,22 @@ KO_PIECE_RE = re.compile(r"(\d+(?:\.\d+)?)\s?([천만억조]*)")
 EN_AMOUNT_RE = re.compile(r"(\d+(?:\.\d+)?)\s?(thousand|million|billion|trillion|M|bn)\b")
 
 
+# An English month name is its number, so "October 23" and "10월 23일" agree (owner, 2026-11-10: NIKKE's gist was
+# rejected three times for "10"). Short names count only before a day, and "May" only then, so "may" never does.
+MONTH_RE = re.compile(r"\b(?:(January|February|March|April|June|July|August|September|October|November|December)\b"
+                      r"|(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)\.?(?=\s*\d))")
+MONTHS = {m: n for n, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
 def numbers(text):
-    """Number and version tokens, so "1,024" == "1024", "05" == "5" and "580만" == "5.8 million"."""
+    """Number and version tokens, so "1,024" == "1024", "05" == "5", "580만" == "5.8 million" and "October" == "10"."""
+    months = {str(MONTHS[(m[1] or m[2])[:3].lower()]) for m in MONTH_RE.finditer(text)}
     # Not \b after the three digits: a Korean counter ("7,715명") is a word character.
     text = re.sub(r"(?<=\d),(?=\d{3}(?!\d))", "", text)
     text = KO_AMOUNT_RE.sub(lambda m: plain(sum(Decimal(n) * 10 ** sum(SCALES[u] for u in units)
                                                 for n, units in KO_PIECE_RE.findall(m[0]))), text)
     text = EN_AMOUNT_RE.sub(lambda m: plain(Decimal(m[1]) * 10 ** SCALES[m[2]]), text)
-    return {t.lstrip("0") or "0" if t.isdigit() else t.lower() for t in NUMBER_RE.findall(text)}
+    return {t.lstrip("0") or "0" if t.isdigit() else t.lower() for t in NUMBER_RE.findall(text)} | months
 
 
 def plain(value):

@@ -83,3 +83,22 @@ class RetryFeedbackTest(unittest.TestCase):
         self.run_at("2026-11-07T12:45:00", claude)
 
         self.assertEqual(claude.sent, [])
+
+
+class MonthNameTest(unittest.TestCase):
+    """Owner, 2026-11-10: "October 23" written "10월 23일" was rejected as a number not in the input (NIKKE's gist, three
+    times), and "11월 3일" against "November 3" as Korean and English numbers that differ."""
+
+    def test_an_english_month_name_counts_as_its_number(self):
+        self.assertLessEqual({"10", "23"}, summaries.numbers("The launcher was tampered with on October 23, 2026."))
+        self.assertIn("11", summaries.numbers("Fixed Nov. 3"))
+        self.assertIn("9", summaries.numbers("since Sept 27"))
+        self.assertIn("5", summaries.numbers("released May 4"))
+
+    def test_a_word_that_only_looks_like_a_month_does_not(self):
+        self.assertEqual(summaries.numbers("Attackers may exploit it"), set())
+        self.assertEqual(summaries.numbers("a decision in March"), {"3"})  # a full month name needs no day
+        self.assertEqual(summaries.numbers("Octoberfest tickets"), set())  # a full name must end the word
+
+    def test_korean_and_english_dates_now_agree(self):
+        self.assertEqual(summaries.numbers("2026년 10월 23일부터"), summaries.numbers("from October 23, 2026"))

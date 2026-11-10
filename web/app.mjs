@@ -2057,8 +2057,9 @@ function details(incident) {
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
   if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
   // Easy: a few IDs lead the panel; a group's count follows the action instead of a wall of IDs.
-  // Easy: "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09).
-  if (easy && incident.cves.length > 2) {
+  // "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09). Both views show the IDs as text here:
+  // the row is a button, and browsers do not let a drag select text inside one (owner, 11-10: "CVE를 긁을 수가 없어").
+  if (incident.cves.length > 2) {
     const fold = el('details', 'models cve-fold');
     const ids = el('ul', '');
     for (const cve of incident.cves) {
@@ -2071,7 +2072,7 @@ function details(incident) {
     fold.append(head, ids);
     parts.push(fold);
   }
-  else if (easy && incident.cves.length) parts.unshift(idLine(incident.cves));
+  else if (incident.cves.length) parts.unshift(idLine(incident.cves));
   const mentions = el('ul', 'mentions');
   const order = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
   const rank = (m) => (order.includes(m.kind) ? order.indexOf(m.kind) : order.length);
