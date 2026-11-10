@@ -77,12 +77,55 @@ class RetryFeedbackTest(unittest.TestCase):
 
     def test_an_incident_given_up_since_the_change_is_not_revived(self):
         self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
-        self.set_error({"tries": 3, "reason": "numbers not in the input: ['4.2']", "final": True, "with_reason": True})
+        self.set_error({"tries": 3, "reason": "numbers not in the input: ['4.2']", "final": True, "with_reason": True,
+                        "hinted": True})
         claude = FakeClaude()
 
         self.run_at("2026-11-07T12:45:00", claude)
 
         self.assertEqual(claude.sent, [])
+
+    def test_a_wrong_number_given_up_before_exact_hints_gets_one_more_round_with_them(self):
+        self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
+        self.set_error({"tries": 3, "reason": "numbers not in the input: ['10.86']", "final": True, "with_reason": True})
+        claude = FakeClaude("not json", "not json", "not json")
+
+        for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
+            self.run_at(when, claude)
+
+        self.assertIn("10.86: not in the input, leave it out", claude.user_text(0).split("\n\n")[-1])
+        self.assertEqual(len(claude.sent), 3)  # one round, then given up for good
+        self.assertTrue(board(self.store)[HN_STORY]["summary_error"]["final"])
+
+
+class ExactNumbersTest(unittest.TestCase):
+    """Owner, 2026-11-10 ("그냥 정확하게 하고 싶은데"): the check stays exact; a retry names the input's own numbers that a
+    rejected one stood for. IBM API Connect's "10.0.8.0 through 10.0.8.12" came back as "10.0.8" three times."""
+    TEXT = "IBM API Connect 10.0.8.0 through 10.0.8.12 and 12.1.0.0 through 12.1.1.2 could allow a remote attacker."
+
+    def note(self, reason):
+        return summaries.retry({"summary_error": {"reason": reason}}, self.TEXT)["note"]
+
+    def test_a_shortened_version_is_answered_with_the_input_versions_it_stands_for(self):
+        note = self.note("numbers not in the input: ['10.0.8', '12.1']")
+        self.assertIn("10.0.8: the input has 10.0.8.0, 10.0.8.12", note)
+        self.assertIn("12.1: the input has 12.1.0.0, 12.1.1.2", note)
+
+    def test_a_number_with_no_input_version_behind_it_is_said_to_be_absent(self):
+        self.assertIn("9.9: not in the input, leave it out", self.note("numbers not in the input: ['9.9']"))
+
+    def test_other_reasons_keep_the_plain_note(self):
+        note = self.note("Korean and English numbers differ: ['2']")
+        self.assertNotIn("the input has", note)
+        self.assertEqual(summaries.retry({}, self.TEXT), {})
+
+    def test_a_product_name_without_its_vendor_is_not_jargon(self):
+        summary = {"products": ["IBM API Connect"], "devices": [], "ko": {"names": [], "easy": "API Connect 관리 화면이 뚫릴 수 있습니다!",
+                   "easy_title": "", "easy_action": "", "easy_conditions": []}, "en": {"names": [], "easy": "", "easy_title": "",
+                   "easy_action": "", "easy_conditions": []}}
+        self.assertEqual(summaries.easy_jargon(summary), [])
+        summary["ko"]["easy"] = "API 키가 새어 나갈 수 있습니다!"
+        self.assertEqual(summaries.easy_jargon(summary), ["API"])
 
 
 class MonthNameTest(unittest.TestCase):

@@ -191,7 +191,9 @@ EASY_FIELDS = ("easy", "easy_title", "easy_action", "easy_conditions")
 
 def easy_jargon(summary):
     """The banned words in the Easy fields, leaving out the Products' own names ("Perl SQL::Abstract" may stay)."""
-    names = sorted({*summary["products"], *summary["devices"], *summary["ko"]["names"], *summary["en"]["names"]}, key=len, reverse=True)
+    names = {*summary["products"], *summary["devices"], *summary["ko"]["names"], *summary["en"]["names"]}
+    # A name is also said without its vendor ("API Connect" for "IBM API Connect"), when two words or more are left.
+    names = sorted(names | {n.split(" ", 1)[1] for n in names if n.count(" ") >= 2}, key=len, reverse=True)
     found = set()
     for lang in ("ko", "en"):
         for field in EASY_FIELDS:
@@ -364,7 +366,7 @@ def summarize_now(incident, claude, http_get, stamp):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through."""
     text, seen = summary_input(incident, http_get), basis(incident)
     try:
-        reply = claude.messages.create(**params(text, **retry(incident)))
+        reply = claude.messages.create(**params(text, **retry(incident, text)))
     except anthropic.APIStatusError as err:
         # Too long for this request alone: a counted try, or it blocks every later one each cycle. Any other 400 may be
         # the same for every request (a parameter the API stopped accepting), so it stops the cycle and costs no try.
@@ -407,8 +409,8 @@ def failed(incident, reason):
     tries = incident.get("summary_error", {}).get("tries", 0) + 1
     # final: no more tries, so the page stops saying a Summary is coming (spec story 24).
     # with_reason: the next try carries this reason (retry()); revive() leaves such an error alone.
-    capped = {"capped": True} if incident.get("summary_error", {}).get("capped") else {}  # revive() only once
-    incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True} | capped | ({"final": True} if tries >= MAX_TRIES else {})
+    once = {k: True for k in ("capped", "hinted") if incident.get("summary_error", {}).get(k)}  # revive() only once each
+    incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True} | once | ({"final": True} if tries >= MAX_TRIES else {})
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):
@@ -420,7 +422,7 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):
     if not requests:
         return None
     batch = claude.messages.batches.create(requests=[
-        Request(custom_id=cid, params=params(r["input"], ttl="1h", **retry(by_id[r["incident"]]))) for cid, r in requests.items()])
+        Request(custom_id=cid, params=params(r["input"], ttl="1h", **retry(by_id[r["incident"]], r["input"]))) for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
 
 
@@ -530,16 +532,27 @@ def save_lines(incident, reply, cves):
         summary[lang]["cve_lines"].sort(key=lambda line: order.get(line["cve"], len(order)))
 
 
-def retry(incident):
+def retry(incident, text=""):
     """What the last rejected try of this Incident got wrong, for the next request (owner, 2026-11-10: three blind tries
     failed the same way; Netpbm's "10.86.51" kept coming back as "10.86"). The note is sent beside the input, never
-    inside it: a reply is checked against the input alone, so a number named here does not become allowed."""
+    inside it: a reply is checked against the input alone, so a number named here does not become allowed.
+    A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
+    10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact)."""
     reason = incident.get("summary_error", {}).get("reason", "")
     if not reason:
         return {}
     note = (f"Your previous reply for this Incident was rejected: {reason}. Write every number and version exactly as the"
             " input writes it: never shorten or round one (not 10.86 for 10.86.51, not 4.2 for 4.2.16), never add one the"
             " input does not have, and use the same numbers in Korean and English.")
+    bad = re.match(r"numbers not in the input: \[(.*)\]$", reason)
+    if bad:
+        known = sorted(numbers(text), key=lambda v: [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", v)])
+        lines = []
+        for token in re.findall(r"'([^']*)'", bad[1]):
+            behind = [k for k in known if k.startswith(f"{token}.")][:6]
+            lines.append(f"- {token}: the input has {', '.join(behind)}; write one of them exactly, or the range as the input"
+                         " writes it" if behind else f"- {token}: not in the input, leave it out")
+        note += " For each rejected number:\n" + "\n".join(lines)
     return {"note": note} | ({"max_tokens": MAX_TOKENS_RETRY} if reason.startswith("stop_reason max_tokens") else {})
 
 
@@ -549,9 +562,12 @@ def revive(incident):
     error = incident.get("summary_error") or {}
     # Owner, 2026-11-10: an Incident with more CVEs than CVE_LINES_MAX given up before the cap gets one more round too.
     capped = len(incident.get("cves") or []) > CVE_LINES_MAX and not error.get("capped")
-    if not error.get("final") or error.get("with_reason") and not capped:
+    # ...and so does one given up over a number before retries named the input's exact versions (retry()), once.
+    hinted = error.get("reason", "").startswith("numbers not in the input") and not error.get("hinted")
+    if not error.get("final") or error.get("with_reason") and not capped and not hinted:
         return False
-    incident["summary_error"] = {"tries": 0, "reason": error.get("reason", ""), "with_reason": True} | ({"capped": True} if capped else {})
+    incident["summary_error"] = ({"tries": 0, "reason": error.get("reason", ""), "with_reason": True, "hinted": True}
+                                 | ({"capped": True} if capped or error.get("capped") else {}))
     return True
 
 
