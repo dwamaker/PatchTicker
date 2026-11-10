@@ -244,3 +244,67 @@ test('the edge cache keeps 200, 301, 302, 404 and 410 answers, never a 503', asy
   }
   assert.deepEqual(stored, [200, 301, 302, 404, 410]);
 });
+
+// HEAD (link checkers, feed validators, preview bots): every entry file answers it as GET does, without the body.
+// Without a HEAD handler Pages served index.html for it: 200, text/html, for a feed, a sitemap or an unknown slug.
+const entry = async (path) => (await import(`../functions/${path}`));
+const context = (url, method, docs, params = {}) => ({ request: new Request(url, { method }), env: { DATA: bucket(docs) }, params, waitUntil: () => {} });
+async function headLikeGet(path, url, docs, params) {
+  const fn = await entry(path);
+  const get = await fn.onRequestGet(context(url, 'GET', docs, params));
+  const head = await fn.onRequestHead(context(url, 'HEAD', docs, params));
+  assert.equal(head.status, get.status, url);
+  assert.deepEqual([...head.headers], [...get.headers], url);
+  assert.equal(await head.text(), '', url);
+  return get;
+}
+
+test('HEAD answers as GET does, without the body, on every function', async () => {
+  const today = new Date().toISOString(); // the entry files render at the real time
+  const live = { ...SSHOLE, first_seen: today };
+  const feed = { 'board/feed.json': { incidents: [live] } };
+  for (const [path, url] of [['feed.xml.js', 'https://patchticker.com/feed.xml'], ['en/feed.xml.js', 'https://patchticker.com/en/feed.xml']]) {
+    const get = await headLikeGet(path, url, feed);
+    assert.equal(get.status, 200);
+    assert.match(get.headers.get('content-type'), /xml/);
+  }
+  const sitemap = await headLikeGet('sitemaps/[name].js', 'https://patchticker.com/sitemaps/incidents-0.xml',
+    { 'sitemap.json': { pages: { 'CVE-2026-123158': { first_seen: today, changed: today } } } }, { name: 'incidents-0.xml' });
+  assert.equal(sitemap.status, 200);
+  assert.match(await sitemap.text(), /CVE-2026-123158/);
+  const docs = { 'pages/CVE-2026-123158.json': live, 'pages/CVE-2026-1002.json': { ...MOVED, moved: today } };
+  for (const [path, url, name, status] of [
+    ['i/[slug].js', 'https://patchticker.com/i/CVE-2026-123158', 'CVE-2026-123158', 200],
+    ['en/i/[slug].js', 'https://patchticker.com/en/i/CVE-2026-123158', 'CVE-2026-123158', 200],
+    ['i/[slug].js', 'https://patchticker.com/i/CVE-2026-99999', 'CVE-2026-99999', 404],
+    ['i/[slug].js', 'https://patchticker.com/i/CVE-2026-1002', 'CVE-2026-1002', 301],
+  ]) assert.equal((await headLikeGet(path, url, docs, { slug: name })).status, status, url);
+  assert.equal((await headLikeGet('feed.xml.js', 'https://patchticker.com/feed.xml', {})).status, 503); // Retry-After too
+});
+
+test('a HEAD shares the cache entry of a GET, and never stores a bodiless answer', async () => {
+  // As the Workers Cache API: put() refuses anything but GET, match() finds GETs only.
+  const store = new Map();
+  const saved = globalThis.caches;
+  globalThis.caches = { default: {
+    match: async (req) => (req.method === 'GET' ? store.get(req.url)?.clone() : undefined),
+    put: async (req, res) => { if (req.method !== 'GET') throw new TypeError('Cannot cache a non-GET request'); store.set(req.url, res); },
+  } };
+  try {
+    let renders = 0;
+    const render = async () => { renders += 1; return new Response('<rss/>', { headers: { 'content-type': 'application/rss+xml' } }); };
+    const ask = async (method) => {
+      const pending = [];
+      const res = await cached({ request: new Request('https://patchticker.com/feed.xml', { method }), waitUntil: (p) => pending.push(p) }, render);
+      await Promise.all(pending);
+      return res;
+    };
+    assert.equal(await (await ask('HEAD')).text(), '');
+    assert.equal(await (await ask('GET')).text(), '<rss/>'); // what the HEAD stored is the full answer
+    assert.equal(await (await ask('HEAD')).text(), '');
+    assert.equal(renders, 1);
+    assert.equal((await ask('HEAD')).headers.get('content-type'), 'application/rss+xml');
+  } finally {
+    globalThis.caches = saved;
+  }
+});

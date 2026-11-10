@@ -31,14 +31,19 @@ export const unavailable = (what) => new Response(`${what} is unavailable right 
 
 // The edge cache in front of a renderer, so a burst of requests (crawlers on expired pages too) reads R2 once per
 // cache time. Each answer's cache-control says how long; a 503 is never kept, so the next request tries R2 again.
+// A HEAD gets GET's status and headers without the body, read from and kept under GET's entry (the Cache API keeps GETs
+// only), so every entry file exports the same handler as onRequestGet and onRequestHead.
 const CACHEABLE = new Set([200, 301, 302, 404, 410]);
 export async function cached(context, render) {
+  const head = context.request.method === 'HEAD';
+  const key = head ? new Request(context.request, { method: 'GET' }) : context.request;
   const cache = globalThis.caches?.default;
-  const hit = cache && await cache.match(context.request);
-  if (hit) return hit;
-  const res = await render();
-  if (cache && CACHEABLE.has(res.status)) context.waitUntil(cache.put(context.request, res.clone()));
-  return res;
+  let res = cache && await cache.match(key);
+  if (!res) {
+    res = await render();
+    if (cache && CACHEABLE.has(res.status)) context.waitUntil(cache.put(key, head ? res : res.clone()));
+  }
+  return head ? new Response(null, res) : res;
 }
 
 // The Board's words (web/app.mjs TEXT) for what to do.
