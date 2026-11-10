@@ -11,11 +11,11 @@ from collector import (curators, cve_lines, cvelist, discord, github, hn, kev, k
                        summaries, summary_input)
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
-                                 search_worthy, stamp_ago, summary_failures, unknown_vendors)
+                                 search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
-# Highlights as filterBoard picks them (HIGHLIGHTS, HIGHLIGHTS_MAX and highlightCount in web/board.mjs).
+# Highlights as filterBoard picks them (HIGHLIGHTS, HIGHLIGHTS_MAX and pickHighlights in web/board.mjs).
 WHOLE_NEWEST = 100
 HIGHLIGHTS = 10
 HIGHLIGHTS_MAX = 20
@@ -24,6 +24,25 @@ FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json
 # store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
 PAGE_DAYS = 90
 MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
+
+
+def highlights(views, since):
+    """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs;
+    tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above published
+    since `since`, by score and newest first among equals, every exploited one (owner, 11-10), then the best-scored
+    well-known one of each product (owner, 11-11) in the order of collector/well_known.json (known_rank; one on no list
+    last, by score), then the rest; HIGHLIGHTS..HIGHLIGHTS_MAX in all."""
+    top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice"),
+                 key=lambda v: (highlight_score(v), published_at(v)), reverse=True)
+    known, labels = [], set()
+    for v in top:
+        if well_known(v) and v["known"] not in labels:
+            labels.add(v["known"])
+            known.append(v)
+    # A stable sort: rows of equal rank (those on no list) stay by score.
+    lead = [v for v in top if is_exploited(v)] + sorted(known, key=lambda v: v.get("known_rank", float("inf")))
+    chosen = {v["id"] for v in lead}
+    return (lead + [v for v in top if v["id"] not in chosen])[:min(HIGHLIGHTS_MAX, max(HIGHLIGHTS, len(lead)))]
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
@@ -127,14 +146,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # fetches recent.json only to open a row or search. The newest and the week's Highlights (filterBoard) stay whole.
     # The Highlight window is seven days by publish time (filterBoard), the same cut as recent_since.
     shown = sorted((i for i in week if on_board(i)), key=published_at, reverse=True)
-    # Newest first among equal scores, as filterBoard picks them.
-    top = sorted((i for i in shown if published_at(i) >= recent_since and risk_level(i) != "notice"),
-                 key=lambda i: (highlight_score(i), published_at(i)), reverse=True)
-    # Every exploited candidate, within HIGHLIGHTS..HIGHLIGHTS_MAX (owner, 11-10); exploited ones lead the order.
-    count = min(HIGHLIGHTS_MAX, max(HIGHLIGHTS, sum(1 for i in top if is_exploited(i))))
-    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + top[:count]}
+    views = {i["id"]: rows_view(i) for i in week}  # what the page reads, `known` included
+    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + highlights(views.values(), recent_since)}
     store.write("board/rows.json", {"since": recent_since, "status": status,
-                                    "incidents": [board_view(i) if i["id"] in whole else rows_view(i) for i in week]})
+                                    "incidents": [board_view(i) if i["id"] in whole else views[i["id"]] for i in week]})
     newest = sorted((i for i in incidents if search_worthy(i)), key=published_at, reverse=True)
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:

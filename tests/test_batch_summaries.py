@@ -19,7 +19,7 @@ def plain(name):
               "mitigation": "", "easy": f"Someone could misuse {name}.", "easy_title": f"{name} risk found", "easy_action": f"Update {name}.", "names": [name], "command_for": "", "stopgap_then": "", "cve_lines": []}
     return {"ko": fields | {"title": f"{name} 취약점", "summary": f"{name}의 취약점입니다."}, "en": fields,
             "products": [name], "lead": "", "fixed": "", "command": "", "stopgap": "", "devices": [], "fixes": [], "incident": True, "platforms": [], "stopgap_file": "", "titles_ko": [], "exploited": False,
-            "exploited_source": "", "poc_public": False, "library": False}
+            "exploited_source": "", "poc_public": False, "library": False, "widely_used": False}
 
 
 class BatchSummaryTest(unittest.TestCase):

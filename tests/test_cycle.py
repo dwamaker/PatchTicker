@@ -190,6 +190,31 @@ class CycleTest(unittest.TestCase):
             self.assertNotIn("rows", by_id[i["id"]], i["id"])
         self.assertTrue(by_id["CVE-2026-7200"]["rows"])  # the twelfth candidate, not exploited
 
+    def test_a_well_known_highlight_stays_whole_over_better_scored_rows(self):
+        # Owner, 11-11: a CVSS 9.6 Zoom Workplace flaw with one Mention ranked 265th of the week.
+        zoom = incident("CVE-2026-7300", "x", "2026-11-06T00:00:00Z") | {
+            "cvss": 9.6, "products": [{"id": "zoom_communications:zoom_workplace", "name": "Zoom Workplace"}]}
+        busy = [incident(f"CVE-2026-74{n:02d}", "x", f"2026-11-06T{n:02d}:00:00Z") | {
+            "cvss": 9.8, "mentions": [{"kind": "advisory", "url": f"https://a/{n}/{k}"} for k in range(10)]} for n in range(10)]
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [zoom, *busy]})
+        self.store.write("index.json", {"months": ["2026-11"]})
+        with patch.object(cycle, "WHOLE_NEWEST", 0):
+            run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        by_id = {i["id"]: i for i in self.store.read("board/rows.json")["incidents"]}
+        self.assertEqual(by_id["CVE-2026-7300"]["known"], "Zoom")
+        self.assertNotIn("rows", by_id["CVE-2026-7300"])
+        self.assertTrue(by_id["CVE-2026-7400"]["rows"])  # the oldest of ten better-scored rows: the eleventh
+
+    def test_the_highlights_match_the_page_on_the_shared_case(self):
+        # tests/board.test.mjs checks filterBoard on the same case.
+        case = json.loads((Path(__file__).parent / "fixtures" / "board" / "highlights-case.json").read_text(encoding="utf-8"))
+        since = "2026-11-04T00:00:00Z"  # seven days before case["now"]
+        self.assertEqual([i["id"] for i in cycle.highlights(case["incidents"], since)], case["expected"])
+        plain = [{k: v for k, v in i.items() if k != "known"} for i in case["incidents"]]
+        self.assertEqual([i["id"] for i in cycle.highlights(plain, since)], case["expected_without_known"])
+        self.assertEqual([i["id"] for i in cycle.highlights(case["capped"]["incidents"], since)], case["capped"]["expected"])
+
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
 

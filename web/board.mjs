@@ -108,7 +108,7 @@ export function matchProducts(products, text, label = (p) => p.name) {
 // details are still right.
 const rowShows = (i) => JSON.stringify([i.summary?.at, i.kev, i.kev_date, i.cvss, i.published, i.mentions?.length,
   Math.max(0, ...(i.mentions || []).map((m) => m.points || 0)), i.summary_error?.final, (i.products || []).map((p) => p.id),
-  i.quick_title?.ko?.title, i.quick_title?.en?.title]);
+  i.quick_title?.ko?.title, i.quick_title?.en?.title, i.known, i.known_rank]);
 // week: fresh is the full week (board/recent.json), the truth for row views; one it does not hold left the week or was
 // merged into another Incident, and nothing could ever fill it, so it goes. Full Incidents beyond it (older months) stay.
 export function mergeIncidents(current, fresh, week = false) {
@@ -142,8 +142,24 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 export const HIGHLIGHTS = 10;
 export const HIGHLIGHTS_MAX = 20;
 export const PINNED = 4;
-// How many of the score-sorted candidates are Highlights; exploited ones score 100 more, so they lead. Also collector/cycle.py.
-export const highlightCount = (candidates) => Math.min(HIGHLIGHTS_MAX, Math.max(HIGHLIGHTS, candidates.filter(isExploited).length));
+// Well known (owner, 11-11: a CVSS 9.6 Zoom flaw ranked 265th, as nothing in the score says a product is widely used):
+// the collector stamps `known`, the product's label from collector/well_known.json or, for a product on no list that the
+// Summary calls widely used, its name. Such a row at 최고 that is not exploited (those lead anyway) is lifted.
+export const wellKnown = (i) => Boolean(i.known) && riskLevel(i) === 'highest' && !isExploited(i);
+// The Highlights of the score-sorted candidates: every exploited one, then the best-scored well-known one of each product
+// (the others stay ordinary rows), then the rest by score. The well-known ones go in the order of their labels in
+// collector/well_known.json (known_rank; owner, 11-11: at the cap, a talked-about SAP NetWeaver row cut Zoom), and a
+// label on no list after them all, by score. Also collector/cycle.py (highlights), kept in step by
+// tests/fixtures/board/highlights-case.json.
+const knownRank = (i) => i.known_rank ?? Number.MAX_SAFE_INTEGER;
+export function pickHighlights(candidates) {
+  const labels = new Set();
+  const lead = [...candidates.filter(isExploited),
+    ...candidates.filter((i) => wellKnown(i) && !labels.has(i.known) && labels.add(i.known))
+      .sort((a, b) => knownRank(a) - knownRank(b))]; // a stable sort: equal ranks stay by score
+  const rest = candidates.filter((i) => !lead.includes(i));
+  return [...lead, ...rest].slice(0, Math.min(HIGHLIGHTS_MAX, Math.max(HIGHLIGHTS, lead.length)));
+}
 // Owner, 11-10: a release counts a record, an advisory and a write-up per CVE, so uncapped FFmpeg (331 Mentions), Chrome,
 // IBM API Connect and FreeRDP took all four pins over 15 exploited Incidents. Also in collector/incidents.py.
 const MENTION_CAP = 10;
@@ -291,7 +307,7 @@ export function aliasesUsed(query) {
     .map((word) => ({ word, names: SEARCH_ALIASES[word].filter((n, k, all) => all.findIndex((x) => key(x) === key(n)) === k) }));
 }
 // Search: every word of the query must appear somewhere in the Incident's text, Summary, CVE IDs or Products.
-// Returns the visible Incidents newest first, and the Highlights (highlightCount) of those published (else first seen) in
+// Returns the visible Incidents newest first, and the Highlights (pickHighlights) of those published (else first seen) in
 // the seven days before `now`.
 // Picks: any picked Product and any picked OS, both when both kinds are picked (owner, 11-10: OpenSSH with Linux meant
 // OpenSSH on Linux, not everything on Linux too).
@@ -330,7 +346,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
   const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
     .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
-  const highlights = candidates.slice(0, highlightCount(candidates));
+  const highlights = pickHighlights(candidates);
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
 }
 

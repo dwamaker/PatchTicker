@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 
-from collector.incidents import (VENDORS, highlight_score, is_wordpress_plugin, product_list, risk_level, rows_view, search_worthy,
+from collector.incidents import (VENDORS, board_view, highlight_score, known_label, is_wordpress_plugin, product_list, risk_level, rows_view, search_worthy,
                                  summary_failures, unknown_vendors)
 from collector.nvd import display_name
 
@@ -145,3 +145,60 @@ class RowsViewTest(unittest.TestCase):
                 self.assertTrue(all(set(m) <= {"kind", "points"} for m in row["mentions"]))
                 for dropped in ("lead", "fixed", "command", "stopgap", "stopgap_file", "fixes", "titles_ko"):
                     self.assertNotIn(dropped, row.get("summary", {}))
+
+
+class WellKnownTest(unittest.TestCase):
+    """known_label: a Product on collector/well_known.json by id pattern or by name, else a Summary's widely_used."""
+
+    def known(self, cna=(), /, **summary):
+        """cna: the record's Products ({id, name}); summary: the Summary's fields."""
+        return known_label({"products": list(cna), **({"summary": summary} if summary else {})})
+
+    def test_an_id_matches_exactly_or_by_a_wildcard(self):
+        self.assertEqual(self.known([{"id": "openbsd:openssh", "name": "Portable"}]), "OpenSSH")
+        self.assertEqual(self.known([{"id": "zoom_communications:zoom_workplace_desktop", "name": "Workplace App"}]), "Zoom")
+        self.assertIsNone(self.known([{"id": "acme:openssh_wrapper", "name": "Wrapper"}]))
+
+    def test_a_name_matches_only_when_equal_never_when_it_contains_the_label(self):
+        self.assertEqual(self.known(products=["PHP"]), "PHP")
+        self.assertEqual(self.known(products=["php"]), "PHP")  # case does not matter
+        for name in ("phpMyAdmin Helper", "Simple CRUD using PHP", "Stripe for WooCommerce", "GitLab Runner"):
+            with self.subTest(name):
+                self.assertIsNone(self.known(products=[name]))
+        self.assertEqual(self.known(products=["phpMyAdmin"]), "phpMyAdmin")  # its own label, not PHP
+
+    def test_a_leading_vendor_word_drops_out(self):
+        # The id's vendor part ("acme corp"), or a spelling in web/vendors.json ("Google").
+        self.assertEqual(self.known([{"id": "acme_corp:media_server", "name": "Acme Corp Jellyfin"}]), "Jellyfin")
+        self.assertEqual(self.known(products=["Google Brotli"]), "Brotli")
+
+    def test_an_alias_names_the_label(self):
+        self.assertEqual(self.known([{"id": "x:y", "name": "VS Code"}]), "Visual Studio Code")
+        self.assertEqual(self.known(products=["카카오톡"]), "KakaoTalk")
+
+    def test_an_operating_system_tag_is_never_matched(self):
+        self.assertIsNone(self.known(products=["Windows"], platforms=["Windows"]))
+
+    def test_a_summary_calling_it_widely_used_names_its_first_product(self):
+        widget = [{"id": "acme:widget", "name": "Widget"}]
+        self.assertEqual(self.known(widget, products=["Acme Widget"], platforms=["Linux"], widely_used=True), "Acme Widget")
+        self.assertIsNone(self.known(widget, products=["Acme Widget"], widely_used=False))
+        # A Product on the list keeps its label.
+        self.assertEqual(self.known([{"id": "google:chrome", "name": "Chrome"}], widely_used=True), "Chrome")
+
+    def test_row_and_board_views_carry_the_label_and_omit_it_when_none(self):
+        base = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-11-10T00:00:00Z",
+                "mentions": [{"kind": "cve_record", "url": "u"}], "brief": {"text": "x", "lead": "u"}}
+        zoom = base | {"products": [{"id": "zoom_communications:zoom_workplace", "name": "Zoom Workplace"}]}
+        chrome = base | {"products": [{"id": "google:chrome", "name": "Chrome"}]}
+        widget = base | {"products": [{"id": "acme:widget", "name": "Widget"}], "summary": {"widely_used": True}}
+        for view in (rows_view, board_view):
+            with self.subTest(view.__name__):
+                self.assertEqual(view(zoom)["known"], "Zoom")
+                # The label's place in the file is its priority (owner, 11-11): Chrome is listed before Zoom.
+                self.assertLess(view(chrome)["known_rank"], view(zoom)["known_rank"])
+                self.assertEqual(view(widget)["known"], "Widget")
+                self.assertNotIn("known_rank", view(widget))  # on no list: after every listed label
+                self.assertNotIn("known", view(base))
+                self.assertNotIn("known_rank", view(base))
+                self.assertNotIn("known", zoom)  # worked out at write time, never stored

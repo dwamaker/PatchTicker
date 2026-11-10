@@ -36,7 +36,11 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주요 사건):
-(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09): every exploited one, at least ten and at most twenty in all (owner, 2026-11-10). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), shown in the visitor's sort order (newest first by default, 2026-11-08); 더 보기 appends the rest below the first four,
+(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09): every exploited one, then one Incident at 최고 for each well-known product (the best-scored; owner, 2026-11-11), in
+the order of the hand-kept list, so its order is the priority (a product moved up is promoted), then
+the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). A product is well known when it is
+on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
+owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), shown in the visitor's sort order (newest first by default, 2026-11-08); 더 보기 appends the rest below the first four,
 which keep their place (2026-11-09); the rest stay in the list below.
 _Avoid_: featured, top, hot, pinned item
 

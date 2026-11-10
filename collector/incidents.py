@@ -9,6 +9,7 @@ An Incident's "published" is the earliest post time among the groups that could 
 visitor sees when the news first broke, not when a cycle noticed it ("first_seen").
 """
 
+import fnmatch
 import hashlib
 import json
 import re
@@ -43,7 +44,17 @@ def board_view(incident):
     view = {k: incident[k] for k in PAGE_FIELDS if k in incident}
     if incident.get("summary_error", {}).get("final"):
         view["summary_error"] = {"final": True}
-    return view
+    return view | known_field(incident)
+
+
+def known_field(incident):
+    """`known` for the page (wellKnown in web/board.mjs), worked out at each write and never stored, so an edit of
+    collector/well_known.json reaches the week's rows at the next cycle. known_rank: the label's place in that file, its
+    priority among Highlights (owner, 11-11); none for a label on no list (a Summary's widely_used)."""
+    label = known_label(incident)
+    if not label:
+        return {}
+    return {"known": label} | ({"known_rank": LABELS.index(label)} if label in WELL_KNOWN else {})
 
 
 ROW_FIELDS = ("id", "cves", "first_seen", "published", "cvss", "kev", "kev_date", "products")
@@ -71,7 +82,7 @@ def rows_view(incident):
             text = summary.get(lang) or {}
             view["summary"][lang] = {k: text[k] for k in ("title", "easy_title", "easy", "names") if k in text} | {
                 "summary": "" if text.get("easy") else text.get("summary", ""), "conditions": [], "mitigation": ""}
-    return view
+    return view | known_field(incident)
 
 
 PICKER_DAYS = 90  # the picker lists Products of these days (board/products.json), as productList in board.mjs does
@@ -217,6 +228,42 @@ def product_key(name):
     key = SUFFIX.sub("", plain).strip() or plain
     vendor = next((v for v in LED_BY if key.startswith(v) and len(key) > len(v)), None)
     return key[len(vendor):] if vendor else key
+
+
+# Well-known Products (Highlight, CONTEXT.md; owner, 11-11): kind -> label -> {"ids": fnmatch patterns, "names": aliases}.
+# How to add one: docs/agents/vendors.md.
+WELL_KNOWN = {label: entry for kind in json.loads((Path(__file__).parent / "well_known.json").read_text(encoding="utf-8")).values()
+              for label, entry in kind.items()}
+LABELS = list(WELL_KNOWN)
+# One pattern, one group per label in file order, so a Product id is matched once, not once per pattern.
+KNOWN_IDS = re.compile("|".join(f"({'|'.join(fnmatch.translate(p.lower()) for p in e['ids']) or '(?!)'})" for e in WELL_KNOWN.values()))
+# Lowercase name -> label; reversed, so a name listed twice belongs to the earlier label, as an id does.
+KNOWN_NAMES = {n.lower(): label for label, e in reversed(WELL_KNOWN.items()) for n in (label, *e.get("names", []))}
+
+
+def known_label(incident):
+    """The label of the first Product on collector/well_known.json: its id matches a pattern, or its English name equals
+    the label or an alias, as it is or without a leading vendor word (the id's vendor, or a web/vendors.json spelling:
+    "Google Chrome" is "Chrome"); equal only, so "PHP" is not "phpMyAdmin". Operating-system tags never count. On no
+    list, a Summary that calls the product widely used names its first Product. None otherwise."""
+    products = [p for p in products_of(incident, "en") if not p["id"].startswith("os:")]
+    for p in products:
+        pid, name = p["id"].lower(), p["name"].lower()
+        found = KNOWN_IDS.match(pid)
+        if found:
+            return LABELS[found.lastindex - 1]
+        vendors = LED_BY + ([] if pid.startswith("name:") else [pid.split(":")[0].replace("_", " ") + " "])
+        for form in (name, *(name[len(v):] for v in vendors if name.startswith(v))):
+            if form in KNOWN_NAMES:
+                return KNOWN_NAMES[form]
+    if products and (incident.get("summary") or {}).get("widely_used") is True:
+        return products[0]["name"]
+    return None
+
+
+def well_known(view):
+    """A port of wellKnown in web/board.mjs: a view stamped `known`, at 최고 and not exploited."""
+    return bool(view.get("known")) and risk_level(view) == "highest" and not is_exploited(view)
 
 
 def unknown_vendors(incidents, since):

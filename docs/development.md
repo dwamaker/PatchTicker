@@ -65,9 +65,17 @@ only what a row, the filters, folds and Highlights read, and the collector's `wp
 week's Highlights stay whole (ports kept in step by `tests/fixtures/board/rows-case.json`). The page fetches
 `board/recent.json` only to open a row view or to search.
 
-Highlights (of the last seven days: every exploited one, at least ten and at most twenty, `highlightCount`; owner,
-11-10) are scored in the page (`highlightScore` in
-`web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS (an exploited Incident with no score counts as 9.0, the floor of its 최고 band) and Mention count (up to ten, so a many-CVE release does not outrank exploited Incidents); among equal scores the newer is first. Curator issues add 25 each, two at most however many issues cite the Incident; one issue cites an Incident once (by its link).
+Highlights (of the last seven days: every exploited one, then the best-scored well-known one of each product, then the
+rest by score, at least ten and at most twenty; `pickHighlights`, owner 11-10 and 11-11) are scored in the page
+(`highlightScore` in `web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS (an exploited Incident with no score counts as 9.0, the floor of its 최고 band) and Mention count (up to ten, so a many-CVE release does not outrank exploited Incidents); among equal scores the newer is first. Curator issues add 25 each, two at most however many issues cite the Incident; one issue cites an Incident once (by its link).
+Well known (`wellKnown`): a row at 최고, not exploited, that the collector stamped `known` on both its row and board
+views, worked out at each write and never stored (`known_label` in `collector/incidents.py`): the label of its first
+Product on `collector/well_known.json`, else, when its Summary says `widely_used`, that Product's English name; and
+`known_rank`, the label's place in that file, which orders the well-known Highlights (none for a label on no list,
+which comes last). The
+collector picks the same Highlights (`highlights` in `collector/cycle.py`, kept in step by
+`tests/fixtures/board/highlights-case.json`) so each is whole in `board/rows.json`. How to add a product:
+`docs/agents/vendors.md`.
 Curator feeds default to tl;dr sec and the Risky Business News newsletter (`news.risky.biz/rss/`; the `risky.biz` feed is the podcast, with no text to cite from); `VR_CURATOR_FEEDS` overrides them.
 Security news sites (BleepingComputer and SecurityWeek, `collector/news.py`) start Incidents like HN stories: a story,
 or an HN story linking to one of `incidents.NEWS_HOSTS`, is summarized at once whatever its points, and a CVE-less one

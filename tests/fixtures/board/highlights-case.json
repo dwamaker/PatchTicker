@@ -1,0 +1,74 @@
+{
+  "note": "filterBoard (web/board.mjs) and highlights (collector/cycle.py) must pick these Highlights in this order: exploited by score, then one well-known 최고 row per product (known, its best-scored row), ordered by the label's place in collector/well_known.json (known_rank; unlisted labels last, by score), then the rest by score, ten here. expected_without_known is the pick once every known is removed (the rule before 2026-11-11).",
+  "now": "2026-11-11T00:00:00Z",
+  "incidents": [
+    {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-11-10T01:00:00Z", "cvss": 7.8, "kev": true, "known": "Windows", "known_rank": 0,
+     "mentions": [{"kind": "advisory"}, {"kind": "cve_record"}]},
+    {"id": "CVE-2026-2", "cves": ["CVE-2026-2"], "first_seen": "2026-11-10T02:00:00Z", "cvss": 9.8, "kev": true,
+     "mentions": [{"kind": "cve_record"}]},
+    {"id": "CVE-2026-3", "cves": ["CVE-2026-3"], "first_seen": "2026-11-10T03:00:00Z", "cvss": 9.6, "known": "Zoom", "known_rank": 43,
+     "mentions": [{"kind": "cve_record"}]},
+    {"id": "CVE-2026-4", "cves": ["CVE-2026-4"], "first_seen": "2026-11-10T04:00:00Z", "cvss": 9.8, "known": "Zoom", "known_rank": 43,
+     "mentions": [{"kind": "cve_record"}]},
+    {"id": "CVE-2026-5", "cves": ["CVE-2026-5"], "first_seen": "2026-11-10T05:00:00Z", "cvss": 9.0, "known": "Chrome", "known_rank": 11,
+     "mentions": [{"kind": "cve_record"}]},
+    {"id": "CVE-2026-6", "cves": ["CVE-2026-6"], "first_seen": "2026-11-10T06:00:00Z", "cvss": 8.8, "known": "Edge", "known_rank": 13,
+     "mentions": [{"kind": "advisory"}, {"kind": "cve_record"}]},
+    {"id": "CVE-2026-7", "cves": ["CVE-2026-7"], "first_seen": "2026-11-10T07:00:00Z", "cvss": 5.0, "known": "Firefox", "known_rank": 12,
+     "mentions": [{"kind": "cve_record"}]},
+    {"id": "CVE-2026-11", "cves": ["CVE-2026-11"], "first_seen": "2026-11-10T11:00:00Z", "cvss": 9.8, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+    {"id": "CVE-2026-12", "cves": ["CVE-2026-12"], "first_seen": "2026-11-10T12:00:00Z", "cvss": 9.7, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+    {"id": "CVE-2026-13", "cves": ["CVE-2026-13"], "first_seen": "2026-11-10T13:00:00Z", "cvss": 9.6, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+    {"id": "CVE-2026-14", "cves": ["CVE-2026-14"], "first_seen": "2026-11-10T14:00:00Z", "cvss": 9.5, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+    {"id": "CVE-2026-15", "cves": ["CVE-2026-15"], "first_seen": "2026-11-10T15:00:00Z", "cvss": 9.4, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+    {"id": "CVE-2026-16", "cves": ["CVE-2026-16"], "first_seen": "2026-11-10T16:00:00Z", "cvss": 9.3, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+    {"id": "CVE-2026-17", "cves": ["CVE-2026-17"], "first_seen": "2026-11-10T17:00:00Z", "cvss": 9.2, "mentions": [
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
+      {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]}
+  ],
+  "expected": ["CVE-2026-2", "CVE-2026-1", "CVE-2026-5", "CVE-2026-4", "CVE-2026-11", "CVE-2026-12", "CVE-2026-13",
+               "CVE-2026-14", "CVE-2026-15", "CVE-2026-16"],
+  "expected_without_known": ["CVE-2026-2", "CVE-2026-1", "CVE-2026-11", "CVE-2026-12", "CVE-2026-13", "CVE-2026-14",
+                             "CVE-2026-15", "CVE-2026-16", "CVE-2026-17", "CVE-2026-4"],
+  "capped_note": "Eighteen exploited rows and four well-known labels: the cap of 20 keeps the labels earliest in collector/well_known.json (known_rank: Chrome, then Zoom, its better-scored row), so SAP NetWeaver and the unlisted Acme Widget are cut though they score higher.",
+  "capped": {
+    "incidents": [
+      {"id": "CVE-2026-101", "cves": ["CVE-2026-101"], "first_seen": "2026-11-09T00:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-102", "cves": ["CVE-2026-102"], "first_seen": "2026-11-09T01:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-103", "cves": ["CVE-2026-103"], "first_seen": "2026-11-09T02:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-104", "cves": ["CVE-2026-104"], "first_seen": "2026-11-09T03:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-105", "cves": ["CVE-2026-105"], "first_seen": "2026-11-09T04:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-106", "cves": ["CVE-2026-106"], "first_seen": "2026-11-09T05:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-107", "cves": ["CVE-2026-107"], "first_seen": "2026-11-09T06:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-108", "cves": ["CVE-2026-108"], "first_seen": "2026-11-09T07:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-109", "cves": ["CVE-2026-109"], "first_seen": "2026-11-09T08:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-110", "cves": ["CVE-2026-110"], "first_seen": "2026-11-09T09:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-111", "cves": ["CVE-2026-111"], "first_seen": "2026-11-09T10:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-112", "cves": ["CVE-2026-112"], "first_seen": "2026-11-09T11:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-113", "cves": ["CVE-2026-113"], "first_seen": "2026-11-09T12:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-114", "cves": ["CVE-2026-114"], "first_seen": "2026-11-09T13:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-115", "cves": ["CVE-2026-115"], "first_seen": "2026-11-09T14:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-116", "cves": ["CVE-2026-116"], "first_seen": "2026-11-09T15:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-117", "cves": ["CVE-2026-117"], "first_seen": "2026-11-09T16:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-118", "cves": ["CVE-2026-118"], "first_seen": "2026-11-09T17:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-201", "cves": ["CVE-2026-201"], "first_seen": "2026-11-10T01:00:00Z", "cvss": 9.8, "known": "SAP NetWeaver", "mentions": [{"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}], "known_rank": 386},
+      {"id": "CVE-2026-202", "cves": ["CVE-2026-202"], "first_seen": "2026-11-10T02:00:00Z", "cvss": 9.9, "known": "Acme Widget", "mentions": [{"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]},
+      {"id": "CVE-2026-203", "cves": ["CVE-2026-203"], "first_seen": "2026-11-10T03:00:00Z", "cvss": 9.6, "known": "Zoom", "mentions": [{"kind": "cve_record"}], "known_rank": 43},
+      {"id": "CVE-2026-204", "cves": ["CVE-2026-204"], "first_seen": "2026-11-10T04:00:00Z", "cvss": 9.8, "known": "Zoom", "mentions": [{"kind": "cve_record"}], "known_rank": 43},
+      {"id": "CVE-2026-205", "cves": ["CVE-2026-205"], "first_seen": "2026-11-10T05:00:00Z", "cvss": 9.0, "known": "Chrome", "mentions": [{"kind": "cve_record"}], "known_rank": 11}
+    ],
+    "expected": ["CVE-2026-118", "CVE-2026-117", "CVE-2026-116", "CVE-2026-115", "CVE-2026-114", "CVE-2026-113", "CVE-2026-112", "CVE-2026-111", "CVE-2026-110", "CVE-2026-109", "CVE-2026-108", "CVE-2026-107", "CVE-2026-106", "CVE-2026-105", "CVE-2026-104", "CVE-2026-103", "CVE-2026-102", "CVE-2026-101", "CVE-2026-205", "CVE-2026-204"]
+  }
+}

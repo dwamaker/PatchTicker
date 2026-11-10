@@ -385,6 +385,7 @@
    },
    "row": {
     "id": "CVE-2026-9004",
+    "known": "Windows", "known_rank": 0,
     "cves": [
      "CVE-2026-9004",
      "CVE-2026-9005",
@@ -662,6 +663,7 @@
    },
    "row": {
     "id": "CVE-2026-9010",
+    "known": "WordPress", "known_rank": 341,
     "cves": [
      "CVE-2026-9010"
     ],

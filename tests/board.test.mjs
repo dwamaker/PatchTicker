@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, linkedPlace } from '../web/board.mjs';
+import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, linkedPlace, wellKnown } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -482,6 +482,41 @@ test('Highlights hold every exploited candidate, at least ten and at most twenty
   assert.equal(chosen(week(2, 4)).length, 6);
 });
 
+// Owner, 11-11: a CVSS 9.6 Zoom Workplace flaw ranked 265th of 890; nothing in the score says a product is widely used.
+// The collector stamps `known` (collector/well_known.json, or a Summary's widely_used); collector/cycle.py picks the same
+// Highlights from tests/fixtures/board/highlights-case.json in tests/test_cycle.py.
+test('Highlights take every exploited row, then one well-known 최고 row per product, then the rest by score', () => {
+  const kase = JSON.parse(readFileSync(new URL('./fixtures/board/highlights-case.json', import.meta.url), 'utf8'));
+  const now = Date.parse(kase.now);
+  assert.deepEqual(ids(filterBoard(kase.incidents, [], '', now).highlights), kase.expected);
+  const plain = kase.incidents.map(({ known, ...i }) => i);
+  assert.deepEqual(ids(filterBoard(plain, [], '', now).highlights), kase.expected_without_known);
+  // The other Zoom row, the 'high' Edge row and the 'notice' Firefox row stay ordinary rows.
+  assert.equal(filterBoard(kase.incidents, [], '', now).list.length, kase.incidents.length);
+  // At the cap the file's order wins over the score (owner, 11-11: Zoom was cut while SAP NetWeaver stayed).
+  assert.deepEqual(ids(filterBoard(kase.capped.incidents, [], '', now).highlights), kase.capped.expected);
+});
+
+test('a well-known row is one at 최고 that is not exploited; an exploited one counts once, as exploited', () => {
+  const zoom = { ...incident('CVE-2026-901', daysAgo(1)), cvss: 9.6, known: 'Zoom' };
+  assert.equal(wellKnown(zoom), true);
+  assert.equal(wellKnown({ ...zoom, cvss: 7.5 }), false); // 'high'
+  assert.equal(wellKnown({ ...zoom, cvss: 5 }), false); // 'notice'
+  assert.equal(wellKnown({ ...zoom, kev: true }), false); // already first as exploited
+  assert.equal(wellKnown({ ...zoom, known: undefined }), false);
+  const both = { ...zoom, kev: true };
+  assert.deepEqual(ids(filterBoard([both], [], '', NOW).highlights), ['CVE-2026-901']);
+});
+
+test('at most twenty Highlights: exploited rows are kept ahead of well-known ones', () => {
+  const exploited = Array.from({ length: 15 }, (_, n) => ({ ...incident(`CVE-2026-7${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), kev: true }));
+  const known = Array.from({ length: 10 }, (_, n) => ({ ...incident(`CVE-2026-6${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), cvss: 9.8, known: `P${n}` }));
+  const chosen = filterBoard([...known, ...exploited], [], '', NOW).highlights;
+  assert.equal(chosen.length, 20);
+  assert.deepEqual(chosen.slice(0, 15).map(isExploited), Array(15).fill(true));
+  assert.ok(chosen.slice(15).every(wellKnown));
+});
+
 test('a Product keeps its line colour, and Products spread over the lines', () => {
   assert.equal(productLine('openbsd:openssh'), productLine('openbsd:openssh'));
   assert.ok(LINES.includes(productLine('')));
@@ -887,7 +922,8 @@ test('a row view replaces a held full Incident only when what its row shows chan
   for (const changed of [{ ...row, kev: true }, { ...row, summary: { ...row.summary, at: '2026-11-09T00:00:00Z' } },
     { ...row, mentions: [...row.mentions, { kind: 'discussion', points: 120 }] },
     { ...row, mentions: [{ kind: 'advisory', points: 150 }] }, // HN buzz: pinReason and highlightScore read the points
-    { ...row, quick_title: { ko: { title: '새 제목' }, en: { title: 'New title' } } }]) {
+    { ...row, quick_title: { ko: { title: '새 제목' }, en: { title: 'New title' } } },
+    { ...row, known: 'Db2' }, { ...row, known_rank: 3 }]) { // a well-known list edit reaches the Highlights at the next refresh
     assert.equal(mergeIncidents([fullOne], [changed]).incidents[0], changed); // owner, 11-10: a new KEV, Summary or Mention shows
   }
   assert.equal(mergeIncidents([row], [fullOne]).incidents[0], fullOne);

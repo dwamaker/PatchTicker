@@ -88,13 +88,14 @@ SCHEMA = {
         "exploited_source": {"type": "string"},
         "poc_public": {"type": "boolean"},
         "library": {"type": "boolean"},
+        "widely_used": {"type": "boolean"},  # owner, 11-11: lifts the Incident among the Highlights (well-known)
         # A Korean line for each English Mention title, so the Korean page's source list reads in Korean.
         "titles_ko": {"type": "array", "items": {"type": "object", "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
                                                  "required": ["url", "title"], "additionalProperties": False}},
         "same_as": {"type": "string"},  # owner, 11-10: the code decides (apply_same_as)
     },
     "required": ["ko", "en", *SHARED_FIELDS, "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source",
-                 "poc_public", "library", "same_as"],
+                 "poc_public", "library", "widely_used", "same_as"],
     "additionalProperties": False,
 }
 
@@ -131,6 +132,7 @@ Also:
 - exploited_source: when exploited is true, the URL of the source that states the attacks, copied exactly from the Mentions list; the Board shows it as the reason. Empty string otherwise. Without it exploited counts as false.
 - poc_public: true when a source says exploit or proof-of-concept code is public (a PoC repository, a published exploit). This alone never makes it exploited.
 - library: true when the affected product is a library, SDK, framework or package that other programs build in (Brotli, zlib, Qt, an npm or PyPI package), so a reader cannot see its version and must update the program that contains it. False for apps, servers, operating systems and devices.
+- widely_used: true only when the affected product is one a large share of ordinary people or organisations run themselves: a mainstream operating system, browser, office, mail, messaging or meeting app, a leading brand's phone, router or NAS firmware, or the most common server software (OpenSSH, nginx, WordPress itself). False for a plugin, theme, library, SDK, developer tool or niche enterprise product; when unsure, false.
 - titles_ko: for each Mention with a title (in brackets after its URL) that is not in Korean, except repositories, a short Korean rendering of that title: "url" copied exactly from the Mentions list, "title" in Korean with product names and CVE IDs kept as written ("sshole (OpenSSH 로그인 결함)"). Empty list when there are none.
 - same_as: when the request ends with a list of recent Incidents without a CVE, the id of the one listed Incident that is the SAME event as this one: the same product and the same flaw or attack, not just the same vendor or a similar bug. Copy the id exactly as listed. Empty string when none is, or when there is no list; when unsure, answer "".
 Keep every field short and do not repeat one field in another.
@@ -159,7 +161,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false, "exploited_source": "", "poc_public": false, "library": false, "same_as": ""}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false, "exploited_source": "", "poc_public": false, "library": false, "widely_used": true, "same_as": ""}"""
 
 
 # Words the prompt bans from the Easy view (easy, easy_title, easy_action), checked in code because the model still
@@ -620,6 +622,7 @@ def parse(reply, input_text, urls):
         summary["exploited_source"] = data.get("exploited_source", "")  # these three came with critique 14 (11-09)
         summary["poc_public"] = data.get("poc_public", False)
         summary["library"] = data.get("library", False)
+        summary["widely_used"] = data.get("widely_used", False)  # came on 11-11
         lists = [summary["ko"]["cve_lines"], summary["en"]["cve_lines"], summary["fixes"], *(f["devices"] for f in summary["fixes"]), summary["titles_ko"], summary["products"], summary["devices"], summary["ko"]["conditions"], summary["en"]["conditions"], summary["ko"]["easy_conditions"], summary["en"]["easy_conditions"],
                  summary["ko"]["names"], summary["en"]["names"]]
         strings = [summary["lead"], summary["exploited_source"], summary["fixed"], summary["command"], summary["stopgap"], summary["stopgap_file"], *summary["products"],
@@ -629,7 +632,7 @@ def parse(reply, input_text, urls):
     except (StopIteration, ValueError, KeyError, TypeError) as err:
         raise Rejected(f"malformed reply: {err!r}") from None
     if not all(isinstance(v, list) for v in lists) or not all(isinstance(s, str) for s in strings) \
-            or not all(isinstance(summary[k], bool) for k in ("incident", "exploited", "poc_public", "library")):
+            or not all(isinstance(summary[k], bool) for k in ("incident", "exploited", "poc_public", "library", "widely_used")):
         raise Rejected("malformed reply: a field is not text")
     # Lines past the first CVE_LINES_MAX CVEs come from batches (lines_input), never from the Summary.
     only = re.search(rf"^{re.escape(CVE_LINES_ONLY)} (.*)$", input_text, re.M)

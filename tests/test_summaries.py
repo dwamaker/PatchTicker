@@ -61,6 +61,7 @@ SSHOLE_SUMMARY = {
     "exploited_source": "",
     "poc_public": False,
     "library": False,
+    "widely_used": False,
 }
 
 
@@ -192,7 +193,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library", "same_as"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library", "widely_used", "same_as"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.
@@ -238,6 +239,7 @@ class InstantSummaryTest(unittest.TestCase):
             "an exploited flag that is not true or false": SSHOLE_SUMMARY | {"exploited": "yes"},
             "a public-exploit flag that is not true or false": SSHOLE_SUMMARY | {"poc_public": "yes"},
             "a library flag that is not true or false": SSHOLE_SUMMARY | {"library": 1},
+            "a widely-used flag that is not true or false": SSHOLE_SUMMARY | {"widely_used": "yes"},
             "an exploited source that is not text": SSHOLE_SUMMARY | {"exploited": True, "exploited_source": ["https://sshhole.com"]},
         }
         for case, reply in bad.items():
@@ -321,9 +323,15 @@ class InstantSummaryTest(unittest.TestCase):
         summary = board(self.store)[HN_STORY]["summary"]
         self.assertEqual((summary["poc_public"], summary["exploited"]), (True, False))
         self.setUp()
-        self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k not in ("poc_public", "library")}))
+        self.merged_sshole(FakeClaude({k: v for k, v in SSHOLE_SUMMARY.items() if k not in ("poc_public", "library", "widely_used")}))
         summary = board(self.store)[HN_STORY]["summary"]
-        self.assertEqual((summary["poc_public"], summary["library"]), (False, False))  # replies from before say neither
+        # Replies from before say none of them (widely_used came on 11-11).
+        self.assertEqual((summary["poc_public"], summary["library"], summary["widely_used"]), (False, False, False))
+
+    def test_a_summary_can_call_its_product_widely_used(self):
+        self.merged_sshole(FakeClaude(SSHOLE_SUMMARY | {"widely_used": True}))
+        self.assertIs(board(self.store)[HN_STORY]["summary"]["widely_used"], True)
+        self.assertIn("widely_used: true only when", summaries.INSTRUCTIONS)
 
     def test_the_instructions_ask_for_the_attack_source_and_name_the_product_in_easy_headlines(self):
         self.assertIn("exploited_source", summaries.INSTRUCTIONS)

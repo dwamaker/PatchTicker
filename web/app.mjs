@@ -1191,7 +1191,7 @@ const panelCount = () => filter.risk.length + (filter.kev ? 1 : 0) + osPicks().l
   + (filter.cvssMin ? 1 : 0) + (filter.cve ? 1 : 0) + filter.has.length;
 const activeFilters = () => filter.picks.length - osPicks().length + panelCount() + (filter.query ? 1 : 0);
 
-// 주요 사건 더 보기: pin every chosen Highlight (highlightCount: ten to twenty), or back to four.
+// 주요 사건 더 보기: pin every chosen Highlight (pickHighlights: ten to twenty), or back to four.
 let pinAll = false;
 function pinToggle(rest) {
   const t = TEXT[lang];
