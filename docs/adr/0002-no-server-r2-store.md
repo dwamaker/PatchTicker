@@ -41,3 +41,14 @@ same Incidents as Row views (CONTEXT.md), without details or search text, except
 Highlights, which stay whole. The page draws from it and fetches `board/recent.json` only to open a Row view or to
 search, never in the background. "Search and the Product filter cover what is loaded" still holds, but a search now
 waits for the full week first.
+
+## Revision (2026-11-10, later): the store keeps 90 days
+
+After eight days the store held 31.5 MB, about 115 MB a month, and only `pages/` was ever deleted; the month files grew
+without end and each cycle loaded them all. The owner chose a bounded store: an Incident is kept 90 days from first
+seen, the same span as its Incident page, and a month with none left is deleted and leaves `index.json` (the SQLite
+backup follows). The page loads every month the index lists, at most four calendar months, and says that only 90 days
+are kept. A cycle that would prune more than half of what it holds prunes nothing, since a wrong clock must not empty
+the store. Accepted cost: an Incident older than 90 days that gets news again comes back as a new Incident; a mere
+update to its CVE record does not bring it back. The first consequence above ("the last 90 days ... A longer range means
+loading more files") is now a rule of the store, not of the page.

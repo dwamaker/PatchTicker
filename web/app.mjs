@@ -37,7 +37,7 @@ const TEXT = {
     original: '원문', lead: { advisory: '공식 공지 읽기', writeup: '분석 글 읽기', cve_record: 'CVE 기록 읽기', discussion: '토론 읽기', curator: '뉴스레터 읽기', notice: '보호나라 공지 읽기', repo: '저장소 보기', other: '원문 읽기' },
     aliasHint: (w, names) => `‘${w}’${ro(w)} 검색해 ${names.join(', ')}도 함께 찾았습니다.`,
     mentions: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
-    refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요.',
+    refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 최대 90일의 사건만 저장합니다.',
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     support: '후원',
     cveNote: 'CVE 정보는 MITRE의 CVE 이용 약관에 따라 사용합니다. 아래는 약관이 요구하는 저작권 표시와 라이선스 원문입니다.',
@@ -89,7 +89,7 @@ const TEXT = {
     original: '', lead: { advisory: 'Read the advisory', writeup: 'Read the write-up', cve_record: 'Read the CVE record', discussion: 'Read the discussion', curator: 'Read the newsletter', notice: 'Read the KISA notice', repo: 'See the repository', other: 'Read the source' },
     aliasHint: (w, names) => `‘${w}’ was also searched as ${names.join(', ')}.`,
     mentions: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
-    refNote: "This Board is for reference only. Check each Incident's source advisory before you act.",
+    refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",
     nvd: '',
     support: 'Support',
     cveNote: 'CVE data is used under the CVE Terms of Use from MITRE; its required copyright notice and license follow.',
@@ -328,7 +328,7 @@ async function main() {
     if (!state) throw new Error('status.json');
     incidents = recent.incidents.filter(onBoard);
     seenProducts = seen.products;
-    olderMonths = index.months.slice(-3);
+    olderMonths = index.months; // only kept months: the store holds 90 days, up to four calendar months (owner, 11-10)
     updated = state.updated;
     paused = state.summaries === 'paused'; // the collector hit its AI budget (ticket 07)
     refreshProducts();
@@ -515,7 +515,7 @@ function watchFresh() {
 }
 
 // #i=<id>: a link to one Incident. The Board opens with that row open, in view, focused and edged in blue (the
-// same edge a new arrival wears); a member of a vendor fold is shown ungrouped; an older one loads the three months.
+// same edge a new arrival wears); a member of a vendor fold is shown ungrouped; an older one loads the 90 days.
 async function openLinked() {
   const id = new URLSearchParams(location.hash.slice(1)).get('i');
   if (!id || loadError) return false;
@@ -911,7 +911,7 @@ function primer() {
   box.replaceChildren(keys, more, close);
 }
 
-// The rest of the last three months, merged into the week already on screen.
+// The rest of the 90 days the store keeps (every month index.json lists), merged into the week already on screen.
 async function fetchOlder() {
   const months = await Promise.all(olderMonths.map((m) => getJson(`board/${m}.json`)));
   const byId = new Map(incidents.map((i) => [i.id, i]));
@@ -1157,7 +1157,7 @@ function emptyState() {
     : filter.picks.length && !quick ? t.noneForPicks(names) : query && !quick ? t.noneForQuery(query)
     : quick ? t.noneForFilters : t.noIncidents;
   const buttons = el('p', 'actions');
-  // Say how far back this looked: "nothing" in one week is not "nothing" in three months.
+  // Say how far back this looked: "nothing" in one week is not "nothing" in 90 days.
   const scope = para('scope', olderMonths.length ? t.scopeWeek : t.scopeMonths);
   if (olderMonths.length) {
     const older = Object.assign(el('button', 'btn', loadingOlder ? t.loading : t.searchOlder), { type: 'button', disabled: loadingOlder });

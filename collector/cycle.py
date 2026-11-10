@@ -19,7 +19,9 @@ RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older mont
 WHOLE_NEWEST = 100
 HIGHLIGHTS = 10
 FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
-PAGE_DAYS = 90  # an Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs)
+# An Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs). The
+# store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
+PAGE_DAYS = 90
 MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 
 
@@ -29,8 +31,11 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
-    # shortcut: loads every month to link against; fine for v1 volumes, revisit past a year.
+    # Every kept month to link against: at most four calendar months, as Incidents leave after PAGE_DAYS.
     incidents = [i for m in index["months"] for i in store.read(f"months/{m}.json")["incidents"]]
+    # Pruned before any source is read: cvelist reads updated records only of CVEs still held, so an aged-out CVE's
+    # record updates start nothing; real news about it may (owner, 11-10).
+    changed = prune(incidents, (now - timedelta(days=PAGE_DAYS)).strftime(STAMP))
 
     held_cves = {cve for i in incidents for cve in i["cves"]}
     records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get, held_cves)
@@ -53,7 +58,6 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
             if page:
                 story["page"] = page_keys(page, writeup)
 
-    changed = set()
     # Join-only repos go last, so they can join Incidents that started this cycle.
     for group in cvelist.mention_groups(records) + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
@@ -107,11 +111,12 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         if decisions:
             store.write("merge_log.json", (decisions[::-1] + (store.read("merge_log.json") or []))[:MERGE_LOG_SIZE])
 
-    for m in changed:
+    kept = {month_of(i["first_seen"]) for i in incidents}  # a month left with none (pruned or merged away) is deleted below
+    for m in changed & kept:
         # Incidents stay in the month they were first seen; a merge can empty an older month's row.
         store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if month_of(i["first_seen"]) == m]})
     # The page's slim files: changed months, any month not written yet, and the last week every cycle.
-    for m in changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}:
+    for m in (changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}) & kept:
         store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
     recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
     # status rides along so the page opens on this file alone (a failed status.json drew an error Board for Googlebot).
@@ -144,8 +149,12 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     failures = summary_failures(incidents, (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP))
     known = {f["id"] for f in store.read("summary_failures.json") or []}  # as the last cycle left it: a restart repeats none
     store.write("summary_failures.json", failures)
-    if changed - set(index["months"]):
-        store.write("index.json", {"months": sorted(changed | set(index["months"]))})
+    months = sorted((changed | set(index["months"])) & kept)
+    if months != index["months"]:
+        store.write("index.json", {"months": months})
+    for m in set(index["months"]) - kept:  # after the index drops them, so a cycle cut short here never reads a missing month
+        store.delete(f"months/{m}.json")
+        store.delete(f"board/{m}.json")
     store.write("checkpoints.json", checkpoints)
     store.write("status.json", status)
     # Owner, 11-10: news for the owner, last, so a failed post costs nothing else (docs/development.md).
@@ -154,6 +163,19 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     text = discord.message([f for f in failures if f["id"] not in known], merges)
     if notify and text:
         notify(text)
+
+
+def prune(incidents, since):
+    """Drop the Incidents first seen before `since` (a stamp) in place; return their months. Deletion cannot be undone,
+    and ageing takes about 1/90 of the store a day (a 45-day outage reaches half): more than half at once is a wrong
+    clock or bad data, so nothing is pruned and one line says so."""
+    old = [i for i in incidents if i["first_seen"] < since]
+    if 2 * len(old) > len(incidents):
+        print(f"retention: {len(old)} of {len(incidents)} Incidents are past {PAGE_DAYS} days; pruned none (wrong clock or bad data?)",
+              file=sys.stderr)
+        return set()
+    incidents[:] = [i for i in incidents if i["first_seen"] >= since]
+    return {month_of(i["first_seen"]) for i in old}
 
 
 def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe):

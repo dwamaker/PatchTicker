@@ -1,8 +1,10 @@
 """Store contract: every store implementation must pass these (the R2 store will too)."""
 
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 
 import brotli
 from botocore.exceptions import ClientError
@@ -38,6 +40,16 @@ class MemoryStoreTest(unittest.TestCase):
         store.write("status.json", {"updated": "b"})
         self.assertEqual(store.read("status.json"), {"updated": "b"})
 
+    def test_a_deleted_document_is_gone_and_deleting_a_missing_one_is_fine(self):
+        # Owner, 11-10: a month with no Incident left inside 90 days is deleted.
+        store = self.make_store()
+        store.write("months/2026-07.json", {"a": 1})
+        store.write("status.json", {"b": 1})
+        store.delete("months/2026-07.json")
+        store.delete("months/2026-06.json")  # never written
+        self.assertIsNone(store.read("months/2026-07.json"))
+        self.assertEqual(store.names(), ["status.json"])
+
 
 class FolderStoreTest(MemoryStoreTest):
     def make_store(self):
@@ -64,6 +76,9 @@ class FakeS3:
 
     def put_object(self, Bucket, Key, **kwargs):
         self.objects[(Bucket, Key)] = kwargs
+
+    def delete_object(self, Bucket, Key):
+        self.objects.pop((Bucket, Key), None)  # S3 answers 204 for a missing key too
 
     def list_objects_v2(self, Bucket, ContinuationToken=None):
         # One key per page, as boto3 pages at 1000, so the paging loop is exercised.
@@ -111,9 +126,34 @@ class R2StoreTest(MemoryStoreTest):
         with self.assertRaises(ClientError):
             store.read("status.json")
 
+    def test_a_refused_delete_is_one_stderr_line_and_the_object_stays(self):
+        store = self.make_store()
+        store.write("months/2026-07.json", {"a": 1})
+        self.s3.delete_object = refuse
+        err = io.StringIO()
+        with redirect_stderr(err):
+            store.delete("months/2026-07.json")
+        self.assertEqual(err.getvalue(), "store: could not delete months/2026-07.json: AccessDenied\n")
+        self.assertEqual(store.read("months/2026-07.json"), {"a": 1})
+
+
+def refuse(Bucket, Key):
+    raise ClientError({"Error": {"Code": "AccessDenied", "Message": "no"}}, "DeleteObject")
+
 
 class CycleOnR2StoreTest(test_cycle.CycleTest):
     make_store = R2StoreTest.make_store
+
+    def test_a_cycle_whose_deletes_are_refused_still_finishes(self):
+        # A token without delete rights: the emptied month stays as an object, but leaves the index; the cycle goes on.
+        self.s3.delete_object = refuse
+        self.hold(test_cycle.incident("CVE-2026-1", "old", "2026-07-30T00:00:00Z"),
+                  test_cycle.incident("CVE-2026-2", "kept", "2026-10-20T00:00:00Z"))
+        with redirect_stderr(io.StringIO()) as err:
+            test_cycle.run_cycle(self.store, test_cycle.recorded(), test_cycle.at("2026-11-07T13:30:00"), "test-box")
+        self.assertIn("store: could not delete months/2026-07.json: AccessDenied", err.getvalue())
+        self.assertEqual(self.store.read("index.json"), {"months": ["2026-10", "2026-11"]})
+        self.assertEqual(self.store.read("status.json")["updated"], "2026-11-07T13:30:00Z")
 
 
 def temp_db(test):
@@ -147,6 +187,14 @@ class BackedUpStoreTest(MemoryStoreTest):
         self.backup.write("status.json", {"updated": "old"})
         self.assertIsNone(store.read("status.json"))
 
+    def test_a_delete_leaves_both(self):
+        # Else --restore would bring a pruned month back into R2 (owner, 11-10: 90 days, really).
+        store = self.make_store()
+        store.write("months/2026-07.json", {"a": 1})
+        store.delete("months/2026-07.json")
+        self.assertIsNone(self.main.read("months/2026-07.json"))
+        self.assertIsNone(self.backup.read("months/2026-07.json"))
+
 
 class CycleOnBackedUpStoreTest(test_cycle.CycleTest):
     make_store = BackedUpStoreTest.make_store
@@ -168,6 +216,19 @@ class RestoreTest(unittest.TestCase):
         self.assertEqual(restore(backup, fresh), len(names))
         for name in names:
             self.assertEqual(fresh.read(name), main.read(name), name)
+
+    def test_a_pruned_month_does_not_come_back_from_the_backup(self):
+        main, backup = MemoryStore(), SqliteStore(temp_db(self))
+        self.addCleanup(backup.close)
+        store = BackedUpStore(main, backup)
+        store.write("checkpoints.json", {"cvelist": "2026-11-07T12:00:00.000Z"})
+        store.write("index.json", {"months": ["2026-07", "2026-10"]})
+        store.write("months/2026-07.json", {"month": "2026-07", "incidents": [test_cycle.incident("CVE-2026-1", "old", "2026-07-30T00:00:00Z")]})
+        store.write("months/2026-10.json", {"month": "2026-10", "incidents": [test_cycle.incident("CVE-2026-2", "kept", "2026-10-20T00:00:00Z")]})
+        test_cycle.run_cycle(store, test_cycle.recorded(), test_cycle.at("2026-11-07T13:30:00"), "test-box")
+
+        self.assertEqual(backup.names(), main.names())
+        self.assertNotIn("months/2026-07.json", backup.names())
 
 
 class StoreChoiceTest(unittest.TestCase):

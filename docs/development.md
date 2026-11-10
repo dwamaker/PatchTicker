@@ -27,6 +27,17 @@ hung source cannot block later cycles.
 Every write also lands in an SQLite copy (`VR_BACKUP_DB`, `./backup` in Compose); `--seed-backup` fills it once from
 the store and `--restore` rebuilds the store from it (commands in `compose.yaml`).
 
+The store keeps an Incident 90 days from its first seen (`PAGE_DAYS` in `collector/cycle.py`, the Incident page's span;
+owner, 11-10). Each cycle, before any source is read, older Incidents leave their month (`months/<m>.json` and
+`board/<m>.json`, rewritten for that alone); a month left with none is dropped from `index.json` and then deleted, from
+the SQLite copy too, and the week, row, feed, page, sitemap and Product documents follow as they are rebuilt from what is
+held. Deletion cannot be undone, so a cycle that would prune more than half of the Incidents it holds prunes none and
+logs one `retention:` line (a wrong clock or bad data; ageing takes about 1/90 a day, so only a 45-day outage comes
+near it). The R2 token needs object delete as well as read and write; a refused delete is one `store: could not delete`
+line and the object stays, listed by no index. An aged-out CVE comes back only as a new Incident and only through a new
+story (an HN story, a news site, a fresh oss-security post): cvelistV5 reads updated records only of CVEs still held,
+and NVD, CISA KEV, curators, KISA, GitHub repos and oss-security replies only join Incidents.
+
 Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle
 lists the missing ones in `unknown_vendors.json` in the store. How to add one: `docs/agents/vendors.md`.
 Summaries given up after three tries (last 30 days, on the Board) are listed in `summary_failures.json` each cycle; how
@@ -129,7 +140,8 @@ Old page documents are not deleted by code: an R2 object lifecycle rule on the b
 `pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
 `wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document
 when the move happens, so 100 days after the last write is always past the 90 days in which it answers anything but
-410; after the rule deletes it, the address answers 404.
+410; after the rule deletes it, the address answers 404. The rule does not reach the SQLite copy, which keeps every
+page document it was sent.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.
 

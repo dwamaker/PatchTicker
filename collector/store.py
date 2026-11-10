@@ -3,6 +3,7 @@
 import json
 import os
 import sqlite3
+import sys
 from pathlib import Path
 
 import brotli
@@ -20,6 +21,9 @@ class MemoryStore:
     def write(self, name, doc):
         # Kept serialized so callers can't mutate stored docs by accident, as with a real store.
         self._docs[name] = json.dumps(doc)
+
+    def delete(self, name):
+        self._docs.pop(name, None)
 
     def names(self):
         return sorted(self._docs)
@@ -41,6 +45,9 @@ class FolderStore:
         tmp = path.with_name(path.name + ".tmp")
         tmp.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
         os.replace(tmp, path)  # whole-file replace, so a crash never leaves a half-written file
+
+    def delete(self, name):
+        (self.root / name).unlink(missing_ok=True)
 
     def names(self):
         return sorted(p.relative_to(self.root).as_posix() for p in self.root.rglob("*")
@@ -81,6 +88,13 @@ class R2Store:
             **packed,
         )
 
+    def delete(self, name):
+        try:
+            self.s3.delete_object(Bucket=self.bucket, Key=name)
+        except ClientError as e:
+            # Owner, 11-10: a token without delete rights leaves an object no index lists; one line, the cycle goes on.
+            print(f"store: could not delete {name}: {e.response['Error']['Code']}", file=sys.stderr)
+
     def names(self):
         names, token = [], {}
         while True:  # one page holds at most 1000 keys
@@ -109,6 +123,10 @@ class SqliteStore:
                 (name, json.dumps(doc, ensure_ascii=False)),
             )
 
+    def delete(self, name):
+        with self.db:
+            self.db.execute("DELETE FROM docs WHERE name = ?", (name,))
+
     def names(self):
         return [row[0] for row in self.db.execute("SELECT name FROM docs ORDER BY name")]
 
@@ -129,6 +147,11 @@ class BackedUpStore:
     def write(self, name, doc):
         self.backup.write(name, doc)
         self.main.write(name, doc)
+
+    def delete(self, name):
+        # A deleted document leaves the backup too, or --restore would bring a pruned month back (owner, 11-10).
+        self.backup.delete(name)
+        self.main.delete(name)
 
     def names(self):
         return self.main.names()

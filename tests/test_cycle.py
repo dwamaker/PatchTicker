@@ -1,7 +1,9 @@
 """Seam 1: one collection cycle, replayed against recorded source responses."""
 
+import io
 import json
 import unittest
+from contextlib import redirect_stderr
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -235,6 +237,45 @@ class CycleTest(unittest.TestCase):
         # The newest entry of deltaLog-early only updates a record, so nothing is new.
         self.assertIsNone(store.read("months/2026-11.json"))
         self.assertEqual(store.read("status.json")["collector"], "test-box")
+
+    def hold(self, *rows):
+        """The store as earlier cycles left it: rows in their month files (and the page's), the months indexed."""
+        months = sorted({r["first_seen"][:7] for r in rows})
+        for m in months:
+            self.store.write(f"months/{m}.json", {"month": m, "incidents": [r for r in rows if r["first_seen"][:7] == m]})
+            self.store.write(f"board/{m}.json", {"month": m, "incidents": []})
+        self.store.write("index.json", {"months": months})
+
+    def test_an_incident_is_kept_90_days_from_first_seen_and_its_month_rewritten_for_that_alone(self):
+        # Owner, 11-10: 90 days, really. Nothing else touches 2026-08 this cycle; ageing alone rewrites it.
+        self.hold(incident("CVE-2026-1", "91 days", "2026-08-08T13:30:00Z"),
+                  incident("CVE-2026-2", "exactly 90 days", "2026-08-09T13:30:00Z"),
+                  incident("CVE-2026-3", "89 days", "2026-08-10T13:30:00Z"))
+        run_cycle(self.store, recorded(delta_log=None), at("2026-11-07T13:30:00"), "test-box")
+
+        self.assertEqual([i["id"] for i in self.store.read("months/2026-08.json")["incidents"]], ["CVE-2026-2", "CVE-2026-3"])
+        self.assertEqual([i["id"] for i in self.store.read("board/2026-08.json")["incidents"]], ["CVE-2026-2", "CVE-2026-3"])
+        self.assertEqual(self.store.read("index.json"), {"months": ["2026-08"]})
+
+    def test_a_month_left_with_no_incident_is_deleted_and_leaves_the_index(self):
+        self.hold(incident("CVE-2026-1", "old", "2026-07-30T00:00:00Z"), incident("CVE-2026-2", "kept", "2026-10-20T00:00:00Z"))
+        run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        self.assertEqual(self.store.read("index.json"), {"months": ["2026-10", "2026-11"]})
+        self.assertFalse([n for n in self.store.names() if "2026-07" in n])
+        self.assertEqual([i["id"] for i in self.store.read("months/2026-10.json")["incidents"]], ["CVE-2026-2"])
+
+    def test_a_cycle_that_would_prune_more_than_half_of_its_incidents_prunes_none(self):
+        # Deletion cannot be undone: a clock months ahead, or bad first_seen data, must not empty the store.
+        self.hold(incident("CVE-2026-1", "old", "2026-07-30T00:00:00Z"), incident("CVE-2026-2", "old", "2026-07-31T00:00:00Z"),
+                  incident("CVE-2026-3", "kept", "2026-10-20T00:00:00Z"))
+        with redirect_stderr(io.StringIO()) as err:
+            run_cycle(self.store, recorded(delta_log=None), at("2026-11-07T13:30:00"), "test-box")
+
+        self.assertEqual(len(self.store.read("months/2026-07.json")["incidents"]), 2)
+        self.assertEqual(self.store.read("index.json"), {"months": ["2026-07", "2026-10"]})
+        self.assertEqual([line for line in err.getvalue().splitlines() if line.startswith("retention:")],
+                         ["retention: 2 of 3 Incidents are past 90 days; pruned none (wrong clock or bad data?)"])
 
 
 class NvdEnrichmentTest(unittest.TestCase):
