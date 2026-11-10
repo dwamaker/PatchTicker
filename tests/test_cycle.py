@@ -126,6 +126,8 @@ class CycleTest(unittest.TestCase):
 
         recent = self.store.read("board/recent.json")
         self.assertEqual(recent["since"], "2026-10-31T13:30:00Z")
+        # The page opens on this file alone: a failed status.json fetch drew an error Board for Googlebot (11-10).
+        self.assertEqual(recent["status"], self.store.read("status.json"))
         self.assertCountEqual([i["id"] for i in recent["incidents"]], ["CVE-2026-120984", "CVE-2026-120839"])
         self.assertNotIn("urls", recent["incidents"][0])  # linking keys stay in the collector's files
         # A month the page has no file for yet is written too, without its citations.

@@ -312,14 +312,19 @@ let linked = false; // the page was opened by a link to one Incident (#i=)
 async function main() {
   render();
   try {
-    // A missing Product list (data from before it existed) only narrows the picker; it must not stop the Board.
-    const [index, st, recent, seen] = await Promise.all([getJson('index.json'), getJson('status.json'),
-      getJson('board/recent.json'), getJson('board/products.json').catch(() => ({ products: [] }))]);
+    // Only the week is needed to draw the Board. A missing Product list only narrows the picker, a missing month index
+    // only hides 이전 사건, and the update time also rides in recent.json: Googlebot once failed status.json alone and
+    // the whole Board drew as a load error (Search Console, 11-10).
+    const [index, st, recent, seen] = await Promise.all([getJson('index.json').catch(() => ({ months: [] })),
+      getJson('status.json').catch(() => null), getJson('board/recent.json'),
+      getJson('board/products.json').catch(() => ({ products: [] }))]);
+    const state = st || recent.status;
+    if (!state) throw new Error('status.json');
     incidents = recent.incidents.filter(onBoard);
     seenProducts = seen.products;
     olderMonths = index.months.slice(-3);
-    updated = st.updated;
-    paused = st.summaries === 'paused'; // the collector hit its AI budget (ticket 07)
+    updated = state.updated;
+    paused = state.summaries === 'paused'; // the collector hit its AI budget (ticket 07)
     refreshProducts();
     $('search').value = filter.query;
     linked = !place && new URLSearchParams(location.hash.slice(1)).has('i');

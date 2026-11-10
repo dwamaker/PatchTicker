@@ -102,7 +102,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     for m in changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}:
         store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
     recent_since = (now - timedelta(days=RECENT_DAYS)).strftime(STAMP)
-    store.write("board/recent.json", {"since": recent_since,
+    # status rides along so the page opens on this file alone (a failed status.json drew an error Board for Googlebot).
+    store.write("board/recent.json", {"since": recent_since, "status": status,
                                       "incidents": [board_view(i) for i in incidents if i["first_seen"] >= recent_since]})
     newest = sorted((i for i in incidents if search_worthy(i)), key=lambda i: i.get("published") or i["first_seen"], reverse=True)
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
