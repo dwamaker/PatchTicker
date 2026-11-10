@@ -489,19 +489,23 @@ def lines_input(incident, cves):
 
 def submit_lines(incidents, claude, limit=MAX_PER_BATCH):
     """One Message Batch of per-CVE line requests for these Incidents, LINES_PER_REQUEST CVEs a request; or None."""
-    requests = {}
+    requests, room = {}, set()
     for incident in incidents:
-        cves = missing_lines(incident)
+        cves, before = missing_lines(incident), len(requests)
         for n in range(0, len(cves), LINES_PER_REQUEST):
             if len(requests) < limit:
                 requests[f"l{len(requests)}"] = {"incident": incident["id"], "lines": cves[n:n + LINES_PER_REQUEST],
                                                  "input": lines_input(incident, cves[n:n + LINES_PER_REQUEST])}
-        if cves:
+        if len(requests) > before:  # one left out by limit spends no round
             incident["cve_lines_rounds"] = incident.get("cve_lines_rounds", 0) + 1
+            incident["cve_lines_words"] = True  # this round counts number words; revive_lines() leaves it alone
+            if incident.pop("cve_lines_room", False):
+                room.add(incident["id"])
     if not requests:
         return None
     batch = claude.messages.batches.create(requests=[Request(custom_id=cid, params={
-        "model": MODEL, "max_tokens": MAX_TOKENS, "system": [{"type": "text", "text": LINES_INSTRUCTIONS}],
+        "model": MODEL, "max_tokens": MAX_TOKENS_RETRY if r["incident"] in room else MAX_TOKENS,
+        "system": [{"type": "text", "text": LINES_INSTRUCTIONS}],
         "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": LINES_SCHEMA}},
         "messages": [{"role": "user", "content": r["input"]}]}) for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
@@ -510,23 +514,42 @@ def submit_lines(incidents, claude, limit=MAX_PER_BATCH):
 def save_lines(incident, reply, cves):
     """Add each checked line to the Summary, in the Incident's CVE order. A line is dropped, never the rest, when it names
     a CVE not asked for, holds a CVE ID, a number its CVE's own description lacks, or Korean and English whole numbers
-    that differ; its CVE is asked again in the next round."""
+    that differ; its CVE is asked again in the next round. A digit may stand for a number word (number_words).
+    A reply cut off at MAX_TOKENS gets MAX_TOKENS_RETRY in the next round, as a Summary does (retry()); one cut off in
+    the last round is not asked again."""
+    if reply.stop_reason == "max_tokens":
+        incident["cve_lines_room"] = True
     try:
         items = json.loads(next(b.text for b in reply.content if b.type == "text"))["lines"]
-    except (StopIteration, ValueError, KeyError, TypeError):
+        if not isinstance(items, list):
+            raise TypeError(f"lines is a {type(items).__name__}")
+    except (StopIteration, ValueError, KeyError, TypeError) as err:
+        print(f"summaries: lines reply for {incident['id']} unreadable (stop_reason {reply.stop_reason}): {err!r}"[:300], file=sys.stderr)
         return
     texts, summary = incident.get("cve_texts") or {}, incident["summary"]
     have = {line["cve"] for line in summary["ko"]["cve_lines"]}
-    for item in items if isinstance(items, list) else []:
+    dropped = []
+    for item in items:
         if not isinstance(item, dict) or not all(isinstance(item.get(k), str) and item[k].strip() for k in ("cve", "ko", "en")):
+            dropped.append("malformed")
             continue
         cve, ko, en = item["cve"], numbers(item["ko"]), numbers(item["en"])
-        if cve not in cves or cve in have or CVE_ID.search(item["ko"] + item["en"]) \
-                or (ko | en) - numbers(texts.get(cve, "")) or {t for t in ko ^ en if "." not in t}:
+        text = texts.get(cve, "")
+        unknown = (ko | en) - numbers(text) - number_words(text)
+        # Only a Korean digit the English line spells matches ("8바이트" / "eight-byte"); never the other way round.
+        differ = {t for t in ko ^ en if "." not in t} - (ko & number_words(item["en"]))
+        reason = ("not asked" if cve not in cves else "already has one" if cve in have
+                  else "CVE ID inside" if CVE_ID.search(item["ko"] + item["en"])
+                  else f"numbers not in its description {sorted(unknown)}" if unknown
+                  else f"ko/en numbers differ {sorted(differ)}" if differ else "")
+        if reason:
+            dropped.append(f"{cve}: {reason}")
             continue
         have.add(cve)
         for lang in ("ko", "en"):
             summary[lang]["cve_lines"].append({"cve": cve, "text": item[lang]})
+    if dropped:
+        print(f"summaries: lines for {incident['id']}: dropped {len(dropped)} of {len(items)}: {'; '.join(dropped)}", file=sys.stderr)
     order = {c: n for n, c in enumerate(incident["cves"])}
     for lang in ("ko", "en"):
         summary[lang]["cve_lines"].sort(key=lambda line: order.get(line["cve"], len(order)))
@@ -568,6 +591,18 @@ def revive(incident):
         return False
     incident["summary_error"] = ({"tries": 0, "reason": error.get("reason", ""), "with_reason": True, "hinted": True}
                                  | ({"capped": True} if capped or error.get("capped") else {}))
+    return True
+
+
+def revive_lines(incident):
+    """Owner, 2026-11-10: an Incident that spent its LINES_ROUNDS before lines counted number words and before a cut-off
+    reply was logged and retried (FreeRDP 29 lines missing, FFmpeg 6) gets one more round, once, with MAX_TOKENS_RETRY
+    (FreeRDP's lost replies were likely cut off). Every round since sets "cve_lines_words", so none is revived twice.
+    Returns whether it changed."""
+    if incident.get("cve_lines_words") or incident.get("cve_lines_rounds", 0) < LINES_ROUNDS \
+            or not missing_lines(incident | {"cve_lines_rounds": 0}):
+        return False
+    incident |= {"cve_lines_rounds": LINES_ROUNDS - 1, "cve_lines_room": True}
     return True
 
 
@@ -730,6 +765,17 @@ def numbers(text):
 
 def plain(value):
     return f"{value.normalize():f}"  # 133000000, not 1.33E+8
+
+
+# Owner, 2026-11-10: a per-CVE line may write as a digit a number its CVE's description spells ("division by zero",
+# "eight-byte" -> "0", "8"); the check stays exact otherwise. Only save_lines uses it, never the Summary's check.
+# No "one": it is a pronoun far too often ("one of", "no one") and would let any "1" through.
+NUMBER_WORDS = {w: str(n) for n, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split()) if w != "one"}
+NUMBER_WORD_RE = re.compile(rf"\b(?:{'|'.join(NUMBER_WORDS)})\b", re.I)
+
+
+def number_words(text):
+    return {NUMBER_WORDS[w.lower()] for w in NUMBER_WORD_RE.findall(text)}
 
 
 def lang_text(fields):

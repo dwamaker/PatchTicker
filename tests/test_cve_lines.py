@@ -2,6 +2,8 @@
 writing one line per CVE in two languages, and the 114-, 41- and 39-CVE rows failed the Korean/English number check
 on those lines. The Summary now writes lines for the first CVE_LINES_MAX CVEs; the rest go out in batches."""
 
+import contextlib
+import io
 import unittest
 
 from collector import summaries
@@ -35,6 +37,87 @@ class SummaryLinesTest(unittest.TestCase):
             lang: plain("Widget")[lang] | {"cve_lines": [{"cve": MANY[1], "text": "y"}]} for lang in ("ko", "en")})
         self.assertEqual(few["en"]["cve_lines"], [{"cve": MANY[1], "text": "y"}])
         self.assertNotIn(summaries.CVE_LINES_ONLY, summaries.summary_input(incident([], cves=MANY[:2]), lambda url: b""))
+
+
+WORDS = "Division by zero in a zero-width image; an eight-byte header overflows."
+
+
+def lines_row(text=WORDS):
+    summary = plain("Widget")
+    for lang in ("ko", "en"):
+        summary[lang] = summary[lang] | {"cve_lines": []}  # plain() shares one list between the languages
+    return {"id": "row", "cves": MANY, "cve_texts": {c: text for c in MANY}, "summary": summary}
+
+
+def saved(row, *items, stop_reason="end_turn"):
+    """The CVEs with a line after save_lines, and what it logged."""
+    reply = FakeClaude.message({"lines": list(items)} if items else "not json")
+    reply.stop_reason = stop_reason
+    log = io.StringIO()
+    with contextlib.redirect_stderr(log):
+        summaries.save_lines(row, reply, MANY[MAX:])
+    return [l["cve"] for l in row["summary"]["ko"]["cve_lines"]], log.getvalue()
+
+
+class LineCheckTest(unittest.TestCase):
+    """Owner, 2026-11-10: a line may write as a digit a number its CVE's description writes as an English word
+    (FFmpeg's "division by zero", FreeRDP's "eight-byte"); the check stays exact otherwise."""
+
+    def test_a_digit_the_description_spells_as_a_word_counts(self):
+        row = lines_row()
+        cves, log = saved(row, line(MANY[MAX], "0으로 나누기 오류가 납니다.", "Division by zero."),
+                          line(MANY[MAX + 1], "8바이트 헤더가 넘칩니다.", "The eight-byte header overflows."),
+                          line(MANY[MAX + 2], "너비가 0인 이미지에서 멈춥니다.", "A zero-width image stops it."))
+        self.assertEqual(cves, MANY[MAX:])
+        self.assertNotIn("dropped", log)
+
+    def test_a_number_neither_written_nor_spelled_is_still_dropped(self):
+        cves, log = saved(lines_row(), line(MANY[MAX], "9바이트 헤더가 넘칩니다.", "A nine-byte header overflows."),
+                          line(MANY[MAX + 1], "3개 파일.", "Three files."))
+        self.assertEqual(cves, [])
+        self.assertIn("dropped 2 of 2", log)
+        self.assertIn("row", log)
+
+    def test_korean_and_english_numbers_that_differ_are_still_dropped(self):
+        row = lines_row(WORDS + " A seven-byte trailer follows; 7 bytes in all.")
+        cves, log = saved(row, line(MANY[MAX], "8바이트 헤더가 넘칩니다.", "The seven-byte trailer overflows."),
+                          line(MANY[MAX + 1], "8바이트 헤더가 넘칩니다.", "The 7-byte trailer overflows."))
+        self.assertEqual(cves, [])
+        self.assertIn("differ", log)
+
+    def test_only_a_korean_digit_the_english_line_spells_matches(self):
+        text = WORDS + " A seven-byte trailer; length 8."
+        cves, log = saved(lines_row(text), line(MANY[MAX], "7바이트 헤더가 넘칩니다.", "An eight-byte header overflows."),
+                          line(MANY[MAX + 1], "길이가 0인 이미지에서 멈춥니다.", "Length 8 with a zero-width image stops it."),
+                          # a digit only in English stays a difference, though English also spells it
+                          line(MANY[MAX + 2], "헤더가 넘칩니다.", "The 8-byte header, eight bytes long, overflows."))
+        self.assertEqual(cves, [])
+        self.assertIn("dropped 3 of 3", log)
+        cves, _ = saved(lines_row(text), line(MANY[MAX], "8바이트 헤더가 넘칩니다.", "An eight-byte header overflows."))
+        self.assertEqual(cves, [MANY[MAX]])
+
+    def test_one_is_not_a_number_word(self):
+        cves, log = saved(lines_row("Widget lets one of the fields overflow."), line(MANY[MAX], "1개 필드가 넘칩니다.", "One field overflows."))
+        self.assertEqual(cves, [])
+        self.assertIn("not in its description", log)
+
+    def test_an_incident_left_out_by_the_limit_spends_no_round(self):
+        first, second = lines_row(), lines_row() | {"id": "other", "cve_lines_room": True}
+        claude = FakeClaude()
+        summaries.submit_lines([first, second], claude, limit=1)
+        self.assertEqual(first["cve_lines_rounds"], 1)
+        self.assertEqual(second.get("cve_lines_rounds"), None)
+        self.assertTrue(second["cve_lines_room"])
+        self.assertNotIn("cve_lines_words", second)
+
+    def test_an_unparsable_reply_is_logged_and_changes_nothing(self):
+        row = lines_row()
+        before = repr(row["summary"])
+        cves, log = saved(row, stop_reason="max_tokens")
+        self.assertEqual(repr(row["summary"]), before)
+        self.assertIn("row", log)
+        self.assertIn("max_tokens", log)
+        self.assertTrue(row["cve_lines_room"])  # the next round gets MAX_TOKENS_RETRY
 
 
 class BatchLinesTest(unittest.TestCase):
@@ -116,6 +199,35 @@ class BatchLinesTest(unittest.TestCase):
 
         [batch] = self.lines_batches(claude)
         self.assertEqual(len(batch["requests"]), 2)  # LINES_PER_REQUEST, then the one left
+
+    def test_a_cut_off_lines_reply_is_asked_again_with_more_room(self):
+        self.summarized()
+        claude = FakeClaude()
+        self.run_at("2026-11-07T12:45:00", claude)
+        [first] = self.lines_batches(claude)
+        claude.end_batch({HN_STORY: "not json"}, n=claude.batches.index(first))
+        first["results"][0].result.message.stop_reason = "max_tokens"
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.run_at("2026-11-07T13:00:00", claude)
+
+        first, second = self.lines_batches(claude)
+        self.assertEqual(first["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS)
+        self.assertEqual(second["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS_RETRY)
+
+    def test_rows_that_spent_their_rounds_before_number_words_get_one_more_once(self):
+        self.summarized()
+        self.edit(cve_lines_rounds=summaries.LINES_ROUNDS)  # as FreeRDP and FFmpeg were left on 11-10
+        claude = FakeClaude()
+        bad = {"lines": [line(MANY[MAX], "9.9 이전 버전.", "Before 9.9.")]}
+        with contextlib.redirect_stderr(io.StringIO()):
+            for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
+                self.run_at(when, claude)
+                for n, b in enumerate(claude.batches):
+                    if b["results"] is None:
+                        claude.end_batch({HN_STORY: bad}, n=n)
+
+        [batch] = self.lines_batches(claude)
+        self.assertEqual(batch["requests"][0]["params"]["max_tokens"], summaries.MAX_TOKENS_RETRY)
 
 
 class ReviveTest(unittest.TestCase):

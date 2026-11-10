@@ -134,6 +134,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     for incident in incidents:
         if summaries.revive(incident):
             changed.add(month_of(incident["first_seen"]))
+        if summaries.revive_lines(incident):
+            changed.add(month_of(incident["first_seen"]))
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp)
         if touched is not None:
