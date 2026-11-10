@@ -49,6 +49,9 @@ in that input, or whose Korean and English numbers differ, is rejected and retri
 Each retry says why the last reply was rejected, beside the input and never inside it (so a number named there is
 still not allowed); a reply cut off at the token cap gets more room. Incidents given up before 2026-11-10 got one
 more round once (`revive`).
+A fixed version below the CVE records' first fixed version of the same major (the Incident's `product<version`
+fix keys, one product only) is rejected on every try, the last included (`fixed_conflict`; FreeRDP's advisory said
+3.22.2 for 3.32.2), and a stored Summary that names one is made again within the usual limits.
 The collector refuses to fetch non-public addresses, since Mentions name the pages it reads.
 
 Every other Incident (first seen in the last 30 days) goes into one Message Batch per cycle with the

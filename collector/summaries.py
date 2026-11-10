@@ -238,6 +238,28 @@ def easy_action_mismatch(summary):
     return [lang for lang in ("ko", "en") if disagrees(summary[lang])]
 
 
+VERSION_RE = re.compile(r"(?<!\d)\d{1,20}(?:\.\d{1,20})+(?!\d)")  # bounded: int() rejects over 4300 digits
+
+
+def fixed_conflict(incident, summary):
+    """A fixed version the CVE records call affected (FreeRDP, 11-10: the advisory's typo "3.22.2" for 3.32.2 reached
+    the page): below every record bound ("product<VALUE" fix_keys of one product; VALUE may list several versions,
+    as JetBrains records do) that shares its major, and equal to none. The reason, or ""."""
+    strict = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k]
+    if len({product for product, _ in strict}) != 1:
+        return ""
+    bounds = {tuple(map(int, v.split("."))) for _, value in strict for v in VERSION_RE.findall(value)}
+    # .get: stored Summaries from before "fixes" (11-08) are read here too (needs_summary).
+    for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or [] if isinstance(f, dict))]:
+        found = isinstance(text, str) and VERSION_RE.search(text)
+        version = found and tuple(map(int, found[0].split(".")))
+        same = [b for b in bounds if version and b[0] == version[0]]
+        if same and version not in bounds and all(version < b for b in same):
+            return (f"fixed version {found[0]} is below {'.'.join(map(str, min(same)))}, the first fixed version in the CVE"
+                    " records; a version below it is still affected")
+    return ""
+
+
 class Rejected(ValueError):
     """The model's reply failed the schema or the code check; the Brief stays."""
 
@@ -341,8 +363,8 @@ def title_now(incidents, claude, stamp):
 
 def needs_summary(incident):
     """No Summary yet, or a re-summary trigger since the last one: a new official advisory, a new
-    KEV listing, a newly attached CVE, or reported attacks without the source that reports them (written before
-    critique 14), at most MAX_SUMMARIES in all."""
+    KEV listing, a newly attached CVE, reported attacks without the source that reports them (written before
+    critique 14), or a fixed version the CVE records call affected (fixed_conflict), at most MAX_SUMMARIES in all."""
     if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
         return False
     if "summary" not in incident:
@@ -353,7 +375,8 @@ def needs_summary(incident):
     now = basis(incident)
     unsourced = incident["summary"].get("exploited") and not incident["summary"].get("exploited_source")
     return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
-                or set(now["advisories"]) - set(seen["advisories"]) or unsourced)
+                or set(now["advisories"]) - set(seen["advisories"]) or unsourced
+                or fixed_conflict(incident, incident["summary"]))
 
 
 def is_budget_error(err):
@@ -386,6 +409,11 @@ def save_reply(incident, reply, text, seen, stamp):
         summary = parse(reply, text, [m["url"] for m in incident["mentions"]])
     except Rejected as err:
         failed(incident, str(err))
+        return
+    # A fixed version the CVE records call affected is never stored, on the last try either.
+    conflict = fixed_conflict(incident, summary)
+    if conflict:
+        failed(incident, conflict)
         return
     # Jargon in the Easy view, or a stopgap without the step its mitigation says it needs, costs a retry, never the
     # Summary: the last try is kept as it is.
