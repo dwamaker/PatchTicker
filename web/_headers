@@ -2,7 +2,7 @@
 # The two hashes are index.html's inline theme <script> and its <style>: tests/headers.test.mjs fails when either changes.
 # static.cloudflareinsights.com / cloudflareinsights.com: the Web Analytics beacon Cloudflare injects (PRODUCT.md).
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-N8h16GD3BDx42bXhE5jLDjCGGfBnshZA8+vDJBc26LA=' https://static.cloudflareinsights.com; style-src 'sha256-4VYVnbaJql7D7riADy2yacFv7Ux6Q/+L0kHobgjta7c='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-bFCSMnAozRSrGdzKjhTQcno4DCyCymUgQL0iK4vn88g=' https://static.cloudflareinsights.com; style-src 'sha256-4VYVnbaJql7D7riADy2yacFv7Ux6Q/+L0kHobgjta7c='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()

@@ -220,7 +220,10 @@ function toggleTheme() {
 }
 
 const getJson = async (name) => {
-  const res = await fetch(DATA_URL + name, { cache: 'no-cache' });
+  // index.html's inline script asked for the week already: take that response once (later refreshes fetch again).
+  const early = window.vrEarly?.url === DATA_URL + name ? window.vrEarly.res : null;
+  if (early) window.vrEarly = null;
+  const res = await (early || fetch(DATA_URL + name, { cache: 'no-cache' }));
   if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
   return res.json();
 };
