@@ -590,11 +590,10 @@ function pop(node, from = 'scale(0.6)', duration = 220) {
   node.animate([start, { opacity: 1, transform: 'none' }], { duration, easing: EASE_OUT });
 }
 // Opening and closing a panel moves its height, so the rows below glide instead of jumping: open in 300ms, close
-// faster (200ms). A click mid-way turns it round at once. Reduced motion: no movement, the panel just appears.
-// A gentle ease-out, not EASE_OUT: that one is three quarters open in the first 50ms, so a panel taller than a phone's
-// screen filled it in three frames and read as no animation at all (owner, 11-10, MuMu recording).
-const FOLD_OPEN = 'cubic-bezier(0.33, 1, 0.68, 1)';
-const FOLD_CLOSE = 'cubic-bezier(0.32, 0, 0.67, 0)';
+// in 240ms. A click mid-way turns it round at once. Reduced motion: no movement, the panel just appears.
+// Both ways on one gentle ease-out (MuMu, frame by frame, owner 11-10): EASE_OUT was three quarters open in 50ms, so a
+// phone-tall panel just appeared; an ease-in close barely moved for 80ms and then shut in three frames.
+const FOLD_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)';
 function fold(node, opening, done = () => {}) {
   node.folding?.cancel();
   if (reducedMotion.matches) return done();
@@ -604,7 +603,7 @@ function fold(node, opening, done = () => {}) {
   const shut = { height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
   node.style.overflow = 'hidden';
   node.folding = node.animate(opening ? [shut, full] : [full, shut],
-    { duration: opening ? 300 : 200, easing: opening ? FOLD_OPEN : FOLD_CLOSE });
+    { duration: opening ? 300 : 240, easing: FOLD_EASE });
   node.folding.onfinish = () => {
     node.style.overflow = '';
     node.folding = null;
