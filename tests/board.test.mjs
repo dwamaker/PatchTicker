@@ -194,6 +194,13 @@ test('search finds an Incident by a name only its Mentions use', () => {
   assert.deepEqual(filterBoard([joined, incident('CVE-2026-1', '2026-11-08T05:00:00Z')], [], 'sshole').list.map((i) => i.id), ['CVE-2026-123158']);
 });
 
+test("search skips a newsletter's title, which names only its lead story, but keeps a write-up's", () => {
+  const lead = 'Risky Bulletin: Some OpenSSH instances take any password longer than 256 characters';
+  const curated = { ...incident('CVE-2026-2', '2026-11-08T05:00:00Z'), mentions: [{ kind: 'curator', url: '', title: lead }] };
+  const written = { ...incident('CVE-2026-3', '2026-11-08T05:00:00Z'), mentions: [{ kind: 'writeup', url: '', title: 'OpenSSH takes any long password' }] };
+  assert.deepEqual(filterBoard([curated, written], [], 'openssh').list.map((i) => i.id), ['CVE-2026-3']);
+});
+
 test('lists an Unassigned incident (no CVE yet) among CVE Incidents, newest first', () => {
   const unassigned = { ...incident('https://news.ycombinator.com/item?id=50378228', '2026-11-05T12:30:00Z'), cves: [] };
   const incidents = [incident('CVE-2026-1', '2026-11-05T12:00:00Z'), unassigned, incident('CVE-2026-2', '2026-11-05T13:00:00Z')];
@@ -985,6 +992,9 @@ test('the shared words hold the same keys in both languages, each a non-empty te
   });
   filled(WORDS.ko, 'ko');
   filled(WORDS.en, 'en');
+  // The Board's 대처법 line and the Incident page say the same sentence when no fix is known.
+  assert.equal(WORDS.ko.none, '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.');
+  assert.equal(WORDS.en.none, 'We have not confirmed a fixed version yet. Check the source links below.');
 });
 
 test('a pressed tag filters by its OS or Product pick, or searches a name with no Product, in both languages', () => {

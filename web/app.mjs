@@ -1675,7 +1675,7 @@ window.addEventListener('hashchange', () => {
   render();
 });
 
-const el = (tag, className, textContent = '') => Object.assign(document.createElement(tag), { className, textContent });
+const el = (tag, className = '', textContent = '') => Object.assign(document.createElement(tag), { className, textContent });
 // A CVE ID is never cut at its hyphens (critique 13: "CVE-2026-" ended a line at 320px in the Easy text).
 const keepIds = (text) => String(text).split(/(CVE-\d{4}-\d{4,})/).map((part, n) => (n % 2 ? el('span', 'nw', part) : part));
 // The page follows `lang`; source text in another language carries its own lang for screen readers.
@@ -1706,7 +1706,8 @@ function summary(s) {
     list.append(...s.conditions.map((c) => el('li', '', c)));
     parts.push(labelled('conditions', TEXT[lang].conditions, ''), list);
   }
-  if (s.mitigation) parts.push(labelled('mitigation', TEXT[lang].mitigation, s.mitigation));
+  // Always said, so a row with no known fix does not go straight from the summary to the source link.
+  parts.push(labelled('mitigation', TEXT[lang].mitigation, s.mitigation || TEXT[lang].none));
   return parts;
 }
 

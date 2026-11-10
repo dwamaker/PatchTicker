@@ -252,8 +252,9 @@ def summary_failures(incidents, since):
             for i in sorted(given_up, key=lambda i: i["first_seen"], reverse=True)]
 
 
-# Reasons that end in a string the model wrote as it liked (summaries.parse), which may copy a source page.
-FREE_TEXT_REASONS = ("lead is not an input URL", "cve_lines names a CVE not in the input")
+# Reasons that end in a string the model wrote as it liked (summaries.parse, summaries.stray_script), which may copy a
+# source page.
+FREE_TEXT_REASONS = ("lead is not an input URL", "cve_lines names a CVE not in the input", "text in another script")
 
 
 def plain_reason(reason):

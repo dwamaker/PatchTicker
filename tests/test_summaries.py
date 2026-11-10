@@ -758,3 +758,86 @@ class FixedConflictTest(unittest.TestCase):
         self.assertFalse(summaries.needs_summary(incident | {"summary": {"fixed": "3.32.2", "fixes": []}}))
         self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
         self.assertFalse(summaries.needs_summary(incident | {"summary_error": {"tries": summaries.MAX_TRIES}}))
+
+
+class StrayScriptTest(unittest.TestCase):
+    """11-11: three stored Summaries had Russian words inside Korean sentences ("1.3.3보다 новее인지", CVE-2026-29508).
+    Letters outside Korean, ASCII and Latin with diacritics pass only when the Incident's own text writes them."""
+    INCIDENT = {"brief": {"text": "A flaw in the mView app."}, "cve_texts": {"CVE-2026-1": "Pubjet | پاب‌جت plugin"},
+                "products": [{"id": "x:mview", "name": "mView 豆瓣电影"}], "mentions": [{"kind": "writeup", "url": "u", "title": "Ελληνικά news"}]}
+
+    def stray(self, text, incident=INCIDENT, lang="ko", field="mitigation"):
+        return summaries.stray_script(incident, {lang: {field: text}})
+
+    def test_a_russian_word_in_a_korean_sentence_is_rejected_by_its_run(self):
+        self.assertEqual(self.stray("실행 중인 버전이 1.3.3보다 новее인지 확인하세요."), "text in another script: новее")
+
+    def test_korean_ascii_and_latin_with_diacritics_pass(self):
+        self.assertEqual(self.stray("café의 µTorrent와 İstanbul 서버를 업데이트하세요 (ㅋ)."), "")
+
+    def test_a_name_from_the_incidents_own_text_passes_and_the_same_name_elsewhere_does_not(self):
+        for field, text in (("title", "mView 豆瓣电影 앱 결함"), ("names", ["Pubjet | پاب‌جت"]), ("summary", "Ελληνικά news")):
+            with self.subTest(field):
+                self.assertEqual(self.stray(text, field=field, lang="en"), "")
+        bare = {"brief": {"text": "A flaw."}, "mentions": []}
+        self.assertEqual(self.stray("mView 豆瓣电影 앱 결함", bare, field="title"), "text in another script: 豆瓣电影")
+        self.assertEqual(self.stray(["Pubjet | پاب‌جت"], bare, field="names"), "text in another script: پاب")
+        self.assertEqual(summaries.stray_script(bare, {"en": {"cve_lines": [{"cve": "CVE-2026-1", "text": "новая"}]}}),
+                         "text in another script: новая")
+
+    def save(self, tries=0):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        if tries:
+            incident["summary_error"] = {"tries": tries, "reason": "earlier"}
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": SSHOLE_SUMMARY["ko"]["mitigation"] + " 버전이 новее인지 확인하세요."}}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
+        return incident
+
+    def test_a_reply_with_a_word_in_another_script_is_a_failed_try_even_the_last(self):
+        for tries in (0, summaries.MAX_TRIES - 1):
+            with self.subTest(tries=tries):
+                incident = self.save(tries)
+                self.assertNotIn("summary", incident)
+                self.assertEqual(incident["summary_error"]["reason"], "text in another script: новее")
+        self.assertTrue(incident["summary_error"]["final"])
+
+    def test_the_retry_note_asks_for_korean_and_english_only(self):
+        note = summaries.retry(self.save(), "")["note"]
+        self.assertIn("rejected: text in another script: новее", note)
+        self.assertIn("Write Korean in Korean and English in English", note)
+        self.assertNotIn("number", note)
+
+    def test_the_public_failure_list_keeps_only_the_reasons_own_words(self):
+        from collector.incidents import plain_reason
+        self.assertEqual(plain_reason("text in another script: новее"), "text in another script")
+
+    def test_a_stored_summary_with_a_word_in_another_script_is_made_again_within_the_limit(self):
+        incident = {"id": "CVE-2026-29508", "cves": ["CVE-2026-29508"], "kev": False, "mentions": [],
+                    "brief": {"text": "A flaw before 1.3.3."}, "summary": {"ko": {"mitigation": "1.3.3보다 новее인지 확인하세요."}, "fixed": "", "fixes": []},
+                    "summary_basis": {"cves": ["CVE-2026-29508"], "kev": False, "advisories": [], "n": 1}}
+        self.assertTrue(summaries.needs_summary(incident))
+        self.assertFalse(summaries.needs_summary(incident | {"summary": {"ko": {"mitigation": "1.3.3 이상인지 확인하세요."}}}))
+        self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
+
+
+class TitleEntityTest(unittest.TestCase):
+    """11-11: CNA product names carry HTML entities ("Contact Form 7 &#8211; Post Fields") and the model copied one into
+    the title and names. Titles, names and products are unescaped; the body may explain an entity on purpose."""
+
+    def test_titles_names_and_products_are_unescaped_and_the_body_is_not(self):
+        name = "Contact Form 7 &#8211; Post Fields"
+        body = SSHOLE_SUMMARY["en"]["summary"] + " Replacing '&' with '&amp;' fixes it."
+        reply = SSHOLE_SUMMARY | {"products": [name],
+                                  "ko": SSHOLE_SUMMARY["ko"] | {"title": f"{name} 결함", "names": [name]},
+                                  "en": SSHOLE_SUMMARY["en"] | {"title": f"{name} flaw", "easy_title": "Forms &amp; Fields at risk",
+                                                                "names": [name], "summary": body}}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(reply, ensure_ascii=False)
+        summary = summaries.parse(FakeClaude.message(reply), text, [SSHOLE_SUMMARY["lead"]])
+        self.assertEqual(summary["ko"]["title"], "Contact Form 7 – Post Fields 결함")
+        self.assertEqual(summary["en"]["title"], "Contact Form 7 – Post Fields flaw")
+        self.assertEqual(summary["en"]["easy_title"], "Forms & Fields at risk")
+        self.assertEqual(summary["ko"]["names"], ["Contact Form 7 – Post Fields"])
+        self.assertEqual(summary["en"]["names"], ["Contact Form 7 – Post Fields"])
+        self.assertEqual(summary["products"], ["Contact Form 7 – Post Fields"])
+        self.assertEqual(summary["en"]["summary"], body)

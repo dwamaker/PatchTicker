@@ -317,9 +317,11 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
     if (has.some((kind) => !i.mentions.some((m) => m.kind === kind))) return false;
     // Only a search builds the text (owner, 11-10: a row view of board/rows.json has none; the page fetches the full week first).
     if (!words.length) return true;
-    // Mention titles carry the names people use ("sshole") that a Summary may not.
+    // Mention titles carry the names people use ("sshole") that a Summary may not. A newsletter's title names only its
+    // lead story, yet the newsletter is tied to many Incidents, so its title is left out.
     const names = [...productsOf(i).flatMap((p) => [p.name, p.id]), ...(i.summary?.devices || [])].join('\n');
-    const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, names, ...(i.mentions || []).map((m) => m.title || '')].join('\n').toLowerCase();
+    const titles = (i.mentions || []).filter((m) => m.kind !== 'curator').map((m) => m.title || '');
+    const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, names, ...titles].join('\n').toLowerCase();
     const free = (w) => (NOT_INSIDE[w] ? text.replace(NOT_INSIDE[w], ' ') : text).includes(w);
     return words.every((w) => free(w) || (SEARCH_ALIASES[w] || []).some((x) => hasWord(names, x)));
   });
@@ -455,6 +457,7 @@ export const WORDS = {
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '고위험', high: '위험', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
+    none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
     newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기',
     refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 최대 90일의 사건만 저장합니다.',
@@ -470,6 +473,7 @@ export const WORDS = {
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
+    none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
     newTab: ' (opens in a new tab)', report: 'Report a mistake',
     refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",

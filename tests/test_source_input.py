@@ -78,6 +78,14 @@ class CveRecordTest(unittest.TestCase):
         self.assertEqual(log.getvalue().count("\n"), 2)
         self.assertIn("cvelist: skipped record CVE-2026-2222: KeyError('lang')", log.getvalue())
 
+    def test_an_html_entity_in_a_product_name_is_unescaped_and_the_key_is_unchanged(self):
+        # 11-11: the Board showed "Contact Form 7 &#8211; Post Fields" as written; the key stays the raw one's.
+        record = {"containers": {"cna": {"affected": [{"vendor": "Acme", "product": "Contact Form 7 &#8211; Post Fields"},
+                                                      {"vendor": "Acme", "product": "Blocks &amp; Patterns"}]}}}
+        self.assertEqual([(key, name) for key, name, _ in cvelist.cna_products(record)],
+                         [("acme:contact_form_7_&#8211;_post_fields", "Contact Form 7 – Post Fields"),
+                          ("acme:blocks_&amp;_patterns", "Blocks & Patterns")])
+
 
 class NewsAndCuratorFeedTest(unittest.TestCase):
     URL = "https://example.com/feed"

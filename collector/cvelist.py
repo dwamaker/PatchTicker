@@ -1,5 +1,6 @@
 """Source adapter: new CVE records from the cvelistV5 delta log, and updates to CVEs already on the Board."""
 
+import html
 import re
 import json
 import sys
@@ -111,12 +112,13 @@ CVSS_KEYS = ("cvssV3_1", "cvssV3_0", "cvssV4_0")
 
 
 def cna_products(record):
-    """(key, product as written, affected entry) for each of the CNA's named vendor/product pairs."""
+    """(key, product, affected entry) for each of the CNA's named vendor/product pairs. The product's HTML entities
+    are unescaped ("Contact Form 7 &#8211; Post Fields" showed as written, 11-11); the key stays the raw one's."""
     for a in record["containers"]["cna"].get("affected", []):
         vendor, product = (a.get("vendor") or "").strip(), (a.get("product") or "").strip()
         if not vendor or not product or vendor.lower() in ("n/a", "unknown") or product.lower() in ("n/a", "unknown"):
             continue
-        yield f"{vendor}:{product}".lower().replace(" ", "_"), product, a
+        yield f"{vendor}:{product}".lower().replace(" ", "_"), html.unescape(product), a
 
 
 def record_fix_keys(record):

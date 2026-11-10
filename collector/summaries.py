@@ -7,6 +7,7 @@ reaches the Board. Elsewhere: the input (summary_input), the number check (numbe
 shares (model), same_as merging (same_event) and the per-CVE lines batch (cve_lines).
 """
 
+import html
 import re
 import sys
 
@@ -240,6 +241,32 @@ def fixed_conflict(incident, summary):
     return ""
 
 
+# A run of letters outside ASCII, Latin-1 and Latin Extended-A/B ("é", "ü", "İ", "µ") and Hangul (jamo, compatibility
+# jamo, syllables). Not letters (digits, marks, ZWNJ, "–") end a run.
+STRAY_RUN = re.compile(r"(?:(?![\x00-\x7f\u00aa-\u024f\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7ff])[^\W\d_])+")
+STRAY_REASON = "text in another script"  # incidents.FREE_TEXT_REASONS cuts it: it quotes model text
+
+
+def stray_script(incident, summary):
+    """A word in a script the Incident's own text never writes (11-11: "1.3.3보다 новее인지" in a Korean mitigation,
+    CVE-2026-29508). A run of other letters passes only when the Brief, a CVE description, a product name or a Mention
+    title has it verbatim ("mView 豆瓣电影", Persian plugin names). The reason, or ""."""
+    own = "\n".join([(incident.get("brief") or {}).get("text") or "", *(incident.get("cve_texts") or {}).values(),
+                     *(p.get("name") or "" for p in incident.get("products", [])),
+                     *(m.get("title") or "" for m in incident.get("mentions", []))])
+    for lang in ("ko", "en"):
+        # .get: stored Summaries from before some fields came are read here too (needs_summary).
+        fields = summary.get(lang) or {}
+        texts = [*(fields.get(k) for k in ("title", "summary", "mitigation", "easy", "easy_title", "easy_action",
+                                           "command_for", "stopgap_then")),
+                 *(t for k in ("conditions", "easy_conditions", "names") for t in fields.get(k) or []),
+                 *(line.get("text") for line in fields.get("cve_lines") or [] if isinstance(line, dict))]
+        for run in STRAY_RUN.findall("\n".join(t for t in texts if isinstance(t, str))):
+            if run not in own:
+                return f"{STRAY_REASON}: {run}"
+    return ""
+
+
 class Rejected(ValueError):
     """The model's reply failed the schema or the code check; the Brief stays."""
 
@@ -361,7 +388,8 @@ def title_now(incidents, claude, stamp):
 def needs_summary(incident):
     """No Summary yet, or a re-summary trigger since the last one: a new official advisory, a new
     KEV listing, a newly attached CVE, reported attacks without the source that reports them (written before
-    critique 14), a fixed version the CVE records call affected (fixed_conflict), or an Incident merged in by same_as
+    critique 14), a fixed version the CVE records call affected (fixed_conflict), a word in a script the Incident's own
+    text never writes (stray_script), or an Incident merged in by same_as
     (apply_same_as; news stories bring write-ups, which no other trigger reads), at most MAX_SUMMARIES in all."""
     if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
         return False
@@ -374,7 +402,7 @@ def needs_summary(incident):
     unsourced = incident["summary"].get("exploited") and not incident["summary"].get("exploited_source")
     return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
                 or set(now["advisories"]) - set(seen["advisories"]) or set(now.get("merged", [])) - set(seen.get("merged", [])) or unsourced
-                or fixed_conflict(incident, incident["summary"]))
+                or fixed_conflict(incident, incident["summary"]) or stray_script(incident, incident["summary"]))
 
 
 def is_budget_error(err):
@@ -411,8 +439,9 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     except Rejected as err:
         failed(incident, str(err))
         return
-    # A fixed version the CVE records call affected is never stored, on the last try either.
-    conflict = fixed_conflict(incident, summary)
+    # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
+    # the last try either.
+    conflict = fixed_conflict(incident, summary) or stray_script(incident, summary)
     if conflict:
         failed(incident, conflict)
         return
@@ -500,9 +529,12 @@ def retry(incident, text=""):
     reason = incident.get("summary_error", {}).get("reason", "")
     if not reason:
         return {}
-    note = (f"Your previous reply for this Incident was rejected: {reason}. Write every number and version exactly as the"
-            " input writes it: never shorten or round one (not 10.86 for 10.86.51, not 4.2 for 4.2.16), never add one the"
-            " input does not have, and use the same numbers in Korean and English.")
+    note = f"Your previous reply for this Incident was rejected: {reason}." + (
+        " Write Korean in Korean and English in English; leave out the word in another script unless the input writes"
+        " that exact name." if reason.startswith(STRAY_REASON) else
+        " Write every number and version exactly as the input writes it: never shorten or round one (not 10.86 for"
+        " 10.86.51, not 4.2 for 4.2.16), never add one the input does not have, and use the same numbers in Korean and"
+        " English.")
     bad = re.match(r"numbers not in the input: \[(.*)\]$", reason)
     if bad:
         known = sorted(numbers(text), key=lambda v: [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", v)])
@@ -618,9 +650,12 @@ def parse(reply, input_text, urls):
     summary["titles_ko"] = [t for t in summary["titles_ko"] if isinstance(t, dict) and t.get("url") in urls
                             and isinstance(t.get("title"), str) and t["title"] and ko_numbers(t["title"]) <= known]
     # The prompt says no CVE ID in a title, but the model still adds one now and then; the row shows it above.
+    # Names come from CNA product names, some with HTML entities ("&#8211;", 11-11); the body may explain one on purpose.
     for lang in ("ko", "en"):
         for key in ("title", "easy_title"):
-            summary[lang][key] = CVE_IN_TITLE.sub("", summary[lang][key]).strip()
+            summary[lang][key] = html.unescape(CVE_IN_TITLE.sub("", summary[lang][key]).strip())
+        summary[lang]["names"] = [html.unescape(n) if isinstance(n, str) else n for n in summary[lang]["names"]]
+    summary["products"] = [html.unescape(p) for p in summary["products"]]
     # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
     summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
     return summary

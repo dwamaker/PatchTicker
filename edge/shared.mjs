@@ -50,13 +50,11 @@ export async function cached(context, render) {
 const TODO = {
   ko: {
     ...WORDS.ko,
-    none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     orNewer: (v) => `${v} 이상`, // not in WORDS: the Board's keeps "이상" on the line with a no-break space
     caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.', // not in WORDS: English differs
   },
   en: {
     ...WORDS.en,
-    none: 'We have not confirmed a fixed version yet. Check the source links below.',
     orNewer: (v) => `${v} or later`, // not in WORDS: the Board's uses no-break spaces
     caution: 'A wrong setting can stop the service or lock you out. Check the source links below first.', // not in WORDS: the Board says "source link"
   },
