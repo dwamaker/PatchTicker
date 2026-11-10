@@ -19,7 +19,7 @@ import anthropic
 from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn
-from collector.incidents import STAMP, is_news
+from collector.incidents import STAMP, fold, is_news, month_of, on_board, products_of, published_at
 
 MODEL = "claude-haiku-5-5"
 # Decided by the 2026-11-07 low vs medium comparison (plan.md).
@@ -112,9 +112,10 @@ SCHEMA = {
         # A Korean line for each English Mention title, so the Korean page's source list reads in Korean.
         "titles_ko": {"type": "array", "items": {"type": "object", "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
                                                  "required": ["url", "title"], "additionalProperties": False}},
+        "same_as": {"type": "string"},  # owner, 11-10: the code decides (apply_same_as)
     },
     "required": ["ko", "en", *SHARED_FIELDS, "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source",
-                 "poc_public", "library"],
+                 "poc_public", "library", "same_as"],
     "additionalProperties": False,
 }
 
@@ -152,6 +153,7 @@ Also:
 - poc_public: true when a source says exploit or proof-of-concept code is public (a PoC repository, a published exploit). This alone never makes it exploited.
 - library: true when the affected product is a library, SDK, framework or package that other programs build in (Brotli, zlib, Qt, an npm or PyPI package), so a reader cannot see its version and must update the program that contains it. False for apps, servers, operating systems and devices.
 - titles_ko: for each Mention with a title (in brackets after its URL) that is not in Korean, except repositories, a short Korean rendering of that title: "url" copied exactly from the Mentions list, "title" in Korean with product names and CVE IDs kept as written ("sshole (OpenSSH 로그인 결함)"). Empty list when there are none.
+- same_as: when the request ends with a list of recent Incidents without a CVE, the id of the one listed Incident that is the SAME event as this one: the same product and the same flaw or attack, not just the same vendor or a similar bug. Copy the id exactly as listed. Empty string when none is, or when there is no list; when unsure, answer "".
 Keep every field short and do not repeat one field in another.
 
 Rules:
@@ -178,7 +180,7 @@ Text of https://www.qualys.com/2024/07/01/cve-2024-6387/regresshion.txt:
 ... OpenSSH versions from 8.5p1 up to, but not including, 9.8p1 are vulnerable on glibc-based Linux ... If sshd cannot be updated, set LoginGraceTime to 0 in the configuration file; this makes sshd vulnerable to a denial of service but not to the remote code execution ...
 
 Output:
-{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false, "exploited_source": "", "poc_public": false, "library": false}"""
+{"ko": {"title": "OpenSSH sshd 신호 처리 경쟁 상태로 원격 코드 실행 가능 (regreSSHion)", "summary": "OpenSSH 서버(sshd)의 신호 처리 경쟁 상태 때문에 인증하지 않은 원격 공격자가 코드를 실행할 수 있습니다. glibc 기반 Linux에서 8.5p1부터 9.8p1 이전 버전이 해당합니다.", "conditions": ["glibc 기반 Linux", "OpenSSH 8.5p1 이상 9.8p1 미만"], "mitigation": "OpenSSH 9.8p1로 업데이트하세요. 당장 못 하면 설정에서 LoginGraceTime 0으로 두세요(서비스 거부에는 여전히 취약합니다).", "easy": "원격 접속을 연 리눅스 서버가 해킹당할 수 있습니다!", "easy_title": "OpenSSH 서버 해킹 위험", "easy_action": "OpenSSH를 새 버전으로 업데이트하세요.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "OpenSSH sshd signal race allows remote code execution (regreSSHion)", "summary": "A race condition in how the OpenSSH server (sshd) handles signals lets an unauthenticated remote attacker run code. Versions from 8.5p1 up to, but not including, 9.8p1 on glibc-based Linux are affected.", "conditions": ["glibc-based Linux", "OpenSSH 8.5p1 or later, before 9.8p1"], "mitigation": "Update to OpenSSH 9.8p1. Until then, set LoginGraceTime 0 (sshd stays open to denial of service).", "easy": "Linux servers open to remote login can be hacked!", "easy_title": "OpenSSH servers hackable", "easy_action": "Update OpenSSH to the newest version.", "names": ["OpenSSH"], "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["OpenSSH"], "lead": "https://www.openssh.com/txt/release-9.8", "fixed": "9.8p1", "command": "", "stopgap": "LoginGraceTime 0", "devices": [], "fixes": [], "incident": true, "platforms": ["Linux"], "stopgap_file": "", "titles_ko": [], "exploited": false, "exploited_source": "", "poc_public": false, "library": false, "same_as": ""}"""
 
 
 # Words the prompt bans from the Easy view (easy, easy_title, easy_action), checked in code because the model still
@@ -301,7 +303,8 @@ def priority(incident):
 def basis(incident):
     """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing)."""
     return {"cves": sorted(incident["cves"]), "kev": bool(incident.get("kev")),
-            "advisories": sorted(m["url"] for m in incident["mentions"] if m["kind"] == "advisory")}
+            "advisories": sorted(m["url"] for m in incident["mentions"] if m["kind"] == "advisory"),
+            **({"merged": sorted(incident["merged"])} if incident.get("merged") else {})}
 
 
 TITLE_FIELDS = ("ko_title", "en_title", "ko_easy_title", "en_easy_title")
@@ -379,7 +382,8 @@ def title_now(incidents, claude, stamp):
 def needs_summary(incident):
     """No Summary yet, or a re-summary trigger since the last one: a new official advisory, a new
     KEV listing, a newly attached CVE, reported attacks without the source that reports them (written before
-    critique 14), or a fixed version the CVE records call affected (fixed_conflict), at most MAX_SUMMARIES in all."""
+    critique 14), a fixed version the CVE records call affected (fixed_conflict), or an Incident merged in by same_as
+    (apply_same_as; news stories bring write-ups, which no other trigger reads), at most MAX_SUMMARIES in all."""
     if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
         return False
     if "summary" not in incident:
@@ -390,7 +394,7 @@ def needs_summary(incident):
     now = basis(incident)
     unsourced = incident["summary"].get("exploited") and not incident["summary"].get("exploited_source")
     return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
-                or set(now["advisories"]) - set(seen["advisories"]) or unsourced
+                or set(now["advisories"]) - set(seen["advisories"]) or set(now.get("merged", [])) - set(seen.get("merged", [])) or unsourced
                 or fixed_conflict(incident, incident["summary"]))
 
 
@@ -400,11 +404,12 @@ def is_budget_error(err):
     return status == 402 or status == 400 and bool(re.search(r"credit balance|usage limit|spend limit", err.message, re.I))
 
 
-def summarize_now(incident, claude, http_get, stamp):
-    """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through."""
+def summarize_now(incident, claude, http_get, stamp, candidates=()):
+    """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
+    candidates: its same_as_candidates(), listed beside the input."""
     text, seen = summary_input(incident, http_get), basis(incident)
     try:
-        reply = claude.messages.create(**params(text, **retry(incident, text)))
+        reply = claude.messages.create(**params(text, candidates=same_as_text(candidates), **retry(incident, text)))
     except anthropic.APIStatusError as err:
         # Too long for this request alone: a counted try, or it blocks every later one each cycle. Any other 400 may be
         # the same for every request (a parameter the API stopped accepting), so it stops the cycle and costs no try.
@@ -412,10 +417,12 @@ def summarize_now(incident, claude, http_get, stamp):
             raise
         failed(incident, f"request rejected: {err.status_code} {err.message}")
         return
-    save_reply(incident, reply, text, seen, stamp)
+    save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates])
 
 
-def save_reply(incident, reply, text, seen, stamp):
+def save_reply(incident, reply, text, seen, stamp, listed=()):
+    # listed: the ids of the same_as candidates the request listed. A stored Summary leaves its same_as answer on the
+    # Incident ("same_as": {id, listed}) for apply_same_as, which has every Incident, to decide right after.
     # n counts the Summaries a trigger asked for (MAX_SUMMARIES), so "due" is read before the reply changes anything:
     # a reply nothing asked for (a hand re-make after a prompt change) replaces the text but is not counted
     # (critique 14: n reached 16 in a day, mostly from re-makes).
@@ -441,6 +448,9 @@ def save_reply(incident, reply, text, seen, stamp):
     # The last try keeps the Summary, but never an Easy action that contradicts it: the Easy view then shows the mitigation.
     for lang in mismatch:
         summary[lang]["easy_action"] = ""
+    same = summary.pop("same_as")
+    if same or listed:
+        incident["same_as"] = {"id": same, "listed": list(listed)}
     incident["summary"] = summary | {"at": stamp}
     incident.pop("summary_error", None)
     incident.pop("cve_lines_rounds", None)  # a new Summary's lines past CVE_LINES_MAX are asked for again
@@ -456,16 +466,20 @@ def failed(incident, reason):
     incident["summary_error"] = {"tries": tries, "reason": reason[:200], "with_reason": True} | once | ({"final": True} if tries >= MAX_TRIES else {})
 
 
-def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH):
+def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
     """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
-    The input is kept so the reply can be checked against it when the result comes in."""
+    The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
+    candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked."""
+    listed = {i["id"]: candidates(i) for i in incidents[:limit]}
     requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
+                | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
                 for n, i in enumerate(incidents[:limit])}
     by_id = {i["id"]: i for i in incidents[:limit]}
     if not requests:
         return None
     batch = claude.messages.batches.create(requests=[
-        Request(custom_id=cid, params=params(r["input"], ttl="1h", **retry(by_id[r["incident"]], r["input"]))) for cid, r in requests.items()])
+        Request(custom_id=cid, params=params(r["input"], ttl="1h", candidates=same_as_text(listed[r["incident"]]),
+                                             **retry(by_id[r["incident"]], r["input"]))) for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
 
 
@@ -492,11 +506,78 @@ def collect_batch(pending, incidents, claude, stamp):
                 touched.append(incident)
             continue
         if item.result.type == "succeeded":
-            save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp)
+            save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, sent.get("candidates", []))
         elif item.result.type == "errored":
             failed(incident, f"batch request errored: {item.result.error.error.type}")
         touched.append(incident)
     return touched
+
+
+# Owner, 11-10: CVE-less stories of one event (Plex2Shell on BleepingComputer and SecurityWeek, 68 h apart) stayed apart,
+# as only a shared CVE or URL links Incidents. Their Summary request lists these candidates; the model names one in
+# same_as and apply_same_as decides. A merge cannot be undone, so the rules narrow the list and check the answer.
+SAME_AS_DAYS = 7
+SAME_AS_MAX = 20
+SAME_AS_ID_CHARS = 200  # a longer id is left out, so the list stays under about 7,900 characters
+SAME_AS_HEAD = "Recent Incidents without a CVE, newest first (id | title | products); same_as names one of these ids or \"\":"
+
+
+def same_as_candidates(incident, incidents, now):
+    """The Incidents a CVE-less Incident could be the same event as: Board Incidents with a Summary and no CVE, published
+    (else first seen) in the last SAME_AS_DAYS, newest first, at most SAME_AS_MAX. None for an Incident with a CVE."""
+    if incident["cves"]:
+        return []
+    since = (now - timedelta(days=SAME_AS_DAYS)).strftime(STAMP)
+    found = [i for i in incidents if i is not incident and i.get("summary") and not i["cves"] and on_board(i)
+             and published_at(i) >= since and len(i["id"]) <= SAME_AS_ID_CHARS]
+    return sorted(found, key=published_at, reverse=True)[:SAME_AS_MAX]
+
+
+def same_as_text(candidates):
+    """The candidate list sent beside the input: one short line each."""
+    if not candidates:
+        return ""
+    line = lambda i: (f"- {i['id']} | {short(i['summary'].get('en', {}).get('title', ''), 100)}"
+                      f" | {short(', '.join(i['summary'].get('products') or []), 80)}")
+    return "\n".join([SAME_AS_HEAD, *map(line, candidates)])
+
+
+def short(text, n):
+    """Model text that reaches the prompt or merge_log.json (read by an operator's agent, as plain_reason's text is):
+    cut to n characters, and empty when it holds a character that is not printable."""
+    return text[:n] if isinstance(text, str) and text.isprintable() else ""
+
+
+def product_ids(incident):
+    # The picker's keys (products_of); an os: platform is a filter, not the Product (Chrome and a Windows bug share one).
+    return {p["id"] for p in products_of(incident, "en") if not p["id"].startswith("os:")}
+
+
+def apply_same_as(incidents, stamp):
+    """Decide each same_as answer save_reply left on an Incident: merge the two when the id was listed in that request,
+    that Incident still exists without a CVE and on the Board (and so does the asker), and the two share a Product;
+    the earlier first seen survives, as in link(). Returns (months changed, merge_log.json entries, oldest first): one
+    for every answer that named an id or had candidates listed."""
+    changed, log = set(), []
+    for asker in [i for i in incidents if "same_as" in i]:
+        wish = asker.pop("same_as")
+        other = next((i for i in incidents if i["id"] == wish["id"]), None)
+        here = any(i is asker for i in incidents)  # an earlier answer this cycle may have merged it away
+        why = ("none named" if not wish["id"] else "not listed" if wish["id"] not in wish["listed"]
+               else "gone" if other is None or not here else "has a CVE now" if other["cves"] or asker["cves"]
+               else "not on the Board" if not (on_board(other) and on_board(asker))
+               else "no shared Product" if not product_ids(asker) & product_ids(other) else "accepted")
+        title = lambda i: short(i["summary"].get("en", {}).get("title", ""), 100) if i and i.get("summary") else ""
+        log.append({"at": stamp, "incident": {"id": short(asker["id"], 300), "title": title(asker)}, "candidates": len(wish["listed"]),
+                    "same_as": {"id": short(wish["id"], 300), "title": title(other)} if wish["id"] else "",
+                    "accepted": why == "accepted", "why": why})
+        if why == "accepted":
+            survivor, gone = sorted((i for i in incidents if i is asker or i is other), key=lambda i: i["first_seen"])
+            survivor["merged"] = survivor.get("merged", []) + [gone["id"]]  # its re-summary trigger (needs_summary)
+            fold(incidents, survivor, gone)
+            changed |= {month_of(survivor["first_seen"]), month_of(gone["first_seen"])}
+            print(f"summaries: same_as: merged {gone['id']} into {survivor['id']}", file=sys.stderr)
+    return changed, log
 
 
 LINES_SCHEMA = {
@@ -649,8 +730,10 @@ def revive_lines(incident):
     return True
 
 
-def params(text, ttl=None, note="", max_tokens=MAX_TOKENS):
-    """messages.create parameters; the batch path sends the same with ttl="1h". note follows the input (retry())."""
+def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):
+    """messages.create parameters; the batch path sends the same with ttl="1h". candidates (same_as_text()) and note
+    (retry()) follow the input, never inside it: a reply is checked against the input alone, so a candidate's title
+    lends it no number."""
     return {
         "model": MODEL,
         "max_tokens": max_tokens,
@@ -659,7 +742,7 @@ def params(text, ttl=None, note="", max_tokens=MAX_TOKENS):
         "system": [{"type": "text", "text": INSTRUCTIONS,
                     "cache_control": {"type": "ephemeral"} | ({"ttl": ttl} if ttl else {})}],
         "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": SCHEMA}},
-        "messages": [{"role": "user", "content": f"{text}\n\n{note}" if note else text}],
+        "messages": [{"role": "user", "content": "\n\n".join(part for part in (text, candidates, note) if part)}],
     }
 
 
@@ -911,6 +994,8 @@ def parse(reply, input_text, urls):
     for lang in ("ko", "en"):
         for key in ("title", "easy_title"):
             summary[lang][key] = CVE_IN_TITLE.sub("", summary[lang][key]).strip()
+    # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
+    summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
     return summary
 
 

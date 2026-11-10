@@ -227,6 +227,31 @@ def plain_vendor(key, name):
     return bool(VENDOR_KEY.fullmatch(key)) and len(name) < 200 and name.isprintable()
 
 
+def summary_failures(incidents, since):
+    """Board Incidents first seen since `since` whose Summary was given up for good, newest first, for a person or an
+    agent to fix by hand (owner, 11-10; docs/agents/summary-failures.md). shows: "summary" when an older Summary is
+    still on the page (what the check rejected may be what it says), "brief" when the row has only its Brief."""
+    given_up = [i for i in incidents if i["first_seen"] >= since and i.get("summary_error", {}).get("final") and on_board(i)]
+    return [{"id": i["id"], "first_seen": i["first_seen"], "reason": plain_reason(i["summary_error"].get("reason", "")),
+             "tries": i["summary_error"]["tries"], "shows": "summary" if i.get("summary") else "brief"}
+            for i in sorted(given_up, key=lambda i: i["first_seen"], reverse=True)]
+
+
+# Reasons that end in a string the model wrote as it liked (summaries.parse), which may copy a source page.
+FREE_TEXT_REASONS = ("lead is not an input URL", "cve_lines names a CVE not in the input")
+
+
+def plain_reason(reason):
+    """A reason goes to an operator's agent through summary_failures.json. The collector writes it and cuts it to 200
+    characters (summaries.failed); the rest quote model output: number tokens (NUMBER_RE), a version (VERSION_RE), API
+    error text. A reason quoting free model text, or holding a character that is not printable, keeps only its own words
+    before ": "; the whole reason stays on the Incident in its month file."""
+    if reason.startswith(FREE_TEXT_REASONS) or not reason.isprintable():
+        head = reason.split(": ", 1)[0]
+        return head if head.isprintable() else ""
+    return reason
+
+
 def to_stamp(value):
     """A source's ISO-8601 time ("2026-11-07T12:43:21.399Z", no zone = UTC) as a STAMP; None if unreadable."""
     try:

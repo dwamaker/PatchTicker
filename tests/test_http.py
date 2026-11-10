@@ -1,6 +1,7 @@
 """The collector's real http_get reads pages that Mentions point at, so it must not reach our own network."""
 
 import ipaddress
+import json
 import socket
 import ssl
 import threading
@@ -52,6 +53,12 @@ class Fixture(BaseHTTPRequestHandler):
         except OSError:  # the client hung up on the drip, as it should
             pass
 
+    def do_POST(self):
+        self.server.paths.append(self.path)
+        self.server.posted.append((self.headers["Content-Type"], self.rfile.read(int(self.headers["Content-Length"]))))
+        self.send_response(429 if self.path == "/busy" else 204)
+        self.end_headers()
+
     def drip(self, data):
         for byte in data:  # 25 x 0.2 s: long past the test's deadline, short enough to end the test if unfixed
             self.wfile.write(bytes([byte]))
@@ -67,7 +74,7 @@ class FakeNetwork(unittest.TestCase):
 
     def setUp(self):
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Fixture)
-        self.server.paths = []
+        self.server.paths, self.server.posted = [], []
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
@@ -131,6 +138,23 @@ class RebindingTest(FakeNetwork):
             self.http_get(f"https://start.test:{self.port}/")
         self.assertEqual(self.connected, ["93.184.216.10"])
         self.assertEqual(names, ["start.test"])
+
+
+class PostTest(FakeNetwork):
+    """The Discord webhook's POST goes through the same checks: public addresses only, pinned, under a deadline."""
+
+    def test_posts_json_to_the_checked_address(self):
+        net.make_http_post("vuln-radar/test")(f"http://start.test:{self.port}/hook", {"content": "안녕"})
+        [(kind, body)] = self.server.posted
+        self.assertEqual((kind, json.loads(body)), ("application/json", {"content": "안녕"}))
+        self.assertEqual(self.connected, ["93.184.216.10"])
+
+    def test_a_refused_address_or_an_error_status_is_an_oserror(self):
+        post = net.make_http_post("vuln-radar/test")
+        for url in ("http://127.0.0.1:9/hook", f"http://rebind.test:{self.port}/hook", f"http://start.test:{self.port}/busy"):
+            with self.subTest(url), self.assertRaises(OSError):
+                post(url, {"content": "x"})
+        self.assertEqual(self.server.paths, ["/busy"])
 
 
 class MalformedAnswerTest(FakeNetwork):

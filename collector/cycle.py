@@ -8,10 +8,10 @@ from datetime import timedelta
 
 import anthropic
 
-from collector import curators, cvelist, github, hn, kev, kisa, news, nvd, osssec, summaries
+from collector import curators, cvelist, discord, github, hn, kev, kisa, news, nvd, osssec, summaries
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, link, month_of,
                                  on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
-                                 search_worthy, unknown_vendors)
+                                 search_worthy, summary_failures, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
@@ -20,11 +20,12 @@ WHOLE_NEWEST = 100
 HIGHLIGHTS = 10
 FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
 PAGE_DAYS = 90  # an Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs)
+MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None):
-    """claude: an anthropic.Anthropic client, or None for Briefs only."""
+              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None):
+    """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None."""
     stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
@@ -89,6 +90,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
 
     status = {"updated": stamp, "collector": collector_id}
     batches = store.read("batches.json") or []
+    decisions = []
     if claude:
         was_paused = (store.read("status.json") or {}).get("summaries") == "paused"
         try:
@@ -99,6 +101,11 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
             if summaries.is_budget_error(err):
                 status["summaries"] = "paused"
         store.write("batches.json", batches)
+        # same_as answers saved above (owner, 11-10): the code decides, and every decision is kept, newest first.
+        merged, decisions = summaries.apply_same_as(incidents, stamp)
+        changed |= merged
+        if decisions:
+            store.write("merge_log.json", (decisions[::-1] + (store.read("merge_log.json") or []))[:MERGE_LOG_SIZE])
 
     for m in changed:
         # Incidents stay in the month they were first seen; a merge can empty an older month's row.
@@ -133,10 +140,20 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     picker_since = (now - timedelta(days=PICKER_DAYS)).strftime(STAMP)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
+    # Summaries given up for good, for a person or an agent to fix by hand (docs/agents/summary-failures.md).
+    failures = summary_failures(incidents, (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP))
+    known = {f["id"] for f in store.read("summary_failures.json") or []}  # as the last cycle left it: a restart repeats none
+    store.write("summary_failures.json", failures)
     if changed - set(index["months"]):
         store.write("index.json", {"months": sorted(changed | set(index["months"]))})
     store.write("checkpoints.json", checkpoints)
     store.write("status.json", status)
+    # Owner, 11-10: news for the owner, last, so a failed post costs nothing else (docs/development.md).
+    live = {i["id"] for i in incidents}
+    merges = [d | {"into": d["incident"]["id"] if d["incident"]["id"] in live else d["same_as"]["id"]} for d in decisions if d["accepted"]]
+    text = discord.message([f for f in failures if f["id"] not in known], merges)
+    if notify and text:
+        notify(text)
 
 
 def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe):
@@ -158,8 +175,9 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     # A candidate (위험 and up, KEV, buzz, curator) never waits for a batch it is already in (user, 2026-11-09).
     due = [i for i in incidents if summaries.needs_summary(i) and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
+    same_as = lambda incident: summaries.same_as_candidates(incident, incidents, now)  # applied by run_cycle (apply_same_as)
     for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
-        summaries.summarize_now(incident, claude, http_get, stamp)
+        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident))
         changed.add(month_of(incident["first_seen"]))
     since = (now - timedelta(days=summaries.BATCH_DAYS)).strftime(STAMP)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
@@ -174,7 +192,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     oldest = min((i["first_seen"] for i in rest), default=None)
     ready = probe or len(rest) >= summaries.BATCH_MIN or (
         oldest is not None and oldest <= (now - timedelta(hours=summaries.BATCH_WAIT_HOURS)).strftime(STAMP))
-    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
+    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH, candidates=same_as)
     if pending:
         batches.append(pending)
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.

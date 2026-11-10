@@ -192,7 +192,7 @@ class InstantSummaryTest(unittest.TestCase):
         [sent] = claude.sent
         self.assertEqual(sent["model"], "claude-haiku-5-5")
         self.assertEqual(sent["output_config"]["format"]["type"], "json_schema")
-        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library"])
+        self.assertEqual(sent["output_config"]["format"]["schema"]["required"], ["ko", "en", "products", "lead", "fixed", "command", "stopgap", "devices", "fixes", "incident", "platforms", "stopgap_file", "titles_ko", "exploited", "exploited_source", "poc_public", "library", "same_as"])
         [instructions] = sent["system"]
         self.assertEqual(instructions["cache_control"], {"type": "ephemeral"})
         # Haiku 5.5 caches only a prefix of 512 tokens or more; ~4 characters a token in English.

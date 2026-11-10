@@ -242,6 +242,9 @@ class ReviveTest(unittest.TestCase):
 
         self.assertEqual(len(claude.sent), 3)  # one more round, then given up for good
         self.assertTrue(board(self.store)[HN_STORY]["summary_error"]["final"])
+        # ...and listed for a person or an agent to fix by hand (owner, 11-10).
+        [failure] = self.store.read("summary_failures.json")
+        self.assertEqual((failure["id"], failure["tries"], failure["shows"]), (HN_STORY, 3, "brief"))
 
     def test_a_few_cve_incident_given_up_is_not_revived(self):
         self.edit(summary_error={"tries": 3, "reason": "stop_reason max_tokens", "with_reason": True, "final": True})

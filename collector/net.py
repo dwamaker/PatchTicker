@@ -3,6 +3,7 @@
 import contextlib
 import http.client
 import ipaddress
+import json
 import socket
 import threading
 import urllib.error
@@ -11,6 +12,7 @@ import urllib.request
 
 MAX_BYTES = 64 << 20  # NVD's 2,000-result pages are the largest legitimate answer
 DEADLINE = 120  # seconds for one whole fetch, redirects included; the 60 s socket timeout is per read only
+POST_DEADLINE = 10  # a webhook post; a slow Discord must not hold the cycle
 
 
 def check_public(url):
@@ -92,25 +94,41 @@ def make_http_get(user_agent):
     opener = urllib.request.build_opener(PinnedHTTP, PinnedHTTPS, PublicRedirects)
 
     def http_get(url, headers=None):
-        addresses = check_public(url)
-        req = urllib.request.Request(url, headers={"User-Agent": user_agent, **(headers or {})})
-        req.addresses, req.sockets, req.expired = addresses, [], threading.Event()
-        timer = threading.Timer(DEADLINE, cut, (req.sockets, req.expired))
-        timer.daemon = True
-        timer.start()
-        try:
-            with opener.open(req, timeout=60) as res:
-                body = res.read(MAX_BYTES + 1)
-        except http.client.HTTPException as err:  # a malformed answer: callers skip OSError, not this (audit 4)
-            raise OSError(f"{url}: {err!r}") from None
-        finally:
-            timer.cancel()
-            for sock in req.sockets:
-                sock.close()
-            if req.expired.is_set():
-                raise OSError(f"{url}: no full answer within {DEADLINE} s")
-        if len(body) > MAX_BYTES:
-            raise OSError(f"{url}: response over {MAX_BYTES} bytes")
-        return body
+        return fetch(opener, url, {"User-Agent": user_agent, **(headers or {})})
 
     return http_get
+
+
+def make_http_post(user_agent):
+    """A JSON POST (the Discord webhook) under the same rules as http_get, within POST_DEADLINE; a non-2xx answer
+    (a 429 too) is an OSError (urllib's HTTPError)."""
+    opener = urllib.request.build_opener(PinnedHTTP, PinnedHTTPS, PublicRedirects)
+
+    def http_post(url, payload):
+        fetch(opener, url, {"User-Agent": user_agent, "Content-Type": "application/json"}, json.dumps(payload).encode(), POST_DEADLINE)
+
+    return http_post
+
+
+def fetch(opener, url, headers, data=None, deadline=None):
+    deadline = deadline or DEADLINE  # read at call time: tests shorten DEADLINE
+    addresses = check_public(url)
+    req = urllib.request.Request(url, data=data, headers=headers)
+    req.addresses, req.sockets, req.expired = addresses, [], threading.Event()
+    timer = threading.Timer(deadline, cut, (req.sockets, req.expired))
+    timer.daemon = True
+    timer.start()
+    try:
+        with opener.open(req, timeout=min(60, deadline)) as res:
+            body = res.read(MAX_BYTES + 1)
+    except http.client.HTTPException as err:  # a malformed answer: callers skip OSError, not this (audit 4)
+        raise OSError(f"{url}: {err!r}") from None
+    finally:
+        timer.cancel()
+        for sock in req.sockets:
+            sock.close()
+        if req.expired.is_set():
+            raise OSError(f"{url}: no full answer within {deadline} s")
+    if len(body) > MAX_BYTES:
+        raise OSError(f"{url}: response over {MAX_BYTES} bytes")
+    return body

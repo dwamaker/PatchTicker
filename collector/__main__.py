@@ -11,14 +11,15 @@ from pathlib import Path
 
 import anthropic
 
-from collector import curators, kisa, news
+from collector import curators, discord, kisa, news
 from collector.cycle import run_cycle
-from collector.net import make_http_get
+from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
 
 REQUIRED = ("VR_COLLECTOR_ID", "VR_CONTACT")
 R2 = ("VR_R2_ENDPOINT", "VR_R2_BUCKET", "VR_R2_ACCESS_KEY_ID", "VR_R2_SECRET_ACCESS_KEY")
-OPTIONAL = ("VR_STORE_DIR", "VR_BACKUP_DB", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY") + R2
+OPTIONAL = ("VR_STORE_DIR", "VR_BACKUP_DB", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY",
+            "VR_DISCORD_WEBHOOK") + R2
 
 
 def load_settings(path):
@@ -66,9 +67,10 @@ def main():
         return seed_backup_main(args[1] if len(args) > 1 else ".env")
     settings = load_settings(args[0] if args else ".env")
     key = settings.get("ANTHROPIC_API_KEY")
+    agent = f"vuln-radar/0.1 ({settings['VR_CONTACT']})"
     run_cycle(
         make_store(settings),
-        make_http_get(f"vuln-radar/0.1 ({settings['VR_CONTACT']})"),
+        make_http_get(agent),
         datetime.now(timezone.utc),
         settings["VR_COLLECTOR_ID"],
         nvd_api_key=settings.get("VR_NVD_API_KEY", ""),
@@ -79,6 +81,7 @@ def main():
         kisa_feed=kisa.FEED,
         # The key is passed in, never left for the SDK to find in a login profile; no key, no Summaries.
         claude=anthropic.Anthropic(api_key=key) if key else None,
+        notify=discord.make_notifier(settings.get("VR_DISCORD_WEBHOOK"), make_http_post(agent)),
     )
 
 

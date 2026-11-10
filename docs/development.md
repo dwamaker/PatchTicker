@@ -29,9 +29,24 @@ the store and `--restore` rebuilds the store from it (commands in `compose.yaml`
 
 Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle
 lists the missing ones in `unknown_vendors.json` in the store. How to add one: `docs/agents/vendors.md`.
+Summaries given up after three tries (last 30 days, on the Board) are listed in `summary_failures.json` each cycle; how
+to act on one: `docs/agents/summary-failures.md`.
+With `VR_DISCORD_WEBHOOK` set (a `https://discord.com/api/webhooks/...` address only; anything else is refused at
+start-up, and the value is never logged), a cycle that newly gives up a Summary (an id not in the last cycle's
+`summary_failures.json`) or merges by `same_as` posts one short Korean message there (`collector/discord.py`; no pings,
+at most about 1,800 characters). A failed post is one stderr line and is not retried.
 
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
 of its URLs (`collector/incidents.py`, ADR 0001).
+CVE-less stories of one event share neither (owner, 11-10), so a CVE-less Incident's Summary request also lists, beside
+the input, up to 20 Board Incidents with a Summary and no CVE published in the last seven days (id, English title,
+Products), and the reply names the same event in `same_as` or "". The model only proposes; the code decides
+(`apply_same_as` in `collector/summaries.py`, run by the cycle right after Summaries, instant and batch alike): the id
+must have been listed, that Incident must still exist with no CVE and on the Board, and the two must share a Product
+key (`products_of`). Then they fold as `link()` folds (the earlier first seen survives, the other's page moves) and the
+survivor is due a new Summary (`merged` in its Summary basis). Every answer that named an id or had a list goes into
+`merge_log.json` in the store (newest first, last 300: `at`, `incident`, `candidates`, `same_as`, `accepted`, `why`),
+and each merge into one stderr line.
 
 The Board opens on `board/rows.json` (owner, 11-10): the week of `board/recent.json` as row views (marked `rows`), with
 only what a row, the filters, folds and Highlights read, and the collector's `wp_plugin` answer; the newest 100 and the
