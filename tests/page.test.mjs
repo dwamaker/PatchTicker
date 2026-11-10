@@ -55,6 +55,27 @@ test('the Korean page names itself canonical, links the English one and previews
   assert.match(html, /<h1>OpenSSH sshd 인증 우회 \(sshole\)<\/h1>/);
 });
 
+test('a long CVE list shows its first IDs and folds the rest (owner, 11-10: IBM API Connect listed 204)', async () => {
+  const cves = Array.from({ length: 25 }, (_, n) => `CVE-2026-${10001 + n}`);
+  for (const [lang, more] of [['ko', 'CVE 15건 더 보기'], ['en', '15 more CVE IDs']]) {
+    const html = await (await page({ ...SSHOLE, id: cves[0], cves }, lang, cves[0])).text();
+    const [open, folded] = html.split('<details');
+    assert.equal((open.match(/CVERecord\?id=CVE-2026-1\d{4}"/g) || []).length, 10);
+    assert.match(folded, new RegExp(`<summary>${more}</summary>`));
+    for (const cve of cves.slice(10)) assert.match(folded, new RegExp(`CVERecord\\?id=${cve}"`)); // still in the HTML
+  }
+  const few = await (await page(SSHOLE)).text();
+  assert.doesNotMatch(few, /<details/);
+});
+
+test('a CVE record the CVE list already links is not listed again under Sources', async () => {
+  const other = 'https://nvd.nist.gov/vuln/detail/CVE-2026-123158';
+  const html = await (await page({ ...SSHOLE, mentions: [...SSHOLE.mentions, { kind: 'cve_record', url: other }] })).text();
+  const sources = html.split('id="s-mentions"')[1];
+  assert.doesNotMatch(sources, /cve\.org\/CVERecord/); // already under CVE 번호
+  assert.match(sources, /CVE 기록: <a href="https:\/\/nvd\.nist\.gov/); // a record elsewhere stays
+});
+
 test('the page shows what the Board panel shows, with the Board rules', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, />고위험</); // riskLevel: KEV

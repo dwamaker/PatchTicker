@@ -18,7 +18,7 @@ const TEXT = {
     path: '/i/', locale: 'ko_KR', other: 'English', otherLang: 'en',
     levels: { highest: '고위험', high: '위험', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
-    summary: '요약', conditions: '해당 조건', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
+    summary: '요약', conditions: '해당 조건', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     published: '처음 게시', firstSeen: '처음 확인', zone: '',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
     newTab: ' (새 탭에서 열림)', board: '게시판에서 보기', report: '틀린 내용 알리기', cveRecord: 'CVE 기록 보기',
@@ -33,7 +33,7 @@ const TEXT = {
     path: '/en/i/', locale: 'en_US', other: '한국어', otherLang: 'ko',
     levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
-    summary: 'Summary', conditions: 'Affected when', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', mentions: 'Sources', times: 'Times', links: 'More on this Incident',
+    summary: 'Summary', conditions: 'Affected when', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
     published: 'First published', firstSeen: 'First seen', zone: ' UTC',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
     newTab: ' (opens in a new tab)', board: 'Open on the Board', report: 'Report a mistake', cveRecord: 'See the CVE record',
@@ -91,12 +91,22 @@ code{font-family:var(--mono);font-size:.875rem}
 .links{display:flex;flex-wrap:wrap;gap:0 1.25rem;margin-top:2rem;padding-top:.5rem;border-top:1px solid var(--rule)}
 .links a{display:inline-flex;align-items:center;min-height:44px}
 .sources a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}
+.more summary{cursor:pointer;padding:.75rem 0;font-weight:600}
 footer{padding:1rem 0 2rem;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.8125rem}`;
 
 const http = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
 // A source link opens in a new tab, as on the Board (DESIGN.md), and says so to screen readers.
 const link = (url, text, t) => (http(url) ? `<a href="${esc(url)}"${NEW_TAB}>${esc(text)}<span class="sr-only">${esc(t.newTab)}</span></a>` : '');
 const host = (url) => { try { return new URL(url).host.replace(/^www\./, ''); } catch { return String(url); } };
+// A release can carry hundreds of CVEs (IBM API Connect: 204): the first CVE_SHOWN stay in view, the rest fold. Every
+// link stays in the HTML for search engines; <details> needs no script.
+const CVE_SHOWN = 10;
+const cveList = (cves, t) => {
+  const links = cves.map((cve) => link(cveUrl(cve), cve, t));
+  if (links.length <= CVE_SHOWN + 2) return ul(links, 'sources'); // two more are not worth a fold
+  return ul(links.slice(0, CVE_SHOWN), 'sources')
+    + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), 'sources')}</details>`;
+};
 const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
 const cveUrl = (cve) => `https://www.cve.org/CVERecord?id=${encodeURIComponent(cve)}`;
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
@@ -142,8 +152,10 @@ function mentions(i, lang, t) {
   const glosses = Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : [];
   const named = (m) => (lang === 'ko' && glosses.find((g) => g?.url === m.url && typeof g.title === 'string')?.title) || m.title || host(m.url);
   const kinds = [...new Set([...MENTION_ORDER, ...i.mentions.map((m) => m.kind)])];
+  const listed = new Set(i.cves.map(cveUrl)); // the CVE section links these already (IBM API Connect had 204 twice)
   return ul(kinds.flatMap((kind) => {
-    const links = i.mentions.filter((m) => m.kind === kind && http(m.url)).map((m) => link(m.url, named(m), t));
+    const links = i.mentions.filter((m) => m.kind === kind && http(m.url) && !(kind === 'cve_record' && listed.has(m.url)))
+      .map((m) => link(m.url, named(m), t));
     return links.length ? [`${esc(t.mentionKinds[kind] || kind)}: ${links.join(' · ')}`] : [];
   }), 'sources');
 }
@@ -215,7 +227,7 @@ export function pageHtml(i, lang, slug) {
     section('conditions', t.conditions, ul(strings(s.conditions).map(esc))),
     section('todo', t.todo, whatToDo(i, lang)),
     section('products', t.products, products(i, lang)),
-    section('cves', t.cves, ul(i.cves.map((cve) => link(cveUrl(cve), cve, t)), 'sources')),
+    section('cves', t.cves, cveList(i.cves, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
     section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
     '</article>',
