@@ -7,6 +7,7 @@ each cut to the one paragraph that cites something).
 import unittest
 from urllib.parse import parse_qs, urlsplit
 
+from collector import curators
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 from test_cycle import at, incident, recorded
@@ -107,6 +108,24 @@ class CuratorTest(unittest.TestCase):
 
         self.assertEqual([self.store.read(f"months/{m}.json") for m in ("2026-09", "2026-10")], months)
         self.assertEqual(self.store.read("status.json")["updated"], "2026-11-07T12:45:00Z")
+
+    def test_an_issue_read_again_without_its_checkpoint_is_not_cited_twice(self):
+        # A new feed address starts with no checkpoint (owner, 11-10: Risky Business News moved), so all its issues are
+        # read; one already cited must not be added again.
+        self.run_at("2026-11-07T12:15:00")
+        months = [self.store.read(f"months/{m}.json") for m in ("2026-09", "2026-10")]
+        checkpoints = self.store.read("checkpoints.json")
+        del checkpoints["curators"][TLDRSEC]
+        self.store.write("checkpoints.json", checkpoints)
+
+        self.run_at("2026-11-07T12:30:00")
+
+        self.assertEqual([self.store.read(f"months/{m}.json") for m in ("2026-09", "2026-10")], months)
+
+    def test_the_curator_feeds_are_tldr_sec_and_the_risky_business_newsletter(self):
+        # Owner, 11-10: risky.biz/feeds/risky-business-news/ is the podcast (empty bodies, no CVE ID), so nothing was ever
+        # cited; the newsletter with the issues' text is news.risky.biz/rss/.
+        self.assertEqual(curators.FEEDS, (TLDRSEC, "https://news.risky.biz/rss/"))
 
 
 class HnPointsTest(unittest.TestCase):

@@ -124,6 +124,15 @@ class RowsViewTest(unittest.TestCase):
                 self.assertEqual(rows_view(case["full"]), case["row"])
                 self.assertEqual(highlight_score(case["full"]), case["highlight_score"])
                 self.assertEqual(is_wordpress_plugin(case["full"]), case["wp_plugin"])
+        for case in ROWS["scores"]:
+            with self.subTest(case["incident"]["id"]):
+                self.assertEqual(highlight_score(case["incident"]), case["highlight_score"])
+
+    def test_mentions_count_up_to_ten_and_exploited_outranks_a_300_mention_release(self):
+        def scored(n, **fields):
+            return highlight_score({"mentions": [{"kind": "advisory"}] * n, **fields})
+        self.assertEqual(scored(300, cvss=9.8), scored(10, cvss=9.8))
+        self.assertGreater(scored(2, cvss=5.3, kev=True), scored(300, cvss=9.8))
 
     def test_a_row_view_keeps_nothing_only_the_details_or_the_search_read(self):
         for case in ROWS["cases"]:

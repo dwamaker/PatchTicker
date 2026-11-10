@@ -102,10 +102,13 @@ def is_exploited(incident):
     return bool(incident.get("kev") or (summary.get("exploited") is True and isinstance(source, str) and source))
 
 
+HIGHEST_CVSS = 9  # HIGHEST_CVSS in web/board.mjs: the 최고 band's CVSS floor
+
+
 def risk_level(incident):
     """A port of riskLevel in web/board.mjs (tests/fixtures/board/risk-case.json keeps the two in step)."""
     cvss = incident.get("cvss")
-    if is_exploited(incident) or (cvss is not None and cvss >= 9):
+    if is_exploited(incident) or (cvss is not None and cvss >= HIGHEST_CVSS):
         return "highest"
     return "high" if cvss is not None and cvss >= 7 else "notice"
 
@@ -115,13 +118,21 @@ def published_at(incident):
     return incident.get("published") or incident["first_seen"]
 
 
+# MENTION_CAP in web/board.mjs (owner, 11-10): many-CVE releases (FFmpeg, 331 Mentions) took all four pins over exploited Incidents.
+MENTION_CAP = 10
+
+
 def highlight_score(incident):
     """A port of highlightScore in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step): rows.json
     keeps the week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more."""
     mentions = incident["mentions"]
     points = max([0] + [m.get("points") or 0 for m in mentions])
     curated = sum(1 for m in mentions if m["kind"] == "curator")
-    return (100 if is_exploited(incident) else 0) + min(points / 10, 50) + 25 * min(curated, 2) + 2 * (incident.get("cvss") or 0) + len(mentions)
+    exploited = is_exploited(incident)
+    cvss = incident.get("cvss")  # none yet: an exploited Incident counts as the floor of its 최고 band (owner, 11-10)
+    cvss = cvss if cvss is not None else HIGHEST_CVSS if exploited else 0
+    return ((100 if exploited else 0) + min(points / 10, 50) + 25 * min(curated, 2) + 2 * cvss
+            + min(len(mentions), MENTION_CAP))
 
 
 # A port of WP_PLUGIN and isWordPressPlugin in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step):

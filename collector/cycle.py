@@ -126,7 +126,9 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # fetches recent.json only to open a row or search. The newest and the week's Highlights (filterBoard) stay whole.
     # The Highlight window is seven days by publish time (filterBoard), the same cut as recent_since.
     shown = sorted((i for i in week if on_board(i)), key=published_at, reverse=True)
-    top = sorted((i for i in shown if published_at(i) >= recent_since and risk_level(i) != "notice"), key=highlight_score, reverse=True)
+    # Newest first among equal scores, as filterBoard picks them.
+    top = sorted((i for i in shown if published_at(i) >= recent_since and risk_level(i) != "notice"),
+                 key=lambda i: (highlight_score(i), published_at(i)), reverse=True)
     whole = {i["id"] for i in shown[:WHOLE_NEWEST] + top[:HIGHLIGHTS]}
     store.write("board/rows.json", {"since": recent_since, "status": status,
                                     "incidents": [board_view(i) if i["id"] in whole else rows_view(i) for i in week]})

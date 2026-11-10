@@ -162,6 +162,19 @@ class CycleTest(unittest.TestCase):
         self.assertEqual(row["brief"], {"text": WPTRAVELLY_TEXT})  # no Summary or quick title: the row's own title
         self.assertNotIn("cve_texts", row)
 
+    def test_among_equal_highlight_scores_the_newer_stays_whole(self):
+        # Owner, 11-10: the newer first among equal scores, as filterBoard picks them.
+        older, newer = (incident(cve, "x", seen, seen) | {"cvss": 9.8, "kev": True}
+                        for cve, seen in (("CVE-2026-7001", "2026-11-05T00:00:00Z"), ("CVE-2026-7002", "2026-11-06T00:00:00Z")))
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [older, newer]})
+        self.store.write("index.json", {"months": ["2026-11"]})
+        with patch.object(cycle, "WHOLE_NEWEST", 0), patch.object(cycle, "HIGHLIGHTS", 1):
+            run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        by_id = {i["id"]: i for i in self.store.read("board/rows.json")["incidents"]}
+        self.assertNotIn("rows", by_id["CVE-2026-7002"])
+        self.assertTrue(by_id["CVE-2026-7001"]["rows"])
+
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
 

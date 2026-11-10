@@ -775,5 +775,235 @@
    "highlight_score": 16.0,
    "wp_plugin": false
   }
+ ],
+ "score_note": "highlight_score / highlightScore on their own: Mentions count up to ten (MENTION_CAP), so twelve score as ten, and an exploited Incident with two outranks both; an exploited Incident with no CVSS score counts as 9.0 (HIGHEST_CVSS), one with a score keeps it, an unexploited one without adds nothing; curator issues count up to two however many cite it.",
+ "scores": [
+  {
+   "incident": {
+    "id": "CVE-2026-9101",
+    "cves": [
+     "CVE-2026-9101"
+    ],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "cvss": 7.8,
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/0"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/1"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/2"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/3"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/4"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/5"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/6"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/7"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/8"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/9"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/10"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9101/11"
+     }
+    ]
+   },
+   "highlight_score": 25.6
+  },
+  {
+   "incident": {
+    "id": "CVE-2026-9102",
+    "cves": [
+     "CVE-2026-9102"
+    ],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "cvss": 7.8,
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/0"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/1"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/2"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/3"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/4"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/5"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/6"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/7"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/8"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9102/9"
+     }
+    ]
+   },
+   "highlight_score": 25.6
+  },
+  {
+   "incident": {
+    "id": "CVE-2026-9103",
+    "cves": [
+     "CVE-2026-9103"
+    ],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "kev": true,
+    "cvss": 7.5,
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9103/0"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9103/1"
+     }
+    ]
+   },
+   "highlight_score": 117.0
+  },
+  {
+   "incident": {
+    "id": "https://example.com/campaign",
+    "cves": [],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://example.com/https://example.com/campaign/advisory/0"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/https://example.com/campaign/advisory/1"
+     }
+    ],
+    "summary": {
+     "exploited": true,
+     "exploited_source": "https://example.com/report"
+    }
+   },
+   "highlight_score": 120.0
+  },
+  {
+   "incident": {
+    "id": "CVE-2026-9104",
+    "cves": [
+     "CVE-2026-9104"
+    ],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "kev": true,
+    "cvss": 4.3,
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9104/advisory/0"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/CVE-2026-9104/advisory/1"
+     }
+    ]
+   },
+   "highlight_score": 110.6
+  },
+  {
+   "incident": {
+    "id": "https://example.com/story",
+    "cves": [],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "mentions": [
+     {
+      "kind": "advisory",
+      "url": "https://example.com/story/advisory/0"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://example.com/story/advisory/1"
+     }
+    ]
+   },
+   "highlight_score": 2.0
+  },
+  {
+   "incident": {
+    "id": "CVE-2026-9105",
+    "cves": [
+     "CVE-2026-9105"
+    ],
+    "first_seen": "2026-11-09T00:00:00Z",
+    "cvss": 7.5,
+    "mentions": [
+     {
+      "kind": "curator",
+      "url": "https://example.com/CVE-2026-9105/curator/0"
+     },
+     {
+      "kind": "curator",
+      "url": "https://example.com/CVE-2026-9105/curator/1"
+     },
+     {
+      "kind": "curator",
+      "url": "https://example.com/CVE-2026-9105/curator/2"
+     },
+     {
+      "kind": "curator",
+      "url": "https://example.com/CVE-2026-9105/curator/3"
+     }
+    ]
+   },
+   "highlight_score": 69.0
+  }
  ]
 }

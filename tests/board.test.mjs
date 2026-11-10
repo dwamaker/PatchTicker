@@ -389,6 +389,25 @@ test('exploited in the wild outranks HN buzz, which outranks a curator pick, whi
     ['CVE-2026-201', 'CVE-2026-202', 'CVE-2026-203', 'CVE-2026-204']); // the plain 참고 row is not one
 });
 
+// Owner, 11-10: many-CVE releases (FFmpeg, 331 Mentions) filled all four pins over exploited Incidents.
+test('Mentions count up to ten: exploited with two Mentions outranks an unexploited release with 300', () => {
+  const many = (n) => Array.from({ length: n }, () => ({ kind: 'advisory', url: '' }));
+  const release = { ...incident('CVE-2026-211', daysAgo(1)), cvss: 9.8, mentions: many(300) };
+  const kev = { ...incident('CVE-2026-212', daysAgo(2)), cvss: 5.3, kev: true, mentions: many(2) };
+  assert.equal(highlightScore(release), highlightScore({ ...release, mentions: many(10) }));
+  assert.deepEqual(ids(filterBoard([release, kev], [], '', NOW).highlights), ['CVE-2026-212', 'CVE-2026-211']);
+});
+
+test('among equal scores the newer Highlight is first, whatever the sort', () => {
+  // Same score (19): the older is 위험 9.0, so the risk and CVSS sorts list it first.
+  const older = { ...incident('CVE-2026-221', daysAgo(3)), cvss: 9 };
+  const newer = { ...incident('CVE-2026-222', daysAgo(1)), cvss: 8.5, mentions: [{ kind: 'cve_record', url: '' }, { kind: 'advisory', url: '' }] };
+  assert.equal(highlightScore(older), highlightScore(newer));
+  for (const sort of ['new', 'risk', 'cvss']) {
+    assert.deepEqual(ids(filterBoard([older, newer], [], '', NOW, { sort }).highlights), ['CVE-2026-222', 'CVE-2026-221'], sort);
+  }
+});
+
 test('an Incident older than seven days leaves the Highlights and stays in the list', () => {
   const kev = { ...incident('CVE-2026-301', '2026-11-01T12:00:00Z'), kev: true };
   const at = (iso) => filterBoard([kev], [], '', new Date(iso).getTime());
@@ -805,6 +824,7 @@ test('a row view of board/rows.json draws, filters, folds and pins as its full I
     }
     for (const lang of ['ko', 'en']) assert.deepEqual([rowTags(c.row, lang), productsOf(c.row, lang)], [rowTags(c.full, lang), productsOf(c.full, lang)]);
   }
+  for (const c of kase.scores) assert.equal(highlightScore(c.incident), c.highlight_score, c.incident.id);
   const ids = (list) => list.map((i) => i.id);
   const shape = (out) => out.map((x) => (x.fold ? [x.fold, ids(x.incidents)] : x.id));
   for (const [picks, opts] of [[[], {}], [[], { sort: 'risk' }], [[], { sort: 'cvss' }], [[], { risk: ['highest'] }], [[], { kev: true }],

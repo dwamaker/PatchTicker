@@ -6,9 +6,10 @@ import xml.etree.ElementTree as ET  # expat in Python 3.13 limits entity expansi
 from collector import rss
 from collector.incidents import cves_in, urls_in
 
-# tl;dr sec (RSS from its home page) and Risky Business News. ThinkstScapes has no feed (11-07).
-# shortcut: Risky Business News was checked to exist (application/xml) but its items were not read; RSS 2.0 assumed.
-FEEDS = ("https://rss.beehiiv.com/feeds/xgTKUmMmUm.xml", "https://risky.biz/feeds/risky-business-news/")
+# tl;dr sec (RSS from its home page) and the Risky Business News newsletter. ThinkstScapes has no feed (11-07).
+# Measured 11-10: risky.biz/feeds/risky-business-news/ is the podcast (empty bodies, no CVE ID: it never cited one of
+# 7,384 Mentions); news.risky.biz/rss/ is RSS 2.0, 15 issues of 47-75 KB with their links and CVE IDs (1.1 MB in all).
+FEEDS = ("https://rss.beehiiv.com/feeds/xgTKUmMmUm.xml", "https://news.risky.biz/rss/")
 CONTENT = "{http://purl.org/rss/1.0/modules/content/}encoded"
 
 

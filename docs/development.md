@@ -65,8 +65,8 @@ week's ten Highlights stay whole (ports kept in step by `tests/fixtures/board/ro
 `board/recent.json` only to open a row view or to search.
 
 Highlights (top ten of the last seven days) are scored in the page (`highlightScore` in
-`web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS and Mention count.
-Curator feeds default to tl;dr sec and Risky Business News; `VR_CURATOR_FEEDS` overrides them.
+`web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS (an exploited Incident with no score counts as 9.0, the floor of its 최고 band) and Mention count (up to ten, so a many-CVE release does not outrank exploited Incidents); among equal scores the newer is first. Curator issues add 25 each, two at most however many issues cite the Incident; one issue cites an Incident once (by its link).
+Curator feeds default to tl;dr sec and the Risky Business News newsletter (`news.risky.biz/rss/`; the `risky.biz` feed is the podcast, with no text to cite from); `VR_CURATOR_FEEDS` overrides them.
 Security news sites (BleepingComputer and SecurityWeek, `collector/news.py`) start Incidents like HN stories: a story,
 or an HN story linking to one of `incidents.NEWS_HOSTS`, is summarized at once whatever its points, and a CVE-less one
 shows only once its Summary calls it an Incident (company breaches, arrests and scams stay off). KISA 보호나라 notices

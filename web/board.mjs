@@ -131,16 +131,22 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 
 // Highlight score. Exploited in the wild (CISA KEV) outranks everything; then discussion (HN points,
 // up to 50 at 500 points; a curator's newsletter, 25 each for up to two); CVSS (up to 20) and the
-// number of Mentions order the rest. Also in collector/incidents.py (highlight_score, with HIGHLIGHTS in collector/cycle.py:
-// board/rows.json keeps the week's Highlights whole), kept in step by tests/fixtures/board/rows-case.json.
+// number of Mentions (up to MENTION_CAP) order the rest; among equal scores the newer comes first. An exploited
+// Incident with no CVSS score counts as HIGHEST_CVSS, the floor of the band riskLevel gives it (owner, 11-10: CVE-less
+// campaigns sank under every exploited CVE); one with a score keeps it. Also in
+// collector/incidents.py (highlight_score, with HIGHLIGHTS in collector/cycle.py: board/rows.json keeps the week's
+// Highlights whole), kept in step by tests/fixtures/board/rows-case.json.
 // Highlights: up to ten are chosen, four are pinned at first so the newest list starts on the first screens of a
 // phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순.
 export const HIGHLIGHTS = 10;
 export const PINNED = 4;
+// Owner, 11-10: a release counts a record, an advisory and a write-up per CVE, so uncapped FFmpeg (331 Mentions), Chrome,
+// IBM API Connect and FreeRDP took all four pins over 15 exploited Incidents. Also in collector/incidents.py.
+const MENTION_CAP = 10;
 
 // Why a row is pinned, when the row does not already show it: exploited and CVSS 9+ are on the row itself.
 export function pinReason(i) {
-  if (isExploited(i) || i.cvss >= 9) return null;
+  if (isExploited(i) || i.cvss >= HIGHEST_CVSS) return null;
   if (i.mentions.some((m) => m.kind === 'curator')) return 'curator';
   if (Math.max(0, ...i.mentions.map((m) => m.points || 0)) >= HN_BUZZ) return 'buzz';
   return null;
@@ -149,7 +155,8 @@ export function pinReason(i) {
 export function highlightScore(i) {
   const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
   const curated = i.mentions.filter((m) => m.kind === 'curator').length;
-  return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * (i.cvss || 0) + i.mentions.length;
+  const cvss = i.cvss ?? (isExploited(i) ? HIGHEST_CVSS : 0);
+  return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * cvss + Math.min(i.mentions.length, MENTION_CAP);
 }
 
 // HN points from which a story is buzz (pinReason's "HN 화제"). Also in collector/hn.py (BUZZ_POINTS). A quiet HN-only
@@ -181,9 +188,10 @@ export function exploitReason(i) {
 }
 
 // The Easy view's Risk banner, set by rules: exploited (above) or the CVSS score.
-// The 9.0 cutoff is also in collector/summaries.py (is_candidate).
+// The 9.0 cutoff is also in collector/summaries.py (is_candidate) and collector/incidents.py (HIGHEST_CVSS).
+const HIGHEST_CVSS = 9;
 export function riskLevel(i) {
-  if (isExploited(i) || i.cvss >= 9) return 'highest';
+  if (isExploited(i) || i.cvss >= HIGHEST_CVSS) return 'highest';
   return i.cvss >= 7 ? 'high' : 'notice';
 }
 
@@ -310,8 +318,9 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   });
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
-  // A stable sort keeps newest first among equal scores.
-  const highlights = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice').sort((a, b) => highlightScore(b) - highlightScore(a)).slice(0, HIGHLIGHTS);
+  // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
+  const highlights = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
+    .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b)).slice(0, HIGHLIGHTS);
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
 }
 
