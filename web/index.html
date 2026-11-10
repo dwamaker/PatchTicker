@@ -395,6 +395,7 @@
     .sub.say { display: block; color: var(--ink); font-weight: 500; } /* Easy view: the whole plain sentence, never cut */
     .cve { font-variant-numeric: tabular-nums; }
     .cve.none { color: var(--ink-2); }
+    .row[aria-expanded="true"] .sub:has(.cve:not(.none)) { display: none; } /* open: the panel's first line carries the IDs, copyable (owner, 11-10) */
     .cve-more { font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 500; color: var(--ink-2); }
     .orig { display: inline-block; margin-right: 0.375rem; padding: 0.125rem 0.375rem; border: 1px solid var(--edge); border-radius: 4px; font-size: calc(0.6875rem * var(--ts)); font-weight: 700; color: var(--ink-2); vertical-align: 0.125rem; }
     /* CVSS ring: the arc fills to the score out of 10 and takes its rating's colour; the number sits inside */

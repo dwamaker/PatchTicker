@@ -1742,7 +1742,10 @@ const briefNote = (incident) => {
 // One or two CVE IDs on a line, each kept whole ("CVE-2026-" never ends a line).
 function idLine(cves) {
   const p = para('cve-line', '');
-  cves.forEach((cve, n) => p.append(...(n ? [', '] : []), el('span', '', cve)));
+  if (cves.length > 2) {
+    const head = cveHead(cves);
+    p.append(el('span', '', head.id), TEXT[lang].moreCves(head.more));
+  } else cves.forEach((cve, n) => p.append(...(n ? [', '] : []), el('span', '', cve)));
   return p;
 }
 
@@ -2072,7 +2075,9 @@ function details(incident) {
     fold.append(head, ids);
     parts.push(fold);
   }
-  else if (incident.cves.length) parts.unshift(idLine(incident.cves));
+  // Every Incident with a CVE opens on the same line, as the row header writes it ("CVE-… 외 212건"), so it can be
+  // copied (owner, 11-10: the line came and went by count); the full list stays in the fold.
+  if (incident.cves.length) parts.unshift(idLine(incident.cves));
   const mentions = el('ul', 'mentions');
   const order = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
   const rank = (m) => (order.includes(m.kind) ? order.indexOf(m.kind) : order.length);
