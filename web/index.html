@@ -438,6 +438,7 @@
     /* 최신순: plain rows on one hairline each */
     .list { border-top: 1px solid var(--rule-2); }
     .list > li { border-bottom: 1px solid var(--rule); }
+    #board > li { content-visibility: auto; contain-intrinsic-size: auto 76px; } /* off-screen rows skip layout: a phone redrew ~100 rows on a view switch (11-10) */
     .list .row[aria-expanded="true"], .list .details { background: var(--panel); }
     /* an opened vendor fold: its row, members and closing line share the panel ground; members keep the list's columns */
     .list li.grouped, .list li.vendor-fold { background: var(--group); }

@@ -469,11 +469,16 @@ export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
 // ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin.
 export const WORDPRESS = 'wordpress';
 const WP_PLUGIN = /(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme)s?\s+for\s+wordpress/i;
+// Kept per Incident object: every redraw folds ~2,000 rows, and this regex over their text took half of a phone's
+// view switch (11-10). Fresh data arrives as new objects (mergeIncidents), never as edits, so a kept answer stays true.
+const wpPlugin = new WeakMap();
 export const isWordPressPlugin = (i) => {
+  if (wpPlugin.has(i)) return wpPlugin.get(i);
   const s = i.summary;
-  if (String(s?.products?.[0] ?? '').toLowerCase() === WORDPRESS) return false;
   const words = [i.brief?.text, ...['en', 'ko'].flatMap((l) => ['title', 'summary', 'easy_title', 'easy'].map((k) => s?.[l]?.[k])), ...(i.products || []).map((p) => p.id)];
-  return WP_PLUGIN.test(words.filter(Boolean).join('\n'));
+  const answer = String(s?.products?.[0] ?? '').toLowerCase() !== WORDPRESS && WP_PLUGIN.test(words.filter(Boolean).join('\n'));
+  wpPlugin.set(i, answer);
+  return answer;
 };
 // Inside the WordPress fold the plugin words are said once, by the fold: "JWT Auth 워드프레스 플러그인" reads "JWT Auth".
 export const pluginName = (n) => n.replace(/\s+(?:(?:for\s+)?(?:wordpress|워드프레스)\s+)?(?:plugin|theme|플러그인|테마)(?:\s+for\s+wordpress)?$/iu, '');

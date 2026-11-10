@@ -2241,11 +2241,15 @@ function row(incident, pinned, vendor = '') {
   button.setAttribute('aria-labelledby', `${body.id}-name ${body.id}-risk`);
   button.setAttribute('aria-describedby', `${body.id}-sub ${body.id}-score ${body.id}-tags ${body.id}-date`);
   button.append(...Object.values(cells), chevron);
+  // Details are built when a row first opens: every closed row's hidden details made 62% of the page's elements, and
+  // a phone took half a second to redraw them on a view switch (owner, 2026-11-10).
+  const fill = () => body.childElementCount || body.append(...details(incident));
   button.addEventListener('click', () => {
     const opening = !open.has(incident.id);
     button.setAttribute('aria-expanded', opening);
     if (opening) {
       open.add(incident.id);
+      fill();
       body.hidden = false;
       fold(body, true);
     } else {
@@ -2253,7 +2257,7 @@ function row(incident, pinned, vendor = '') {
       fold(body, false, () => { body.hidden = !open.has(incident.id); }); // reopened mid-way: stay open
     }
   });
-  body.append(...details(incident));
+  if (!body.hidden) fill();
   const heading = el('h3', 'row-h');
   heading.append(button);
   li.append(heading, body);
