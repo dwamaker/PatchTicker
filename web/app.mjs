@@ -220,9 +220,9 @@ function toggleTheme() {
 }
 
 const getJson = async (name) => {
-  // index.html's inline script asked for the week already: take that response once (later refreshes fetch again).
-  const early = window.vrEarly?.url === DATA_URL + name ? window.vrEarly.res : null;
-  if (early) window.vrEarly = null;
+  // index.html's inline script asked for the first load's files already: take each response once (main drops the rest).
+  const early = window.vrEarly?.[DATA_URL + name];
+  if (early) delete window.vrEarly[DATA_URL + name];
   const res = await (early || fetch(DATA_URL + name, { cache: 'no-cache' }));
   if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
   return res.json();
@@ -318,9 +318,11 @@ async function main() {
     // Only the week is needed to draw the Board. A missing Product list only narrows the picker, a missing month index
     // only hides 이전 사건, and the update time also rides in recent.json: Googlebot once failed status.json alone and
     // the whole Board drew as a load error (Search Console, 11-10).
-    const [index, st, recent, seen] = await Promise.all([getJson('index.json').catch(() => ({ months: [] })),
+    const first = Promise.all([getJson('index.json').catch(() => ({ months: [] })),
       getJson('status.json').catch(() => null), getJson('board/recent.json'),
       getJson('board/products.json').catch(() => ({ products: [] }))]);
+    window.vrEarly = null; // whatever is left was fetched at page start: a refresh minutes later must ask again
+    const [index, st, recent, seen] = await first;
     const state = st || recent.status;
     if (!state) throw new Error('status.json');
     incidents = recent.incidents.filter(onBoard);

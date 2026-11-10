@@ -31,11 +31,12 @@
   <link rel="preconnect" href="https://data.patchticker.com" crossorigin>
   <script>try { const t = localStorage.getItem('vr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     const s = Number(localStorage.getItem('vr-text-pct')); if ([87.5, 112.5, 125, 150].includes(s)) document.documentElement.style.setProperty('--ts', s / 100); } catch {}
-    // The week's data starts loading now, while app.mjs and board.mjs still download: app.mjs takes this response
-    // (getJson) instead of asking only after its modules ran (~0.2 s later on a PC, owner 11-10). Same base as DATA_URL.
-    try { const h = location.hostname; const url = (['localhost', '127.0.0.1'].includes(h) ? 'data/' : h.endsWith('.dwamaker.com')
-      ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/') + 'board/recent.json';
-      window.vrEarly = { url, res: fetch(url, { cache: 'no-cache' }) }; window.vrEarly.res.catch(() => {}); } catch {}</script>
+    // The first load's four files start loading now, while app.mjs and board.mjs still download: app.mjs takes each
+    // response once (getJson, by full URL) instead of asking only after its modules ran (~0.2 s later on a PC, owner 11-10). Same base as DATA_URL.
+    try { const h = location.hostname; const base = ['localhost', '127.0.0.1'].includes(h) ? 'data/' : h.endsWith('.dwamaker.com')
+      ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/'; window.vrEarly = {};
+      for (const n of ['board/recent.json', 'status.json', 'index.json', 'board/products.json']) {
+        const res = fetch(base + n, { cache: 'no-cache' }); res.catch(() => {}); window.vrEarly[base + n] = res; } } catch {}</script>
   <style>
     /* Graphite signage ground and its light twin; risk colours (red, amber, grey) are never used by Product lines. */
     :root {
