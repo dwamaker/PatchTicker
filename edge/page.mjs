@@ -3,7 +3,7 @@
 // level, exploited reason, easy action, Product names, on the Board, search-worthy) are the Board's own, imported from
 // web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { cveUrl, cvssRating, easyLine, exploitReason, isExploited, lineKeys, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, rowTags, searchWorthy, withinPageDays, WORDS } from '../web/board.mjs';
+import { cveUrl, cvssRating, easyLine, exploitReason, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -21,7 +21,7 @@ const TEXT = {
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     firstSeen: '처음 확인', zone: '',
-    board: '게시판에서 보기', cveRecord: 'CVE 기록 보기',
+    board: '게시판에서 보기', cveRecord: 'CVE 기록 보기', tagLink: (name) => `게시판에서 ${name} 사건 보기`,
     expired: '보관 기간 90일이 지났어요. 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
     down: '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '게시판으로 가기',
   },
@@ -31,7 +31,7 @@ const TEXT = {
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
     firstSeen: 'First seen', zone: ' UTC',
-    board: 'Open on the Board', cveRecord: 'See the CVE record',
+    board: 'Open on the Board', cveRecord: 'See the CVE record', tagLink: (name) => `See ${name} Incidents on the Board`,
     expired: 'This Incident page has expired: pages are kept for 90 days.', missing: 'There is no Incident page at this address.',
     down: 'Incident pages cannot be loaded right now. Please try again shortly.', home: 'Go to the Board',
   },
@@ -96,8 +96,12 @@ code{font-family:var(--mono);font-size:.875rem}
 .command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:.375rem .625rem;white-space:pre-wrap;overflow-wrap:break-word}
 .caution{color:var(--ink-2);font-size:.875rem}
 .tags{display:flex;flex-wrap:wrap;gap:.375rem;padding:0;list-style:none}
-.tags li{display:inline-flex;align-items:center;max-width:100%;min-height:1.625rem;padding:.1875rem .6875rem;border-radius:999px;background:var(--line);color:var(--line-ink);font-size:.78125rem;font-weight:600;line-height:1.2;letter-spacing:0;overflow-wrap:anywhere}
+.tags li{display:flex;max-width:100%}
+.tags a{display:inline-flex;align-items:center;justify-content:center;max-width:100%;border-radius:999px;text-decoration:none}
+.tags span{display:inline-flex;align-items:center;max-width:100%;min-height:1.625rem;padding:.1875rem .6875rem;border-radius:999px;background:var(--line);color:var(--line-ink);font-size:.78125rem;font-weight:600;line-height:1.2;letter-spacing:0;overflow-wrap:anywhere}
 .tags .os{background:none;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--edge);font-weight:500}
+@media (hover:hover) and (pointer:fine){.tags a:hover span{text-decoration:underline;text-underline-offset:2px}}
+@media (pointer:coarse){.tags{row-gap:0}.tags a{min-height:44px;min-width:44px}}
 .links{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule)}
 .sources li+li{margin-top:.25rem}
 .cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
@@ -153,13 +157,13 @@ function banner(i, t) {
   return `<div class="banner risk-${level}${pending ? ' unrated' : ''}">${sign}${ring}${why ? `<p class="reason${poc ? ' kev' : ''}">${why}</p>` : ''}</div>`;
 }
 
+// Each tag links to the Board with that one filter (owner, 11-10), by the rule the Board's own tag buttons follow; same tab.
 function products(i, lang) {
-  const os = new Set(strings(i.summary?.platforms));
-  const keys = lineKeys(i, lang);
-  const items = rowTags(i, lang).map((name) => {
-    if (os.has(name)) return `<li class="os">${esc(name)}</li>`;
-    const { bg, ink } = productLine(keys.get(name) || name); // colours from the Board's fixed table, never from data
-    return `<li style="--line:${bg};--line-ink:${ink}">${esc(name)}</li>`;
+  const t = TEXT[lang];
+  const items = tagFilters(i, lang).map((tag) => {
+    const { bg, ink } = productLine(tag.pick || tag.name); // colours from the Board's fixed table, never from data
+    const pill = tag.kind === 'os' ? `<span class="os">${esc(tag.name)}</span>` : `<span style="--line:${bg};--line-ink:${ink}">${esc(tag.name)}</span>`;
+    return `<li><a href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${pill}</a></li>`;
   });
   return items.length ? `<ul class="tags">${items.join('')}</ul>` : '';
 }

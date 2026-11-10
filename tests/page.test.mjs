@@ -135,6 +135,23 @@ test('source links open in a new tab and say so, as on the Board; the Board and 
   assert.match(await (await page(SSHOLE, 'en')).text(), /<span class="sr-only"> \(opens in a new tab\)<\/span>/);
 });
 
+test('each tag links to the Board with that one filter, in the same tab, with a name that says so', async () => {
+  const doc = { ...SSHOLE, summary: { ...SSHOLE.summary, devices: ['SonicWall TZ270', '<b>"x</b>'] } };
+  const tags = (html) => html.split('<ul class="tags">')[1].split('</ul>')[0];
+  const ko = tags(await (await page(doc)).text());
+  assert.deepEqual(ko.match(/<a [^>]*>/g), [
+    '<a href="/#p=os%3Alinux" aria-label="게시판에서 Linux 사건 보기">',
+    '<a href="/#p=openbsd%3Aopenssh" aria-label="게시판에서 OpenSSH 사건 보기">',
+    '<a href="/#q=SonicWall+TZ270" aria-label="게시판에서 SonicWall TZ270 사건 보기">',
+    '<a href="/#q=%3Cb%3E%22x%3C%2Fb%3E" aria-label="게시판에서 &lt;b&gt;&quot;x&lt;/b&gt; 사건 보기">',
+  ]);
+  assert.match(ko, /<span class="os">Linux<\/span>/);
+  assert.match(ko, /<span style="--line:#[0-9a-f]{6};--line-ink:#[0-9a-f]{6}">OpenSSH<\/span>/);
+  assert.match(ko, />&lt;b&gt;&quot;x&lt;\/b&gt;<\/span>/);
+  assert.doesNotMatch(ko, /target=|<b>/);
+  assert.match(tags(await (await page(doc, 'en')).text()), /aria-label="See OpenSSH Incidents on the Board"/);
+});
+
 test('the English page is the English Summary, canonical to itself', async () => {
   const html = await (await page(SSHOLE, 'en')).text();
   assert.match(html, /<html lang="en">/);

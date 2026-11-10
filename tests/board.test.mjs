@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS } from '../web/board.mjs';
+import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, linkedPlace } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -952,4 +952,42 @@ test('the shared words hold the same keys in both languages, each a non-empty te
   });
   filled(WORDS.ko, 'ko');
   filled(WORDS.en, 'en');
+});
+
+test('a pressed tag filters by its OS or Product pick, or searches a name with no Product, in both languages', () => {
+  const i = { products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }], summary: { products: ['OpenBSD OpenSSH', 'Microsoft Paint'],
+    platforms: ['Linux'], devices: ['SonicWall TZ270'], ko: { names: ['OpenBSD OpenSSH', 'Windows 그림판'] }, en: { names: ['OpenBSD OpenSSH', 'Microsoft Paint'] } } };
+  const paint = productsOf(i, 'en').find((p) => p.name === 'Microsoft Paint').id;
+  assert.ok(paint.startsWith('name:'));
+  assert.deepEqual(tagFilters(i, 'en'), [
+    { name: 'Linux', kind: 'os', pick: 'os:linux' },
+    { name: 'OpenBSD OpenSSH', kind: 'product', pick: 'openbsd:openssh' },
+    { name: 'Microsoft Paint', kind: 'product', pick: paint },
+    { name: 'SonicWall TZ270', kind: 'query', query: 'SonicWall TZ270' },
+  ]);
+  // The Korean name shown still gives the language-free id, so a filter works in either language.
+  assert.deepEqual(tagFilters(i, 'ko').map((t) => [t.name, t.pick ?? t.query]),
+    [['Linux', 'os:linux'], ['OpenBSD OpenSSH', 'openbsd:openssh'], ['Windows 그림판', paint], ['SonicWall TZ270', 'SonicWall TZ270']]);
+  assert.deepEqual(tagFilters(i, 'en').map((t) => t.name), rowTags(i, 'en'));
+  assert.deepEqual(tagFilters({}), []);
+});
+
+test("a tag's Board address applies that one filter and reads back to the same pick or search", () => {
+  assert.equal(tagHash({ name: 'OpenSSH', kind: 'product', pick: 'openbsd:openssh' }), '#p=openbsd%3Aopenssh');
+  assert.equal(tagHash({ name: 'Linux', kind: 'os', pick: 'os:linux' }), '#p=os%3Alinux');
+  assert.equal(tagHash({ name: 'TZ270', kind: 'query', query: 'TZ270' }), '#q=TZ270');
+  const i = { summary: { products: ['Microsoft Paint'], platforms: ['Windows'], devices: ['SonicWall TZ 270'], ko: { names: ['Windows 그림판'] } } };
+  for (const tag of tagFilters(i, 'ko')) {
+    const back = filterFromQuery(tagHash(tag).slice(1));
+    assert.deepEqual([back.picks, back.query], tag.pick ? [[tag.pick], ''] : [[], tag.query]);
+  }
+});
+
+test('a linked Incident is found at its row or its fold, and the page that holds it is drawn', () => {
+  const row = (id) => ({ id });
+  const items = [...Array.from({ length: 99 }, (_, k) => row(`r${k}`)), row('edge'), { fold: 'ibm 2026-11-04', incidents: [row('m1'), row('m2')] }];
+  assert.deepEqual(linkedPlace(items, 'r3', 100), { index: 3, shown: 100 });
+  assert.deepEqual(linkedPlace(items, 'edge', 100), { index: 99, shown: 100 }); // the last of the first page
+  assert.deepEqual(linkedPlace(items, 'm2', 100), { index: 100, shown: 200 }); // a fold member counts at its fold's place
+  assert.equal(linkedPlace(items, 'gone', 100), null);
 });

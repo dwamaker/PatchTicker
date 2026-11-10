@@ -414,6 +414,19 @@ export const rowTags = (i, lang = 'en') => {
   const platforms = [...(s?.platforms || [])].sort((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
   return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
 };
+// What pressing each of rowTags' names filters the Board by (owner, 11-10): an operating system or a Product adds a pick
+// (exact, stacks, in the address), a name with no Product id (a device model) becomes the search.
+export function tagFilters(i, lang = 'en') {
+  const os = new Set(Array.isArray(i.summary?.platforms) ? i.summary.platforms : []);
+  const keys = lineKeys(i, lang);
+  return rowTags(i, lang).map((name) => {
+    if (os.has(name)) return { name, kind: 'os', pick: `os:${name.toLowerCase()}` };
+    return keys.has(name) ? { name, kind: 'product', pick: keys.get(name) } : { name, kind: 'query', query: name };
+  });
+}
+// One tagFilters entry as the Board address that applies it alone ("#p=os%3Alinux", "#q=TZ270"): the Incident page's links.
+export const tagHash = (tag) => `#${filterToQuery(tag.pick ? { picks: [tag.pick], query: '' } : { picks: [], query: tag.query })}`;
+
 // The row's first Product that is not an operating system: what an update line, headline or fold line names.
 export const firstProduct = (i, lang = 'en') => rowTags(i, lang).find((n) => !OSES.includes(n));
 
@@ -568,6 +581,13 @@ export const isWordPressPlugin = (i) => {
 // Inside the WordPress fold the plugin words are said once, by the fold: "JWT Auth 워드프레스 플러그인" reads "JWT Auth".
 export const pluginName = (n) => n.replace(/\s+(?:(?:for\s+)?(?:wordpress|워드프레스)\s+)?(?:plugin|theme|플러그인|테마)(?:\s+for\s+wordpress)?$/iu, '');
 const foldKeyOf = (i) => (isWordPressPlugin(i) ? WORDPRESS : vendorOf(i));
+
+// Where an Incident stands in the drawn list (rows and vendor folds; a fold member counts at its fold's place) and how
+// many items `shown` must reach, in whole pages, to draw it; null when the list does not hold it. For #i= links (owner, 11-10).
+export function linkedPlace(items, id, page) {
+  const index = items.findIndex((x) => (x.fold ? x.incidents.some((i) => i.id === id) : x.id === id));
+  return index < 0 ? null : { index, shown: (Math.floor(index / page) + 1) * page };
+}
 
 export function foldByVendor(rows, min = VENDOR_FOLD_MIN) {
   if (!min) return rows;

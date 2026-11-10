@@ -1,4 +1,4 @@
-import { cveLines, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS } from './board.mjs';
+import { cveLines, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, linkedPlace } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -59,6 +59,7 @@ const TEXT = {
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의',
     copy: '복사', copied: '복사됨', share: '이 사건 링크 복사',
+    tagsOnly: '이 제품의 사건만 보기', tagOnly: (name) => `${name} 사건만 보기`,
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
     versionHelp: (cve) => (cve ? `내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 ${cve} 번호로 물어보세요.` : '내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요.'),
     libraryHelp: '앱에 들어 있는 부품이라 직접 확인이 어려워요. 쓰는 프로그램을 업데이트하거나, 서버 관리자·호스팅 업체에 물어보세요.',
@@ -106,6 +107,7 @@ const TEXT = {
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution',
     copy: 'Copy', copied: 'Copied', share: 'Copy link to this Incident',
+    tagsOnly: 'Show only Incidents of', tagOnly: (name) => `Show only ${name} Incidents`,
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
     versionHelp: (cve) => (cve ? `Your version is usually shown in the program's settings or About screen. If not, ask an AI chatbot about ${cve}.` : "Your version is usually shown in the program's settings or About screen."),
     libraryHelp: "It is a part built into other apps, so it is hard to check yourself. Update the programs you use, or ask your server admin or hosting company.",
@@ -488,6 +490,8 @@ async function openLinked() {
     return false;
   }
   open.add(id);
+  // Past the first page (owner, 11-10: a link from 11-04 landed on the top with nothing open): draw up to its page.
+  shown = Math.max(shown, linkedPlace(boardLists().items, id, PAGE)?.shown || 0);
   render();
   let li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === id);
   if (!li) { // inside a closed vendor fold: open that fold only
@@ -926,15 +930,26 @@ function filtered() {
   return lastBoard.result;
 }
 
-function render() {
-  pageText();
-  if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
+// What render() draws, in its order: the pinned Highlights, then the list items (rows and vendor folds); openLinked counts
+// a linked row's place in the same items, so the two never disagree.
+function boardLists() {
   const { highlights: chosen, list, variants } = filtered();
   // 주요 사건 더 보기 adds only Highlights worth a notice: 위험 or above, or a reason the row cannot show (newsletter, HN).
   const extra = chosen.slice(PINNED); // filterBoard already keeps 주요 사건 to 위험 and above (user, 2026-11-09)
   // Which Incidents are pinned is decided by importance (highlightScore); the order they show in is the visitor's sort.
   // 더 보기 appends below the first four, which keep their place (user, 2026-11-09).
   const highlights = [...chosen.slice(0, PINNED).sort(orderBy(filter.sort)), ...(pinAll ? [...extra].sort(orderBy(filter.sort)) : [])];
+  const pinned = new Set(highlights);
+  const rest = list.filter((i) => !pinned.has(i));
+  // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
+  const folded = filter.picks.length || applied() ? rest : foldByVendor(rest);
+  return { list, variants, extra, highlights, pinned, rest, folded, items: folding ? folded : rest };
+}
+
+function render() {
+  pageText();
+  if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
+  const { list, variants, extra, highlights, pinned, rest, folded, items } = boardLists();
   shownList = list;
   showStatus();
   guide();
@@ -944,7 +959,6 @@ function render() {
   $('skip').hidden = !highlights.length;
   announce(list.length, filterToQuery({ ...filter, query: applied(), sort: 'new' })); // a new sort says 정렬 itself
   // Highlights are pinned on top like a board's notices; every other Incident follows, newest first.
-  const pinned = new Set(highlights);
   rowCount = 0;
   // CVE text is untrusted input, so it only ever goes in through textContent.
   $('highlights').replaceChildren(...highlights.map((i) => row(i, true)));
@@ -960,10 +974,6 @@ function render() {
   if (count && count !== shownCount) { pop($('filter-count')); if (stuckOn) pop($('stuck-count')); }
   shownCount = count;
   for (const id of ['filter-btn', 'stuck-filter']) $(id).setAttribute('aria-expanded', !$('filters').hidden);
-  const rest = list.filter((i) => !pinned.has(i));
-  // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
-  const folded = filter.picks.length || applied() ? rest : foldByVendor(rest);
-  const items = folding ? folded : rest;
   // 묶음 풀기 / 묶어 보기: only where a fold exists to undo or to bring back.
   $('fold-toggle').hidden = folded === rest || !folded.some((i) => i.fold);
   $('fold-toggle').textContent = folding ? TEXT[lang].unfold : TEXT[lang].refold;
@@ -2131,7 +2141,37 @@ function details(incident) {
     item.append(fold);
     mentions.append(item);
   }
-  return [...parts, leadLine(incident), ...list, mentions, shareLine(incident)];
+  return [...parts, leadLine(incident), ...list, mentions, ...tagLine(incident), shareLine(incident)];
+}
+
+// 이 제품의 사건만 보기 (owner, 11-10): each tag of an opened row as a button that adds its Product or OS to the picks (or
+// takes it out again), or searches a device name; only here, since the closed row is one button already.
+function tagLine(incident) {
+  const t = TEXT[lang];
+  const tags = tagFilters(incident, lang);
+  if (!tags.length) return [];
+  const line = el('div', 'tag-line');
+  line.append(el('span', 'tag-label', t.tagsOnly));
+  tags.forEach((tag, n) => {
+    const button = Object.assign(el('button', 'tag-btn'), { type: 'button' });
+    button.append(tag.kind === 'os' ? osBadge(tag.name, false) : lineBadge(tag.name, tag.pick));
+    button.setAttribute('aria-label', t.tagOnly(tag.name));
+    const picked = Boolean(tag.pick) && filter.picks.includes(tag.pick);
+    if (tag.pick) button.setAttribute('aria-pressed', picked);
+    button.addEventListener('click', () => {
+      if (!tag.pick) $('search').value = tag.query;
+      const drawn = tag.pick ? update({ picks: picked ? filter.picks.filter((p) => p !== tag.pick) : [...filter.picks, tag.pick] })
+        : update({ query: tag.query });
+      // The redrawn row keeps the focus on the same tag; gone from the list, the first row or the Board's head takes it.
+      drawn.then(() => {
+        const li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === incident.id);
+        (li?.querySelectorAll('.tag-btn')[n] || $('highlights').querySelector('button.row') || $('board').querySelector('button.row')
+          || $('board-start')).focus({ preventScroll: true });
+      });
+    });
+    line.append(button);
+  });
+  return [line];
 }
 
 let rowCount = 0;
