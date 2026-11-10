@@ -328,6 +328,15 @@ const SHELL = /^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|
 const UNSAFE = /[;&|`<>\r\n$'"\\]|:\/\/|\s(run|exec|dlx|apply)\s/;
 export const isShellCommand = (text) => SHELL.test(text.trim()) && !UNSAFE.test(text);
 
+// One release's CVEs, each with what it does: the Summary's line in this language, else the CVE record's own (English)
+// description. A Summary writes lines for its first CVEs only; the rest come later from batches (owner, 2026-11-10).
+export function cveLines(incident, lang) {
+  if (incident.cves.length < 2) return [];
+  const own = new Map((incident.summary?.[lang]?.cve_lines || []).map((l) => [l.cve, l.text]));
+  const texts = incident.cve_texts || {};
+  return incident.cves.filter((c) => own.has(c) || texts[c]).map((cve) => ({ cve, text: own.get(cve) || texts[cve] }));
+}
+
 // The Easy sentence shouts only for the top Risk level: "!" everywhere teaches readers to ignore it.
 export const easyLine = (text, level) => (level === 'highest' ? text : text.replace(/!+(\s*)$/, '.$1'));
 

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
+import { cveLines, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -808,4 +808,14 @@ test("the copy button gives the Incident page in the visitor's language, and the
   assert.equal(shareLink(cve, undefined, 'ko', board, now), boardLink); // the slug is not ready yet
   const notIncident = { ...story, summary: { incident: false } };
   assert.equal(shareLink(notIncident, await slug(story.id), 'ko', board, now), 'https://patchticker.com/#i=https%3A%2F%2Fnews.ycombinator.com%2Fitem%3Fid%3D50378228');
+});
+
+test('each CVE shows its Summary line, else its own record text, in the Incident order (owner, 2026-11-10)', () => {
+  const incident = { cves: ['CVE-2026-1001', 'CVE-2026-1002', 'CVE-2026-1003', 'CVE-2026-1004'],
+    cve_texts: { 'CVE-2026-1001': 'record one', 'CVE-2026-1003': 'record three' },
+    summary: { ko: { cve_lines: [{ cve: 'CVE-2026-1002', text: '둘' }, { cve: 'CVE-2026-1001', text: '하나' }] } } };
+  assert.deepEqual(cveLines(incident, 'ko'), [{ cve: 'CVE-2026-1001', text: '하나' }, { cve: 'CVE-2026-1002', text: '둘' },
+    { cve: 'CVE-2026-1003', text: 'record three' }]);
+  assert.deepEqual(cveLines(incident, 'en').map((l) => l.text), ['record one', 'record three']);
+  assert.deepEqual(cveLines({ cves: ['CVE-2026-1001'], cve_texts: { 'CVE-2026-1001': 'x' } }, 'ko'), []);
 });

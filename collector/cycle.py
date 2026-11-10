@@ -138,7 +138,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
         if touched is not None:
             batches.remove(pending)
             changed.update(month_of(i["first_seen"]) for i in touched)
-    waiting = {r["incident"] for b in batches for r in b["requests"].values()}
+    waiting = {r["incident"] for b in batches for r in b["requests"].values() if "lines" not in r}
     # A candidate (위험 and up, KEV, buzz, curator) never waits for a batch it is already in (user, 2026-11-09).
     due = [i for i in incidents if summaries.needs_summary(i) and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
@@ -161,6 +161,13 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else summaries.MAX_PER_BATCH)
     if pending:
         batches.append(pending)
+    # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.
+    asked = {r["incident"] for b in batches for r in b["requests"].values() if "lines" in r}
+    lines = not probe and summaries.submit_lines(
+        [i for i in incidents if i["first_seen"] >= since and i["id"] not in asked and summaries.missing_lines(i)], claude)
+    if lines:
+        batches.append(lines)
+        changed.update(month_of(i["first_seen"]) for i in incidents if i["id"] in {r["incident"] for r in lines["requests"].values()})
 
 
 def write_pages(store, incidents, known, now, stamp):

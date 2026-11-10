@@ -1,4 +1,4 @@
-import { WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage } from './board.mjs';
+import { cveLines, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -1687,10 +1687,7 @@ function summary(s) {
 // One release's CVEs grouped into one Incident (collector: group_releases): the Normal view names what each one does,
 // from the Summary's Korean/English lines, else each CVE record's own description (English) until the Summary comes.
 function cveList(incident) {
-  if (incident.cves.length < 2) return [];
-  const fromSummary = incident.summary?.[lang]?.cve_lines;
-  const texts = incident.cve_texts || {};
-  const lines = fromSummary?.length ? fromSummary : incident.cves.filter((c) => texts[c]).map((cve) => ({ cve, text: texts[cve] }));
+  const lines = cveLines(incident, lang);
   if (!lines.length) return [];
   const item = (line) => {
     const li = el('li');
