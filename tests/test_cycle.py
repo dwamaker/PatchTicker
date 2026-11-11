@@ -3,13 +3,14 @@
 import io
 import json
 import unittest
+import urllib.error
 from contextlib import redirect_stderr
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from collector import cvelist, cycle, nvd
+from collector import cvelist, cycle, github, nvd
 from collector.cycle import run_cycle
 from collector.cvelist import DELTA_LOG_URL
 from collector.store import MemoryStore
@@ -329,6 +330,65 @@ class CycleTest(unittest.TestCase):
         self.assertEqual(self.store.read("index.json"), {"months": ["2026-07", "2026-10"]})
         self.assertEqual([line for line in err.getvalue().splitlines() if line.startswith("retention:")],
                          ["retention: 2 of 3 Incidents are past 90 days; pruned none (wrong clock or bad data?)"])
+
+
+class GithubOutageTest(unittest.TestCase):
+    """2026-11-11: a rate-limited repository search (no token: 10 a minute) ended a whole cycle on the live box."""
+
+    def setUp(self):
+        self.store = MemoryStore()
+        self.store.write("index.json", {"months": ["2026-11"]})
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [
+            incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z")]})
+
+    def search_answers(self, answer):
+        """recorded(), but the GitHub repository search calls answer(url)."""
+        rest = recorded()
+
+        def get(url, headers=None):
+            return answer(url) if url.startswith(github.SEARCH_URL) else rest(url)
+
+        return get
+
+    def rate_limited(self, url):
+        raise urllib.error.HTTPError(url, 403, "rate limit exceeded", {}, None)
+
+    def cycle(self, http_get, when="2026-11-07T13:30:00"):
+        with redirect_stderr(io.StringIO()) as err:
+            run_cycle(self.store, http_get, at(when), "test-box", sleep=lambda s: None)
+        return [line for line in err.getvalue().splitlines() if line.startswith("github:")]
+
+    def assert_skipped(self, http_get):
+        for before in ({"cvelist": "2026-11-07T12:00:00.000Z"},
+                       {"cvelist": "2026-11-07T12:00:00.000Z", "github": "2026-11-04T00:00:00Z"}):
+            with self.subTest(before=before):
+                self.setUp()
+                self.store.write("checkpoints.json", before)
+                lines = self.cycle(http_get)
+
+                self.assertEqual(len(lines), 1)
+                self.assertTrue(lines[0].startswith("github: skipped this cycle:"), lines[0])
+                self.assertEqual(self.store.read("status.json")["updated"], "2026-11-07T13:30:00Z")
+                # The cycle's cvelist record still became an Incident.
+                self.assertIn("CVE-2026-120984", [i["id"] for i in self.store.read("months/2026-11.json")["incidents"]])
+                # Left as it was (absent stays absent), so the next cycle asks the same range.
+                self.assertEqual(self.store.read("checkpoints.json").get("github", "absent"), before.get("github", "absent"))
+
+    def test_a_rate_limited_search_skips_github_and_the_cycle_goes_on(self):
+        self.assert_skipped(self.search_answers(self.rate_limited))
+
+    def test_a_search_answer_without_items_is_skipped_the_same_way(self):
+        self.assert_skipped(self.search_answers(lambda url: b'{"message": "API rate limit exceeded"}'))
+
+    def test_the_next_cycle_takes_the_repos_and_moves_the_checkpoint(self):
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-07T12:00:00.000Z"})
+        self.cycle(self.search_answers(self.rate_limited))
+        self.assertEqual(self.cycle(recorded(github="sshole.json"), "2026-11-07T14:00:00"), [])
+
+        held = next(i for i in self.store.read("months/2026-11.json")["incidents"] if i["id"] == "CVE-2026-123158")
+        self.assertIn("https://github.com/gabrielunknown/CVE-2026-123158_SSHole",
+                      [m["url"] for m in held["mentions"] if m["kind"] == "repo"])
+        self.assertEqual(self.store.read("checkpoints.json")["github"], "2026-11-05T22:51:12Z")
 
 
 class NvdEnrichmentTest(unittest.TestCase):

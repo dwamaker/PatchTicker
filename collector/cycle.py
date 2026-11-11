@@ -68,7 +68,12 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     records += cvelist.fetch_missing(missing, http_get)
     posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get, stamp)
     stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
-    repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
+    try:
+        repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
+    except (OSError, ValueError, KeyError) as err:
+        # 2026-11-11: a rate-limited search (no token) ended a cycle. Repos only join Incidents; the next cycle asks again.
+        print(f"github: skipped this cycle: {err!r}", file=sys.stderr)
+        repos = []
     articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds, stamp)
 
     for story in stories + articles:
