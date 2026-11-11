@@ -893,6 +893,24 @@ test('nicknames and abbreviations find their Products, and a Latin key still mat
   assert.deepEqual([ids('파폭'), ids('vscode'), ids('mssql'), ids('익스플로러'), ids('postgres')], [['70'], ['71'], ['72'], ['74'], ['75']]);
 });
 
+// Measured 11-11 on the live week: 워드 found 488 rows (워드프레스, 키워드), 장고 found 냉장고, 일러 컴파일러.
+test('an alias key typed is no hit inside a longer Korean word, yet finds its own word with a particle after it', () => {
+  const cases = {
+    워드: [['워드 문서', '워드를'], ['워드프레스', '키워드', '패스워드']], 애플: [['애플 기기'], ['애플리케이션']],
+    델: [['델 노트북', '델(Dell)'], ['모델', '델타']], 디코: [[], ['디코더']], 일러: [['일러스트레이터'], ['컴파일러']],
+    장고: [['장고 프레임워크'], ['냉장고']], 텔레: [['텔레그램'], ['텔레메트리']], 맥: [['맥에서', '맥북'], ['문맥', '맥락']],
+    깃: [['깃 저장소'], ['깃허브']], 줌: [[], ['줌라']], 러스트: [['러스트 언어'], ['일러스트레이터']], 인텔: [['인텔 프로세서'], ['인텔리제이']],
+  };
+  for (const [word, [finds, misses]] of Object.entries(cases)) {
+    const rows = [...finds, ...misses].map((text) => ({ ...incident(text, '2026-11-08T00:00:00Z'), brief: { text, lead: '' } }));
+    assert.deepEqual(filterBoard(rows, [], word, NOW).list.map((i) => i.id).sort(), [...finds].sort(), word);
+  }
+  // The alias half is untouched: a Product named so is found whatever the text says.
+  const at = (id, name, text) => ({ ...incident(id, '2026-11-08T00:00:00Z'), brief: { text, lead: '' }, products: [{ id: `name:${name.toLowerCase()}`, name }] });
+  assert.equal(filterBoard([at('w', 'Microsoft Word', '워드프레스 키워드')], [], '워드', NOW).list.length, 1);
+  assert.equal(filterBoard([at('g', 'Git', '깃허브 연동')], [], '깃', NOW).list.length, 1);
+});
+
 test('자바 and java never find JavaScript, in either language (critique 14: 자바스크립트 in Korean Summaries)', () => {
   const at = (id, text) => ({ ...incident(id, '2026-11-08T00:00:00Z'), brief: { text, lead: '' } });
   const koJs = at('CVE-2026-51', '로그인 사용자가 자바스크립트를 저장할 수 있습니다');

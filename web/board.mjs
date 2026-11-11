@@ -337,8 +337,13 @@ export const SEARCH_ALIASES = {
   vscode: ['Visual Studio Code'], k8s: ['Kubernetes'], postgres: ['PostgreSQL'], mssql: ['SQL Server'],
 };
 // A typed word inside a longer word that names something else is no hit (critique 14: 자바 found 자바스크립트 in Korean
-// Summaries). Asked for by name, JavaScript is still found.
-const NOT_INSIDE = { __proto__: null, 자바: /자바\s?스크립트/g, java: /java\s?script/g };
+// Summaries). Asked for by name, JavaScript is still found. Also the alias keys measured on 2026-11-11 to sit inside
+// other Korean words (워드 in 워드프레스 and 키워드, 장고 in 냉장고); a key typed still finds its own word with a particle
+// after it (워드를, 맥에서).
+const NOT_INSIDE = { __proto__: null, 자바: /자바\s?스크립트/g, java: /java\s?script/g,
+  워드: /워드프레스|[가-힣]워드/g, 애플: /애플리케이션|애플릿|[가-힣]애플/g, 델: /[가-힣]델|델타/g, 디코: /디코[더딩드]/g,
+  일러: /[가-힣]일러/g, 장고: /[가-힣]장고/g, 텔레: /텔레(?!그램)[가-힣]/g, 맥: /[가-힣]맥|맥락/g, 오피스: /백오피스/g,
+  깃: /깃(허브|헙|랩)/g, 줌: /줌라/g, 러스트: /[가-힣]러스트/g, 인텔: /인텔리[가-힣]/g };
 // Keys a Product is known by, for matching a pick against variants of its name (critique 14). A CPE-style id gives its
 // vendor and product ("chengdu feiyuxing vw2100") and its product alone ("gemcode:gembooking" is the Summary's
 // "GemBooking"), unless that is a word every vendor uses ("firmware").
