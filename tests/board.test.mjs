@@ -884,6 +884,15 @@ test('Korean names of well-known products find them as whole words only (깃 is 
   assert.deepEqual(SEARCH_ALIASES.팔로알토, ['Palo Alto', 'PAN-OS']);
 });
 
+// Owner, 11-11: "파폭" found nothing. Nicknames and abbreviations people type, Latin ones too.
+test('nicknames and abbreviations find their Products, and a Latin key still matches free text', () => {
+  const at = (n, name, text = '') => ({ ...incident(`CVE-2026-7${n}`, '2026-11-08T00:00:00Z'), brief: { text, lead: '' }, products: name ? [{ id: `name:${name.toLowerCase()}`, name }] : [] });
+  const all = [at(0, 'Firefox'), at(1, 'Visual Studio Code'), at(2, 'Microsoft SQL Server 2022'), at(3, 'MySQL Server'),
+    at(4, 'Internet Explorer'), at(5, '', 'A postgres extension runs code')];
+  const ids = (q) => filterBoard(all, [], q, NOW).list.map((i) => i.id.slice(-2)).sort();
+  assert.deepEqual([ids('파폭'), ids('vscode'), ids('mssql'), ids('익스플로러'), ids('postgres')], [['70'], ['71'], ['72'], ['74'], ['75']]);
+});
+
 test('자바 and java never find JavaScript, in either language (critique 14: 자바스크립트 in Korean Summaries)', () => {
   const at = (id, text) => ({ ...incident(id, '2026-11-08T00:00:00Z'), brief: { text, lead: '' } });
   const koJs = at('CVE-2026-51', '로그인 사용자가 자바스크립트를 저장할 수 있습니다');

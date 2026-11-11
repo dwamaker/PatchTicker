@@ -268,8 +268,8 @@ export function orderBy(sort) {
 }
 
 // Korean words people type for systems and devices, matched as the English names sources use (critique 12: 윈도우 and
-// 공유기 found nothing). It holds the Hangul spellings Koreans really type for well-known products and vendors (owner,
-// 11-11), hand-kept: a model asked to draft them invented spellings nobody types. /api/check (edge/check.mjs) reads it
+// 공유기 found nothing). It holds the Hangul spellings, nicknames and Latin abbreviations ("k8s") Koreans really type for
+// well-known products and vendors (owner, 11-11), hand-kept: a model asked to draft them invented spellings nobody types. /api/check (edge/check.mjs) reads it
 // too. The English names match only Product names, ids and OS tags, as whole words (critique 13: 자바 found javascript,
 // 엣지 "knowledge"), so an alias only adds hits.
 // No prototype: the typed word is the key, and "constructor" must find no alias list (audit 13).
@@ -329,6 +329,12 @@ export const SEARCH_ALIASES = {
   // vendors
   세일즈포스: ['Salesforce'], 옥타: ['Okta'], 솔라윈즈: ['SolarWinds'], 델: ['Dell'], 레노버: ['Lenovo'], 화웨이: ['Huawei'],
   지멘스: ['Siemens'], 아마존: ['Amazon'], 모질라: ['Mozilla'], 아틀라시안: ['Atlassian'], 브로드컴: ['Broadcom'], 엘지: ['LG'],
+  // what people actually type: nicknames and abbreviations (owner, 11-11: 파폭 found nothing)
+  파폭: ['Firefox'], 포샵: ['Photoshop'], 일러: ['Illustrator'], 피피티: ['PowerPoint'], 디코: ['Discord'], 텔레: ['Telegram'],
+  깃헙: ['GitHub'], 쿠버: ['Kubernetes'], 윈도우즈: ['Windows'], 익스플로러: ['Internet Explorer'], 마소: ['Microsoft'],
+  스프링부트: ['Spring Boot'], 몽고: ['MongoDB'], 엘라스틱: ['Elasticsearch'], 포스트그레: ['PostgreSQL'],
+  비주얼스튜디오: ['Visual Studio'], 브이에스코드: ['Visual Studio Code'], 노드js: ['Node.js'],
+  vscode: ['Visual Studio Code'], k8s: ['Kubernetes'], postgres: ['PostgreSQL'], mssql: ['SQL Server'],
 };
 // A typed word inside a longer word that names something else is no hit (critique 14: 자바 found 자바스크립트 in Korean
 // Summaries). Asked for by name, JavaScript is still found.
