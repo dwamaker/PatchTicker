@@ -81,3 +81,23 @@ test('the real index.html: one marker inside the about section, and the title th
   assert.match(html, /<section id="about">(?:(?!<\/section>)[\s\S])*<!--home-links-->[\s\S]*?<\/section>/);
   assert.equal(/<title>([^<]*)<\/title>/.exec(html)[1], WORDS.ko.title);
 });
+
+test('the real index.html: #about is the last child of <main>, and no top-level <section> is its 12th child', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const main = /<main class="wrap">([\s\S]*?)<\/main>/.exec(html)[1];
+  const top = [];
+  let depth = 0;
+  for (const [tag, close] of main.matchAll(/<(\/?)[a-z][\w-]*[^>]*>/g)) {
+    if (close) depth--;
+    else {
+      if (depth === 0) top.push(tag);
+      if (!tag.endsWith('/>') && !tag.startsWith('<input')) depth++;
+    }
+  }
+  assert.equal(depth, 0);
+  // a visitor's content blocker hid section:nth-child(12), which the Highlights became when #about stood first (owner, 2026-11-11)
+  assert.match(top.at(-1), /^<section id="about">/);
+  assert.match(top.at(-2), /id="more"/);
+  assert.match(html, /<\/section>\s*<\/main>/);
+  for (const [k, tag] of top.entries()) if (tag.startsWith('<section')) assert.notEqual(k + 1, 12, tag);
+});

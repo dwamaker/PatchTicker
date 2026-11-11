@@ -138,7 +138,8 @@ function shares). The function answers `/feed.xml` and `/en/feed.xml` from `boar
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
 The home page `/` goes through `functions/index.js` (`edge/home.mjs`) too: the current static `index.html` with links to
 the feed's 20 newest Incident pages in place of its `<!--home-links-->` marker, for readers that run no script (search
-crawlers). `index.html`'s `#about` block holds that text and is hidden once the inline script has set `.js` on `<html>`.
+crawlers). `index.html`'s `#about` block holds that text and is hidden once the inline script has set `.js` on `<html>`. It stands last in `<main>` so that the Board's own children
+keep their positions (a content blocker rule hid the 12th-child section when it stood first).
 Only the link list is cached (300 s); when it cannot be read the page answers without it. Any other path that falls
 back to `index.html` keeps the marker as a comment.
 It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/[slug].js`, renderer in
