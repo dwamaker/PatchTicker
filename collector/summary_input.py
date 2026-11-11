@@ -5,6 +5,8 @@ import http.client
 import json
 import re
 import sys
+from collections import Counter
+from itertools import accumulate
 from urllib.parse import urlsplit
 
 from collector import cvelist
@@ -19,6 +21,10 @@ CVE_API_RECORD = "https://cveawg.mitre.org/api/cve/{cve}"
 # the rest go to batch requests (cve_lines).
 CVE_LINES_MAX = 12
 CVE_LINES_ONLY = "Per-CVE lines only for:"
+# 11-11: a 734-CVE Microsoft group listed 1,471 Mentions (105,000 characters) and read all 734 CVE records (2.67 million
+# characters); its request was 1,350,178 tokens, over the 1,000,000 maximum, on all three tries.
+MENTIONS_MAX = 60  # Mention lines in the input; the rest are counted by kind
+INPUT_CHARS_MAX = 400_000  # about 100k tokens; past it the descriptions of the CVEs after CVE_LINES_MAX are cut from the end
 
 
 LEAD_MARK = " (the Lead: its numbers win when sources disagree)"
@@ -33,23 +39,38 @@ def summary_input(incident, http_get):
         f"Products: {', '.join(p['name'] for p in incident.get('products', [])) or 'unknown'}",
         f"Description: {incident['brief']['text']}",
         "Mentions:",
-        *(f"- {m['kind']} {m['url']}" + (f" ({m['title']})" if m.get("title") else "") for m in incident["mentions"]),
     ]
+    lead = incident["brief"]["lead"]
+    preferred = sorted(incident["mentions"], key=lambda m: (m["url"] != lead, PAGE_KINDS.index(m["kind"]) if m["kind"] in PAGE_KINDS else 99))
+    # A short list keeps its stored order; a long one lists first the Mentions the pages are read from.
+    listed = incident["mentions"] if len(incident["mentions"]) <= MENTIONS_MAX else preferred[:MENTIONS_MAX]
+    lines += [f"- {m['kind']} {m['url']}" + (f" ({m['title']})" if m.get("title") else "") for m in listed]
+    if len(listed) < len(preferred):
+        kinds = Counter(m["kind"] for m in preferred[MENTIONS_MAX:]).most_common()
+        lines.append(f"… and {len(preferred) - MENTIONS_MAX} more: {', '.join(f'{n} {kind}' for kind, n in kinds)}")
     # Pages come before the CVE records and the Lead is marked: CVE text can round a boundary (sshole's
     # record says "between 256 and 1024", its write-up "between 257 and 1024") and the model followed
     # whichever it read first.
-    lead = incident["brief"]["lead"]
-    readable = [m for m in sorted(incident["mentions"], key=lambda m: (m["url"] != lead, PAGE_KINDS.index(m["kind"]) if m["kind"] in PAGE_KINDS else 99))
-                if m["kind"] in PAGE_KINDS and not is_hn(m["url"])]
+    readable = [m for m in preferred if m["kind"] in PAGE_KINDS and not is_hn(m["url"])]
     for m in readable[:MAX_PAGES]:
         page = fetch_page(http_get, m["url"])
         if page:
             mark = LEAD_MARK if m["url"] == lead else ""
             lines += [f"Text of {m['url']}{mark}:", page_text(page)[:PAGE_CHARS]]
-    for cve in incident["cves"]:
+    for cve in incident["cves"][:CVE_LINES_MAX]:
         record = fetch_page(http_get, cvelist.record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
             lines += [f"CVE record {cve}:", cve_fields(record)]
+    # The rest get the Incident's own one-line description and no request. Whitespace is folded so a description
+    # cannot start a line that trusted() would read as a Mention or a source block.
+    texts = incident.get("cve_texts") or {}
+    others = [f"{cve}: {' '.join(texts[cve].split())}" for cve in incident["cves"][CVE_LINES_MAX:] if texts.get(cve)]
+    if others:
+        room = INPUT_CHARS_MAX - len("\n".join(lines)) - 100  # 100: the heading and the closing line
+        shown = sum(1 for total in accumulate(len(line) + 1 for line in others) if total <= room)
+        lines += ["Other CVEs, each with its own description:", *others[:shown]]
+        if shown < len(others):
+            lines.append(f"… and {len(others) - shown} more CVEs not shown")
     return "\n".join(lines)
 
 

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, linkedPlace, wellKnown } from '../web/board.mjs';
+import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -45,6 +45,15 @@ test('a long device list stays off the row: past four models the badges are the 
   assert.deepEqual(rowTags(few), ['TP-Link Archer', 'TP-Link Archer C6', 'TP-Link Archer AX10']);
   const many = { summary: { products: ['SonicWall SonicOS'], devices: ['TZ 270', 'TZ 370', 'TZ 470', 'TZ 570', 'TZ 670'].map((m) => `SonicWall ${m}`) } };
   assert.deepEqual(rowTags(many), ['SonicWall SonicOS']);
+});
+
+test('a row shows at most five tags: past that, the first four and how many more (CVE-2024-36309 drew 51)', () => {
+  const tags = (n) => Array.from({ length: n }, (_, k) => `AMD Ryzen ${k}`);
+  assert.deepEqual(foldTags(tags(5)), { shown: tags(5), more: 0 });
+  assert.deepEqual(foldTags(tags(6)), { shown: tags(4), more: 2 });
+  assert.deepEqual(foldTags(tags(51)), { shown: tags(4), more: 47 });
+  assert.deepEqual(foldTags([]), { shown: [], more: 0 });
+  assert.equal(ROW_TAGS, 5);
 });
 
 test('returns Incidents newest first', () => {

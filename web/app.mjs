@@ -1,4 +1,4 @@
-import { cveLines, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, linkedPlace } from './board.mjs';
+import { cveLines, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -2031,10 +2031,12 @@ function tagsCell(incident) {
   if (isGroup(incident)) cell.append(patchTag(), ' ');
   const os = new Set(Array.isArray(incident.summary?.platforms) ? incident.summary.platforms : []);
   const keys = lineKeys(incident, lang);
-  const names = rowTags(incident, lang);
+  // Past five tags the row shows four and says how many more (foldTags); the opened row lists them all.
+  const { shown: names, more } = foldTags(rowTags(incident, lang));
   const lastOs = names.findLastIndex((name) => os.has(name));
   // Spaces between badges keep screen readers from running the names together; the flex row hides them.
   names.forEach((name, n) => cell.append(...(n ? [' '] : []), os.has(name) ? osBadge(name, n === lastOs) : lineBadge(name, keys.get(name))));
+  if (more) cell.append(' ', el('span', 'tag-more', TEXT[lang].tagsMore(more)));
   return cell;
 }
 
@@ -2149,31 +2151,56 @@ function details(incident) {
 
 // 이 제품의 사건만 보기 (owner, 11-10): each tag of an opened row as a button that adds its Product or OS to the picks (or
 // takes it out again), or searches a device name; only here, since the closed row is one button already.
+// Past five tags the line shows four and a 나머지 N개 보기 toggle that opens the rest in place (foldTags); a pressed tag
+// always shows with the first ones, so a filter in force is never folded away. Opened lines stay open through a redraw.
+const openTagLines = new Set();
 function tagLine(incident) {
   const t = TEXT[lang];
   const tags = tagFilters(incident, lang);
   if (!tags.length) return [];
   const line = el('div', 'tag-line');
   line.append(el('span', 'tag-label', t.tagsOnly));
+  const isPicked = (tag) => Boolean(tag.pick) && filter.picks.includes(tag.pick);
+  const folded = new Set(tags.slice(foldTags(tags).shown.length).filter((tag) => !isPicked(tag)));
+  const rest = [];
   tags.forEach((tag, n) => {
     const button = Object.assign(el('button', 'tag-btn'), { type: 'button' });
+    button.dataset.n = n;
     button.append(tag.kind === 'os' ? osBadge(tag.name, false) : lineBadge(tag.name, tag.pick));
     button.setAttribute('aria-label', t.tagOnly(tag.name));
-    const picked = Boolean(tag.pick) && filter.picks.includes(tag.pick);
+    const picked = isPicked(tag);
     if (tag.pick) button.setAttribute('aria-pressed', picked);
     button.addEventListener('click', () => {
       if (!tag.pick) $('search').value = tag.query;
       const drawn = tag.pick ? update({ picks: picked ? filter.picks.filter((p) => p !== tag.pick) : [...filter.picks, tag.pick] })
         : update({ query: tag.query });
-      // The redrawn row keeps the focus on the same tag; gone from the list, the first row or the Board's head takes it.
+      // The redrawn row keeps the focus on the same tag (folded away again: on the toggle); gone from the list, the
+      // first row or the Board's head takes it.
       drawn.then(() => {
         const li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === incident.id);
-        (li?.querySelectorAll('.tag-btn')[n] || $('highlights').querySelector('button.row') || $('board').querySelector('button.row')
-          || $('board-start')).focus({ preventScroll: true });
+        (li?.querySelector(`.tag-btn[data-n="${n}"]:not([hidden])`) || li?.querySelector('.tag-toggle') || $('highlights').querySelector('button.row')
+          || $('board').querySelector('button.row') || $('board-start')).focus({ preventScroll: true });
       });
     });
-    line.append(button);
+    if (folded.has(tag)) rest.push(button);
+    else line.append(button);
   });
+  if (rest.length) {
+    const toggle = Object.assign(el('button', 'tag-toggle'), { type: 'button' });
+    const show = (on) => {
+      toggle.setAttribute('aria-expanded', on);
+      toggle.textContent = on ? t.foldLess : t.tagsRest(rest.length);
+      for (const button of rest) button.hidden = !on;
+    };
+    toggle.addEventListener('click', () => {
+      const on = !openTagLines.has(incident.id);
+      if (on) openTagLines.add(incident.id);
+      else openTagLines.delete(incident.id);
+      show(on); // the focus stays on the toggle
+    });
+    show(openTagLines.has(incident.id));
+    line.append(toggle, ...rest);
+  }
   return [line];
 }
 

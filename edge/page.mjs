@@ -3,7 +3,7 @@
 // level, exploited reason, easy action, Product names, on the Board, search-worthy) are the Board's own, imported from
 // web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { cveUrl, cvssRating, easyLine, exploitReason, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { cveUrl, cvssRating, easyLine, exploitReason, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -165,7 +165,11 @@ function products(i, lang) {
     const pill = tag.kind === 'os' ? `<span class="os">${esc(tag.name)}</span>` : `<span style="--line:${bg};--line-ink:${ink}">${esc(tag.name)}</span>`;
     return `<li><a href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${pill}</a></li>`;
   });
-  return items.length ? `<ul class="tags">${items.join('')}</ul>` : '';
+  if (!items.length) return '';
+  // Past five tags the first four stay in view and the rest fold, as on the Board row (foldTags).
+  const { shown, more } = foldTags(items);
+  const rest = more ? `<details class="more"><summary>${esc(t.tagsRest(more))}</summary><ul class="tags">${items.slice(shown.length).join('')}</ul></details>` : '';
+  return `<ul class="tags">${shown.join('')}</ul>${rest}`;
 }
 
 // Every Mention by kind, in the Lead order; on the Korean page an English title shows the Summary's Korean line.

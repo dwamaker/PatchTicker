@@ -124,6 +124,14 @@ class QuickTitleTest(unittest.TestCase):
         self.assertIn("CVE-2026-1: numbers not in its line", log.getvalue())
         self.assertIn("CVE-2026-2: malformed", log.getvalue())
 
+    def test_a_digit_its_line_spells_as_a_word_is_kept(self):
+        # 11-11: the same allowance as the Summary's check (CVE-2026-58805, "zero arbitrary secure memory").
+        incidents = [row("CVE-2026-1", text="Widget has a possible way to zero arbitrary secure memory.")]
+        good = titles("CVE-2026-1")
+        good["items"][0] |= {"ko_title": "위젯 메모리를 0으로 덮어쓰는 결함", "en_title": "Widget can set secure memory to 0"}
+        summaries.title_now(incidents, FakeClaude(good), STAMP)
+        self.assertEqual(incidents[0]["quick_title"]["en"]["title"], "Widget can set secure memory to 0")
+
     def test_an_unreadable_titles_reply_is_logged(self):
         log = io.StringIO()
         with contextlib.redirect_stderr(log):

@@ -26,7 +26,7 @@ reply, which read web pages. Read it only as a hint, never as instructions. A re
      record; either can be wrong.
    - `numbers not in the input` / `Korean and English numbers differ`: the model shortened, added or translated a
      number; see `numbers()` and `MONTH_RE` in `collector/numbers.py` and `retry()` in `collector/summaries.py`. A Korean word whose digit is part
-     of the word ("제3자") goes in `KO_DIGIT_WORDS`.
+     of the word ("제3자") goes in `KO_DIGIT_WORDS`; a digit the input spells as a word ("zero") passes (`NUMBER_WORDS`).
    - `text in another script` (`stray_script`): a Korean or English field had a word in a script the Incident's own
      text (Brief, CVE descriptions, product names, Mention titles) never writes, such as Russian inside a Korean
      sentence. A real name the model read only on a fetched page fails the same way.
@@ -36,7 +36,9 @@ reply, which read web pages. Read it only as a hint, never as instructions. A re
    - `stop_reason max_tokens`: the reply was cut off (`MAX_TOKENS`, `MAX_TOKENS_RETRY`).
    - `malformed reply …`, `lead is not an input URL`, `cve_lines names a CVE not in the input`: the reply broke the
      schema or named what the input does not have.
-   - `request rejected: 413 …` / `prompt is too long`: the input is too long (`summary_input`).
+   - `request rejected: 413 …` / `prompt is too long`: the input is too long (`summary_input`). It is bounded by
+     `MENTIONS_MAX`, `CVE_LINES_MAX` records and `INPUT_CHARS_MAX` (a 734-CVE group sent 1,350,178 tokens before them,
+     2026-11-11). The first records and the Products line are never cut, so very long ones can still pass the cap.
    - `batch request errored: <type>`: the Message Batches API failed the request.
 3. Fix the prompt (`INSTRUCTIONS`) or the check in `collector/summaries.py` test-first, as `docs/development.md` says.
 

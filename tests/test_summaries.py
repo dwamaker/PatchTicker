@@ -860,6 +860,31 @@ class TitleEntityTest(unittest.TestCase):
         self.assertEqual(summary["en"]["summary"], body)
 
 
+class NumberWordTest(unittest.TestCase):
+    """11-11: CVE-2026-58805's description says "a possible way to zero arbitrary secure memory" and the model wrote "0"
+    on all three tries. A digit whose number word the input spells passes, as for per-CVE lines (number_words)."""
+
+    def parse(self, ko, en, source):
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"summary": f"{SSHOLE_SUMMARY['ko']['summary']} {ko}"},
+                                  "en": SSHOLE_SUMMARY["en"] | {"summary": f"{SSHOLE_SUMMARY['en']['summary']} {en}"}}
+        text = (f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n"
+                + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False) + " " + source)
+        return summaries.parse(FakeClaude.message(reply), text, [SSHOLE_SUMMARY["lead"]])
+
+    def test_a_digit_the_input_spells_as_a_word_passes(self):
+        summary = self.parse("메모리를 0으로 덮어쓸 수 있습니다.", "It can set memory to 0.", "a possible way to zero arbitrary secure memory")
+        self.assertTrue(summary["en"]["summary"].endswith("set memory to 0."))
+
+    def test_other_numbers_stay_exact(self):
+        cases = {"neither 2 nor two": ("2바이트입니다.", "It is 2 bytes.", "a few bytes", "['2']"),
+                 "one is not a number word": ("1개입니다.", "It is 1 flaw.", "one of the flaws", "['1']"),
+                 "a version stays exact": ("8.0 버전입니다.", "It is version 8.0.", "version 8.0.5.2", "['8.0']")}
+        for case, (ko, en, source, unknown) in cases.items():
+            with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
+                self.parse(ko, en, source)
+            self.assertEqual(str(caught.exception), f"numbers not in the input: {unknown}")
+
+
 class LanguageGapsTest(unittest.TestCase):
     """11-11 review of 2,254 Summaries: two had en.mitigation and en.easy_action written and the Korean ones empty, one
     had a ko.title in English. A field written in one language only, or a Korean title or summary without Hangul, costs

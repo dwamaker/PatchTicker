@@ -152,6 +152,23 @@ test('each tag links to the Board with that one filter, in the same tab, with a 
   assert.match(tags(await (await page(doc, 'en')).text()), /aria-label="See OpenSSH Incidents on the Board"/);
 });
 
+test('past five tags the page shows the first four and folds the rest, as the Board row does (CVE-2024-36309 had 51)', async () => {
+  const names = Array.from({ length: 7 }, (_, k) => `AMD Ryzen ${k + 1}000`);
+  const many = { ...SSHOLE, summary: { ...SSHOLE.summary, products: names } }; // Linux + 7 Products: 8 tags
+  for (const [lang, more] of [['ko', '나머지 4개 보기'], ['en', 'Show 4 more']]) {
+    const products = (await (await page(many, lang)).text()).split('id="s-products"')[1].split('</section>')[0];
+    const [open, folded] = products.split('<details');
+    assert.equal((open.match(/<a /g) || []).length, 4);
+    assert.match(open, /<span class="os">Linux<\/span>[\s\S]*AMD Ryzen 3000/); // operating systems first
+    assert.equal((folded.match(/<a /g) || []).length, 4);
+    assert.match(folded, new RegExp(`^ class="more"><summary>${more}</summary><ul class="tags">`));
+  }
+  const few = { ...SSHOLE, summary: { ...SSHOLE.summary, products: names.slice(0, 2) } }; // Linux + 2: 3 tags
+  const products = (await (await page(few)).text()).split('id="s-products"')[1].split('</section>')[0];
+  assert.equal((products.match(/<a /g) || []).length, 3);
+  assert.doesNotMatch(products, /<details/);
+});
+
 test('the English page is the English Summary, canonical to itself', async () => {
   const html = await (await page(SSHOLE, 'en')).text();
   assert.match(html, /<html lang="en">/);

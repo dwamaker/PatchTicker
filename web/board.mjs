@@ -440,6 +440,10 @@ export const rowTags = (i, lang = 'en') => {
   const platforms = [...(s?.platforms || [])].sort((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
   return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
 };
+// A row, its opened tag line and the Incident page show at most ROW_TAGS tags (owner, 11-11: CVE-2024-36309 drew 51 AMD
+// processors, a row taller than the screen); past that, the first four and how many more. rowTags keeps every name.
+export const ROW_TAGS = 5;
+export const foldTags = (tags, max = ROW_TAGS) => (tags.length > max ? { shown: tags.slice(0, max - 1), more: tags.length - max + 1 } : { shown: tags, more: 0 });
 // What pressing each of rowTags' names filters the Board by (owner, 11-10): an operating system or a Product adds a pick
 // (exact, stacks, in the address), a name with no Product id (a device model) becomes the search.
 export function tagFilters(i, lang = 'en') {
@@ -475,7 +479,7 @@ export const WORDS = {
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
     none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
-    newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기',
+    newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기', tagsMore: (n) => `외 ${n}개`, tagsRest: (n) => `나머지 ${n}개 보기`,
     refNote: '이 게시판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 최대 90일의 사건만 저장합니다.',
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '악용 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
@@ -491,7 +495,7 @@ export const WORDS = {
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
-    newTab: ' (opens in a new tab)', report: 'Report a mistake',
+    newTab: ' (opens in a new tab)', report: 'Report a mistake', tagsMore: (n) => `+${n} more`, tagsRest: (n) => `Show ${n} more`,
     refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",
     nvd: '',
     kevNote: 'Exploited flags come from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',

@@ -528,6 +528,8 @@
     .tag-btn:active { transform: scale(0.96); }
     @media (pointer: coarse) { .tag-btn { min-height: var(--tap); min-width: var(--tap); } .details .tag-line { row-gap: 0; } } /* 44px to tap, the pill stays its size */
     @media (prefers-reduced-motion: reduce) { .tag-btn:active { transform: none; } }
+    .tag-toggle { min-height: var(--tap); padding: 0 0.25rem; border: 0; background: none; color: var(--focus); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; } /* 나머지 N개 보기: link-coloured like the folded model list's summary */
+    .tag-more { display: inline-flex; align-items: center; min-height: 1.625rem; color: var(--ink-2); font-size: calc(0.78125rem * var(--ts)); white-space: nowrap; } /* 외 N개 on a closed row: a quiet count, not a control */
     .share-url { display: block; width: 100%; max-width: 32rem; min-height: var(--tap); margin-top: 0.5rem; padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-size: calc(var(--fs-meta) * var(--ts)); }
     .grp { display: inline-flex; align-items: center; min-height: 1.625rem; padding: 0.1875rem 0.5rem; border: 1px solid var(--ink-2); border-radius: 4px; background: var(--panel); color: var(--ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 700; line-height: 1.2; white-space: nowrap; }
     .fold-members { margin: 0; padding: 0; list-style: none; }

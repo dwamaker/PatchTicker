@@ -18,7 +18,7 @@ from collector import hn
 from collector.cve_lines import save_lines
 from collector.incidents import is_news, published_at, stamp_ago
 from collector.model import CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_RETRY, MODEL, reply_json
-from collector.numbers import ko_numbers, numbers
+from collector.numbers import ko_numbers, number_words, numbers
 from collector.same_event import same_as_text
 from collector.summary_input import CVE_LINES_ONLY, is_hn, summary_input, trusted
 
@@ -400,7 +400,7 @@ def title_now(incidents, claude, stamp):
         for name in names:
             easy = easy.replace(name, "")  # "Perl SQL::Abstract" may keep its own name
         unknown = (ko_numbers(item["ko_title"] + " " + item["ko_easy_title"])
-                   | numbers(item["en_title"] + " " + item["en_easy_title"])) - numbers(own)
+                   | numbers(item["en_title"] + " " + item["en_easy_title"])) - numbers(own) - number_words(own)
         reason = ("CVE ID inside" if CVE_ID.search(text) else f"numbers not in its line {sorted(unknown)}" if unknown
                   else "banned word" if any(w.lower() in easy.lower() for w in EASY_BANNED) else "")
         if reason:
@@ -652,7 +652,7 @@ def parse(reply, input_text, urls):
     ko, en = ko_numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
     unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"],
                                              *(x for f in summary["fixes"] for x in (f["version"], *f["devices"]))]))) \
-        - numbers(input_text)
+        - numbers(input_text) - number_words(input_text)
     if unknown:
         raise Rejected(f"numbers not in the input: {sorted(unknown)}")
     # Dotted versions ("10.6p2") may sit in one language only; whole numbers (the 256/257 kind) must match.
