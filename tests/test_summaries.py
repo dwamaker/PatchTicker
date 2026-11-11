@@ -412,11 +412,13 @@ class InstantSummaryTest(unittest.TestCase):
         summary = board(self.store)[HN_STORY]["summary"]
         self.assertEqual((summary["ko"]["title"], summary["en"]["title"]), (SSHOLE_SUMMARY["ko"]["title"], SSHOLE_SUMMARY["en"]["title"]))
 
-    def test_a_version_named_in_one_language_only_passes_but_whole_numbers_must_match(self):
-        # Versions must still appear in the input; only whole numbers are compared across languages.
+    def test_a_version_named_in_one_language_only_passes_the_number_check_but_costs_a_retry(self):
+        # Versions must still appear in the input; only whole numbers are compared across languages. A version in one
+        # language only is a soft problem since the second 11-11 review (language_gaps): retried, the last try kept.
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "최신 OpenSSH로 업데이트하세요."}}
         self.run_at("2026-11-07T12:30:00", FakeClaude(reply), hn="sshole.json")
-        self.assertIn("summary", board(self.store)[HN_STORY])
+        self.assertEqual(board(self.store)[HN_STORY]["summary_error"]["reason"],
+                         "a version stands in one language only: ['10.6p2']")
 
     def test_the_instructions_ask_to_copy_numbers_and_dates_as_the_source_writes_them(self):
         claude = FakeClaude(SSHOLE_SUMMARY)
@@ -624,7 +626,7 @@ class EasyJargonTest(unittest.TestCase):
                 self.assertNotIn("final", incident["summary_error"])
 
     def test_a_stopgap_whose_mitigation_says_restart_needs_its_easy_follow_up_step(self):
-        restart = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"mitigation": "Set PasswordAuthentication no and restart sshd."}}
+        restart = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"mitigation": "Update to OpenSSH 10.6p2, or set PasswordAuthentication no and restart sshd."}}
         incident = self.save(restart)
         self.assertNotIn("summary", incident)
         self.assertIn("stopgap step missing", incident["summary_error"]["reason"])
@@ -948,6 +950,72 @@ class LanguageGapsTest(unittest.TestCase):
         self.assertNotIn("number", note)
         for reason in ("mitigation is empty in Korean only", "the Korean title is not in Korean"):
             self.assertEqual(plain_reason(reason), reason)
+
+    # Second 11-11 review: CVE-2026-113555 wrote "26.5" in English and "26.5.3" in Korean; 4 of 540 new Summaries
+    # still called the sources "소스".
+    WRONG_KO = "26.5.3 이하 버전은 26.5.3으로, 25.6.6 이하 버전은 27.0으로 업데이트하세요."
+    WRONG_EN = "Update to 26.5.3 if on 26.5 or earlier, and to 27.0 if on 25.6.6 or earlier."
+
+    def test_a_version_in_one_language_only_is_a_gap(self):
+        self.assertEqual(self.gaps(ko={"mitigation": self.WRONG_KO}, en={"mitigation": self.WRONG_EN}),
+                         "a version stands in one language only: ['26.5']")
+        self.assertEqual(self.gaps(ko={"mitigation": "OpenSSH 10.6p2로 업데이트하세요."}, en={"mitigation": "Update."}),
+                         "a version stands in one language only: ['10.6p2']")
+
+    def test_the_same_versions_or_an_amount_in_both_languages_pass(self):
+        self.assertEqual(self.gaps(ko={"mitigation": "26.5 이하는 26.5.3으로 업데이트하세요."},
+                                   en={"mitigation": "Update to 26.5.3 if on 26.5 or earlier."}), "")
+        self.assertEqual(self.gaps(ko={"easy": "고객 580만 명의 정보가 샜습니다."},
+                                   en={"easy": "Data of 5.8 million customers leaked."}), "")
+
+    def test_a_forbidden_korean_word_is_a_gap(self):
+        cases = {"소스에 수정 버전이 나와 있지 않습니다.": "소스 (write 출처)",
+                 "소스가 고친 버전을 밝히지 않았습니다.": "소스 (write 출처)",
+                 "수정 버전은 소스에 나와 있지 않습니다.": "소스 (write 출처)",
+                 "소스에 수정 버전이나 임시 조치가 없습니다.": "소스 (write 출처)",
+                 "고정된 버전으로 업데이트하세요.": "고정 버전 (write 수정 버전)",
+                 "고정 버전으로 업데이트하세요.": "고정 버전 (write 수정 버전)",
+                 "벤더가 패치를 냈습니다.": "벤더 (write 제조사)"}
+        for text, reason in cases.items():
+            with self.subTest(text):
+                self.assertEqual(self.gaps(ko={"easy": text}), f"Korean wording: {reason}")
+
+    def test_look_alikes_of_the_forbidden_words_pass(self):
+        for text in ("리소스가 없으면 서비스가 멈춥니다.", "오픈소스에 수정 버전이 나와 있습니다.", "소스 코드에 수정 버전이 없습니다.",
+                     "소스 파일에 명시된 경로입니다.", "Git 소스에서 빌드한 설치도 해당합니다.", "멀티벤더 장비가 해당합니다.",
+                     "고정된 암호 키가 들어 있습니다.", "버전을 고정해 두세요."):
+            with self.subTest(text):
+                self.assertEqual(self.gaps(ko={"easy": text}), "")
+
+    def save_wording(self, tries=0):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        if tries:
+            incident["summary_error"] = {"tries": tries, "reason": "earlier"}
+        ko = SSHOLE_SUMMARY["ko"]["mitigation"] + " 벤더 공지를 확인하세요."
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": ko}}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
+        return incident, ko
+
+    def test_a_forbidden_word_is_sent_back_and_the_last_try_is_kept_as_it_is(self):
+        incident, _ = self.save_wording()
+        self.assertNotIn("summary", incident)
+        self.assertEqual(incident["summary_error"]["reason"], "Korean wording: 벤더 (write 제조사)")
+        kept, ko = self.save_wording(tries=summaries.MAX_TRIES - 1)
+        self.assertEqual(kept["summary"]["ko"]["mitigation"], ko)
+        self.assertNotIn("summary_error", kept)
+
+    def test_the_retry_note_says_what_to_write_and_the_failure_list_keeps_the_reason(self):
+        from collector.incidents import plain_reason
+        cases = {"a version stands in one language only: ['26.5']": "name every version in both languages",
+                 "Korean wording: 소스 (write 출처)": "call the sources 출처, a fixed version 수정 버전 and the vendor 제조사"}
+        for reason, sentence in cases.items():
+            with self.subTest(reason):
+                note = summaries.retry({"summary_error": {"tries": 1, "reason": reason}}, "")["note"]
+                self.assertIn(f"rejected: {reason}.", note)
+                self.assertIn(sentence, note)
+                self.assertNotIn("never shorten or round", note)
+                self.assertEqual(plain_reason(reason), reason)
 
     def test_the_instructions_name_the_korean_terms_and_the_fixed_version_before_x(self):
         for words in ("출처", "수정 버전", "제조사", "never a word of any other language", "empty in both or in neither",

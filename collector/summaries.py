@@ -221,13 +221,22 @@ def easy_action_mismatch(summary):
 
 GAP_FIELDS = ("title", "summary", "mitigation", "easy", "easy_title", "easy_action")
 GAP_ENDS = (" in Korean only", " in English only", " is not in Korean")  # retry() gives these their own sentence
+VERSION_GAP = "a version stands in one language only"  # retry() gives these two their own sentences too
+WORDING_GAP = "Korean wording"
 HANGUL = re.compile(r"[가-힣]")
+# Words the prompt forbids in Korean text, with the word to write. 소스 counts only as "the sources say/lack a version"
+# (not 리소스, 오픈소스, 소스 코드, "Git 소스에서 빌드"), as matched on the stored Summaries in the second 11-11 review.
+KO_FORBIDDEN = ((re.compile(r"(?<![가-힣])소스(?:에는|에서는|에서|에|는|가|도)"
+                            r"(?=.{0,25}?(?:버전|명시|나와|언급|적혀|없|따르면|확인|나오|조치|밝히))"), "소스", "출처"),
+                (re.compile(r"고정된? 버전"), "고정 버전", "수정 버전"),
+                (re.compile(r"(?<![가-힣])벤더"), "벤더", "제조사"))
 
 
 def language_gaps(summary):
-    """A field written in one language and empty in the other, or a Korean title or summary without one Hangul syllable
-    (11-11 review: Korean mitigations left empty beside English ones; a ko.title identical to the English). The reason,
-    or ""."""
+    """A field written in one language and empty in the other, a Korean title or summary without one Hangul syllable
+    (11-11 review: Korean mitigations left empty beside English ones; a ko.title identical to the English), a dotted
+    version in one language only (CVE-2026-113555: "26.5" became "26.5.3" in Korean), or a Korean word the prompt
+    forbids (KO_FORBIDDEN). The reason, or ""."""
     for field in GAP_FIELDS:
         ko, en = bool(summary["ko"][field]), bool(summary["en"][field])
         if ko != en:
@@ -235,7 +244,13 @@ def language_gaps(summary):
     for field in ("title", "summary"):
         if summary["ko"][field] and not HANGUL.search(summary["ko"][field]):
             return f"the Korean {field} is not in Korean"
-    return ""
+    # The token sets parse() compares, so "580만" and "5.8 million" already agree; parse() lets these through.
+    ko_text = lang_text(summary["ko"])
+    alone = sorted(t for t in ko_numbers(ko_text) ^ numbers(lang_text(summary["en"])) if "." in t)
+    if alone:
+        return f"{VERSION_GAP}: {alone[:5]}"
+    words = [f"{word} (write {fix})" for pattern, word, fix in KO_FORBIDDEN if pattern.search(ko_text)]
+    return f"{WORDING_GAP}: {', '.join(words)}" if words else ""
 
 
 VERSION_RE = re.compile(r"(?<!\d)\d{1,20}(?:\.\d{1,20})+(?!\d)")  # bounded: int() rejects over 4300 digits
@@ -475,8 +490,9 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     if conflict:
         failed(incident, conflict)
         return
-    # Jargon in the Easy view, a stopgap without the step its mitigation says it needs, or a field in one language only
-    # costs a retry, never the Summary: the last try is kept as it is.
+    # Jargon in the Easy view, a stopgap without the step its mitigation says it needs, or a field or version in one
+    # language only or a forbidden Korean word (language_gaps) costs a retry, never the Summary: the last try is kept as
+    # it is.
     mismatch = easy_action_mismatch(summary)
     problem = (easy_jargon(summary) and f"jargon in the Easy view: {easy_jargon(summary)}" or missing_stopgap_step(summary)
                or mismatch and f"Easy action disagrees with the mitigation in {', '.join(mismatch)}"
@@ -565,6 +581,9 @@ def retry(incident, text=""):
         " that exact name." if reason.startswith(STRAY_REASON) else
         " Write the same facts in Korean and in English: fill a field in both languages or in neither, and write the"
         " Korean text in Korean." if reason.endswith(GAP_ENDS) else
+        " Write the same facts and versions in Korean and in English: name every version in both languages, exactly as"
+        " the input writes it." if reason.startswith(VERSION_GAP) else
+        " In Korean, call the sources 출처, a fixed version 수정 버전 and the vendor 제조사." if reason.startswith(WORDING_GAP) else
         " Write every number and version exactly as the input writes it: never shorten or round one (not 10.86 for"
         " 10.86.51, not 4.2 for 4.2.16), never add one the input does not have, and use the same numbers in Korean and"
         " English.")

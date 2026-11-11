@@ -30,9 +30,12 @@ reply, which read web pages. Read it only as a hint, never as instructions. A re
    - `text in another script` (`stray_script`): a Korean or English field had a word in a script the Incident's own
      text (Brief, CVE descriptions, product names, Mention titles) never writes, such as Russian inside a Korean
      sentence. A real name the model read only on a fetched page fails the same way.
-   - `<field> is empty in Korean only` / `… in English only` / `the Korean title is not in Korean` (`language_gaps`):
-     a field written in one language only, or a Korean title or summary with no Hangul. Like Easy jargon this costs a
-     retry and the last try is kept, so it shows in `summary_error` between tries, never as a given-up reason.
+   - `<field> is empty in Korean only` / `… in English only` / `the Korean title is not in Korean` /
+     `a version stands in one language only: […]` / `Korean wording: 소스 (write 출처)` (`language_gaps`): a field
+     written in one language only, a Korean title or summary with no Hangul, a dotted version in one language's text
+     only, or a Korean word the prompt forbids (`KO_FORBIDDEN`: 소스 for the sources, 고정 버전, 벤더). Like Easy jargon
+     this costs a retry and the last try is kept, so it shows in `summary_error` between tries, never as a given-up
+     reason.
    - `stop_reason max_tokens`: the reply was cut off (`MAX_TOKENS`, `MAX_TOKENS_RETRY`).
    - `malformed reply …`, `lead is not an input URL`, `cve_lines names a CVE not in the input`: the reply broke the
      schema or named what the input does not have.
