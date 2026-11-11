@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
-from collector import cvelist, cycle, github, nvd
+from collector import cvelist, cycle, github, hn, kev, nvd
 from collector.cycle import run_cycle
 from collector.cvelist import DELTA_LOG_URL
 from collector.store import MemoryStore
@@ -332,63 +332,138 @@ class CycleTest(unittest.TestCase):
                          ["retention: 2 of 3 Incidents are past 90 days; pruned none (wrong clock or bad data?)"])
 
 
-class GithubOutageTest(unittest.TestCase):
-    """2026-11-11: a rate-limited repository search (no token: 10 a minute) ended a whole cycle on the live box."""
+def unavailable(url):
+    raise urllib.error.HTTPError(url, 503, "Service Unavailable", {}, None)
+
+
+def rate_limited(url):
+    raise urllib.error.HTTPError(url, 403, "rate limit exceeded", {}, None)
+
+
+def is_hn_points(url):
+    return url.startswith(hn.SEARCH_URL) and "points" in parse_qs(urlsplit(url).query).get("numericFilters", [""])[0]
+
+
+class OutageTest(unittest.TestCase):
+    """One source's network or format error skips that source for the cycle, never the cycle (2026-11-11: a
+    rate-limited GitHub search, no token: 10 a minute, ended a whole cycle on the live box)."""
+
+    def rows(self):
+        return [incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z")]
 
     def setUp(self):
         self.store = MemoryStore()
         self.store.write("index.json", {"months": ["2026-11"]})
-        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [
-            incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z")]})
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": self.rows()})
+        self.store.write("checkpoints.json", {"cvelist": "2026-11-07T12:00:00.000Z"})
 
-    def search_answers(self, answer):
-        """recorded(), but the GitHub repository search calls answer(url)."""
-        rest = recorded()
+    def held(self, cve):
+        return next(i for i in self.store.read("months/2026-11.json")["incidents"] if cve in i["cves"])
+
+    def answering(self, matches, answer, **fixtures):
+        """recorded(**fixtures), but a URL that matches calls answer(url)."""
+        rest = recorded(**fixtures)
 
         def get(url, headers=None):
-            return answer(url) if url.startswith(github.SEARCH_URL) else rest(url)
+            return answer(url) if matches(url) else rest(url)
 
         return get
 
-    def rate_limited(self, url):
-        raise urllib.error.HTTPError(url, 403, "rate limit exceeded", {}, None)
-
-    def cycle(self, http_get, when="2026-11-07T13:30:00"):
+    def cycle(self, http_get, source, when="2026-11-07T13:30:00"):
+        """Run one cycle; return its stderr lines about `source`."""
         with redirect_stderr(io.StringIO()) as err:
             run_cycle(self.store, http_get, at(when), "test-box", sleep=lambda s: None)
-        return [line for line in err.getvalue().splitlines() if line.startswith("github:")]
+        return [line for line in err.getvalue().splitlines() if line.startswith(f"{source}:")]
 
-    def assert_skipped(self, http_get):
+    def assert_skipped(self, http_get, source, when="2026-11-07T13:30:00"):
+        lines = self.cycle(http_get, source, when)
+
+        self.assertEqual(len(lines), 1, lines)
+        self.assertTrue(lines[0].startswith(f"{source}: skipped this cycle:"), lines[0])
+        self.assertEqual(self.store.read("status.json")["updated"], at(when).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        # The cycle's cvelist record still became an Incident.
+        self.assertIn("CVE-2026-120984", [i["id"] for i in self.store.read("months/2026-11.json")["incidents"]])
+
+    def assert_checkpoint_kept(self, http_get, source):
         for before in ({"cvelist": "2026-11-07T12:00:00.000Z"},
-                       {"cvelist": "2026-11-07T12:00:00.000Z", "github": "2026-11-04T00:00:00Z"}):
+                       {"cvelist": "2026-11-07T12:00:00.000Z", source: self.earlier_checkpoint}):
             with self.subTest(before=before):
                 self.setUp()
                 self.store.write("checkpoints.json", before)
-                lines = self.cycle(http_get)
-
-                self.assertEqual(len(lines), 1)
-                self.assertTrue(lines[0].startswith("github: skipped this cycle:"), lines[0])
-                self.assertEqual(self.store.read("status.json")["updated"], "2026-11-07T13:30:00Z")
-                # The cycle's cvelist record still became an Incident.
-                self.assertIn("CVE-2026-120984", [i["id"] for i in self.store.read("months/2026-11.json")["incidents"]])
+                self.assert_skipped(http_get, source)
                 # Left as it was (absent stays absent), so the next cycle asks the same range.
-                self.assertEqual(self.store.read("checkpoints.json").get("github", "absent"), before.get("github", "absent"))
+                self.assertEqual(self.store.read("checkpoints.json").get(source, "absent"), before.get(source, "absent"))
+
+
+class GithubOutageTest(OutageTest):
+    earlier_checkpoint = "2026-11-04T00:00:00Z"
+
+    def search(self, answer):
+        return self.answering(lambda url: url.startswith(github.SEARCH_URL), answer)
 
     def test_a_rate_limited_search_skips_github_and_the_cycle_goes_on(self):
-        self.assert_skipped(self.search_answers(self.rate_limited))
+        self.assert_checkpoint_kept(self.search(rate_limited), "github")
 
     def test_a_search_answer_without_items_is_skipped_the_same_way(self):
-        self.assert_skipped(self.search_answers(lambda url: b'{"message": "API rate limit exceeded"}'))
+        self.assert_checkpoint_kept(self.search(lambda url: b'{"message": "API rate limit exceeded"}'), "github")
 
     def test_the_next_cycle_takes_the_repos_and_moves_the_checkpoint(self):
-        self.store.write("checkpoints.json", {"cvelist": "2026-11-07T12:00:00.000Z"})
-        self.cycle(self.search_answers(self.rate_limited))
-        self.assertEqual(self.cycle(recorded(github="sshole.json"), "2026-11-07T14:00:00"), [])
+        self.cycle(self.search(rate_limited), "github")
+        self.assertEqual(self.cycle(recorded(github="sshole.json"), "github", "2026-11-07T14:00:00"), [])
 
-        held = next(i for i in self.store.read("months/2026-11.json")["incidents"] if i["id"] == "CVE-2026-123158")
         self.assertIn("https://github.com/gabrielunknown/CVE-2026-123158_SSHole",
-                      [m["url"] for m in held["mentions"] if m["kind"] == "repo"])
+                      [m["url"] for m in self.held("CVE-2026-123158")["mentions"] if m["kind"] == "repo"])
         self.assertEqual(self.store.read("checkpoints.json")["github"], "2026-11-05T22:51:12Z")
+
+
+class HnOutageTest(OutageTest):
+    earlier_checkpoint = 1793800000
+
+    def rows(self):
+        # A recent Incident with an HN story, so the cycle reads its points again.
+        story = incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z")
+        story["mentions"].append({"kind": "discussion", "url": hn.ITEM_URL + "50399569", "title": "SSHole", "points": 12})
+        return [story]
+
+    def stories(self, answer, **fixtures):
+        return self.answering(lambda url: url.startswith(hn.SEARCH_URL) and not is_hn_points(url), answer, **fixtures)
+
+    def test_a_failed_story_search_skips_hn_and_keeps_its_checkpoint(self):
+        self.assert_checkpoint_kept(self.stories(unavailable), "hn")
+
+    def test_the_next_cycle_takes_the_stories_and_moves_the_checkpoint(self):
+        self.cycle(self.stories(unavailable), "hn")
+        self.assertEqual(self.cycle(recorded(hn="sshole.json"), "hn", "2026-11-07T14:00:00"), [])
+
+        urls = [m["url"] for i in self.store.read("months/2026-11.json")["incidents"] for m in i["mentions"]]
+        self.assertIn(hn.ITEM_URL + "50378228", urls)
+        self.assertEqual(self.store.read("checkpoints.json")["hn"], 1793881300)
+
+    def test_a_failed_points_refresh_skips_it_and_keeps_the_points(self):
+        self.assert_skipped(self.answering(is_hn_points, unavailable), "hn points")
+
+        [story] = [m for m in self.held("CVE-2026-123158")["mentions"] if m["kind"] == "discussion"]
+        self.assertEqual(story["points"], 12)
+
+
+class KevOutageTest(OutageTest):
+    def rows(self):
+        # Flagged by an earlier cycle; CVE-2026-19868 is listed in kev.json but not flagged yet.
+        return [{**incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z"), "kev": True, "kev_date": "2026-11-01"},
+                incident("CVE-2026-19868", "SonicWall SonicOS SSLVPN ...", "2026-11-07T09:00:00Z")]
+
+    def test_a_failed_catalog_skips_kev_and_keeps_every_flag(self):
+        self.assert_skipped(self.answering(lambda url: url.startswith(kev.FEED_URL), unavailable), "kev")
+
+        self.assertEqual((self.held("CVE-2026-123158")["kev"], self.held("CVE-2026-123158")["kev_date"]), (True, "2026-11-01"))
+        self.assertNotIn("kev", self.held("CVE-2026-19868"))
+
+    def test_the_next_cycle_flags_a_newly_listed_cve(self):
+        self.cycle(self.answering(lambda url: url.startswith(kev.FEED_URL), unavailable), "kev")
+        self.assertEqual(self.cycle(recorded(kev="kev.json"), "kev", "2026-11-07T14:00:00"), [])
+
+        self.assertEqual((self.held("CVE-2026-19868")["kev"], self.held("CVE-2026-19868")["kev_date"]), (True, "2026-11-06"))
+        self.assertIs(self.held("CVE-2026-123158")["kev"], True)
 
 
 class NvdEnrichmentTest(unittest.TestCase):

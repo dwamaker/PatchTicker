@@ -67,11 +67,17 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
                if cve not in read and {"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"} not in i["mentions"]}
     records += cvelist.fetch_missing(missing, http_get)
     posts, checkpoints["oss-security"] = osssec.fetch(checkpoints.get("oss-security"), http_get, stamp)
-    stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
+    # A failed Mention source, NVD or KEV skips itself, never the cycle; its checkpoint stays, so the next cycle asks again.
+    # (cvelist is the main source: a cycle stopped there shows on the page as stale, which is the honest signal.)
+    try:
+        stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
+    except (OSError, ValueError, KeyError) as err:
+        print(f"hn: skipped this cycle: {err!r}", file=sys.stderr)
+        stories = []
     try:
         repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
     except (OSError, ValueError, KeyError) as err:
-        # 2026-11-11: a rate-limited search (no token) ended a cycle. Repos only join Incidents; the next cycle asks again.
+        # 2026-11-11: a rate-limited search (no token) ended a cycle. Repos only join Incidents.
         print(f"github: skipped this cycle: {err!r}", file=sys.stderr)
         repos = []
     articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds, stamp)
@@ -89,7 +95,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
     changed |= rejoin(incidents, stamp_ago(now, days=7))
-    changed |= hn.refresh_points(incidents, now, http_get)
+    try:
+        changed |= hn.refresh_points(incidents, now, http_get)
+    except (OSError, ValueError, KeyError) as err:  # it reads its one answer whole before changing any points
+        print(f"hn points: skipped this cycle: {err!r}", file=sys.stderr)
 
     try:
         enriched, checkpoints["nvd"] = nvd.fetch(checkpoints.get("nvd"), now, http_get, sleep, nvd_api_key)
@@ -97,7 +106,11 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         # NVD is often down; Briefs still go out and the next cycle retries the same range.
         print(f"nvd: skipped this cycle: {err!r}", file=sys.stderr)
         enriched = {}
-    exploited = kev.fetch(http_get)
+    try:
+        exploited = kev.fetch(http_get)
+    except (OSError, ValueError, KeyError) as err:  # flags are only ever set below, so an empty catalog clears none
+        print(f"kev: skipped this cycle: {err!r}", file=sys.stderr)
+        exploited = {}
     citations, checkpoints["curators"] = curators.fetch(checkpoints.get("curators"), http_get, curator_feeds, stamp)
     notices, checkpoints["kisa"] = kisa.fetch(checkpoints.get("kisa"), http_get, kisa_feed)
     citations += notices
