@@ -7,7 +7,7 @@ import time
 
 import anthropic
 
-from collector import (curators, cve_lines, cvelist, discord, github, hn, kev, kisa, model, news, nvd, osssec, same_event,
+from collector import (checks, curators, cve_lines, cvelist, discord, github, hn, kev, kisa, model, news, nvd, osssec, same_event,
                        summaries, summary_input)
 from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
@@ -46,8 +46,9 @@ def highlights(views, since):
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None):
-    """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None."""
+              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None):
+    """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None.
+    ping: indexnow.make_pinger's function, or None."""
     stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
@@ -165,6 +166,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
                          if (slug := page_slug(i["id"])) in pages and search_worthy(i)}}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
+    write_checks(store, incidents, now)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
@@ -185,6 +187,9 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
                            stopped, resumed)
     if notify and text:
         notify(text)
+    if ping:
+        # Search-worthy pages written this cycle only (the rest say noindex): never the whole set, even on a first run.
+        ping(sorted(slug for slug in sitemap["pages"] if pages[slug] != had_page.get(slug)))
 
 
 def prune(incidents, since):
@@ -264,6 +269,25 @@ def write_pages(store, incidents, known, now, stamp):
     if pages != known:
         store.write("page_hashes.json", pages)
     return pages
+
+
+def write_checks(store, incidents, now):
+    """GET /api/check's documents (collector/checks.py): a Product's check/p/<slug>.json is rewritten only when it
+    changed (check_hashes.json keeps {slug: hash}, so a cycle reads one document, not one per Product), the index when
+    it changed, and a Product with no Incident left loses its document, after the index stops naming it."""
+    docs, index = checks.check_docs(incidents, stamp_ago(now, days=PAGE_DAYS))
+    known = store.read("check_hashes.json") or {}
+    hashes = {}
+    for slug, doc in docs.items():
+        hashes[slug] = hashlib.sha256(json.dumps(doc, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+        if known.get(slug) != hashes[slug]:
+            store.write(f"check/p/{slug}.json", doc)
+    if store.read("check/index.json") != index:
+        store.write("check/index.json", index)
+    for slug in known.keys() - hashes.keys():
+        store.delete(f"check/p/{slug}.json")
+    if hashes != known:
+        store.write("check_hashes.json", hashes)
 
 
 def write_moves(store, incidents, had_page, now, stamp):

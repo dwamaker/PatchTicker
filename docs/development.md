@@ -149,6 +149,17 @@ the survivor is past 90 days. The edge cache keeps 200, 301, 302 and 410 answers
 never a 503. Every function answers HEAD as it answers GET, without the body (`cached()` reads and keeps it under GET's
 cache entry); without a HEAD handler Pages would serve `index.html` for it, a 200 `text/html` even for a feed or an
 unknown slug.
+`/api/check?products=<names>&days=&min=` (`functions/api/check.js`, logic in `edge/check.mjs`; owner, 11-11) answers an
+agent's question "which Incidents touch the products I run?" as JSON (`web/llms.txt` says how to ask). A Function has
+about 10 ms of CPU, too little to read a month file, so the collector writes `check/index.json` (each name a Product is
+asked by, normalized by `product_key`, which `productKey` ports, kept in step by
+`tests/fixtures/board/product-key-case.json`, -> its Products' slugs) and one `check/p/<slug>.json` per Product of the
+last 90 days' Board Incidents, operating-system tags aside (`collector/checks.py`; the slug is a hash of the Product id).
+Only changed documents are written (`check_hashes.json` in the store, `{slug: hash}`); a Product with no Incident left
+loses its document after the index stops naming it. The function reads the index and at most 40 product documents,
+answers 400 for a bad query, 503 (never kept) while there is no index, and does not use the edge cache, so no asked
+names are kept; the answer's `cache-control` is five minutes. On 2026-11-11 the live month (2,765 Incidents) made
+2,167 documents (1.9 MB in all, the largest Android's at 70 KB) and a 137 KB index.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
 search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`
@@ -167,6 +178,14 @@ page document it was sent.
 `robots.txt` allows every crawler (AI crawlers too) and points to `sitemap.xml`; `llms.txt` lists the public data
 files for AI systems. A Cloudflare rate limiting rule on patchticker.com and data.patchticker.com blocks one IP for
 10 s after 40 requests in 10 s.
+
+With `VR_INDEXNOW_KEY` set (32 lowercase hex characters; anything else is refused at start-up with one stderr line),
+each cycle sends one IndexNow request (`collector/indexnow.py`, to `api.indexnow.org`, which passes it to Bing, Naver,
+Yandex and the others) listing the search-worthy Incident pages it wrote, in both languages, at most 10,000 URLs; none
+written, no request. A cycle writes only pages whose fields changed (`page_hashes.json`), so the first cycle with the key
+sends only that cycle's pages, never the whole set. The key is public by design: `web/<key>.txt` holds it for the
+engines to check, and `.env.example` names the value the live box uses. A failed request is one stderr line (the
+status or the error's kind) and is not retried.
 
 ## Redeploy the collector (Oracle VM)
 

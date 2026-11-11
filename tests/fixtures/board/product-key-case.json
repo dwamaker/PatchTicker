@@ -1,0 +1,15 @@
+{
+  "about": "productKey (web/board.mjs) and product_key (collector/incidents.py) on the same names: the collector keys check/index.json with one, /api/check looks names up with the other.",
+  "cases": [
+    {"name": "OpenSSH", "key": "openssh"},
+    {"name": "  NGINX  ", "key": "nginx"},
+    {"name": "Synology DSM", "key": "synology dsm"},
+    {"name": "Microsoft Paint", "key": "paint"},
+    {"name": "Apache HTTP Server", "key": "http server"},
+    {"name": "GemBooking WordPress plugin", "key": "gembooking"},
+    {"name": "Chengdu Feiyuxing (Technology) VW2100", "key": "chengdu feiyuxing vw2100"},
+    {"name": "Acme Co., Ltd. Router", "key": "acme router"},
+    {"name": "Windows 그림판", "key": "windows 그림판"},
+    {"name": "Microsoft", "key": "microsoft"}
+  ]
+}

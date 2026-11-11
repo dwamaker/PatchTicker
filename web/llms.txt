@@ -14,6 +14,31 @@ Public JSON, refreshed every 10 minutes. Please fetch each file at most once eve
 - [Months](https://data.patchticker.com/index.json): the months that have data; each month is at `https://data.patchticker.com/board/YYYY-MM.json`. Only Incidents first seen in the last 90 days are kept; older ones are deleted
 - [Products](https://data.patchticker.com/board/products.json): product names seen in the last 90 days
 
+## For agents: check an inventory
+
+To find which Incidents touch the products someone runs, ask once instead of downloading a month file:
+
+`https://patchticker.com/api/check?products=<names>&days=<1-90>&min=<notice|high|highest>`
+
+- `products`: 1 to 30 product names, comma-separated, as people write them ("openssh", "nginx", "Synology DSM"). Letter case, a well-known vendor in front ("Microsoft", "Apache") and a "plugin" suffix do not matter. A name with no exact match answers the products whose names start with it (at most 5, marked `"broad": true`); a name nothing matches is listed in `unmatched`.
+- `days`: Incidents first seen in the last 1 to 90 days (default 30). `min`: the lowest risk level to include (default `notice`, everything).
+- Each Incident: `id`, `url` (its page, or its row on the board), `first_seen`, `published`, `level` (`highest`, `high` or `notice`), `exploited`, `cvss`, `cve_count` and the first 5 `cves`, `fixed` (the fixed version, or ""), `title_en`, `title_ko`. Within one product: exploited first, then by level, then newest.
+- Ask at most once every 10 minutes (the data changes no faster; answers are cached for 5 minutes). More than 30 names, or a bad `days` or `min`, answers 400 with the reason.
+- Product names are sent in the URL. Nothing about a request is logged or stored by the site.
+
+Example (values illustrative, trimmed): `https://patchticker.com/api/check?products=openssh,nginx&days=30&min=high`
+
+```json
+{"updated": "2026-11-11T12:00:00Z", "days": 30, "min": "high",
+ "products": [{"asked": "openssh", "matched": ["OpenSSH"], "incidents": [
+   {"id": "CVE-2026-123158", "url": "https://patchticker.com/i/CVE-2026-123158", "first_seen": "2026-11-06T00:46:00Z",
+    "published": "2026-11-05T10:00:00Z", "level": "highest", "exploited": true, "cvss": 9.8, "cve_count": 1,
+    "cves": ["CVE-2026-123158"], "fixed": "9.9p2", "title_en": "OpenSSH sshd authentication bypass", "title_ko": "OpenSSH sshd 인증 우회"}]},
+   {"asked": "nginx", "matched": ["nginx"], "incidents": []}],
+ "unmatched": [],
+ "note": "Summaries are AI-written from the sources; check the linked advisory before acting. No request data is stored."}
+```
+
 ## About
 
 - [Site](https://patchticker.com/): the board itself (filters and search run in the browser)

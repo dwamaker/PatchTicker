@@ -248,17 +248,29 @@ def known_label(incident):
     list, a Summary that calls the product widely used names its first Product. None otherwise."""
     products = [p for p in products_of(incident, "en") if not p["id"].startswith("os:")]
     for p in products:
-        pid, name = p["id"].lower(), p["name"].lower()
-        found = KNOWN_IDS.match(pid)
-        if found:
-            return LABELS[found.lastindex - 1]
-        vendors = LED_BY + ([] if pid.startswith("name:") else [pid.split(":")[0].replace("_", " ") + " "])
-        for form in (name, *(name[len(v):] for v in vendors if name.startswith(v))):
-            if form in KNOWN_NAMES:
-                return KNOWN_NAMES[form]
+        label = known_product(p)
+        if label:
+            return label
     if products and (incident.get("summary") or {}).get("widely_used") is True:
         return products[0]["name"]
     return None
+
+
+def known_product(product):
+    """One Product's label on collector/well_known.json (see known_label), or None."""
+    pid, name = product["id"].lower(), product["name"].lower()
+    found = KNOWN_IDS.match(pid)
+    if found:
+        return LABELS[found.lastindex - 1]
+    for form in (name, *(name[len(v):] for v in vendor_words(pid) if name.startswith(v))):
+        if form in KNOWN_NAMES:
+            return KNOWN_NAMES[form]
+    return None
+
+
+def vendor_words(pid):
+    """Vendor words that may lead a Product's name, each with its space: web/vendors.json's, and its id's vendor."""
+    return LED_BY + ([] if pid.startswith("name:") else [pid.split(":")[0].replace("_", " ") + " "])
 
 
 def well_known(view):

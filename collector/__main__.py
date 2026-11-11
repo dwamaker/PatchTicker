@@ -12,7 +12,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import curators, cve_lines, discord, kisa, news, summaries
+from collector import curators, cve_lines, discord, indexnow, kisa, news, summaries
 from collector.cycle import run_cycle
 from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -20,7 +20,7 @@ from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, r
 REQUIRED = ("VR_COLLECTOR_ID", "VR_CONTACT")
 R2 = ("VR_R2_ENDPOINT", "VR_R2_BUCKET", "VR_R2_ACCESS_KEY_ID", "VR_R2_SECRET_ACCESS_KEY")
 OPTIONAL = ("VR_STORE_DIR", "VR_BACKUP_DB", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY",
-            "VR_DISCORD_WEBHOOK") + R2
+            "VR_DISCORD_WEBHOOK", "VR_INDEXNOW_KEY") + R2
 
 
 def load_settings(path):
@@ -85,6 +85,7 @@ def main():
         # The key is passed in, never left for the SDK to find in a login profile; no key, no Summaries.
         claude=anthropic.Anthropic(api_key=key) if key else None,
         notify=discord.make_notifier(settings.get("VR_DISCORD_WEBHOOK"), make_http_post(agent)),
+        ping=indexnow.make_pinger(settings.get("VR_INDEXNOW_KEY"), make_http_post(agent)),
     )
 
 
