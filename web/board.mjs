@@ -268,8 +268,10 @@ export function orderBy(sort) {
 }
 
 // Korean words people type for systems and devices, matched as the English names sources use (critique 12: 윈도우 and
-// 공유기 found nothing). Small on purpose: product names are typed as they are. The English names match only Product
-// names, ids and OS tags, as whole words (critique 13: 자바 found javascript, 엣지 "knowledge").
+// 공유기 found nothing). It holds the Hangul spellings Koreans really type for well-known products and vendors (owner,
+// 11-11), hand-kept: a model asked to draft them invented spellings nobody types. /api/check (edge/check.mjs) reads it
+// too. The English names match only Product names, ids and OS tags, as whole words (critique 13: 자바 found javascript,
+// 엣지 "knowledge"), so an alias only adds hits.
 // No prototype: the typed word is the key, and "constructor" must find no alias list (audit 13).
 export const SEARCH_ALIASES = {
   __proto__: null,
@@ -280,6 +282,53 @@ export const SEARCH_ALIASES = {
   아파치: ['Apache'], 깃허브: ['GitHub'], 깃랩: ['GitLab'], 도커: ['Docker'], 쿠버네티스: ['Kubernetes'], 엔진엑스: ['nginx'],
   톰캣: ['Tomcat'], 노드: ['Node.js', 'nodejs'], 리액트: ['React'], 스프링: ['Spring'], 시스코: ['Cisco'], 포티넷: ['Fortinet'],
   마이크로소프트: ['Microsoft'], 구글: ['Google'], 애플: ['Apple'],
+  // Owner, 11-11: 아웃룩, 엑셀, 줌, 포토샵, 시놀로지 found nothing. Operating systems and browsers:
+  우분투: ['Ubuntu'], 데비안: ['Debian'], 레드햇: ['Red Hat'],
+  사파리: ['Safari'], 오페라: ['Opera'], 브레이브: ['Brave'], 웨일: ['Whale'], 삼성인터넷: ['Samsung Internet'], 토르: ['Tor'],
+  // office, documents and notes
+  오피스: ['Office'], 워드: ['Word'], 엑셀: ['Excel'], 파워포인트: ['PowerPoint'], 아웃룩: ['Outlook'], 원노트: ['OneNote'],
+  원드라이브: ['OneDrive'], 팀즈: ['Teams'], 익스체인지: ['Exchange'], 셰어포인트: ['SharePoint'], 쉐어포인트: ['SharePoint'],
+  리브레오피스: ['LibreOffice'], 한컴: ['Hancom'], 한컴오피스: ['Hancom Office'], 어도비: ['Adobe'], 아크로뱃: ['Acrobat'],
+  포토샵: ['Photoshop'], 일러스트레이터: ['Illustrator'], 프리미어: ['Premiere'], 썬더버드: ['Thunderbird'], 노션: ['Notion'],
+  옵시디언: ['Obsidian'], 에버노트: ['Evernote'],
+  // messengers and meetings
+  줌: ['Zoom'], 슬랙: ['Slack'], 디스코드: ['Discord'], 카카오톡: ['KakaoTalk'], 카톡: ['KakaoTalk'], 왓츠앱: ['WhatsApp'],
+  텔레그램: ['Telegram'], 위챗: ['WeChat'], 스카이프: ['Skype'], 웹엑스: ['Webex'],
+  // desktop apps, games and antivirus
+  반디집: ['Bandizip'], 알집: ['ALZip'], 알약: ['ALYac'], 안랩: ['AhnLab'], 곰플레이어: ['GOM Player'], 팟플레이어: ['PotPlayer'],
+  푸티: ['PuTTY'], 파일질라: ['FileZilla'], 비트워든: ['Bitwarden'], 팀뷰어: ['TeamViewer'], 애니데스크: ['AnyDesk'],
+  스팀: ['Steam'], 마인크래프트: ['Minecraft'], 로블록스: ['Roblox'], 디펜더: ['Defender'], 카스퍼스키: ['Kaspersky'],
+  노턴: ['Norton'], 어베스트: ['Avast'],
+  // network, security appliances and NAS
+  포티게이트: ['FortiGate', 'FortiOS'], 소닉월: ['SonicWall', 'SonicOS'], 팔로알토: ['Palo Alto', 'PAN-OS'], 시트릭스: ['Citrix'],
+  주니퍼: ['Juniper', 'Junos'], 이반티: ['Ivanti'], 시놀로지: ['Synology'], 큐냅: ['QNAP'], 아이피타임: ['ipTIME'],
+  넷기어: ['Netgear'], 디링크: ['D-Link'], 티피링크: ['TP-Link'], 아수스: ['ASUS'], 에이수스: ['ASUS'], 하이크비전: ['Hikvision'],
+  유니파이: ['UniFi'], 미크로틱: ['MikroTik'],
+  // languages and runtimes
+  삼바: ['Samba'], 루비: ['Ruby'], 러스트: ['Rust'], 닷넷: ['.NET'],
+  // web frameworks
+  장고: ['Django'], 플라스크: ['Flask'], 라라벨: ['Laravel'], 레일즈: ['Rails'], 앵귤러: ['Angular'], 제이쿼리: ['jQuery'],
+  일렉트론: ['Electron'],
+  // databases
+  오라클: ['Oracle'], 몽고디비: ['MongoDB'], 레디스: ['Redis'], 포스트그레스: ['PostgreSQL'], 마리아디비: ['MariaDB'],
+  엘라스틱서치: ['Elasticsearch'], 카프카: ['Kafka'],
+  // virtualization, infrastructure and monitoring
+  프록스목스: ['Proxmox'], 브이엠웨어: ['VMware'], 버추얼박스: ['VirtualBox'], 앤서블: ['Ansible'], 테라폼: ['Terraform'],
+  그라파나: ['Grafana'], 젠킨스: ['Jenkins'], 자빅스: ['Zabbix'], 스플렁크: ['Splunk'], 키클락: ['Keycloak'],
+  // developer tools and AI
+  깃: ['Git'], 지라: ['Jira'], 컨플루언스: ['Confluence'], 인텔리제이: ['IntelliJ'], 파워셸: ['PowerShell'], 파워쉘: ['PowerShell'],
+  챗지피티: ['ChatGPT'], 코파일럿: ['Copilot'], 올라마: ['Ollama'],
+  // CMS, shops and self-hosted web apps
+  우커머스: ['WooCommerce'], 엘리멘터: ['Elementor'], 드루팔: ['Drupal'], 줌라: ['Joomla'], 마젠토: ['Magento'], 무들: ['Moodle'],
+  넥스트클라우드: ['Nextcloud'], 미디어위키: ['MediaWiki'],
+  // home and media servers
+  홈어시스턴트: ['Home Assistant'], 플렉스: ['Plex'], 젤리핀: ['Jellyfin'], 코디: ['Kodi'],
+  // chips and phones
+  엔비디아: ['NVIDIA'], 인텔: ['Intel'], 퀄컴: ['Qualcomm'], 삼성: ['Samsung'], 갤럭시: ['Galaxy'], 엑시노스: ['Exynos'],
+  스냅드래곤: ['Snapdragon'], 미디어텍: ['MediaTek'],
+  // vendors
+  세일즈포스: ['Salesforce'], 옥타: ['Okta'], 솔라윈즈: ['SolarWinds'], 델: ['Dell'], 레노버: ['Lenovo'], 화웨이: ['Huawei'],
+  지멘스: ['Siemens'], 아마존: ['Amazon'], 모질라: ['Mozilla'], 아틀라시안: ['Atlassian'], 브로드컴: ['Broadcom'], 엘지: ['LG'],
 };
 // A typed word inside a longer word that names something else is no hit (critique 14: 자바 found 자바스크립트 in Korean
 // Summaries). Asked for by name, JavaScript is still found.

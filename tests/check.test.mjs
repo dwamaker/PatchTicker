@@ -75,6 +75,37 @@ test('a name nothing matches is listed as unmatched, and an Object.prototype nam
   assert.deepEqual(out.products.map((p) => p.asked), ['nginx']);
 });
 
+// Owner, 11-11: a Korean name people type for a well-known product (web/board.mjs SEARCH_ALIASES) is asked as its English names.
+const ALIASED = { ...DOCS, 'check/index.json': { ...DOCS['check/index.json'], chrome: ['chrome'], 'pan-os': ['panos'] },
+  'check/p/chrome.json': { product: 'Chrome', id: 'google:chrome', incidents: [inc('CVE-2026-7', 1)] },
+  'check/p/panos.json': { product: 'PAN-OS', id: 'paloaltonetworks:pan-os', incidents: [] } };
+
+test('a Korean name with an alias answers its English names, which the product entry lists', async () => {
+  const out = await body('products=크롬,크%20롬,팔로알토', { docs: ALIASED });
+  assert.deepEqual(out.unmatched, []);
+  const [chrome, spaced, palo] = out.products;
+  assert.deepEqual([chrome.asked, chrome.alias, chrome.matched, chrome.broad], ['크롬', ['Chrome'], ['Chrome'], undefined]);
+  assert.deepEqual(chrome.incidents.map((i) => i.id), ['CVE-2026-7']);
+  assert.deepEqual([spaced.alias, spaced.matched], [['Chrome'], ['Chrome']]); // spacing inside the name does not matter
+  assert.deepEqual([palo.alias, palo.matched, palo.broad], [['Palo Alto', 'PAN-OS'], ['PAN-OS'], undefined]); // the second name matched
+  assert.deepEqual(Object.keys(chrome).slice(0, 3), ['asked', 'alias', 'matched']);
+});
+
+test('an alias with no exact key goes broad; one that finds nothing stays unmatched', async () => {
+  const out = await body('products=시놀로지,줌', { docs: ALIASED });
+  assert.deepEqual(out.unmatched, ['줌']);
+  const [syn] = out.products;
+  assert.deepEqual([syn.asked, syn.alias, syn.broad], ['시놀로지', ['Synology'], true]);
+  assert.deepEqual(syn.matched, ['Synology calendar', 'Synology drive', 'Synology dsm', 'Synology mailplus', 'Synology office']);
+});
+
+test('an exact key beats an alias, and an English name is answered as before', async () => {
+  const docs = { ...ALIASED, 'check/index.json': { ...ALIASED['check/index.json'], 크롬: ['ko'] },
+    'check/p/ko.json': { product: '크롬', id: 'name:크롬', incidents: [] } };
+  const out = await body('products=크롬,chrome', { docs });
+  assert.deepEqual(out.products.map((p) => [p.asked, p.matched, p.alias]), [['크롬', ['크롬'], undefined], ['chrome', ['Chrome'], undefined]]);
+});
+
 test('at most 40 product documents are read for one request', async () => {
   const reads = [];
   const out = await body('products=many', { reads });

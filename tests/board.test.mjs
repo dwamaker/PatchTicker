@@ -864,6 +864,26 @@ test('Korean names of common vendors and projects find them (critique 14: 아파
   }
 });
 
+// Owner, 11-11: 아웃룩, 엑셀, 줌, 포토샵, 시놀로지 found nothing. Alias names stay whole words, dots and hyphens included.
+test('Korean names of well-known products find them as whole words only (깃 is not GitLab, 워드 not WordPress, 닷넷 not ASP.NET)', () => {
+  const at = (n, id, name) => ({ ...incident(`CVE-2026-6${n}`, '2026-11-08T00:00:00Z'), products: [{ id, name }] });
+  const all = [at(0, 'git-scm:git', 'Git'), at(1, 'gitlab:gitlab', 'GitLab'), at(2, 'github:enterprise_server', 'GitHub Enterprise Server'),
+    at(3, 'name:microsoft word', 'Microsoft Word'), at(4, 'wordpress:wordpress', 'WordPress'),
+    at(5, 'microsoft:office', 'Office'), at(6, 'libreoffice:libreoffice', 'LibreOffice'),
+    at(7, 'name:.net', '.NET'), at(8, 'microsoft:.net_framework', '.NET Framework'), at(9, 'microsoft:asp.net_core', 'ASP.NET Core')];
+  const ids = (q) => filterBoard(all, [], q, NOW).list.map((i) => i.id.slice(-2)).sort();
+  assert.deepEqual(ids('깃'), ['60']);
+  assert.deepEqual(ids('워드'), ['63']);
+  assert.deepEqual(ids('오피스'), ['65']);
+  assert.deepEqual(ids('리브레오피스'), ['66']);
+  assert.deepEqual(ids('닷넷'), ['67', '68']);
+  const dl = [at(0, 'd-link:dir-825', 'DIR-825'), at(1, 'tp-link:archer', 'Archer'), at(2, 'paloaltonetworks:pan-os', 'PAN-OS'), at(3, 'acme:span-osx', 'Span-OSX')];
+  const found = (q) => filterBoard(dl, [], q, NOW).list.map((i) => i.id.slice(-2)).sort();
+  assert.deepEqual([found('디링크'), found('티피링크'), found('팔로알토')], [['60'], ['61'], ['62']]);
+  for (const word of ['아웃룩', '엑셀', '줌', '포토샵', '시놀로지', '카톡', '엘지', '포티게이트']) assert.ok(SEARCH_ALIASES[word]?.length, word);
+  assert.deepEqual(SEARCH_ALIASES.팔로알토, ['Palo Alto', 'PAN-OS']);
+});
+
 test('자바 and java never find JavaScript, in either language (critique 14: 자바스크립트 in Korean Summaries)', () => {
   const at = (id, text) => ({ ...incident(id, '2026-11-08T00:00:00Z'), brief: { text, lead: '' } });
   const koJs = at('CVE-2026-51', '로그인 사용자가 자바스크립트를 저장할 수 있습니다');

@@ -2,7 +2,7 @@
 // of CPU, too little for a month file, so the collector writes check/index.json (normalized name -> product slugs) and
 // one small check/p/<slug>.json per Product (collector/checks.py); this reads the index and the asked Products only.
 // Nothing about a request is logged or stored, and the edge cache is not used, so asked names are kept nowhere.
-import { productKey } from '../web/board.mjs';
+import { productKey, SEARCH_ALIASES } from '../web/board.mjs';
 import { readJson } from './shared.mjs';
 
 const MAX_NAMES = 30;
@@ -29,12 +29,15 @@ export function readQuery(params) {
   return { names, days: +days, min };
 }
 
-// Which product slugs each asked name stands for: its exact key, else (broad) the keys that start with it and a space,
-// the first BROAD_MAX Products of them by key. One pass over the index serves every name that missed.
+// Which product slugs each asked name stands for: its exact key; else its alias's English names (SEARCH_ALIASES, owner
+// 11-11: 크롬 is Chrome), each by its exact key or broadly; else (broad) the keys that start with it and a space, the first
+// BROAD_MAX Products of them by key. One pass over the index serves every name and alias name that missed.
 function lookUp(index, names) {
   const keys = names.map(productKey);
-  const found = keys.map((k) => (Object.hasOwn(index, k) ? { slugs: index[k] } : null));
-  const missed = new Set(keys.filter((k, n) => !found[n]));
+  const has = (k) => Object.hasOwn(index, k);
+  const aliases = names.map((name, n) => (has(keys[n]) ? null : SEARCH_ALIASES[name.toLowerCase().replace(/\s+/g, '')] || null));
+  const tried = aliases.map((a) => (a || []).map(productKey));
+  const missed = new Set([...keys, ...tried.flat()].filter((k) => !has(k)));
   const starts = new Map();
   if (missed.size) {
     for (const key of Object.keys(index)) {
@@ -44,8 +47,15 @@ function lookUp(index, names) {
       }
     }
   }
-  return keys.map((k, n) => found[n] || (starts.has(k)
-    ? { slugs: [...new Set(starts.get(k).sort().flatMap((key) => index[key]))].slice(0, BROAD_MAX), broad: true } : null));
+  const broad = (heads) => [...new Set(heads.flatMap((h) => (starts.get(h) || []).sort()).flatMap((key) => index[key]))].slice(0, BROAD_MAX);
+  return keys.map((k, n) => {
+    if (has(k)) return { slugs: index[k] };
+    const exact = tried[n].filter(has);
+    const slugs = [...new Set([...exact.flatMap((a) => index[a]), ...broad(tried[n].filter((a) => !has(a)))])];
+    if (slugs.length) return { slugs, alias: aliases[n], ...(exact.length ? {} : { broad: true }) };
+    const own = broad([k]);
+    return own.length ? { slugs: own, broad: true } : null;
+  });
 }
 
 const byRisk = (a, b) => (b.exploited - a.exploited) || (LEVELS.indexOf(b.level) - LEVELS.indexOf(a.level))
@@ -66,7 +76,7 @@ async function answer(bucket, query, now) {
     const read = (await Promise.all(slugs.map((s) => docs.get(s)))).filter(Boolean); // a document deleted since the index: skipped
     const seen = new Map();
     for (const doc of read) for (const i of doc.incidents) if (i.first_seen >= since && LEVELS.indexOf(i.level) >= least) seen.set(i.id, i);
-    out.products.push({ asked: query.names[n], matched: read.map((d) => d.product), ...(match.broad ? { broad: true } : {}),
+    out.products.push({ asked: query.names[n], ...(match.alias ? { alias: match.alias } : {}), matched: read.map((d) => d.product), ...(match.broad ? { broad: true } : {}),
       ...(slugs.length < match.slugs.length ? { capped: true } : {}), incidents: [...seen.values()].sort(byRisk) });
   }
   return json(out);
