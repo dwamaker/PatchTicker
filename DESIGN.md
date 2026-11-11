@@ -394,7 +394,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **State:** Recessed Panel on hover; an opened row and its details take Kiosk Panel; `aria-expanded`
   turns the chevron.
 
-### Reading guide (이 게시판 읽는 법)
+### Reading guide (이 현황판 읽는 법)
 - **Place:** a link-coloured "읽는 법" disclosure at the right of the status line (wraps under it on
   phones), 44px tall, chevron turning up when open. The guide opens below it in a Kiosk Panel with a
   1px Rail border and 10px radius, like the filter panel, with a 닫기 button.

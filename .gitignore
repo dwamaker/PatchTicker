@@ -7,3 +7,10 @@ web/data/
 .impeccable/review/
 backup/
 .wrangler/
+# The owner's working notes and ops scripts: local, backed up to a private remote (see .git-notes), not public.
+.git-notes/
+.scratch/v1/status-*.md
+.scratch/checks/
+.scratch/perf/
+.scratch/logo/
+.impeccable/critique/

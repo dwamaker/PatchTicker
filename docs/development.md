@@ -214,9 +214,10 @@ Unit tests cannot see what Anthropic accepts (2026-11-11: one more required fiel
 request fail with "The compiled grammar is too large"), so a change to a schema or a prompt is checked with
 `python -m collector --smoke`: with the collector's own settings and key, one small real request of each shape (the
 Summary, quick titles, per-CVE lines; batches send the same parameters), one line each, exit 1 on a rejection, nothing
-read from or written to the store. `.scratch/checks/recreate.sh` runs it from the new image
-(`docker compose run --rm -T --no-deps collector python -m collector --smoke`) before its wait loop and does not
-recreate when it fails.
+read from or written to the store. Run it from the new image
+(`docker compose run --rm -T --no-deps collector python -m collector --smoke`) before recreating, and do not
+recreate when it fails; the live box's redeploy script does both (it is kept with the owner's ops notes, not in this
+repository).
 
 ## Tests
 

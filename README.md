@@ -8,7 +8,7 @@
 
 <p align="center">
   <b>New security vulnerabilities, sorted by the products you run.</b><br>
-  A free, no-login board, Korean first with English alongside.
+  A free, no-login live tracker, Korean first with English alongside.
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
   <a href="https://patchticker.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-en-dark.png">
-      <img src="docs/assets/screenshot-en-light.png" width="860" alt="The Patch Ticker board: Highlights on top, each Incident with its risk level, CVSS score and products">
+      <img src="docs/assets/screenshot-en-light.png" width="860" alt="Patch Ticker: Highlights on top, each Incident with its risk level, CVSS score and products">
     </picture>
   </a>
 </p>
@@ -40,14 +40,18 @@ readers with no security background.
 ## Features
 
 - **Live, newest first**: collected every 10 minutes; an open page updates without a reload.
-- **Your products only**: pick what you run and the board narrows to it. Picks stay in your browser.
+- **Your products only**: pick what you run and the list narrows to it. Picks stay in your browser.
+- **Search the way you say it**: 아웃룩, 파폭 or vscode find Outlook, Firefox and Visual Studio Code.
 - **Plain summaries** in Korean and English: what it is, who is affected, when it is dangerous, how to fix it.
 - **Easy view**: no jargon, just the risk and one thing to do now.
 - **Before a CVE exists**: write-ups and mailing-list posts show up at once and merge when the CVE is assigned.
 - **Folds**: one vendor's same-day notices, and fixes shipped in one update, fold into one line.
 - **Every claim links to its source**: commands are shown only when a source states them word for word.
-- **Shareable**: a link per Incident; filters live in the address. Light and dark themes, phone ready.
+- **Shareable**: every summarized Incident has its own page and address; filters live in the address. Light and
+  dark themes, phone ready.
 - **RSS**: the newest high-risk, exploited and CVE-less Incidents in [Korean](https://patchticker.com/feed.xml) and [English](https://patchticker.com/en/feed.xml).
+- **For AI agents**: `GET https://patchticker.com/api/check?products=openssh,chrome` answers which Incidents touch
+  the products you run, as JSON. How to ask: [llms.txt](https://patchticker.com/llms.txt).
 
 ## Risk levels
 
@@ -74,12 +78,15 @@ Rules set the level, never the AI.
 | [KISA 보호나라](https://www.boho.or.kr/) | Korean security notices for an Incident's CVEs |
 
 Summaries are written by Anthropic's Claude from these sources only; one with a number or version not in its sources
-is thrown away and written again.
+is thrown away and written again. In `/api/check`, a name that matches nothing is read by Llama 3.3 on Cloudflare
+Workers AI, only to guess the product's English name; the match itself is decided by our own index and is marked
+`maybe`.
 
 ## Privacy
 
 No login, no cookies, no ad trackers. Visits are counted anonymously by Cloudflare Web Analytics (no cookies, no
-personal data). Picks and filters never leave your browser.
+personal data). Picks and filters never leave your browser. `/api/check` stores nothing about a request; a name it
+cannot match is sent to the model named above.
 
 ## Found a mistake?
 
@@ -94,11 +101,12 @@ Collector (Docker, every 10 min)  ──writes──▶  Cloudflare R2 (public J
   mailing lists, HN, GitHub                    status.json                              in the browser
 ```
 
-No server answers visitors. Running it yourself: [docs/development.md](docs/development.md).
+No server of ours answers visitors. The page reads the public files; Cloudflare Pages Functions render the Incident
+pages, the feeds, the home page's list of links and `/api/check` from the same files. Running it yourself: [docs/development.md](docs/development.md).
 
 ## Notices and license
 
-- For reference only: check each Incident's source advisory before you act.
+- For reference only: check each Incident's source advisory before you act. Incidents are kept for at most 90 days.
 - This product uses data from the NVD API but is not endorsed or certified by the NVD.
 - CVE® records: Copyright © 1999–2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation.
   Used under the [CVE Terms of Use](https://www.cve.org/Legal/TermsOfUse).

@@ -21,9 +21,9 @@ const TEXT = {
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     firstSeen: '처음 확인', zone: '',
-    board: '게시판에서 보기', cveRecord: 'CVE 기록 보기', tagLink: (name) => `게시판에서 ${name} 사건 보기`,
+    board: '현황판에서 보기', cveRecord: 'CVE 기록 보기', tagLink: (name) => `현황판에서 ${name} 사건 보기`,
     expired: '보관 기간 90일이 지났어요. 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
-    down: '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '게시판으로 가기',
+    down: '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '현황판으로 가기',
   },
   en: {
     ...WORDS.en,
