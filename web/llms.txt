@@ -22,6 +22,8 @@ To find which Incidents touch the products someone runs, ask once instead of dow
 
 - `products`: 1 to 30 product names, comma-separated, as people write them ("openssh", "nginx", "Synology DSM"). Letter case, a well-known vendor in front ("Microsoft", "Apache") and a "plugin" suffix do not matter. A name with no exact match answers the products whose names start with it (at most 5, marked `"broad": true`); a name nothing matches is listed in `unmatched`.
 - Korean names of well-known products are accepted ("크롬", "아웃룩", "시놀로지"); the answer's product then carries `alias`, the English names it was looked up as. Anything else must be asked by its English product name.
+- A name nothing matches may be read by a language model (Cloudflare Workers AI) as a product's official English name, at most 10 names per request. When that name is in our list, the answer gains `maybe` after `unmatched`: entries like a product's, with `read_as` (the English names tried) instead of `alias`, and the name leaves `unmatched`.
+- `maybe` is a model's guess, never mixed into `products`: check `matched` before relying on it. It is absent when the model finds nothing, fails or is slow.
 - `days`: Incidents first seen in the last 1 to 90 days (default 30). `min`: the lowest risk level to include (default `notice`, everything).
 - Each Incident: `id`, `url` (its page, or its row on the board), `first_seen`, `published`, `level` (`highest`, `high` or `notice`), `exploited`, `cvss`, `cve_count` and the first 5 `cves`, `fixed` (the fixed version, or ""), `title_en`, `title_ko`. Within one product: exploited first, then by level, then newest.
 - Ask at most once every 10 minutes (the data changes no faster; answers are cached for 5 minutes). More than 30 names, or a bad `days` or `min`, answers 400 with the reason.
@@ -37,7 +39,7 @@ Example (values illustrative, trimmed): `https://patchticker.com/api/check?produ
     "cves": ["CVE-2026-123158"], "fixed": "9.9p2", "title_en": "OpenSSH sshd authentication bypass", "title_ko": "OpenSSH sshd 인증 우회"}]},
    {"asked": "nginx", "matched": ["nginx"], "incidents": []}],
  "unmatched": [],
- "note": "Summaries are AI-written from the sources; check the linked advisory before acting. No request data is stored."}
+ "note": "Summaries are AI-written from the sources; check the linked advisory before acting. No request data is stored. Names that match nothing are read by a language model on Cloudflare Workers AI to guess the product (the `maybe` list); verify `matched` before relying on it."}
 ```
 
 ## About

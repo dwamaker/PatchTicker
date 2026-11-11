@@ -166,6 +166,16 @@ loses its document after the index stops naming it. The function reads the index
 answers 400 for a bad query, 503 (never kept) while there is no index, and does not use the edge cache, so no asked
 names are kept; the answer's `cache-control` is five minutes. On 2026-11-11 the live month (2,765 Incidents) made
 2,167 documents (1.9 MB in all, the largest Android's at 70 KB) and a 137 KB index.
+A name is matched by its exact key, then by its Korean alias (`SEARCH_ALIASES` in `web/board.mjs`, the table the
+Board's search uses; the entry then carries `alias`), then broadly. Names that still match nothing, at most 10 a
+request and none over 60 characters, are read once by `@cf/meta/llama-3.3-70b-instruct-fp8-fast` through the Pages
+project's Workers AI binding `AI` (owner, 11-11): the model is asked only for the product's official English name,
+and that name counts only when it is a key of the index (exactly, broadly, or exactly without its last word), so the
+model never decides a match. Those go to the answer's `maybe` list, apart from `products`. Without the binding, on a
+HEAD, after 5 seconds, or when the model fails (the free 10,000 neurons a day are used up), the answer is as it is
+without the model. Measured on 30 typed names against the live index: 22 `maybe` entries, none wrong, about 15
+neurons and 1.6 to 3.4 s for 10 names. Nothing is cached or stored; the names do go to Cloudflare's model.
+To try it without the network, pass a fake binding as `checkResponse`'s fourth argument (`tests/check.test.mjs`).
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
 search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`
