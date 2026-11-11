@@ -40,9 +40,11 @@ test("the inline script starts the first load's four files, and getJson takes ea
   const vm = await import('node:vm');
   const calls = [];
   const fetch = (url) => { const n = calls.push(url); return Promise.resolve({ ok: true, json: () => ({ url, n }) }); };
-  const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch });
+  const added = [];
+  const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch, document: { documentElement: { classList: { add: (c) => added.push(c) } } } });
   ctx.window = ctx;
   vm.runInContext(html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1], ctx);
+  assert.deepEqual(added, ['js']); // hides the no-script about text before the first paint
   assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['data/board/products.json', 'data/board/rows.json', 'data/index.json', 'data/status.json']);
   const app = read('web/app.mjs');
   const getJson = vm.runInContext(`const DATA_URL = 'data/'; ${app.match(/const getJson = async[\s\S]*?\n\};/)[0]} getJson`, ctx);

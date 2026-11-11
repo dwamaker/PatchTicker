@@ -136,6 +136,11 @@ Run it from the repository root: `functions/` (the Pages Function) is taken from
 function shares). The function answers `/feed.xml` and `/en/feed.xml` from `board/feed.json` in R2 through the binding
 `DATA` (bucket `patchradar`), which the Pages project must have. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
+The home page `/` goes through `functions/index.js` (`edge/home.mjs`) too: the current static `index.html` with links to
+the feed's 20 newest Incident pages in place of its `<!--home-links-->` marker, for readers that run no script (search
+crawlers). `index.html`'s `#about` block holds that text and is hidden once the inline script has set `.js` on `<html>`.
+Only the link list is cached (300 s); when it cannot be read the page answers without it. Any other path that falls
+back to `index.html` keeps the marker as a comment.
 It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/[slug].js`, renderer in
 `edge/page.mjs`, rules imported from `web/board.mjs`) from `pages/<slug>.json`: one document per Incident with a
 Summary first seen in the last 90 days, written by the collector only when its fields changed (`page_hashes.json` in
