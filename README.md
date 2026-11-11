@@ -41,7 +41,6 @@ readers with no security background.
 
 - **Live, newest first**: collected every 10 minutes; an open page updates without a reload.
 - **Your products only**: pick what you run and the list narrows to it. Picks stay in your browser.
-- **Search the way you say it**: 아웃룩, 파폭 or vscode find Outlook, Firefox and Visual Studio Code.
 - **Plain summaries** in Korean and English: what it is, who is affected, when it is dangerous, how to fix it.
 - **Easy view**: no jargon, just the risk and one thing to do now.
 - **Before a CVE exists**: write-ups and mailing-list posts show up at once and merge when the CVE is assigned.
