@@ -884,6 +884,21 @@ class NumberWordTest(unittest.TestCase):
                 self.parse(ko, en, source)
             self.assertEqual(str(caught.exception), f"numbers not in the input: {unknown}")
 
+    def test_a_korean_digit_and_its_english_word_are_the_same_number(self):
+        """11-11: CVE-2026-58805 then failed "Korean and English numbers differ: ['0']" (ko "0으로", en "zero")."""
+        summary = self.parse("메모리를 0으로 덮어쓸 수 있습니다.", "It can zero memory.", "a possible way to zero arbitrary secure memory")
+        self.assertTrue(summary["en"]["summary"].endswith("zero memory."))
+        summary = self.parse("8바이트를 씁니다.", "It writes eight bytes.", "an eight-byte write")
+        self.assertTrue(summary["en"]["summary"].endswith("eight bytes."))
+
+    def test_other_korean_and_english_numbers_still_differ(self):
+        cases = {"2 is not 3": ("2바이트입니다.", "It is 3 bytes.", "2 or 3 bytes", "['2', '3']"),
+                 "one is not a number word": ("1개입니다.", "It is one flaw.", "1 of the flaws", "['1']")}
+        for case, (ko, en, source, differ) in cases.items():
+            with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
+                self.parse(ko, en, source)
+            self.assertEqual(str(caught.exception), f"Korean and English numbers differ: {differ}")
+
 
 class LanguageGapsTest(unittest.TestCase):
     """11-11 review of 2,254 Summaries: two had en.mitigation and en.easy_action written and the Korean ones empty, one

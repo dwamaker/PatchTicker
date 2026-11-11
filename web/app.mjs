@@ -1749,9 +1749,7 @@ function cveList(incident) {
     const rest = el('ul', 'cve-lines');
     rest.append(...lines.slice(3).map(item));
     const label = el('summary', '', TEXT[lang].moreLines(lines.length - 3));
-    fold.addEventListener('toggle', () => { label.textContent = fold.open ? TEXT[lang].foldLess : TEXT[lang].moreLines(lines.length - 3); });
-    fold.append(label, rest);
-    out.push(fold);
+    out.push(foldable(fold, label, rest, (on) => { label.textContent = on ? TEXT[lang].foldLess : TEXT[lang].moreLines(lines.length - 3); }));
   }
   return out;
 }
@@ -1886,21 +1884,26 @@ function modelList(models, lines = []) {
     }
     list.append(...plain(models.filter((m) => !named.has(m))));
   } else list.append(...plain(models));
-  const summary = el('summary', '', TEXT[lang].models(models.length));
-  // The same fold as a row: the browser would snap the list open and shut.
+  return foldable(box, el('summary', '', TEXT[lang].models(models.length)), list);
+}
+
+// A folded list in an opened row opens and shuts with the row's own fold: the browser would snap it. Enter and Space on
+// a summary click it, so the keyboard takes the same path. onSwitch(opening) runs at the press (a label swap).
+function foldable(box, summary, body, onSwitch = () => {}) {
   summary.addEventListener('click', (event) => {
     event.preventDefault();
     const opening = !box.open || Boolean(box.dataset.closing); // clicked while closing: open again
     delete box.dataset.closing;
+    onSwitch(opening);
     if (opening) {
       box.open = true;
-      fold(list, true);
+      fold(body, true);
     } else {
       box.dataset.closing = '1';
-      fold(list, false, () => { if (box.dataset.closing) box.open = false; delete box.dataset.closing; });
+      fold(body, false, () => { if (box.dataset.closing) box.open = false; delete box.dataset.closing; });
     }
   });
-  box.append(summary, list);
+  box.append(summary, body);
   return box;
 }
 
@@ -2092,8 +2095,7 @@ function details(incident) {
     }
     const head = el('summary', '', t.cveCount(incident.cves.length));
     head.append(el('span', 'sr-only', t.newTabAll));
-    fold.append(head, ids);
-    parts.push(fold);
+    parts.push(foldable(fold, head, ids));
   }
   // Every Incident with a CVE opens on the same line, as the row header writes it ("CVE-… 외 212건"), so it can be
   // copied (owner, 11-10: the line came and went by count); the full list stays in the fold.
@@ -2141,9 +2143,8 @@ function details(incident) {
       li.append(linkOf(m, lastPart(m.url) || host(m.url)));
       inner.append(li);
     }
-    fold.append(el('summary', '', t.mentionsMany(label, host(list[0].url), list.length)), inner);
     const item = el('li', '');
-    item.append(fold);
+    item.append(foldable(fold, el('summary', '', t.mentionsMany(label, host(list[0].url), list.length)), inner));
     mentions.append(item);
   }
   return [...parts, leadLine(incident), ...list, mentions, ...tagLine(incident), shareLine(incident)];
@@ -2192,11 +2193,28 @@ function tagLine(incident) {
       toggle.textContent = on ? t.foldLess : t.tagsRest(rest.length);
       for (const button of rest) button.hidden = !on;
     };
+    let fades = [];
     toggle.addEventListener('click', () => {
       const on = !openTagLines.has(incident.id);
       if (on) openTagLines.add(incident.id);
       else openTagLines.delete(incident.id);
+      // The line moves its height as fold() does, so the rows below glide; a press mid-way turns it from where it stands.
+      const from = line.getBoundingClientRect().height;
+      line.folding?.cancel();
+      fades.forEach((a) => a.cancel());
       show(on); // the focus stays on the toggle
+      if (reducedMotion.matches) return;
+      const to = line.getBoundingClientRect().height;
+      for (const button of rest) button.hidden = false; // closing: they fade inside the shrinking line, hidden at the end
+      const timing = { duration: on ? 300 : 240, easing: FOLD_EASE };
+      line.style.overflow = 'hidden';
+      line.folding = line.animate([{ height: `${from}px` }, { height: `${to}px` }], timing);
+      fades = rest.map((button) => button.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], timing));
+      line.folding.onfinish = () => {
+        line.style.overflow = '';
+        line.folding = null;
+        show(on);
+      };
     });
     show(openTagLines.has(incident.id));
     line.append(toggle, ...rest);

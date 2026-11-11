@@ -603,7 +603,7 @@ def lang_text(fields):
 
 def parse(reply, input_text, urls):
     """The checked Summary from a reply, or Rejected: broken JSON or shape, a number or version not
-    in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ.
+    in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ (a digit may stand for a number word).
     An Easy command or stopgap that is not one invocation found verbatim in a trusted source (trusted()) is dropped, so the page falls back to
     "update to version X" and never shows a made-up command."""
     if reply.stop_reason != "end_turn":
@@ -656,7 +656,8 @@ def parse(reply, input_text, urls):
     if unknown:
         raise Rejected(f"numbers not in the input: {sorted(unknown)}")
     # Dotted versions ("10.6p2") may sit in one language only; whole numbers (the 256/257 kind) must match.
-    differ = {t for t in ko ^ en if "." not in t}
+    # A Korean digit the English text spells as a word ("0으로" / "zero") is the same number, as in cve_lines.
+    differ = {t for t in ko ^ en if "." not in t} - (ko & number_words(lang_text(summary["en"])))
     if differ:
         raise Rejected(f"Korean and English numbers differ: {sorted(differ)}")
     # A group's per-CVE lines name only CVEs of this Incident (the input lists them).

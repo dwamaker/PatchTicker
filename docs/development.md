@@ -94,7 +94,8 @@ lines, the rest counted by kind), the text of up to two advisory or write-up pag
 `CVE_LINES_MAX` CVEs and each later CVE's own description, cut from the end past `INPUT_CHARS_MAX`
 (`collector/summary_input.py`); a reply whose numbers, versions or Lead link are not
 in that input, or whose Korean and English numbers differ, is rejected and retried (three tries). A digit whose
-number word the input spells ("zero", "eight"; never "one") counts as in it (`number_words`).
+number word the input spells ("zero", "eight"; never "one") counts as in it (`number_words`), and a Korean digit
+matches its word in the English text.
 A digit inside a fixed Korean word (`KO_DIGIT_WORDS`, only "제3자" so far) is not counted in Korean text.
 Each retry says why the last reply was rejected, beside the input and never inside it (so a number named there is
 still not allowed); a reply cut off at the token cap gets more room. After the third rejected try the Summary is given
