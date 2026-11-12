@@ -748,6 +748,28 @@ class FixedConflictTest(unittest.TestCase):
         for fixed in ("", "latest"):
             self.assertEqual(self.conflict(fixed), "")
 
+    def test_a_distributions_package_under_fixes_passes_but_not_as_the_bare_fixed_version(self):
+        # Owner, 2026-11-12: GStreamer's Red Hat backports (CVE-2026-125712) were rejected three times against 1.28.4.
+        keys = ["gstreamer:gst-plugins-base<1.28.4"]
+        for version in ("1.16.1-8.el8_10", "0:1.16.1-3.el8_10", "1.22.12-10.el9_9.1", "1.22.0-2+deb12u3", "1.24.2-1ubuntu0.2"):
+            with self.subTest(version):
+                self.assertEqual(self.conflict(fixes=[version], keys=keys), "")
+        self.assertEqual(self.conflict("1.16.1-3.el8_10", keys=keys), "fixed version 1.16.1 is below 1.28.4, the first fixed"
+                         " version in the CVE records; a version below it is still affected")
+        self.assertIn("1.16.1 is below 1.28.4", self.conflict(fixes=["1.16.1"], keys=keys))
+        for plain in ("1.16.1", "3.22.2", "2.0.0-rc1"):
+            self.assertIsNone(summaries.DISTRO_PACKAGE.search(plain))
+
+    def test_the_retry_note_for_a_conflict_names_the_backport_and_others_keep_their_sentence(self):
+        sentence = "is a backport, not the product's fixed version"
+        note = summaries.retry({"summary_error": {"reason": self.conflict("1.16.1-3.el8_10", keys=["gstreamer:gst-plugins-base<1.28.4"])}})["note"]
+        self.assertIn("rejected: fixed version 1.16.1 is below 1.28.4", note)
+        self.assertIn(sentence, note)
+        self.assertNotIn("never shorten or round", note)
+        other = summaries.retry({"summary_error": {"reason": "numbers not in the input: ['9.9']"}})["note"]
+        self.assertNotIn(sentence, other)
+        self.assertIn("never shorten or round", other)
+
     def save(self, tries=0):
         # SSHOLE_SUMMARY says 10.6p2; a record bound of 10.7 makes it the FreeRDP shape.
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}], "fix_keys": ["openbsd:openssh<10.7"]}

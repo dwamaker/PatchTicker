@@ -254,23 +254,30 @@ def language_gaps(summary):
 
 
 VERSION_RE = re.compile(r"(?<!\d)\d{1,20}(?:\.\d{1,20})+(?!\d)")  # bounded: int() rejects over 4300 digits
+# A Red Hat, Fedora, Amazon, openEuler, Debian or Ubuntu package version ("1.16.1-8.el8_10", "1.22.0-2+deb12u3").
+DISTRO_PACKAGE = re.compile(r"-\d+(?:\.\d+)*\.(?:el|fc|amzn|oe)\d|[+~-]\d*(?:deb|ubuntu)\d")
+FIXED_CONFLICT = "fixed version "  # retry() gives it its own sentence
 
 
 def fixed_conflict(incident, summary):
     """A fixed version the CVE records call affected (FreeRDP, 11-10: the advisory's typo "3.22.2" for 3.32.2 reached
     the page): below every record bound ("product<VALUE" fix_keys of one product; VALUE may list several versions,
-    as JetBrains records do) that shares its major, and equal to none. The reason, or ""."""
+    as JetBrains records do) that shares its major, and equal to none; a distribution's package under "fixes" is not
+    checked (DISTRO_PACKAGE). The reason, or ""."""
     strict = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k]
     if len({product for product, _ in strict}) != 1:
         return ""
     bounds = {tuple(map(int, v.split("."))) for _, value in strict for v in VERSION_RE.findall(value)}
     # .get: stored Summaries from before "fixes" (11-08) are read here too (needs_summary).
-    for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or [] if isinstance(f, dict))]:
+    # Owner, 2026-11-12: GStreamer's Red Hat backports (CVE-2026-125712, "1.16.1-8.el8_10") were rejected three times
+    # against the upstream bound 1.28.4; a package under "fixes" is true for its distribution, a bare "fixed" is not.
+    for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
+                                         if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
         found = isinstance(text, str) and VERSION_RE.search(text)
         version = found and tuple(map(int, found[0].split(".")))
         same = [b for b in bounds if version and b[0] == version[0]]
         if same and version not in bounds and all(version < b for b in same):
-            return (f"fixed version {found[0]} is below {'.'.join(map(str, min(same)))}, the first fixed version in the CVE"
+            return (f"{FIXED_CONFLICT}{found[0]} is below {'.'.join(map(str, min(same)))}, the first fixed version in the CVE"
                     " records; a version below it is still affected")
     return ""
 
@@ -584,6 +591,11 @@ def retry(incident, text=""):
         " Write the same facts and versions in Korean and in English: name every version in both languages, exactly as"
         " the input writes it." if reason.startswith(VERSION_GAP) else
         " In Korean, call the sources 출처, a fixed version 수정 버전 and the vendor 제조사." if reason.startswith(WORDING_GAP) else
+        # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
+        " A distribution's package version (Red Hat's 1.16.1-8.el8_10, Debian's 1.22.0-2+deb12u3) is a backport, not the"
+        " product's fixed version: write the product's own first fixed version from the input in `fixed`, and name each"
+        " distribution's package under `fixes` with the distribution in `for`. Write every version exactly as the input"
+        " writes it." if reason.startswith(FIXED_CONFLICT) else
         " Write every number and version exactly as the input writes it: never shorten or round one (not 10.86 for"
         " 10.86.51, not 4.2 for 4.2.16), never add one the input does not have, and use the same numbers in Korean and"
         " English.")
