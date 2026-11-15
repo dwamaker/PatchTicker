@@ -779,6 +779,19 @@ class FixedConflictTest(unittest.TestCase):
         summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
         return incident
 
+    def test_a_distributions_package_as_the_bare_fixed_version_is_emptied_and_the_summary_kept_on_the_first_try(self):
+        # 11-15: CVE-2026-125712 was given up after the model wrote Red Hat's "1.16.1-3.el8_10" as `fixed` twice.
+        fixes = [{"for": "Red Hat Enterprise Linux 8", "version": "1.16.1-3.el8_10", "devices": []}]
+        reply = SSHOLE_SUMMARY | {"fixed": "1.16.1-3.el8_10", "fixes": fixes}
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}],
+                    "fix_keys": ["gstreamer:gst-plugins-base<1.28.4"]}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(reply, ensure_ascii=False)
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-15T12:00:00Z")
+        self.assertNotIn("summary_error", incident)
+        self.assertEqual(incident["summary"]["fixed"], "")
+        self.assertEqual(incident["summary"]["fixes"], fixes)
+        self.assertEqual(incident["summary"]["en"]["mitigation"], SSHOLE_SUMMARY["en"]["mitigation"])
+
     def test_a_conflicting_reply_is_a_failed_try_even_the_last(self):
         for tries in (0, summaries.MAX_TRIES - 1):
             with self.subTest(tries=tries):
@@ -922,6 +935,45 @@ class NumberWordTest(unittest.TestCase):
             with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
                 self.parse(ko, en, source)
             self.assertEqual(str(caught.exception), f"Korean and English numbers differ: {differ}")
+
+
+class LineNameTest(unittest.TestCase):
+    """11-15: about a quarter of the unclean replies in the re-summary named a product line beside its fixed version
+    ("Update the 26.1 line to 26.1.11", OPNsense) and were rejected for "26.1", which the input writes only as 26.1.11."""
+    SOURCE = "Fixed in 26.1.11 and 26.4.1p1; 26.1.12 fixes a second flaw. Affected: 26.1.0 through 26.1.10. 26.1 million downloads."
+    FIXES = [{"for": "OPNsense 26.1", "version": "26.1.11"}, {"for": "OPNsense 26.4", "version": "26.4.1p1"}]
+
+    def parse(self, ko, en, fixes=FIXES, fixed=""):
+        reply = SSHOLE_SUMMARY | {"fixed": fixed, "fixes": fixes, "ko": SSHOLE_SUMMARY["ko"] | {"mitigation": ko},
+                                  "en": SSHOLE_SUMMARY["en"] | {"mitigation": en}}
+        text = (f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n"
+                + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False) + " " + self.SOURCE)
+        return summaries.parse(FakeClaude.message(reply), text, [SSHOLE_SUMMARY["lead"]])
+
+    def test_a_line_named_in_the_sentence_that_gives_its_fixed_version_passes(self):
+        summary = self.parse("26.1 계열은 26.1.11, 26.4 계열은 26.4.1p1 이상으로 업데이트하세요.",
+                             "Update the 26.1 line to 26.1.11 and the 26.4 line to 26.4.1p1 or later.")
+        self.assertTrue(summary["en"]["mitigation"].startswith("Update the 26.1 line"))
+        self.parse("26.1.x는 26.1.11로 업데이트하세요.", "Update 26.1.x to 26.1.11.", fixes=[], fixed="26.1.11")
+        # CVE-2026-92735 (Vault): the reply's fixes give 1.19.25; a second CVE's fix on that line is only in the input.
+        self.parse("두 번째 결함은 26.1 라인에서 26.1.12가 필요합니다.", "The second flaw needs 26.1.12 on the 26.1 line.")
+        # An amount is not a line: "26.1 million" stays 26100000 in English, as 2610만 is in Korean.
+        self.parse("26.1.11에서 고쳐졌고 다운로드는 2610만 회입니다.", "Fixed in 26.1.11, with 26.1 million downloads.")
+        with self.assertRaises(summaries.Rejected):  # 26.1.11 is in the input, but the reply does not give it as a fix
+            self.parse("26.1.x는 26.1.11로 업데이트하세요.", "Update 26.1.x to 26.1.11.", fixes=[{"for": "x", "version": "26.4.1p1"}])
+
+    def test_a_shortened_version_to_install_stays_rejected(self):
+        cases = {"alone": ("26.1로 업데이트하세요.", "Update to 26.1."),
+                 "in another sentence than a version of its line": ("26.1이 해당합니다. 26.1.11로 업데이트하세요.", "26.1 is affected. Update to 26.1.11."),
+                 "beside a version not in the input": ("26.1 계열을 26.1.13으로 올리세요.", "Move the 26.1 line to 26.1.13."),
+                 "not a prefix by whole parts": ("26.4.1p1로 업데이트하세요(26.1.1 계열).", "Update to 26.4.1p1 (the 26.1.1 line)."),
+                 # Found by the adversarial review: a shortened version to install beside the full one.
+                 "or later, beside its fix": ("26.1 이상(26.1.11)으로 업데이트하세요.", "Update to 26.1 or later (26.1.11)."),
+                 "to it, beside its fix": ("26.1로 업데이트하세요, 26.1.11에서 수정되었습니다.", "Update to 26.1, as 26.1.11 fixes it.")}
+        for case, (ko, en) in cases.items():
+            with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
+                self.parse(ko, en)
+            self.assertIn("numbers not in the input", str(caught.exception))
 
 
 class LanguageGapsTest(unittest.TestCase):

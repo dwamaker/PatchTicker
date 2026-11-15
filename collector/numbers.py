@@ -30,6 +30,28 @@ def numbers(text):
     return {t.lstrip("0") or "0" if t.isdigit() else t.lower() for t in NUMBER_RE.findall(text)} | months
 
 
+SENTENCE_END = re.compile(r"(?<=[.!?;])\s+|\n")
+# A version to install or an amount, never a line: "to 1.19", "1.19로", "1.19 or later", "1.19 이상", "1.5 million".
+TARGET_BEFORE = re.compile(r"\bto\s+(?:version\s+)?v?$", re.I)
+TARGET_AFTER = re.compile(rf"\s*(?:으?로|이상|이후|\+|or (?:later|higher|newer|above)|and (?:later|above)|(?:{'|'.join(SCALES)})\b)", re.I)
+
+
+def without_line_names(text, fixed, known):
+    """text without the product lines a sentence names beside a version of that line ("the 26.1 line to 26.1.11",
+    "10.2.7 for 10.2", "the 1.19 line needs 1.19.26"): a dotted prefix of one of the reply's fixed versions (fixed),
+    where the same sentence names an input version (known) that starts with it. Both are numbers() tokens. A prefix
+    as the version to install ("update to 1.19", "1.19 or later") stays, so the number check still rejects it."""
+    def line(token, versions):
+        return any(v.startswith(f"{token}.") for v in versions)
+
+    def strip(sentence):
+        here = numbers(sentence) & known
+        return NUMBER_RE.sub(lambda m: " " if "." in m[0] and line(m[0].lower(), fixed) and line(m[0].lower(), here)
+                             and not TARGET_BEFORE.search(sentence[:m.start()]) and not TARGET_AFTER.match(sentence, m.end())
+                             else m[0], sentence)
+    return "\n".join(map(strip, SENTENCE_END.split(text)))
+
+
 def plain(value):
     return f"{value.normalize():f}"  # 133000000, not 1.33E+8
 

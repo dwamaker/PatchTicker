@@ -18,7 +18,7 @@ from collector import hn
 from collector.cve_lines import save_lines
 from collector.incidents import is_news, published_at, stamp_ago
 from collector.model import CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_RETRY, MODEL, reply_json
-from collector.numbers import ko_numbers, number_words, numbers
+from collector.numbers import ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
 from collector.summary_input import CVE_LINES_ONLY, is_hn, summary_input, trusted
 
@@ -636,7 +636,7 @@ def parse(reply, input_text, urls):
     """The checked Summary from a reply, or Rejected: broken JSON or shape, a number or version not
     in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ (a digit may stand for a number word).
     An Easy command or stopgap that is not one invocation found verbatim in a trusted source (trusted()) is dropped, so the page falls back to
-    "update to version X" and never shows a made-up command."""
+    "update to version X" and never shows a made-up command. A distribution's package version as `fixed` is emptied."""
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
@@ -680,10 +680,19 @@ def parse(reply, input_text, urls):
     for lang in ("ko", "en") if only else ():
         allowed = set(only[1].split(", "))
         summary[lang]["cve_lines"] = [line for line in summary[lang]["cve_lines"] if isinstance(line, dict) and line.get("cve") in allowed]
-    ko, en = ko_numbers(lang_text(summary["ko"])), numbers(lang_text(summary["en"]))
+    # A distribution's package version is not the product's fixed version (CONTEXT.md, Distribution table): a bare one is
+    # emptied, never moved under fixes, which needs the distribution the reply did not give (CVE-2026-125712, 11-15).
+    if DISTRO_PACKAGE.search(summary["fixed"]):
+        summary["fixed"] = ""
+    # 11-15: a quarter of the re-summary's unclean replies named a line ("Vault Enterprise 1.19") beside its fix 1.19.25.
+    # A distribution's package names no line of the product.
+    fixed = numbers("\n".join(v for v in [summary["fixed"], *(f["version"] for f in summary["fixes"])] if not DISTRO_PACKAGE.search(v)))
+    known = numbers(input_text)
+    ko, en = (ko_numbers(without_line_names(lang_text(summary["ko"]), fixed, known)),
+              numbers(without_line_names(lang_text(summary["en"]), fixed, known)))
     unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"],
                                              *(x for f in summary["fixes"] for x in (f["version"], *f["devices"]))]))) \
-        - numbers(input_text) - number_words(input_text)
+        - known - number_words(input_text)
     if unknown:
         raise Rejected(f"numbers not in the input: {sorted(unknown)}")
     # Dotted versions ("10.6p2") may sit in one language only; whole numbers (the 256/257 kind) must match.
@@ -713,7 +722,6 @@ def parse(reply, input_text, urls):
     if summary["stopgap_file"] and not re.search(re.escape(summary["stopgap_file"]) + r"(?![\w./-])", input_text):
         summary["stopgap_file"] = ""
     # A Korean line for a Mention title is only a convenience: a bad one is dropped, never the Summary.
-    known = numbers(input_text)
     summary["titles_ko"] = [t for t in summary["titles_ko"] if isinstance(t, dict) and t.get("url") in urls
                             and isinstance(t.get("title"), str) and t["title"] and ko_numbers(t["title"]) <= known]
     # The prompt says no CVE ID in a title, but the model still adds one now and then; the row shows it above.
