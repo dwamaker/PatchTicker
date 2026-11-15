@@ -111,12 +111,16 @@ def sonicwall_advisory(http_get, advisory_id):
 
 
 def cve_fields(raw):
-    """The CVE record's relevant fields: descriptions, affected products and versions, problem types."""
+    """The CVE record's relevant fields: descriptions, affected products and versions, problem types, and the
+    solutions, workarounds and configurations some CNAs write (Fortinet's fixed versions are only in solutions)."""
     try:
         cna = json.loads(raw)["containers"]["cna"]
     except (ValueError, KeyError, TypeError):
         return ""
     keep = {k: cna[k] for k in ("title", "descriptions", "affected", "problemTypes") if k in cna}
+    # supportingMedia repeats value as HTML or base64: more tokens, stray digits for the number check, markup in a stopgap.
+    keep |= {k: [{f: v for f, v in i.items() if f != "supportingMedia"} if isinstance(i, dict) else i for i in cna[k]]
+             for k in ("solutions", "workarounds", "configurations") if isinstance(cna.get(k), list)}
     return json.dumps(keep, ensure_ascii=False)
 
 

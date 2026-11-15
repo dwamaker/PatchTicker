@@ -55,6 +55,13 @@ class CommandProvenanceTest(unittest.TestCase):
         summary = checked(record, {cvelist.record_url("CVE-2026-1"): raw}, {"command": command})
         self.assertEqual(summary["command"], command)
 
+    def test_a_stopgap_from_a_cve_records_workarounds_is_kept(self):
+        stopgap = "set admin-https-redirect disable"
+        record = incident([{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-1"}], cves=["CVE-2026-1"], lead="")
+        raw = '{"containers": {"cna": {"workarounds": [{"lang": "en", "value": "Until then, %s."}]}}}' % stopgap
+        summary = checked(record, {cvelist.record_url("CVE-2026-1"): raw}, {"stopgap": stopgap})
+        self.assertEqual(summary["stopgap"], stopgap)
+
     def test_a_config_setting_stopgap_keeps_its_own_punctuation(self):
         # A setting goes in a file, shown without a Copy button: ; & < > are part of it, not a second command.
         item = incident([{"kind": "writeup", "url": POSTER}])

@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import unittest
+from pathlib import Path
 
 from collector import curators, cvelist, incidents, news, osssec, summary_input
 
@@ -152,6 +153,37 @@ class FixKeyTest(unittest.TestCase):
 
     def test_a_version_segment_too_long_for_int_does_not_stop_the_record(self):
         self.assertEqual(cvelist.record_fix_keys(self.record("1." + "9" * 5000, "1.2")), ["acme:widget<=1.2"])
+
+
+class CveFieldsTest(unittest.TestCase):
+    def test_the_fixed_versions_fortinet_writes_in_solutions_reach_the_summary_input(self):
+        raw = (Path(__file__).parent / "fixtures" / "cvelist" / "CVE-2026-126256.json").read_text(encoding="utf-8")
+        self.assertIn("solutions", json.loads(summary_input.cve_fields(raw)))
+        incident = {"cves": ["CVE-2026-126256"], "brief": {"text": "FortiOS flaw.", "lead": ""}, "mentions": []}
+        self.assertIn("Upgrade to 7.4.13 or above", summary_input.summary_input(incident, lambda url: raw.encode()))
+
+    BASYX = Path(__file__).parent / "fixtures" / "cvelist" / "CVE-2026-123059.json"  # Eclipse: supportingMedia everywhere
+
+    def test_supporting_media_is_gone_from_solutions_workarounds_and_configurations_and_kept_in_descriptions(self):
+        fields = json.loads(summary_input.cve_fields(self.BASYX.read_text(encoding="utf-8")))
+        for key in ("solutions", "workarounds", "configurations"):
+            self.assertTrue(fields[key])
+            self.assertFalse([item for item in fields[key] if "supportingMedia" in item], key)
+        self.assertIn("supportingMedia", fields["descriptions"][0])
+
+    def test_the_settings_a_record_lists_in_configurations_reach_the_summary_input(self):
+        raw = self.BASYX.read_text(encoding="utf-8")
+        incident = {"cves": ["CVE-2026-123059"], "brief": {"text": "BaSyx flaw.", "lead": ""}, "mentions": []}
+        text = summary_input.summary_input(incident, lambda url: raw.encode())
+        self.assertIn("The vulnerability requires keycloak.enabled=true.", text)
+        self.assertNotIn("<code>", text)
+
+    def test_a_record_without_solutions_workarounds_or_configurations_gives_what_it_gave_before(self):
+        cna = {"title": "Widget flaw", "descriptions": [{"lang": "en", "value": "Widget lets an attacker read files."}],
+               "affected": [{"vendor": "Acme", "product": "Widget"}], "problemTypes": [], "references": [{"url": "https://widget.example"}]}
+        self.assertEqual(summary_input.cve_fields(json.dumps({"containers": {"cna": cna}})),
+                         '{"title": "Widget flaw", "descriptions": [{"lang": "en", "value": "Widget lets an attacker read files."}], '
+                         '"affected": [{"vendor": "Acme", "product": "Widget"}], "problemTypes": []}')
 
 
 LEAD = "https://widget.example/advisory"
