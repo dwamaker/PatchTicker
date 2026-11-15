@@ -42,7 +42,7 @@ const TEXT = {
     notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았습니다: ${text}`,
     variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`, manyProducts: (n) => `맞는 제품이 ${n}개입니다. 목록에서 하나를 고르세요.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => (n ? `이전 사건을 모두 불러왔습니다 (${n}건 추가).` : '이전 사건은 더 없습니다. 이미 모두 목록에 들어 있습니다.'),
-    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기 사건은 실제 공격이 아니면 참고에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 되는 칩입니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
+    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기 사건은 실제 공격이 아니면 참고에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 되는 칩입니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '악용 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '심각!', high: '경계', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     repo: 'GitHub 저장소', search: '검색', searchHint: '키워드, CVE 번호, 버전', searchHintShort: '키워드, CVE 번호', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 패치', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
@@ -90,7 +90,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: 'Loading…',
     notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`, variants: (n) => `Also showing ${n} under a similar name.`, manyProducts: (n) => `${n} products match. Pick one from the list.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => (n ? `Earlier Incidents are loaded (${n} more).` : 'There are no earlier Incidents: they are already all in the list.'),
-    loadError: 'Could not load the Board. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Incidents with a score pending are under Notice unless exploited.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
+    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Incidents with a score pending are under Notice unless exploited.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Exploited only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Severe!', high: 'Warning', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     repo: 'GitHub repository', search: 'Search', searchHint: 'Keyword, CVE ID, version', searchHintShort: 'Keyword or CVE ID', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'One fix', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
@@ -204,13 +204,35 @@ function toggleTheme() {
   });
 }
 
+// A request lost as the app closes would hang for good and stop live updates (N4): each has a time limit (status.json is
+// a few bytes; the rest are MBs on a slow phone), and one under way while the tab was away is aborted when it comes back.
+const SLOW_MS = 2 * 60 * 1000;
+const underWay = new Set(); // each request's controller, while it lasts
+let away = document.hidden; // hidden, or the connection dropped: what is under way meanwhile is asked again on return
 const getJson = async (name) => {
   // index.html's inline script asked for the first load's files already: take each response once (main drops the rest).
   const early = window.vrEarly?.[DATA_URL + name];
   if (early) delete window.vrEarly[DATA_URL + name];
-  const res = await (early || fetch(DATA_URL + name, { cache: 'no-cache' }));
-  if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
-  return res.json();
+  const ctl = new AbortController();
+  // A timer, not AbortSignal.timeout: older browsers lack it. One due while hidden waits on: the return asks again.
+  const ms = name === 'status.json' ? 15_000 : SLOW_MS;
+  const expire = () => { if (document.hidden) limit = setTimeout(expire, ms); else ctl.abort(new Error(`${name}: no answer in time`)); };
+  let limit = setTimeout(expire, ms);
+  underWay.add(ctl);
+  try {
+    const read = (early || fetch(DATA_URL + name, { cache: 'no-cache', signal: ctl.signal })).then((res) => {
+      if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+      return res.json();
+    });
+    // An early request carries index.html's signal, not this one: the limit and the abort on return reach it by a race.
+    return await (early ? Promise.race([read, new Promise((_, no) => ctl.signal.addEventListener('abort', () => no(new Error(`${name}: no answer`))))]) : read);
+  } catch (err) {
+    if (ctl.back) return getJson(name); // aborted on return: asked again at once, and this caller gets the fresh answer
+    throw err;
+  } finally {
+    clearTimeout(limit);
+    underWay.delete(ctl);
+  }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -336,33 +358,37 @@ async function main() {
   setTimeout(() => document.body.classList.remove('arriving'), 1200);
 }
 
-// Live updates. Every 10 minutes (the collector's cycle) and whenever the tab comes back into view, the page reads
+// Live updates. Every 30 seconds while the tab is in view, and whenever it comes back into view, the page reads
 // status.json (a few bytes); only a new update time fetches the week again. New Incidents go where the visitor's sort
 // puts them: at the top of the page they come in with the Board's motion; further down, the rows on screen stay where
 // they were (the scroll is corrected by what was added above) and a notice at the top of the window says how many
 // arrived above. Each new row wears a blue edge until it has been on screen four seconds.
 const CHECK_MS = 30 * 1000; // live like a ticker (owner, 2026-11-09): status.json is a few bytes, so check often
 const fresh = new Set(); // ids that arrived by a refresh and have not been seen yet
-let checking = false;
+// When the running check began, 0 when none. A backstop to the time limits and the abort on return: a working check
+// takes at most status.json, rows.json, then recent.json (three limits), so one older was lost (N4). abs: a clock set
+// back does not hold checks off.
+let checking = 0;
 async function checkForNew() {
-  if (checking || fullWeek || !updated || loadError) return; // the full week on its way: its merge goes first
-  checking = true;
+  if (Math.abs(Date.now() - checking) < 3 * SLOW_MS || fullWeek || !updated || loadError || document.hidden) return; // the full week on its way: its merge goes first; hidden: checked on return
+  const began = checking = Date.now();
   try {
     const st = await getJson('status.json');
-    if (st.updated === updated) return;
+    if (st.updated === updated || checking !== began) return; // given up meanwhile: no week for it
     // An open row or a search needs details: the full week, so an open row is refreshed whole with no loading flash.
     // Otherwise the row views (owner, 11-10): mergeIncidents keeps a held full Incident unless its row changed.
     const whole = open.size > 0 || Boolean(filter.query);
     const week = whole ? getJson('board/recent.json') : getJson('board/rows.json').catch(() => getJson('board/recent.json')); // rows.json missing (rollout): the week
     const [recent, seen] = await Promise.all([week, getJson('board/products.json').catch(() => null)]);
-    if (fullWeek) return; // asked for meanwhile: the next check comes after it, so two merges never cross
+    if (fullWeek || checking !== began) return; // asked for meanwhile, or this check was given up: two merges never cross
     // A file with no row view is the full week (recent.json, or a week short enough to be all whole): the truth for row views.
     const merged = mergeIncidents(incidents, recent.incidents.filter(onBoard), !recent.incidents.some((i) => i.rows));
     const atTop = scrollY < 160;
     incidents = merged.incidents;
     if (seen) seenProducts = seen.products;
-    updated = st.updated;
-    paused = st.summaries === 'paused';
+    const state = recent.status || st; // the merged file's own: status.json may have been read before the app slept
+    updated = state.updated;
+    paused = state.summaries === 'paused';
     fullFailed = false; // the store answers again: a waiting search or row may ask for the week again
     for (const id of merged.added) fresh.add(id);
     refreshProducts();
@@ -386,13 +412,32 @@ async function checkForNew() {
   } catch {
     // offline or the store is busy: the next check tries again; an hour without news shows the stale notice
   } finally {
-    checking = false;
+    if (checking === began) checking = 0;
   }
 }
+// Coming back in view (visible, restored from the back/forward cache, online) aborts what is under way, all asked before
+// the return, as it may never answer (N4); getJson asks each again for whoever waits on it (a running check, the full
+// week, older months), so nothing fails or falls back. A check starts if none runs; a second return event finds nothing
+// away, so what is asked after the return is left alone.
+const leave = () => { away = true; };
+function back() {
+  if (document.hidden || !navigator.onLine) return; // not back yet: the return in view, or online, does it
+  if (away) {
+    away = false;
+    for (const ctl of underWay) {
+      ctl.back = true;
+      ctl.abort();
+    }
+  }
+  checkForNew();
+}
 setInterval(checkForNew, CHECK_MS);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNew(); });
+document.addEventListener('visibilitychange', () => (document.hidden ? leave() : back()));
 // Coming back from another window (the tab stayed visible, so no visibilitychange) checks too (owner, 2026-11-09).
 addEventListener('focus', checkForNew);
+addEventListener('offline', leave);
+addEventListener('pageshow', (e) => { if (e.persisted) back(); });
+addEventListener('online', back);
 
 // A redraw that changes what stands above the window (a refresh, the full week arriving) holds the row at the top of the
 // window where it was, and a focused row keeps the focus.
@@ -424,7 +469,10 @@ function ensureFull() {
     fullFailed = true;
     showStatus();
     throw err;
-  }).finally(() => { fullWeek = null; }));
+  }).finally(() => {
+    fullWeek = null;
+    checkForNew(); // a check skipped while the week came (a return, say) runs now
+  }));
 }
 
 // The notice at the top of the window: how many highlighted rows sit above it. It leaves once they are reached.
@@ -557,7 +605,8 @@ function shareLine(incident) {
 function reportLink(incident) {
   const t = TEXT[lang];
   const page = `${location.origin}${location.pathname}#i=${encodeURIComponent(incident.id)}`;
-  const a = Object.assign(el('a', 'btn'), { href: reportUrl(incident, lang, page), target: '_blank', rel: 'noopener noreferrer' });
+  const a = Object.assign(el('a', 'btn'), { href: reportUrl(incident, lang, page, incident.id), target: '_blank', rel: 'noopener noreferrer' });
+  slug(incident.id).then((s) => { a.href = reportUrl(incident, lang, page, s); }, () => {}); // no crypto.subtle (plain http): the id stays
   a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 14 13H2Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.5v3M8 11.2v.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   a.append(el('span', '', t.report));
   return a;
@@ -882,8 +931,10 @@ async function loadOlder() {
     clearTimeout(announcing); // a pending count from the last search must not talk over this
     $('announce').textContent = TEXT[lang].olderDone(added); // the same sentence the screen shows (critique 13)
     olderAdded = added;
-  } catch (err) {
-    loadError = err.message;
+  } catch {
+    // the button comes back for another try, and the Board stays live: loadError would stop its checks for good (N4)
+    clearTimeout(announcing);
+    $('announce').textContent = TEXT[lang].olderFailed;
   }
   loadingOlder = false;
   render();

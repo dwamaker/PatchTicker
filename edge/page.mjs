@@ -1,10 +1,10 @@
 // Incident pages (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
-// collector's pages/<slug>.json from R2 and renders one plain document per language, without script. The rules (risk
-// level, exploited reason, easy action, Product names, on the Board, search-worthy) are the Board's own, imported from
-// web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
+// collector's pages/<slug>.json from R2 and renders one plain document per language, whose one script shows the times in the
+// reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
+// the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
 import { cveUrl, cvssRating, easyLine, exploitReason, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
-import { SITE, SLUG, escapeXml as esc, failClosed, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
+import { SITE, SLUG, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
 // The Board's logo symbol (index.html #home) and its 틀린 내용 알리기 icon (app.mjs reportLink).
@@ -20,7 +20,7 @@ const TEXT = {
     path: '/i/', locale: 'ko_KR', otherLang: 'en',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
-    firstSeen: '처음 확인', zone: '',
+    firstSeen: '처음 확인', zone: ' KST',
     board: '현황판에서 보기', cveRecord: 'CVE 기록 보기', tagLink: (name) => `현황판에서 ${name} 사건 보기`,
     expired: '보관 기간 90일이 지났어요. 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
     down: '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '현황판으로 가기',
@@ -112,10 +112,8 @@ code{font-family:var(--mono);font-size:.875rem}
 @media (hover:hover) and (pointer:fine){.more summary:hover{text-decoration:underline}}
 footer{padding:1rem 0 2rem;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.8125rem}`;
 
-const http = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
 // A source link opens in a new tab, as on the Board (DESIGN.md), and says so to screen readers.
 const link = (url, text, t) => (http(url) ? `<a href="${esc(url)}"${NEW_TAB}>${esc(text)}<span class="sr-only">${esc(t.newTab)}</span></a>` : '');
-const host = (url) => { try { return new URL(url).host.replace(/^www\./, ''); } catch { return String(url); } };
 // A release can carry hundreds of CVEs (IBM API Connect: 204): the first CVE_SHOWN stay in view, the rest fold. Every
 // link stays in the HTML for search engines; <details> needs no script.
 const CVE_SHOWN = 10;
@@ -128,13 +126,18 @@ const cveList = (cves, t) => {
 const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
-// Korean readers get Korean time (UTC+9, no daylight saving), everyone else UTC.
+// Without script, Korean pages say Korean time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in
+// UTC, so the browser below reads the same one even from a stamp without a zone.
 function when(stamp, lang) {
   const at = Date.parse(stamp);
   if (Number.isNaN(at)) return esc(stamp);
   const d = new Date(at + (lang === 'ko' ? 9 * 60 * 60 * 1000 : 0)).toISOString();
-  return `<time datetime="${esc(stamp)}">${d.slice(0, 10)} ${d.slice(11, 16)}${TEXT[lang].zone}</time>`;
+  return `<time datetime="${new Date(at).toISOString()}">${d.slice(0, 10)} ${d.slice(11, 16)}${TEXT[lang].zone}</time>`;
 }
+// The browser then shows each time in the visitor's zone, as the Board does, named like "GMT+9"; a browser without
+// shortOffset keeps the text above. A string, not a function: the bundler rewrites code, and the CSP pins these bytes.
+const LOCAL_TIME = 'for(const t of document.querySelectorAll("time[datetime]"))try{const d=new Date(t.dateTime),two=(n)=>String(n).padStart(2,"0");t.textContent=d.getFullYear()+"-"+two(d.getMonth()+1)+"-"+two(d.getDate())+" "+two(d.getHours())+":"+two(d.getMinutes())+" "+new Intl.DateTimeFormat("en",{timeZoneName:"shortOffset"}).formatToParts(d).find((p)=>p.type==="timeZoneName").value}catch{}';
+const LOCAL_TIME_SHA256 = 'oAEYH/gLR7li4Nk9meP5pB8aLXZMHwekOrjaIjs5Acs='; // tests/page.test.mjs recomputes it
 
 // The risk banner: the rule-based level, why it is exploited, and the CVSS ring.
 function banner(i, t) {
@@ -251,9 +254,10 @@ export function pageHtml(i, lang, slug) {
     section('cves', t.cves, cveList(i.cves, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
     section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
+    `<script>${LOCAL_TIME}</script>`,
     '</article>',
     `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
-      + `<a href="${esc(reportUrl(i, lang, self))}"${NEW_TAB}>${REPORT_ICON}${esc(t.report)}</a></nav>`].join('\n');
+      + `<a href="${esc(reportUrl(i, lang, self, slug))}"${NEW_TAB}>${REPORT_ICON}${esc(t.report)}</a></nav>`].join('\n');
   const other = `<a class="lang" href="${TEXT[t.otherLang].path}${slug}" hreflang="${t.otherLang}" lang="${t.otherLang}" aria-label="${esc(t.other)}">`
     + `<span class="full">${esc(t.other)}</span><span class="short">${esc(t.otherShort)}</span></a>`;
   return document(lang, head, main, other);
@@ -298,8 +302,8 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     return new Response(pageHtml(doc, lang, slug), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE,
-        // No script on the page at all; inline styles only (the Board's tokens and line colours).
-        'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" },
+        // One script, LOCAL_TIME, by its hash; inline styles only (the Board's tokens and line colours).
+        'content-security-policy': `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` },
     });
   }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));
 }

@@ -1,8 +1,8 @@
 // The RSS feeds (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
 // collector's board/feed.json from R2 and renders RSS 2.0 per request. Titles, Summaries and links come from the web
-// and a model: every text is escaped, and the only links are our own.
+// and a model: every text is escaped, and the only outside link is the Lead mention's, when it is http(s).
 import { easyLine, riskLevel, slug, WORDS } from '../web/board.mjs';
-import { SITE, escapeXml, failClosed, readJson, titleOf, unavailable, whatToDo } from './shared.mjs';
+import { SITE, escapeXml, failClosed, host, http, readJson, titleOf, unavailable, whatToDo } from './shared.mjs';
 
 const FEED_DOC = 'board/feed.json';
 
@@ -13,12 +13,22 @@ const TEXT = {
 
 const rfc822 = (stamp) => new Date(stamp).toUTCString();
 
+// The Lead mention's link, named as the Incident page names it, is the "source link below" a mitigation can point to (L4).
+function leadLink(i, lang) {
+  const lead = i.brief?.lead;
+  const m = http(lead) && i.mentions?.find((x) => x.url === lead);
+  if (!m) return '';
+  const gloss = lang === 'ko' && (Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : []).find((g) => g?.url === lead && typeof g.title === 'string')?.title;
+  return `<p>${escapeXml(WORDS[lang].mentionKinds[m.kind] || m.kind)}: <a href="${escapeXml(lead)}">${escapeXml(gloss || m.title || host(lead))}</a></p>`;
+}
+
 async function item(i, lang) {
   const s = i.summary?.[lang] || {};
   // The plain explanation and what to do in the Incident page's words (easyLine, whatToDo), so the two never disagree.
   const body = [s.easy && easyLine(s.easy, riskLevel(i)), s.summary].filter(Boolean).map((t) => `<p>${escapeXml(t)}</p>`);
   const todo = i.summary ? whatToDo(i, lang) : '';
   if (todo) body.push(`<p><b>${TEXT[lang].act}</b></p>${todo}`);
+  body.push(leadLink(i, lang));
   const page = `${SITE}${TEXT[lang].page}${await slug(i.id)}`; // slug() output is [A-Za-z0-9-] only: no escaping needed
   return ['<item>',
     `<title>${escapeXml(titleOf(i, lang))}</title>`,

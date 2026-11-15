@@ -1066,12 +1066,19 @@ test('only fixes with a product line and a version are usable', () => {
 
 test('the mistake report fills the issue form with both titles and the link the visitor saw', () => {
   const i = { id: 'CVE-2026-1', brief: { text: 'brief' }, summary: { ko: { title: '요약' }, en: { title: 'Summary' } } };
-  const url = new URL(reportUrl(i, 'ko', 'https://patchticker.com/i/CVE-2026-1'));
+  const url = new URL(reportUrl(i, 'ko', 'https://patchticker.com/i/CVE-2026-1', 'CVE-2026-1'));
   assert.equal(url.origin + url.pathname, 'https://github.com/dwamaker/PatchTicker/issues/new');
   assert.equal(url.searchParams.get('title'), '[오류 제보 / Mistake] CVE-2026-1: 요약');
   const body = url.searchParams.get('body').split('\n');
   assert.deepEqual(body.slice(0, 4), ['사건 / Incident: CVE-2026-1', '제목: 요약', 'Title: Summary', '링크 / Link: https://patchticker.com/i/CVE-2026-1']);
-  assert.equal(new URL(reportUrl(i, 'en', 'x')).searchParams.get('title'), '[오류 제보 / Mistake] CVE-2026-1: Summary');
+  assert.equal(new URL(reportUrl(i, 'en', 'x', 'CVE-2026-1')).searchParams.get('title'), '[오류 제보 / Mistake] CVE-2026-1: Summary');
+});
+
+test('a mistake report for an Incident without a CVE names it by its page slug, not its whole source URL', async () => {
+  const i = { id: 'https://www.bleepingcomputer.com/news/security/nikke/', cves: [], brief: { text: 'brief' }, summary: { ko: { title: '요약' }, en: { title: 'Summary' } } };
+  const url = new URL(reportUrl(i, 'ko', 'x', await slug(i.id)));
+  assert.match(url.searchParams.get('title'), /^\[오류 제보 \/ Mistake\] u-[0-9a-f]{12}: 요약$/);
+  assert.match(url.searchParams.get('body'), /^사건 \/ Incident: https:\/\/www\.bleepingcomputer\.com\/news\/security\/nikke\/$/m); // the body keeps the full id
 });
 
 test('the shared words hold the same keys in both languages, each a non-empty text or a function', () => {

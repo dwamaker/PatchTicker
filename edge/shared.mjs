@@ -5,7 +5,13 @@ import { easyAction, easyLine, firstProduct, isShellCommand, riskLevel, usableFi
 export const SITE = 'https://patchticker.com';
 export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
 
-export const escapeXml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
+// Only http(s) addresses become links; a link's name falls back to its host.
+export const http = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
+export const host = (url) => { try { return new URL(url).host.replace(/^www\./, ''); } catch { return String(url); } };
+
+// Characters XML 1.0 does not allow (tab, line feed and carriage return stay) are dropped: one in a title from the web
+// would make the whole RSS feed unreadable, and the HTML parser counts them as errors too.
+export const escapeXml = (s) => String(s ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]);
 
 export { titleOf } from '../web/board.mjs';
 

@@ -38,7 +38,7 @@
     try { const h = location.hostname; const base = ['localhost', '127.0.0.1'].includes(h) ? 'data/' : h.endsWith('.dwamaker.com')
       ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/'; window.vrEarly = {};
       for (const n of ['board/rows.json', 'status.json', 'index.json', 'board/products.json']) {
-        const res = fetch(base + n, { cache: 'no-cache' }); res.catch(() => {}); window.vrEarly[base + n] = res; } } catch {}</script>
+        const res = fetch(base + n, { cache: 'no-cache', signal: AbortSignal.timeout && AbortSignal.timeout(n === 'status.json' ? 15e3 : 12e4) }); res.catch(() => {}); window.vrEarly[base + n] = res; } } catch {}</script>
   <style>
     /* Graphite signage ground and its light twin; risk colours (red, amber, grey) are never used by Product lines. */
     :root {

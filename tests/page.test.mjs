@@ -1,7 +1,9 @@
 // Incident pages (ticket incident-pages/02): a request's slug plus a fake R2 binding in, a Response out.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 import { slug } from '../web/board.mjs';
 import { pageResponse } from '../edge/page.mjs';
 import { cached } from '../edge/shared.mjs';
@@ -50,7 +52,7 @@ test('the Korean page names itself canonical, links the English one and previews
   assert.match(html, /<meta property="og:image" content="https:\/\/patchticker.com\/og.png">/);
   assert.match(html, /<meta property="og:locale" content="ko_KR">/);
   assert.doesNotMatch(html, /noindex/); // exploited: search-worthy
-  assert.doesNotMatch(html, /<script/i);
+  assert.equal(html.match(/<script/gi).length, 1); // the times' own
   assert.equal(html.match(/<h1/g).length, 1);
   assert.match(html, /<h1>OpenSSH sshd 인증 우회 \(sshole\)<\/h1>/);
 });
@@ -109,8 +111,8 @@ test('the page shows what the Board panel shows, with the Board rules', async ()
   assert.match(html, />OpenSSH</);
   assert.match(html, /href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
   assert.match(html, /보호나라 공지[\s\S]*OpenSSH 보안 업데이트 권고/); // the KISA notice among the Mentions
-  assert.match(html, /<time datetime="2026-11-05T10:00:00Z">2026-11-05 19:00/); // published, Korean time
-  assert.match(html, /<time datetime="2026-11-06T00:46:00Z">/); // first seen
+  assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 19:00 KST<\/time>/); // published, Korean time
+  assert.match(html, /<time datetime="2026-11-06T00:46:00.000Z">/); // first seen
   assert.match(html, /href="\/#i=CVE-2026-123158"/); // open on the Board
   assert.match(html, /href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en" aria-label="English"><span class="full">English</);
   assert.match(html, /href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*"/);
@@ -189,8 +191,22 @@ test('the English page is the English Summary, canonical to itself', async () =>
   assert.match(html, /<meta property="og:locale" content="en_US">/);
   assert.match(html, />High risk</);
   assert.match(html, /Listed in CISA KEV/);
-  assert.match(html, /<time datetime="2026-11-05T10:00:00Z">2026-11-05 10:00 UTC/);
+  assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 10:00 UTC<\/time>/);
   assert.match(html.split('</header>')[0], /<a class="lang" href="\/i\/CVE-2026-123158" hreflang="ko" lang="ko" aria-label="한국어"><span class="full">한국어<\/span><span class="short">한<\/span><\/a>/);
+});
+
+test('where scripts run, the times show in the visitor zone, by the one script the page policy allows by its hash', async () => {
+  const res = await page(SSHOLE);
+  const script = (await res.text()).match(/<script>([^<]*)<\/script>/)[1];
+  assert.equal(res.headers.get('content-security-policy').match(/script-src ([^;]*)/)[1], `'sha256-${createHash('sha256').update(script).digest('base64')}'`);
+  const times = ['2026-11-05T10:00:00Z', '2026-11-06T00:46:00Z', 'not a date'].map((dateTime) => ({ dateTime, textContent: 'fixed' }));
+  runInNewContext(script, { document: { querySelectorAll: () => times } });
+  for (const { dateTime, textContent } of times.slice(0, 2)) { // local time plus its offset is the stamp again
+    const [, y, mo, d, h, mi, sign, oh = 0, om = 0] = textContent.match(/^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d) GMT(?:([+-])(\d{1,2})(?::(\d\d))?)?$/);
+    assert.equal(Date.UTC(y, mo - 1, d, h, mi) - (sign === '-' ? -1 : 1) * (oh * 60 + +om) * 60000, Date.parse(dateTime), textContent);
+  }
+  assert.equal(times[2].textContent, 'fixed'); // a time the browser cannot read keeps the server's text
+  assert.doesNotMatch(await (await page(null)).text(), /<script/); // the short notes have none
 });
 
 test('the header carries the logo home and the language switch; the links row holds the Board and report buttons', async () => {
@@ -222,7 +238,7 @@ test('hostile text is escaped and only http(s) links are kept', async () => {
     summary: { ...SSHOLE.summary, exploited: true, exploited_source: 'javascript:alert(2)', ko: { ...SSHOLE.summary.ko, title: '</title><script>alert(1)</script>', easy: '"><script>alert(3)</script>' } },
   };
   const html = await (await page(hostile)).text();
-  assert.doesNotMatch(html, /<script|<img /i);
+  assert.deepEqual(html.match(/<script|<img /gi), ['<script']); // the times' own
   assert.doesNotMatch(html, /javascript:/i);
   assert.match(html, /&lt;\/title&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.match(html, /href="https:\/\/example.com\/&quot;&gt;&lt;script&gt;x&lt;\/script&gt;"/);
