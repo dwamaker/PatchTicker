@@ -179,8 +179,11 @@ function mentions(i, lang, t) {
   const kinds = [...new Set([...MENTION_ORDER, ...i.mentions.map((m) => m.kind)])];
   // A group's CVE section links these already (IBM API Connect had 204 twice); with one or two, as on the Board, Sources keeps them.
   const listed = new Set(i.cves.length > 2 ? i.cves.map(cveUrl) : []);
+  const shown = (m) => http(m.url) && !(m.kind === 'cve_record' && listed.has(m.url));
+  // With every link hidden the Lead mention, the first CVE record by the Lead order, keeps Sources (H1, owner 11-15).
+  if (!i.mentions.some(shown)) listed.delete(i.mentions.find((m) => http(m.url))?.url);
   return ul(kinds.flatMap((kind) => {
-    const links = i.mentions.filter((m) => m.kind === kind && http(m.url) && !(kind === 'cve_record' && listed.has(m.url)))
+    const links = i.mentions.filter((m) => m.kind === kind && shown(m))
       .map((m) => link(m.url, named(m), t));
     return links.length ? [`${esc(t.mentionKinds[kind] || kind)}: ${links.join(' · ')}`] : [];
   }), 'sources');

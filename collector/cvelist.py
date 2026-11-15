@@ -4,15 +4,28 @@ import html
 import re
 import json
 import sys
+from urllib.parse import unquote, urlsplit
 
 from collector.hn import is_repo
 from collector.incidents import VENDORS, is_http, to_stamp
 
 DELTA_LOG_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/deltaLog.json"
 # CVE JSON 5 reference tags that mark the product's own advisory or release note.
-ADVISORY_TAGS = {"vendor-advisory", "release-notes"}
+OWN_TAGS = {"vendor-advisory", "release-notes"}
+# GitHub's and older MITRE-format records' tag; it also marks other vendors' notes (Log4j's lists SonicWall's), so it ranks after.
+ADVISORY_TAGS = OWN_TAGS | {"x_refsource_CONFIRM"}
 # Tags that mark someone else's analysis or a working exploit: listed as write-ups (a repo when on GitHub).
-WRITEUP_TAGS = {"third-party-advisory", "technical-description", "exploit"}
+WRITEUP_TAGS = {"third-party-advisory", "technical-description", "exploit", "x_research-advisory"}
+# Words dropped before a CNA, vendor or site name is compared ("Six Apart Ltd." is sixapart.jp).
+COMPANY_WORDS = {"inc", "corp", "corporation", "co", "ltd", "limited", "llc", "gmbh", "ag", "sa", "plc", "foundation"}
+# Coordinator CNAs, which file for other vendors, and the site label of their own write-ups (jvn.jp).
+COORDINATORS = {"jpcert": "jvn"}
+# Second-level labels under a country code that are not the site's own ("example.co.jp").
+SECOND_LEVEL = {"co", "com", "ne", "or", "ac", "go", "gov", "net", "org", "edu"}
+# A tracker, code review or forum page (Bugzilla, Jira, Phabricator, Gerrit, issues, pull requests, Discourse): outsiders
+# write there. shortcut: Launchpad, Mantis and Jira's ?selectedIssue= on other hosts are missed; add them when seen.
+TRACKER = re.compile(r"//(?:bugzilla|bugs?|jira|phabricator|gerrit|discuss|forums?|community)\.|show_bug|/browse/[a-z]+-\d"
+                     r"|/(?:issues|work_items|pull|merge_requests|ticket)/\d", re.I)
 
 
 MAX_RECORDS = 250
@@ -84,15 +97,65 @@ def mention_groups(records):
     return groups
 
 
+def words(name):
+    return [w for w in re.findall(r"[^\W_]+", name.lower()) if w not in COMPANY_WORDS]
+
+
+def site_label(url):
+    """The registrable domain's own label as written: "sonicwall" for psirt.global.sonicwall.com, "sonic-wall" kept apart."""
+    try:
+        labels = (urlsplit(url).hostname or "").split(".")
+    except ValueError:
+        return ""
+    # shortcut: only a country code under SECOND_LEVEL is known; other multi-label suffixes give the suffix's label.
+    i = 3 if len(labels) > 2 and len(labels[-1]) == 2 and labels[-2] in SECOND_LEVEL else 2
+    return labels[-i] if len(labels) >= i else ""
+
+
+def has_id(url):
+    """A digit in the path or query: a list page ("www.asus.com/security-advisory") has none."""
+    # shortcut: an id is taken to hold a digit, so a letter-only one (cisco-sa-cucs-rce-LzHSFRDQ) is missed;
+    # upgrade if such vendors' advisories matter.
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    return bool(re.search(r"[0-9]", unquote(parts.path + parts.query)))  # "%20" is not an id
+
+
+def own_names(record):
+    """Site labels that are the affected vendor's own: its name joined when a coordinator wrote the record; that or
+    its first word ("samsung" for Samsung Semiconductor) when the vendor itself did, its CNA name being the vendor's
+    in whole words (the Joomla CNA files for joomlaboat.com, which is not Joomla's); else none."""
+    cna = (record["cveMetadata"].get("assignerShortName") or "").lower()
+    names = [w for w in (words(a.get("vendor") or "") for a in record["containers"]["cna"].get("affected", [])) if w]
+    if cna in COORDINATORS:
+        return {"".join(w) for w in names}
+    return {n for w in names if "".join(w) == "".join(words(cna)) for n in ("".join(w), w[0])}
+
+
 def mention_group(record):
-    """The CVE record as a Mention; references it tags as an advisory, release note, analysis or
-    exploit join it (untagged references only key the Incident)."""
+    """The CVE record as a Mention; references it tags as an advisory, release note, analysis or exploit join it.
+    A reference the CNA wrote with no tags and an id in its path joins as an advisory when it sits on the vendor's
+    own site and the vendor or a coordinator wrote the record (as a write-up when it is a bug tracker entry), and as
+    a write-up on the coordinator's own site; the rest only key the Incident (owner, 11-15)."""
     cve = record["cveMetadata"]["cveId"]
     # ADP containers (CISA's, mostly) add references too: sshole's sshhole.com exploit tag lives only there.
     containers = [record["containers"]["cna"], *record["containers"].get("adp", [])]
     refs = [r for c in containers for r in c.get("references", []) if is_http(r.get("url"))]
-    advisories = [r["url"] for r in refs if ADVISORY_TAGS & set(r.get("tags", []))]
-    writeups = [r["url"] for r in refs if WRITEUP_TAGS & set(r.get("tags", [])) and r["url"] not in advisories]
+    # A URL a known tag marks anywhere in the record keeps that kind (CISA tags an Eclipse report page exploit).
+    tagged = {r["url"] for r in refs if (ADVISORY_TAGS | WRITEUP_TAGS) & set(r.get("tags") or [])}
+    untagged = [r["url"] for r in containers[0].get("references", [])
+                if is_http(r.get("url")) and not r.get("tags") and r["url"] not in tagged and has_id(r["url"])]
+    names, coordinator = own_names(record), COORDINATORS.get((record["cveMetadata"].get("assignerShortName") or "").lower())
+    own_first = sorted(refs, key=lambda r: not OWN_TAGS & set(r.get("tags") or []))  # stable: reference order otherwise
+    vendor_tagged = {r["url"] for r in refs if OWN_TAGS & set(r.get("tags") or [])}
+    candidates = [r["url"] for r in own_first if ADVISORY_TAGS & set(r.get("tags") or [])] + [u for u in untagged if site_label(u) in names]
+    # A tracker is a write-up unless the vendor itself tagged it vendor-advisory (a CONFIRM-tagged Bugzilla bug is not).
+    advisories = [u for u in candidates if u in vendor_tagged or not TRACKER.search(u)]
+    writeups = ([r["url"] for r in refs if WRITEUP_TAGS & set(r.get("tags") or [])] + [u for u in candidates if u not in advisories]
+                + [u for u in untagged if site_label(u) == coordinator])
+    writeups = [u for u in writeups if u not in advisories]
     return {
         "mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}]
         + [{"kind": "advisory", "url": u} for u in dict.fromkeys(advisories)]

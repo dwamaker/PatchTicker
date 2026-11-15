@@ -223,6 +223,99 @@ class StoryPageTest(unittest.TestCase):
                          [("advisory", "https://example.org/a"), ("writeup", "https://sshhole.com"), ("repo", "https://github.com/x/poc")])
         self.assertIn("https://www.openssh.org/releasenotes.html#10.6p2", group["urls"])  # untagged: a key only
 
+    def record_mentions(self, cve):
+        from collector import cvelist
+        record = json.loads((FIXTURES / "cvelist" / f"{cve}.json").read_bytes())
+        return [(m["kind"], m["url"]) for m in cvelist.mention_group(record)["mentions"][1:]]
+
+    def test_an_untagged_link_on_the_vendors_own_site_is_an_advisory_when_the_vendor_wrote_the_record(self):
+        self.assertEqual(self.record_mentions("CVE-2026-13672"),  # Synology tags nothing
+                         [("advisory", "https://www.synology.com/en-global/security/advisory/Synology_SA_26_18")])
+
+    def test_zdis_research_advisory_tag_makes_a_writeup(self):
+        self.assertEqual(self.record_mentions("CVE-2026-118631"), [("writeup", "https://www.zerodayinitiative.com/advisories/ZDI-26-890/")])
+
+    def test_githubs_confirm_tag_makes_an_advisory_and_its_commit_and_release_stay_keys(self):
+        self.assertEqual(self.record_mentions("CVE-2026-67540"),  # CISA's ADP tags the same page exploit: still one advisory
+                         [("advisory", "https://github.com/heymrun/heym/security/advisories/GHSA-5748-x76g-v68m")])
+
+    def test_a_coordinators_record_takes_the_vendors_site_as_advisory_and_its_own_as_a_writeup(self):
+        # JPCERT/CC for Six Apart: movabletype.org is the product's site, not the vendor's name, so it stays a key.
+        self.assertEqual(self.record_mentions("CVE-2026-117687"),
+                         [("advisory", "https://www.sixapart.jp/movabletype/news/2026/11/11-1100.html"),
+                          ("writeup", "https://jvn.jp/en/jp/JVN11786640/")])
+
+    def test_a_bug_tracker_entry_on_the_vendors_own_site_is_a_writeup(self):
+        # Eclipse's GitLab work item: outsiders write there. The GHSA on github.com is not Eclipse's site: a key only.
+        self.assertEqual(self.record_mentions("CVE-2026-114408"), [("writeup", "https://gitlab.eclipse.org/security/cve-assignment/-/work_items/482")])
+
+    def test_tracker_and_code_review_pages_are_writeups_and_an_encoded_space_is_no_id(self):
+        from collector import cvelist
+        def kinds(cna, vendor, *refs):
+            record = {"cveMetadata": {"cveId": "CVE-2026-1", "assignerShortName": cna},
+                      "containers": {"cna": {"affected": [{"vendor": vendor, "product": "X"}], "references": list(refs)}}}
+            return [(m["kind"], m["url"]) for m in cvelist.mention_group(record)["mentions"][1:]]
+        # Firefox's memory-safety records (CVE-2024-9401) and Wikimedia's (CVE-2025-23072) link these untagged.
+        for url in ("https://bugzilla.mozilla.org/buglist.cgi?bug_id=1872744%2C1897792", "https://phabricator.wikimedia.org/T378885",
+                    "https://gerrit.wikimedia.org/r/q/Ic9547e80a8296d707ad8a157eb8ba7aa26fb08dc"):
+            self.assertEqual(kinds("mozilla" if "mozilla" in url else "wikimedia-foundation",
+                                   "Mozilla" if "mozilla" in url else "Wikimedia Foundation", {"url": url}), [("writeup", url)])
+        esa = "https://discuss.elastic.co/t/kibana-security-update-esa-2026-203/391357"  # a Discourse topic shows anyone's replies
+        self.assertEqual(kinds("elastic", "Elastic", {"url": esa}), [("writeup", esa)])
+        bug = "https://bugzilla.redhat.com/show_bug.cgi?id=CVE-2019-10160"  # tagged CONFIRM in a MITRE-format record
+        self.assertEqual(kinds("redhat", "Red Hat", {"url": bug, "tags": ["x_refsource_CONFIRM"]}), [("writeup", bug)])
+        self.assertEqual(kinds("redhat", "Red Hat", {"url": bug, "tags": ["vendor-advisory"]}), [("advisory", bug)])
+        self.assertEqual(kinds("arm", "Arm Ltd", {"url": "https://developer.arm.com/Arm%20Security%20Center/Mali"}), [])  # CVE-2024-4610
+
+    def test_a_reference_whose_tags_are_null_still_gives_its_record_a_mention_group(self):
+        from collector import cvelist
+        record = {"cveMetadata": {"cveId": "CVE-2026-1", "assignerShortName": "synology"},
+                  "containers": {"cna": {"affected": [{"vendor": "Synology", "product": "DSM"}],
+                                         "references": [{"url": "https://www.synology.com/security/advisory/Synology_SA_26_18", "tags": None}]},
+                                 "adp": [{"references": [{"url": "https://example.org/poc/1", "tags": None}]}]}}
+        groups = cvelist.mention_groups([record])
+        self.assertEqual([(m["kind"], m["url"]) for m in groups[0]["mentions"]],
+                         [("cve_record", "https://www.cve.org/CVERecord?id=CVE-2026-1"),
+                          ("advisory", "https://www.synology.com/security/advisory/Synology_SA_26_18")])
+
+    def test_a_vendor_list_page_with_no_id_in_its_address_is_not_promoted(self):
+        self.assertEqual(self.record_mentions("CVE-2026-112116"), [])  # ASUS: www.asus.com/security-advisory
+
+    def test_a_vendor_link_the_cna_tagged_otherwise_is_not_promoted(self):
+        # OpenSSL tags its commitdiff links "patch": they stay keys; the tagged advisory is the only one.
+        self.assertEqual(self.record_mentions("CVE-2023-0286"), [("advisory", "https://www.openssl.org/news/secadv/20230207.txt")])
+
+    def test_a_cna_filing_for_another_vendor_gives_its_links_no_advisory(self):
+        self.assertEqual(self.record_mentions("CVE-2026-105606"), [])  # the Joomla CNA for joomlaboat.com's extension
+
+    def test_the_vendor_and_its_site_match_in_whole_words_only(self):
+        from collector import cvelist
+        def advisories(assigner, vendor, url):
+            record = {"cveMetadata": {"cveId": "CVE-2026-1", "assignerShortName": assigner},
+                      "containers": {"cna": {"affected": [{"vendor": vendor, "product": "X"}], "references": [{"url": url}]}}}
+            return [m["url"] for m in cvelist.mention_group(record)["mentions"] if m["kind"] == "advisory"]
+        self.assertEqual(advisories("hp", "HP Inc.", "https://support.hp.com/a1"), ["https://support.hp.com/a1"])
+        self.assertEqual(advisories("hp", "HP Inc.", "https://www.php.net/a1"), [])
+        self.assertEqual(advisories("redhat", "Red Hat", "https://access.redhat.com/a1"), ["https://access.redhat.com/a1"])
+        self.assertEqual(advisories("acme", "Acme Corp", "https://acme.co.jp/a1"), ["https://acme.co.jp/a1"])
+        self.assertEqual(advisories("acme", "Acme Corp", "https://acme.evil.example/a1"), [])
+        self.assertEqual(advisories("joomla", "Joomla Bamboo", "https://joomla.org/a1"), [])  # a CNA name inside the vendor's is not the vendor
+        self.assertEqual(advisories("vuldb", "Acme", "https://acme.com/a1"), [])  # a third-party CNA
+        self.assertEqual(advisories("sonicwall", "SonicWall", "https://sonic-wall.com/a1"), [])  # a look-alike site
+
+    def test_a_vendor_advisory_tag_outranks_a_confirm_tag_and_a_known_tag_elsewhere_outranks_the_vendors_site(self):
+        from collector import cvelist
+        # Log4j's record (CVE-2021-45046) lists SonicWall's note as CONFIRM before Cisco's vendor-advisory.
+        record = {"cveMetadata": {"cveId": "CVE-2026-1", "assignerShortName": "eclipse"},
+                  "containers": {"cna": {"affected": [{"vendor": "Eclipse Foundation", "product": "X"}],
+                                         "references": [{"url": "https://psirt.sonicwall.com/a", "tags": ["x_refsource_CONFIRM"]},
+                                                        {"url": "https://tools.cisco.com/a", "tags": ["vendor-advisory"]},
+                                                        {"url": "https://gitlab.eclipse.org/report/1"}]},
+                                 "adp": [{"references": [{"url": "https://gitlab.eclipse.org/report/1", "tags": ["exploit"]}]}]}}
+        self.assertEqual([(m["kind"], m["url"]) for m in cvelist.mention_group(record)["mentions"][1:]],
+                         [("advisory", "https://tools.cisco.com/a"), ("advisory", "https://psirt.sonicwall.com/a"),
+                          ("writeup", "https://gitlab.eclipse.org/report/1")])
+
     def test_a_page_an_hn_story_linked_first_becomes_the_advisory_once_the_cve_record_tags_it(self):
         # SonicWall's PSIRT page came in as an HN story's link (a write-up), then the CVE record tagged it vendor-advisory.
         from collector.incidents import absorb

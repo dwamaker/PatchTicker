@@ -83,6 +83,17 @@ test('a one-CVE Incident whose only Mention is its CVE record still shows Source
   assert.match(html.split('id="s-mentions"')[1], /CVE 기록: <a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
 });
 
+test('a group whose only Mentions are its CVE records keeps the Lead record under Sources, in both languages', async () => {
+  const cves = ['CVE-2026-123158', 'CVE-2026-123159', 'CVE-2026-123160'];
+  const mentions = cves.map((c) => ({ kind: 'cve_record', url: `https://www.cve.org/CVERecord?id=${c}` }));
+  for (const [lang, label] of [['ko', 'CVE 기록'], ['en', 'CVE record']]) {
+    const sources = (await (await page({ ...SSHOLE, cves, mentions }, lang)).text()).split('id="s-mentions"')[1];
+    assert.ok(sources, lang);
+    assert.match(sources, new RegExp(`${label}: <a href="https://www.cve.org/CVERecord\\?id=CVE-2026-123158"`));
+    assert.doesNotMatch(sources, /CVE-2026-12315[90]"/); // only the Lead, the rest stay under the CVE list
+  }
+});
+
 test('the page shows what the Board panel shows, with the Board rules', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, />고위험</); // riskLevel: KEV
