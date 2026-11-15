@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown } from '../web/board.mjs';
+import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -175,11 +175,47 @@ test('quick filters keep only the chosen Risk levels and, when asked, exploited 
   const c = incident('CVE-2026-3', '2026-11-08T00:00:00Z');
   const pick = (opts) => filterBoard([a, b, c], [], '', NOW, opts).list.map((i) => i.id).sort();
   assert.deepEqual(pick({ risk: ['high'] }), ['CVE-2026-2']);
-  assert.deepEqual(pick({ risk: ['highest', 'notice'] }), ['CVE-2026-1', 'CVE-2026-3']);
+  assert.deepEqual(pick({ risk: ['highest', 'pending'] }), ['CVE-2026-1', 'CVE-2026-3']);
   assert.deepEqual(pick({ kev: true }), ['CVE-2026-1']);
   const f = { picks: ['os:linux'], query: 'ssh', risk: ['highest'], kev: true, from: '2026-11-01', to: '2026-11-08', cvssMin: 7, cve: 'yes', has: ['advisory'], sort: 'risk' };
   assert.deepEqual(filterFromQuery(filterToQuery(f)), f);
   assert.deepEqual(filterFromQuery('r=bogus').risk, []);
+  assert.deepEqual(filterFromQuery('r=constructor&r=__proto__').risk, []);
+});
+
+test('Score pending is its own risk choice: the lowest level alone keeps scored Incidents below 7, and an exploited one without a score stays at the top (N3)', () => {
+  const at = (n, extra) => ({ ...incident(`CVE-2026-${n}`, '2026-11-08T00:00:00Z'), ...extra });
+  const scoredLow = at(1, { cvss: 5 });
+  const none = at(2, {});
+  const nullScore = at(3, { cvss: null });
+  const exploited = at(4, { kev: true });
+  const zero = at(5, { cvss: 0 }); // a real score of 0 is scored, not pending
+  const all = [scoredLow, none, nullScore, exploited, zero];
+  const pick = (risk) => filterBoard(all, [], '', NOW, { risk }).list.map((i) => i.id).sort();
+  assert.deepEqual(pick(['notice']), ['CVE-2026-1', 'CVE-2026-5']);
+  assert.deepEqual(pick(['pending']), ['CVE-2026-2', 'CVE-2026-3']);
+  assert.deepEqual(pick(['highest']), ['CVE-2026-4']);
+  assert.deepEqual(all.map(riskChoice), ['notice', 'pending', 'pending', 'highest', 'notice']);
+  assert.deepEqual(all.map(riskLevel), ['notice', 'notice', 'notice', 'highest', 'notice']); // the row's sign is unchanged
+});
+
+test('a filter saved before Score pending was a choice still means what it meant; the new choices come back as written (N3)', () => {
+  // r=notice was the lowest level with the unscored rows in it.
+  assert.deepEqual(filterFromQuery('r=notice').risk.sort(), ['notice', 'pending']);
+  assert.deepEqual(filterFromQuery('r=highest&r=notice').risk.sort(), ['highest', 'notice', 'pending']);
+  for (const risk of [['notice'], ['pending'], ['high', 'pending'], ['highest', 'high', 'pending', 'notice']]) {
+    const back = filterFromQuery(filterToQuery({ picks: [], query: '', risk })).risk;
+    assert.deepEqual(back.sort(), [...risk].sort());
+  }
+  assert.equal(filterToQuery({ picks: [], query: '', risk: ['notice'] }), 'r=notice-only');
+});
+
+test('the four risk choices split the Board: each Incident falls under exactly one, so their counts add up to the total (N3)', () => {
+  const list = [9.8, 7.5, 5, undefined, null, 0].map((cvss, n) => ({ ...incident(`CVE-2026-${n + 1}`, '2026-11-08T00:00:00Z'), cvss }));
+  list.push({ ...incident('CVE-2026-9', '2026-11-08T00:00:00Z'), kev: true });
+  const counts = RISKS.map((r) => filterBoard(list, [], '', NOW, { risk: [r] }).list.length);
+  assert.equal(counts.reduce((a, b) => a + b), list.length);
+  assert.deepEqual(RISKS, ['highest', 'high', 'pending', 'notice']); // the panel's order, and the risk sort's
 });
 
 test('the panel narrows by date, CVSS, CVE and link kind, and sorts by risk or CVSS', () => {

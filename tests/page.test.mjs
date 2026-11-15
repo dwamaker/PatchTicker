@@ -410,3 +410,15 @@ test('a HEAD shares the cache entry of a GET, and never stores a bodiless answer
     globalThis.caches = saved;
   }
 });
+
+test('a group page shows each CVE with its one line, the Summary\'s else the record\'s, and a CVE with no line keeps its id (M3)', async () => {
+  const cves = Array.from({ length: 14 }, (_, n) => `CVE-2026-${1000 + n}`);
+  const lines = [{ cve: cves[0], text: '첫 번째 줄' }];
+  const group = { ...SSHOLE, cves, cve_texts: { [cves[1]]: 'Record <b>text</b>', [cves[13]]: 'Last one' },
+    summary: { ...SSHOLE.summary, ko: { ...SSHOLE.summary.ko, cve_lines: lines } } };
+  const html = await (await page(group)).text();
+  assert.match(html, /<ul class="cves lines"><li><strong><a href="https:\/\/www\.cve\.org\/CVERecord\?id=CVE-2026-1000"[^>]*>CVE-2026-1000<span[^>]*>[^<]*<\/span><\/a><\/strong> 첫 번째 줄<\/li>/);
+  assert.match(html, /CVE-2026-1001<span[^>]*>[^<]*<\/span><\/a><\/strong> Record &lt;b&gt;text&lt;\/b&gt;<\/li>/); // escaped
+  assert.match(html, /<li><a [^>]*>CVE-2026-1002<span[^>]*>[^<]*<\/span><\/a><\/li>/); // no line: the id alone
+  assert.match(html, /<details class="more">[\s\S]*CVE-2026-1013<span[^>]*>[^<]*<\/span><\/a><\/strong> Last one<\/li>[\s\S]*<\/details>/); // past the fold too
+});

@@ -14,7 +14,7 @@ export function filterFromQuery(search) {
   const day = (key) => (DAY.test(params.get(key) || '') ? params.get(key) : '');
   return {
     picks: [...new Set(params.getAll('p').map(ownId))], query: params.get('q') || '',
-    risk: params.getAll('r').filter((r) => RISKS.includes(r)), kev: params.get('k') === '1',
+    risk: [...new Set(params.getAll('r').flatMap((r) => RISK_TOKENS[r] || []))], kev: params.get('k') === '1',
     from: day('f'), to: day('t'), cvssMin: [4, 7, 9].includes(Number(params.get('c'))) ? Number(params.get('c')) : 0,
     cve: ['yes', 'no'].includes(params.get('cv')) ? params.get('cv') : '',
     has: params.getAll('h').filter((h) => LINK_KINDS.includes(h)), sort: SORTS.includes(params.get('s')) ? params.get('s') : 'new',
@@ -22,7 +22,7 @@ export function filterFromQuery(search) {
 }
 
 export function filterToQuery({ picks, query, risk = [], kev = false, from = '', to = '', cvssMin = 0, cve = '', has = [], sort = 'new' }) {
-  const params = new URLSearchParams([...picks.map((p) => ['p', p]), ...risk.map((r) => ['r', r]), ...has.map((h) => ['h', h])]);
+  const params = new URLSearchParams([...picks.map((p) => ['p', p]), ...risk.map((r) => ['r', r === 'notice' ? 'notice-only' : r]), ...has.map((h) => ['h', h])]);
   if (kev) params.set('k', '1');
   if (from) params.set('f', from);
   if (to) params.set('t', to);
@@ -36,7 +36,11 @@ export function filterToQuery({ picks, query, risk = [], kev = false, from = '',
 export const SORTS = ['new', 'risk', 'cvss'];
 export const LINK_KINDS = ['advisory', 'repo'];
 
-export const RISKS = ['highest', 'high', 'notice'];
+// The risk filter's choices, in risk order: the three risk levels, and Score pending above the lowest (N3, owner 11-15).
+export const RISKS = ['highest', 'high', 'pending', 'notice'];
+// Their tokens in the address and the saved filter. r=notice, saved before Score pending was its own choice, keeps its
+// meaning: the lowest level with the pending rows in it; the lowest level alone is written notice-only.
+const RISK_TOKENS = { __proto__: null, highest: ['highest'], high: ['high'], pending: ['pending'], 'notice-only': ['notice'], notice: ['pending', 'notice'] };
 export const OSES = ['Windows', 'macOS', 'Linux', 'Android', 'iOS'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -215,6 +219,10 @@ export function riskLevel(i) {
   return i.cvss >= 7 ? 'high' : 'notice';
 }
 
+// The risk filter's choice an Incident falls under: its level, or Score pending when it has no score and no attacks. The
+// row keeps its level's sign (riskLevel), drawn dashed.
+export const riskChoice = (i) => (riskLevel(i) === 'notice' && i.cvss == null ? 'pending' : riskLevel(i));
+
 // Offered to search engines and the RSS feed (Incident page, CONTEXT.md): on the Board with a Summary, and at the 위험
 // level or above, exploited, or without a CVE. Also in collector/incidents.py (search_worthy).
 export const searchWorthy = (i) => Boolean(i.summary) && onBoard(i) && (riskLevel(i) !== 'notice' || !i.cves.length);
@@ -259,10 +267,9 @@ export function easyAction(s) {
 // each falling back to newest.
 const newest = (a, b) => (publishedAt(a) < publishedAt(b) ? 1 : publishedAt(a) > publishedAt(b) ? -1 : 0);
 // No score yet (and not exploited) is not "scored low" (critique 13): it sorts above the scored 참고 rows, below 위험.
-const unscored = (i) => i.cvss == null;
-const riskRank = (i) => { const k = RISKS.indexOf(riskLevel(i)); return k === 2 && unscored(i) ? 1.5 : k; };
-const cvssKey = (i) => (unscored(i) ? 6.95 : i.cvss); // between 7.0 (위험) and 6.9: scores have one decimal
+const cvssKey = (i) => (i.cvss == null ? 6.95 : i.cvss); // between 7.0 (위험) and 6.9: scores have one decimal
 export function orderBy(sort) {
+  const riskRank = (i) => RISKS.indexOf(riskChoice(i));
   return { __proto__: null, risk: (a, b) => riskRank(a) - riskRank(b) || newest(a, b),
     cvss: (a, b) => cvssKey(b) - cvssKey(a) || newest(a, b) }[sort] || newest;
 }
@@ -384,7 +391,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
       if (!own.some((p) => products.some((q) => sameProduct(q, p.id)))) return false;
       variant.add(i);
     }
-    if (risk.length && !risk.includes(riskLevel(i))) return false;
+    if (risk.length && !risk.includes(riskChoice(i))) return false;
     if (kev && !isExploited(i)) return false;
     const day = publishedAt(i).slice(0, 10); // UTC date; a visitor far from UTC may see a row one day off
     if ((from && day < from) || (to && day > to)) return false;
@@ -535,7 +542,7 @@ export const WORDS = {
     version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
     fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
-    levels: { highest: '고위험', high: '위험', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
+    levels: { highest: '고위험', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
     none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
@@ -551,7 +558,7 @@ export const WORDS = {
     version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
     fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
-    levels: { highest: 'High risk', high: 'Elevated', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
+    levels: { highest: 'High risk', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },

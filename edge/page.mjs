@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { cveUrl, cvssRating, easyLine, exploitReason, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { cveLines, cveUrl, cvssRating, easyLine, exploitReason, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -105,6 +105,7 @@ code{font-family:var(--mono);font-size:.875rem}
 .links{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule)}
 .sources li+li{margin-top:.25rem}
 .cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
+.cves.lines{display:block}.cves.lines li+li{margin-top:.375rem}
 .cves,time,#s-todo~ul li{font-variant-numeric:tabular-nums}
 @media (pointer:coarse){:is(.sources,.cves) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
 .more summary{width:fit-content;padding:.375rem 0;color:var(--focus);font-weight:600;cursor:pointer;text-underline-offset:3px}
@@ -117,11 +118,15 @@ const link = (url, text, t) => (http(url) ? `<a href="${esc(url)}"${NEW_TAB}>${e
 // A release can carry hundreds of CVEs (IBM API Connect: 204): the first CVE_SHOWN stay in view, the rest fold. Every
 // link stays in the HTML for search engines; <details> needs no script.
 const CVE_SHOWN = 10;
-const cveList = (cves, t) => {
-  const links = cves.map((cve) => link(cveUrl(cve), cve, t));
-  if (links.length <= CVE_SHOWN + 2) return ul(links, 'cves'); // two more are not worth a fold
-  return ul(links.slice(0, CVE_SHOWN), 'cves')
-    + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), 'cves')}</details>`;
+// Each CVE with its one line, as the Board's opened row shows it (cveLines, M3); a CVE with no line yet keeps its id. In
+// stored order: an order by score (step 4) sorts i.cves here.
+const cveList = (i, lang, t) => {
+  const text = new Map(cveLines(i, lang).map((l) => [l.cve, l.text]));
+  const cls = text.size ? 'cves lines' : 'cves';
+  const links = i.cves.map((cve) => (text.has(cve) ? `<strong>${link(cveUrl(cve), cve, t)}</strong> ${esc(text.get(cve))}` : link(cveUrl(cve), cve, t)));
+  if (links.length <= CVE_SHOWN + 2) return ul(links, cls); // two more are not worth a fold
+  return ul(links.slice(0, CVE_SHOWN), cls)
+    + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), cls)}</details>`;
 };
 const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
@@ -251,7 +256,7 @@ export function pageHtml(i, lang, slug) {
     section('conditions', t.conditions, ul(strings(s.conditions).map(esc))),
     section('todo', t.todo, whatToDo(i, lang)),
     section('products', t.products, products(i, lang)),
-    section('cves', t.cves, cveList(i.cves, t)),
+    section('cves', t.cves, cveList(i, lang, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
     section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
     `<script>${LOCAL_TIME}</script>`,

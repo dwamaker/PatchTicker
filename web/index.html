@@ -259,7 +259,7 @@
     .fp-chip input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 700; }
     .fp-chip.risk-highest input:checked + span { background: color-mix(in srgb, var(--high) 12%, var(--panel)); border: 1.5px solid var(--high); color: var(--high); }
     .fp-chip.risk-high input:checked + span { background: color-mix(in srgb, var(--mid-mark) 12%, var(--panel)); border: 1.5px solid var(--mid-mark); color: var(--mid); }
-    .fp-chip.risk-notice input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
+    .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
     .fp-chip.zero span { border-style: dashed; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
     .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
