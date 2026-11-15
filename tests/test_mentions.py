@@ -172,10 +172,9 @@ class StoryPageTest(unittest.TestCase):
                                                     {"kind": "writeup", "url": writeup}],
                                        "cves": [cve], "urls": [], "text": cve}, "2026-11-05T16:00:00Z")
 
-    def story(self, page):
+    def story(self, page, url="https://sunshowers.io/posts/sshole/", item=50399400):
         from collector.incidents import page_keys
-        url = "https://sunshowers.io/posts/sshole/"
-        return {"mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=50399400"},
+        return {"mentions": [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={item}"},
                              {"kind": "writeup", "url": url}],
                 "cves": [], "urls": [], "text": "*sshole, or when are we going to get rid of C?", "join_only": False,
                 "page": page_keys(page, url)}
@@ -204,6 +203,36 @@ class StoryPageTest(unittest.TestCase):
         self.link(self.incidents, self.story("CVE-2026-123158 and CVE-2026-9999"), "2026-11-08T03:00:00Z")
         self.assertEqual(self.rejoin(), set())
         self.assertEqual(len(self.incidents), 3)
+
+    def test_a_page_linking_a_page_another_incident_also_links_stands_alone(self):
+        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-8888"}],
+                                   "cves": ["CVE-2026-8888"], "urls": ["https://other.example/post"], "text": "x"}, "2026-11-06T00:00:00Z")
+        self.link(self.incidents, self.story('<a href="https://other.example/post">post</a>'), "2026-11-08T03:00:00Z")
+        self.assertEqual(self.rejoin(), set())
+        self.assertEqual(len(self.incidents), 4)
+
+    def test_a_page_linking_a_vendors_list_of_advisories_stands_alone_and_one_notice_still_joins(self):
+        for cve, url in (("CVE-2026-8888", "https://www.asus.com/security-advisory"),
+                         ("CVE-2026-7777", "https://www.asus.com/content/asus-security-advisory-2026-11/")):
+            self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"},
+                                                    {"kind": "advisory", "url": url}], "cves": [cve], "urls": [], "text": cve},
+                      "2026-11-06T00:00:00Z")
+        self.link(self.incidents, self.story('<a href="https://www.asus.com/security-advisory">list</a>'), "2026-11-08T03:00:00Z")
+        self.assertEqual(self.rejoin(), set())
+        self.link(self.incidents, self.story('<a href="https://www.asus.com/content/asus-security-advisory-2026-11/">one</a>',
+                                             "https://blog.example/asus", 50399401), "2026-11-08T03:00:00Z")
+        self.rejoin()
+        self.assertIn("https://blog.example/asus", [m["url"] for m in self.incidents[3]["mentions"]])
+        self.assertEqual(len(self.incidents), 5)
+
+    def test_a_page_naming_one_incidents_cve_next_to_another_incidents_list_page_stands_alone(self):
+        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-8888"},
+                                                {"kind": "advisory", "url": "https://www.asus.com/security-advisory"}],
+                                   "cves": ["CVE-2026-8888"], "urls": [], "text": "x"}, "2026-11-06T00:00:00Z")
+        self.link(self.incidents, self.story('CVE-2026-9999 <a href="https://www.asus.com/security-advisory">list</a>'),
+                  "2026-11-08T03:00:00Z")
+        self.assertEqual(self.rejoin(), set())
+        self.assertEqual(len(self.incidents), 4)
 
     def test_citations_are_dropped_after_a_week(self):
         from collector.incidents import rejoin

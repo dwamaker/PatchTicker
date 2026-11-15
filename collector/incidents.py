@@ -13,6 +13,7 @@ import fnmatch
 import hashlib
 import json
 import re
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -427,11 +428,19 @@ def page_keys(page, page_url):
 
 def cited_by(incidents, keys):
     """The one Incident a CVE-less story's page is about (a blog on sshole links sshhole.com): matched by a
-    CVE ID or by a link to one of its advisory, write-up or repo pages. Several or none: [] (stands alone)."""
+    CVE ID or by a link to one of its advisory, write-up or repo pages. Several or none: [] (stands alone).
+    The one must be named by a CVE ID or by a page no other Incident links; an advisory with no identifier (a
+    vendor's list of notices, a changelog, a product page) names none."""
     urls = set(keys["urls"])
-    hits = [i for i in incidents if set(i["cves"]) & set(keys["cves"])
-            or {url_key(m["url"]) for m in i["mentions"] if m["kind"] in ("advisory", "writeup", "repo")} & urls]
-    return hits if len(hits) == 1 else []
+    pages = lambda i: {url_key(m["url"]): m for m in i["mentions"] if m["kind"] in ("advisory", "writeup", "repo")}
+    hits = [i for i in incidents if set(i["cves"]) & set(keys["cves"]) or pages(i).keys() & urls]
+    if len(hits) != 1:
+        return []
+    from collector.cvelist import has_id  # cvelist imports this module
+    linked = Counter(u for i in incidents for u in i["urls"])  # a Mention's page is one of its Incident's urls
+    named = set(hits[0]["cves"]) & set(keys["cves"]) or any(
+        linked[u] == 1 and (m["kind"] != "advisory" or has_id(m["url"])) for u, m in pages(hits[0]).items() if u in urls)
+    return hits if named else []
 
 
 def rejoin(incidents, since):
@@ -475,7 +484,7 @@ def absorb(target, other):
     seen = {url_key(m["url"]) for m in target["mentions"]}
     for m in other["mentions"]:
         if m["kind"] == "advisory" and url_key(m["url"]) in seen:
-            # Only a CVE record's tag says "advisory"; it beats the write-up an HN link guessed for the same page.
+            # Only a CVE record says "advisory"; it beats the write-up an HN link guessed for the same page.
             for t in target["mentions"]:
                 if url_key(t["url"]) == url_key(m["url"]):
                     t["kind"] = "advisory"
