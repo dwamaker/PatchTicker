@@ -105,7 +105,7 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
 - summary: at most two sentences. What the problem is and who is affected. Plain words, no hype. When a source withholds the names of the affected companies ("two automakers, which we'll call Automaker #1 and #2"), say they were not named; never guess them from other names on the page (a list of earlier targets is not this one).
 - conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). A CVE record's configurations names the settings that must be present. Empty list when the text names none.
 - easy_conditions: the same conditions for the easy reader: as many as in conditions, in the same order, each one rewritten in everyday words with the same ban on technical terms as easy ("관리 화면을 인터넷에 열어 둔 경우", "If the admin page is reachable from the internet"). Empty list when conditions is empty.
-- mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. When a source says this flaw has no fix (no patch available, no fixed release, no solution reported yet, the product no longer maintained), that wins over the upper-bound advice and holds even when nothing else can be done: begin with exactly one of these sentences, word for word: "수정 버전은 아직 없습니다." / "There is no fix yet.", or for a product no longer maintained "더 이상 지원되지 않아 수정 버전이 없습니다." / "It is no longer maintained, so no fixed version exists." (never both, and no "아직" or "yet" then), then tell the reader to do what a source says instead (a workaround, a migration, replacing the device) as an instruction ("지원되는 기기로 교체하세요.", "Replace it with a supported device."), never as a report of the advice, and never an update to a version or build no source names. When only some product lines have no fix, give the others' fixed versions first, then name the lines with no fix and what a source says they should do (such as moving to a fixed line). A source that only names no fixed version does not say there is none. Leave out advice written for the product's developers (how to change its code). When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Empty string when no source says anything a reader can act on.
+- mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. When a source says a whole product line is affected ("7.0 all versions") and names no fixed version on it, tell that line's users to move to a line that has one, never to look for a version newer than a bound. When several lines are affected and only some have a fixed version, give each of those its version and say the others have none confirmed ("7.2 계열의 수정 버전은 확인되지 않았습니다.", "A fixed version for the 7.2 line is not confirmed."), or what a source tells them to do; never send them to another line's version. When a source says the service must be restarted or the device rebooted after the update, say so right after the update ("업데이트한 뒤 sshd를 다시 시작하세요.", "Then restart sshd."). The mitigation is read on its own: it names the versions and lines itself even when fixes lists them, and never points at another field or part of the page ("the range above", "listed below", "아래 목록"). When a source says this flaw has no fix (no patch available, no fixed release, no solution reported yet, the product no longer maintained), that wins over the upper-bound advice and holds even when nothing else can be done: begin with exactly one of these sentences, word for word: "수정 버전은 아직 없습니다." / "There is no fix yet.", or for a product no longer maintained "더 이상 지원되지 않아 수정 버전이 없습니다." / "It is no longer maintained, so no fixed version exists." (never both, and no "아직" or "yet" then), then tell the reader to do what a source says instead (a workaround, a migration, replacing the device) as an instruction ("지원되는 기기로 교체하세요.", "Replace it with a supported device."), never as a report of the advice, and never an update to a version or build no source names. When only some product lines have no fix, give the others' fixed versions first, then name the lines with no fix and what a source says they should do (such as moving to a fixed line). A source that only names no fixed version does not say there is none. Leave out advice written for the product's developers (how to change its code). When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Empty string when no source says anything a reader can act on.
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
 - When the flaw needs a condition (a system such as musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it; never widen it to every user of the product, and never narrow it either: when the sources name a kind with examples ("musl-based Linux such as Alpine or OpenWrt"), name every example (the kind itself is often a technical term), never one example alone, or a reader who runs another one thinks they are safe ("Alpine·OpenWrt SSH 서버 아무 비밀번호 통과", "SSH on Alpine or OpenWrt accepts any long password"; never "Alpine SSH 서버 …" alone).
 - easy_title: a headline of at most 5 words for the same reader, ending in the plain danger ("Windows 그림판 해킹 위험", "SonicWall VPN 장비 뚫림 위험"): it must name the product as its users call it, first, with what it is when that is unclear, then the danger in everyday words ("OpenSSH 원격 접속 서버 장악 위험", "Brotli 압축 부품 서버 멈춤 위험", "Brotli flaw stalls web servers"; never "서버 멈춤 위험" alone). No versions, no CVE ID, and the same ban on technical terms.
@@ -119,7 +119,7 @@ Also:
 - products: the affected product names without versions, as the vendor writes them and never translated, with the vendor in front when the name alone does not say whose it is ("OpenSSH", "OpenWrt", "SonicWall SonicOS", "Apache Axis2").
 - lead: the one Mention URL a reader should open first, copied exactly from the Mentions list. Prefer the product's official advisory or release note, then the discoverer's write-up, then the CVE record, then discussion. Empty string if none fits.
 - fixed: the fixed version number alone ("10.6p2"), as a source states it. A CVE record's solutions is a source like any other: a version it says to upgrade to is a fixed version ("Upgrade to 7.4.13 or above" names 7.4.13). Empty string when no source names one. When product lines have different fixed versions, the first line's. When a source says versions "before X" or "prior to X" are affected, X is the fixed version, and mitigation says to update to X or later.
-- fixes: when the sources give different fixed versions for different product lines or models, one entry per line, in the source's order: "for" is the line with its vendor in front, as short as the source allows ("SonicWall Gen7", "SonicWall Gen8"), "version" is that line's fixed version alone ("7.3.4-7013"), "devices" is that line's models from "devices", written exactly as there (empty list when the sources do not say which models belong to the line). Empty list when there is a single fixed version or none.
+- fixes: when the sources give different fixed versions for different product lines or models, one entry per line, in the source's order: "for" is the line with its vendor in front, as short as the source allows ("SonicWall Gen7", "SonicWall Gen8"), named as the source names that line ("Synology DSM 7.3", and "Synology DSM 7.2.2" beside "Synology DSM 7.2.1" when the source splits them), never by its fixed version or a range ("DSM 7.3.2" for the 7.3 line, "6.11.0 up to before 6.22.0"), "version" is that line's fixed version alone ("7.3.4-7013"), "devices" is that line's models from "devices", written exactly as there (empty list when the sources do not say which models belong to the line). Empty list when there is a single fixed version or none.
 - command: the one shell command a source gives to update, copied character for character ("apk upgrade openssh"). Empty string when no source prints one; never write a command yourself.
 - stopgap: the setting or command a source gives as a stopgap until the update, copied character for character. A CVE record's workarounds is a source for it. Empty string when none.
 - stopgap_then: when a source says what must follow the stopgap for it to take effect (restart or reload the service, reboot the device), that step as one short sentence ("바꾼 뒤 sshd를 다시 시작하세요.", "Then restart sshd."). Empty string when there is no stopgap or no source says.
@@ -221,8 +221,13 @@ def easy_action_mismatch(summary):
 
 GAP_FIELDS = ("title", "summary", "mitigation", "easy", "easy_title", "easy_action")
 GAP_ENDS = (" in Korean only", " in English only", " is not in Korean")  # retry() gives these their own sentence
-VERSION_GAP = "a version stands in one language only"  # retry() gives these two their own sentences too
+VERSION_GAP = "a version stands in one language only"  # retry() gives these three their own sentences too
 WORDING_GAP = "Korean wording"
+RANGE_GAP = "an English range word in Korean"
+# A range written in English inside Korean text (review L2: "15.0.0 before 15.64.6", "26.2.0 through 26.2.3"), never a
+# word alone: "::before" (a CSS selector) and product names stay.
+EN_RANGE = re.compile(r"\d\S*\s+(?:through|thru|to|before|until)\s+v?\d|\b(?:prior to|before|up to|through)\s+v?\d"
+                      r"|\d\S*\s+(?:and|or)\s+(?:earlier|later|older|newer|above|below)\b", re.I)
 HANGUL = re.compile(r"[가-힣]")
 # Words the prompt forbids in Korean text, with the word to write. 소스 counts only as "the sources say/lack a version"
 # (not 리소스, 오픈소스, 소스 코드, "Git 소스에서 빌드"), as matched on the stored Summaries in the second 11-11 review.
@@ -236,7 +241,7 @@ def language_gaps(summary):
     """A field written in one language and empty in the other, a Korean title or summary without one Hangul syllable
     (11-11 review: Korean mitigations left empty beside English ones; a ko.title identical to the English), a dotted
     version in one language only (CVE-2026-113555: "26.5" became "26.5.3" in Korean), or a Korean word the prompt
-    forbids (KO_FORBIDDEN). The reason, or ""."""
+    forbids (KO_FORBIDDEN), or a range written in English in Korean text (EN_RANGE). The reason, or ""."""
     for field in GAP_FIELDS:
         ko, en = bool(summary["ko"][field]), bool(summary["en"][field])
         if ko != en:
@@ -250,12 +255,16 @@ def language_gaps(summary):
     if alone:
         return f"{VERSION_GAP}: {alone[:5]}"
     words = [f"{word} (write {fix})" for pattern, word, fix in KO_FORBIDDEN if pattern.search(ko_text)]
-    return f"{WORDING_GAP}: {', '.join(words)}" if words else ""
+    if words:
+        return f"{WORDING_GAP}: {', '.join(words)}"
+    ranges = sorted({m[0] for m in EN_RANGE.finditer(ko_text)})
+    return f"{RANGE_GAP}: {ranges[:3]}" if ranges else ""
 
 
 VERSION_RE = re.compile(r"(?<!\d)\d{1,20}(?:\.\d{1,20})+(?!\d)")  # bounded: int() rejects over 4300 digits
-# A Red Hat, Fedora, Amazon, openEuler, Debian or Ubuntu package version ("1.16.1-8.el8_10", "1.22.0-2+deb12u3").
-DISTRO_PACKAGE = re.compile(r"-\d+(?:\.\d+)*\.(?:el|fc|amzn|oe)\d|[+~-]\d*(?:deb|ubuntu)\d")
+# A Red Hat (also its Hardened Images), Fedora, Amazon, openEuler, Debian, Ubuntu or Alpine package version
+# ("1.16.1-8.el8_10", "1.16.2-7.1.hum1", "1.22.0-2+deb12u3", "10.3_p1-r2"). A digit before "-r": "KobiPBX-FOP3-SEC-r1" is a build.
+DISTRO_PACKAGE = re.compile(r"-\d+(?:\.\d+)*\.(?:el|fc|amzn|oe|hum)\d|[+~-]\d*(?:deb|ubuntu)\d|\d-r\d+\b")
 FIXED_CONFLICT = "fixed version "  # retry() gives it its own sentence
 
 
@@ -591,11 +600,15 @@ def retry(incident, text=""):
         " Write the same facts and versions in Korean and in English: name every version in both languages, exactly as"
         " the input writes it." if reason.startswith(VERSION_GAP) else
         " In Korean, call the sources 출처, a fixed version 수정 버전 and the vendor 제조사." if reason.startswith(WORDING_GAP) else
+        " In Korean, write a version range in Korean (\"1.0.0~1.0.4\", \"1.0.5 미만\", \"1.0.4 이하\", \"1.0.5 이상\"), never"
+        " with through, to, prior to, before or and earlier." if reason.startswith(RANGE_GAP) else
         # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
-        " A distribution's package version (Red Hat's 1.16.1-8.el8_10, Debian's 1.22.0-2+deb12u3) is a backport, not the"
-        " product's fixed version: write the product's own first fixed version from the input in `fixed`, and name each"
-        " distribution's package under `fixes` with the distribution in `for`. Write every version exactly as the input"
-        " writes it." if reason.startswith(FIXED_CONFLICT) else
+        # 11-15: the bound comes from the CVE records' fix keys, which the input may not hold (CVE-2026-125712, 1.28.4);
+        # naming it as the version to write sent the model to it, and the number check rejected it.
+        " A version below that bound is still affected. In `fixed` and `fixes` name only a fixed version the input"
+        " itself writes; when the input names none at or above the bound, leave `fixed` empty and never write the bound"
+        " yourself. A distribution's package version (Red Hat's 1.16.1-8.el8_10) goes only under `fixes`, with the"
+        " distribution in `for`." if reason.startswith(FIXED_CONFLICT) else
         " Write every number and version exactly as the input writes it: never shorten or round one (not 10.86 for"
         " 10.86.51, not 4.2 for 4.2.16), never add one the input does not have, and use the same numbers in Korean and"
         " English.")
@@ -690,8 +703,12 @@ def parse(reply, input_text, urls):
     known = numbers(input_text)
     ko, en = (ko_numbers(without_line_names(lang_text(summary["ko"]), fixed, known)),
               numbers(without_line_names(lang_text(summary["en"]), fixed, known)))
-    unknown = (ko | en | numbers("\n".join([summary["fixed"], *summary["devices"],
-                                             *(x for f in summary["fixes"] for x in (f["version"], *f["devices"]))]))) \
+    # A line's name ("Vault Enterprise 1.19", "Kibana 8.x") may name its own version's line; any other number in it must
+    # be in the input (11-15: "Vault Enterprise 1.22" over 1.19.25 reached the page unchecked).
+    lines = {t for f in summary["fixes"] for t in numbers(f["for"])
+             if not any(v.startswith(f"{t}.") or v == t for v in numbers(f["version"]))}
+    unknown = (ko | en | lines | numbers("\n".join([summary["fixed"], *summary["devices"],
+                                                     *(x for f in summary["fixes"] for x in (f["version"], *f["devices"]))]))) \
         - known - number_words(input_text)
     if unknown:
         raise Rejected(f"numbers not in the input: {sorted(unknown)}")

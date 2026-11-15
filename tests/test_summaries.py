@@ -4,6 +4,7 @@ pages/sshhole.com.html and pages/release-10.6p2.txt are the real pages (2026-11-
 """
 
 import json
+import re
 import unittest
 import urllib.error
 from types import SimpleNamespace
@@ -751,20 +752,23 @@ class FixedConflictTest(unittest.TestCase):
     def test_a_distributions_package_under_fixes_passes_but_not_as_the_bare_fixed_version(self):
         # Owner, 2026-11-12: GStreamer's Red Hat backports (CVE-2026-125712) were rejected three times against 1.28.4.
         keys = ["gstreamer:gst-plugins-base<1.28.4"]
-        for version in ("1.16.1-8.el8_10", "0:1.16.1-3.el8_10", "1.22.12-10.el9_9.1", "1.22.0-2+deb12u3", "1.24.2-1ubuntu0.2"):
+        for version in ("1.16.1-8.el8_10", "0:1.16.1-3.el8_10", "1.22.12-10.el9_9.1", "1.22.0-2+deb12u3", "1.24.2-1ubuntu0.2",
+                        "1.16.2-7.1.hum1", "10.3_p1-r2", "3.0.15-r0"):  # 11-15: Red Hat Hardened Images, Alpine (review N2)
             with self.subTest(version):
                 self.assertEqual(self.conflict(fixes=[version], keys=keys), "")
         self.assertEqual(self.conflict("1.16.1-3.el8_10", keys=keys), "fixed version 1.16.1 is below 1.28.4, the first fixed"
                          " version in the CVE records; a version below it is still affected")
         self.assertIn("1.16.1 is below 1.28.4", self.conflict(fixes=["1.16.1"], keys=keys))
-        for plain in ("1.16.1", "3.22.2", "2.0.0-rc1"):
+        for plain in ("1.16.1", "3.22.2", "2.0.0-rc1", "KobiPBX-FOP3-SEC-r1", "10.6p2"):  # a build named "-r1" is no package
             self.assertIsNone(summaries.DISTRO_PACKAGE.search(plain))
 
-    def test_the_retry_note_for_a_conflict_names_the_backport_and_others_keep_their_sentence(self):
-        sentence = "is a backport, not the product's fixed version"
+    def test_the_retry_note_for_a_conflict_asks_only_for_a_version_the_input_writes(self):
+        # 11-15: the bound came from the fix keys, not the input; the old note sent the model to it (CVE-2026-125712).
+        sentence = "never write the bound yourself"
         note = summaries.retry({"summary_error": {"reason": self.conflict("1.16.1-3.el8_10", keys=["gstreamer:gst-plugins-base<1.28.4"])}})["note"]
         self.assertIn("rejected: fixed version 1.16.1 is below 1.28.4", note)
         self.assertIn(sentence, note)
+        self.assertNotIn("write the product's own first fixed version", note)
         self.assertNotIn("never shorten or round", note)
         other = summaries.retry({"summary_error": {"reason": "numbers not in the input: ['9.9']"}})["note"]
         self.assertNotIn(sentence, other)
@@ -940,7 +944,8 @@ class NumberWordTest(unittest.TestCase):
 class LineNameTest(unittest.TestCase):
     """11-15: about a quarter of the unclean replies in the re-summary named a product line beside its fixed version
     ("Update the 26.1 line to 26.1.11", OPNsense) and were rejected for "26.1", which the input writes only as 26.1.11."""
-    SOURCE = "Fixed in 26.1.11 and 26.4.1p1; 26.1.12 fixes a second flaw. Affected: 26.1.0 through 26.1.10. 26.1 million downloads."
+    SOURCE = ("Fixed in 26.1.11 and 26.4.1p1; 26.1.12 fixes a second flaw. Affected: 26.1.0 through 26.1.10, and 26.2.0 with no fix."
+              " 26.1 million downloads.")
     FIXES = [{"for": "OPNsense 26.1", "version": "26.1.11"}, {"for": "OPNsense 26.4", "version": "26.4.1p1"}]
 
     def parse(self, ko, en, fixes=FIXES, fixed=""):
@@ -957,10 +962,22 @@ class LineNameTest(unittest.TestCase):
         self.parse("26.1.x는 26.1.11로 업데이트하세요.", "Update 26.1.x to 26.1.11.", fixes=[], fixed="26.1.11")
         # CVE-2026-92735 (Vault): the reply's fixes give 1.19.25; a second CVE's fix on that line is only in the input.
         self.parse("두 번째 결함은 26.1 라인에서 26.1.12가 필요합니다.", "The second flaw needs 26.1.12 on the 26.1 line.")
+        # Vault (CVE-2026-92735, 11-15): a line with no fix, named as a line, after the M5 prompt rule.
+        self.parse("26.2 계열의 수정 버전은 확인되지 않았습니다.", "A fixed version for the 26.2 line is not confirmed.")
         # An amount is not a line: "26.1 million" stays 26100000 in English, as 2610만 is in Korean.
         self.parse("26.1.11에서 고쳐졌고 다운로드는 2610만 회입니다.", "Fixed in 26.1.11, with 26.1 million downloads.")
         with self.assertRaises(summaries.Rejected):  # 26.1.11 is in the input, but the reply does not give it as a fix
             self.parse("26.1.x는 26.1.11로 업데이트하세요.", "Update 26.1.x to 26.1.11.", fixes=[{"for": "x", "version": "26.4.1p1"}])
+
+    def test_a_line_name_in_fixes_holds_only_its_own_line_or_numbers_the_input_has(self):
+        # 11-15: fixes[].for was never number-checked, so "Vault Enterprise 1.22" over 1.19.25 reached the page.
+        mitigation = ("26.1.11, 26.4.1p1로 업데이트하세요.", "Update to 26.1.11 or 26.4.1p1.")
+        for line in ("OPNsense 26.1", "OPNsense 26.x", "OPNsense 26.1.0 through 26.1.10"):
+            with self.subTest(line):
+                self.parse(*mitigation, fixes=[{"for": line, "version": "26.1.11"}, self.FIXES[1]])
+        with self.assertRaises(summaries.Rejected) as caught:
+            self.parse(*mitigation, fixes=[{"for": "OPNsense 26.2", "version": "26.1.11"}, self.FIXES[1]])
+        self.assertEqual(str(caught.exception), "numbers not in the input: ['26.2']")
 
     def test_a_shortened_version_to_install_stays_rejected(self):
         cases = {"alone": ("26.1로 업데이트하세요.", "Update to 26.1."),
@@ -968,6 +985,7 @@ class LineNameTest(unittest.TestCase):
                  "beside a version not in the input": ("26.1 계열을 26.1.13으로 올리세요.", "Move the 26.1 line to 26.1.13."),
                  "not a prefix by whole parts": ("26.4.1p1로 업데이트하세요(26.1.1 계열).", "Update to 26.4.1p1 (the 26.1.1 line)."),
                  # Found by the adversarial review: a shortened version to install beside the full one.
+                 "a line with no fix as the version to install": ("26.2로 업데이트하세요.", "Update to 26.2."),
                  "or later, beside its fix": ("26.1 이상(26.1.11)으로 업데이트하세요.", "Update to 26.1 or later (26.1.11)."),
                  "to it, beside its fix": ("26.1로 업데이트하세요, 26.1.11에서 수정되었습니다.", "Update to 26.1, as 26.1.11 fixes it.")}
         for case, (ko, en) in cases.items():
@@ -997,6 +1015,18 @@ class LanguageGapsTest(unittest.TestCase):
         self.assertEqual(self.gaps(ko={"title": title}), "the Korean title is not in Korean")
         self.assertEqual(self.gaps(ko={"summary": "OpenSSH 10.6p2."}), "the Korean summary is not in Korean")
         self.assertEqual(self.gaps(ko={"title": "HP Poly EagleEye Cube USB 관리 서비스 명령 실행"}), "")
+
+    def test_a_range_written_in_english_inside_korean_text_is_a_gap_with_its_own_retry_sentence(self):
+        # Review L2 (CVE-2026-116500, CVE-2026-126170); Frappe HRMS: "15.0.0 before 15.64.6 버전이면".
+        for ko in ("15.0.0 before 15.64.6 버전이면 15.64.6으로 업데이트하세요.", "26.2.0 through 26.2.3이 해당합니다.",
+                   "prior to 2.6.2 버전이 해당합니다.", "2.6.1 and earlier 버전이 해당합니다."):
+            with self.subTest(ko):
+                gap = self.gaps(ko={"summary": ko}, en={"summary": " ".join(re.findall(r"\d+(?:\.\d+)+", ko))})
+                self.assertTrue(gap.startswith(summaries.RANGE_GAP), gap)
+                self.assertIn("1.0.5 미만", summaries.retry({"summary_error": {"reason": gap}})["note"])
+        for ko in ("::before·::after 규칙을 제한하세요.", "15.0.0 이상 15.64.6 미만이 해당합니다.", "Path to Glory 플러그인 결함"):
+            with self.subTest(ko):
+                self.assertEqual(self.gaps(ko={"summary": ko}, en={"summary": " ".join(["x", *re.findall(r"\d+(?:\.\d+)+", ko)])}), "")
 
     def save(self, tries=0):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
