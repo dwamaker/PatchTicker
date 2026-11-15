@@ -20,16 +20,33 @@ _Avoid_: item, record, hit
 **Citations** (인용):
 For an HN story with no CVE, the CVE IDs and outside links found in the page it links to. Kept on its
 Incident for a week; when they point at exactly one other Incident (a CVE ID, or its advisory, write-up
-or repo page), the story is folded into it, whichever arrived first.
+or repo page), the story is folded into it, whichever arrived first. A page counts only when no other Incident
+links it, and an advisory only when it names one notice: a vendor's list of notices says nothing about which
+Incident a story is about (owner, 2026-11-15).
 
 **Citation** (인용):
 A curator newsletter's Mention plus the CVE IDs and URLs it cites, or a KISA 보호나라 notice (kind "notice") plus the CVE IDs
 on its page. It joins only the Incidents it cites and never starts one.
 _Avoid_: reference, curated link
 
+**Advisory** (공식 공지):
+A Mention written by the product's own vendor or project: its security advisory or release note. A link in a CVE
+record is one when the record tags it so, or when the vendor itself wrote the record, gave the link no tag, and the
+link names one notice on the vendor's own site (owner, 2026-11-15). Not a list of notices, which many Incidents
+share, and not a bug tracker entry, where outsiders write too: that one is a write-up. Its text, like the CVE
+record's, may be the source of a command or a stopgap; a write-up's may not.
+_Avoid_: bulletin, notice (a KISA notice is a Citation), vendor link
+
 **Lead mention** (대표 언급):
 The one Mention a Summary points to first, picked in this order: the product's official advisory or release note, the discoverer's write-up, the CVE record, then discussion.
 _Avoid_: main link, primary source
+
+**Lead CVE** (대표 CVE):
+The one CVE an Incident with several CVEs is written around: its title, Summary and Easy view speak of this CVE first.
+Picked in this order: a CVE reported as exploited, else the one with the highest score, else the one that arrived first
+(owner, 2026-11-15). The Incident keeps its address whichever CVE leads. Its score stays the highest among its CVEs,
+shown with the CVE that score belongs to.
+_Avoid_: main CVE, primary CVE, top CVE
 
 **Unassigned incident** (CVE 미배정 사건):
 An Incident that has no CVE yet. It joins the same Incident when a CVE appears later.
@@ -49,6 +66,12 @@ When the news of an Incident first broke: the earliest post time among the Menti
 (CVE record datePublished, HN story, oss-security post), else NVD's publish date. Shown on the row and used for
 "newest first" and the Highlight window. Not the cycle that first saw it (first_seen, which only picks the monthly
 file): when no source gives a time it stays unknown, and the row says "처음 확인 12:38" (first seen) instead.
+
+**Public date** (공개일):
+The day a CVE record says its flaw became public, when that is earlier than the Published time. Shown beside the
+Published time; it never orders the Board and never counts for the Highlight window (owner, 2026-11-15: an Incident
+that arrives today must not land six days down the list).
+_Avoid_: disclosure date, release date
 
 **Board** (보드):
 The page's list of Incidents: Highlights on top, then every other Incident, in one visitor-chosen order for both (newest first by default, or by risk level, or by CVSS).
@@ -88,9 +111,23 @@ The big label at the top of the Easy view, set by rules from exploitation and se
 so (2026-11-09; public exploit code alone is not exploited): the model reports what the sources say; the rule sets the level.
 _Avoid_: alert, badge, warning level
 
+**Score pending** (점수 대기):
+An Incident with no CVSS score yet and no report of attacks. Its own choice in the risk filter beside the three risk
+levels, not part of the lowest one; ordered above the lowest level when the Board is sorted by risk (owner,
+2026-11-15). An exploited Incident without a score is at the top level, never here.
+_Avoid_: unrated, unscored, unknown risk
+
 **Mitigation** (대처법):
 What a visitor can do about an Incident: the fixed version to update to, or a stopgap until then.
 _Avoid_: fix, workaround, remediation
+
+**Distribution table** (배포판 표):
+For an Incident's CVEs, what each Linux distribution's own security data says about its packages, one line per
+release: the fixed package version, not affected, or not fixed yet. Built by rule from that data, never written by
+the Summary, and checked again while distributions catch up; a release the data does not name gets no line. A
+distribution's package version appears only here: the Mitigation's fixed version is the product's own (owner,
+2026-11-15).
+_Avoid_: backport list, package matrix
 
 **Product** (제품):
 A piece of software or firmware a visitor can pick in the filter, named without a version (OpenSSH, Dropbear, OpenWrt).
