@@ -353,6 +353,22 @@ class StoryPageTest(unittest.TestCase):
         self.assertEqual(advisories("vuldb", "Acme", "https://acme.com/a1"), [])  # a third-party CNA
         self.assertEqual(advisories("sonicwall", "SonicWall", "https://sonic-wall.com/a1"), [])  # a look-alike site
 
+    def test_a_cna_paired_with_the_vendor_name_it_files_under_counts_as_that_vendor_on_its_own_site_only(self):
+        # Owner, 11-15: HPE writes "Hewlett Packard Enterprise (HPE)", Intel "n/a"; neither is its CNA name in whole words.
+        from collector import cvelist
+        def advisories(assigner, vendor, url):
+            record = {"cveMetadata": {"cveId": "CVE-2026-1", "assignerShortName": assigner},
+                      "containers": {"cna": {"affected": [{"vendor": vendor, "product": "X"}], "references": [{"url": url}]}}}
+            return [m["url"] for m in cvelist.mention_group(record)["mentions"] if m["kind"] == "advisory"]
+        hpe = "https://support.hpe.com/hpesc/public/docDisplay?docId=hpesbnw05172en_us"
+        self.assertEqual(advisories("hpe", "Hewlett Packard Enterprise (HPE)", hpe), [hpe])
+        intel = "https://intel.com/content/www/us/en/security-center/advisory/intel-sa-01440.html"
+        self.assertEqual(advisories("intel", "n/a", intel), [intel])
+        self.assertEqual(advisories("hpe", "Aruba Networks", hpe), [])  # a vendor name not in its pair
+        self.assertEqual(advisories("hpe", "Hewlett Packard Enterprise", hpe), [])  # matched exactly, as the records write it
+        self.assertEqual(advisories("hpe", "Hewlett Packard Enterprise (HPE)", "https://example.com/advisory/1"), [])  # not its site
+        self.assertEqual(advisories("acme", "n/a", "https://acme.com/a1"), [])  # "n/a" counts only for the CNAs paired with it
+
     def test_a_vendor_advisory_tag_outranks_a_confirm_tag_and_a_known_tag_elsewhere_outranks_the_vendors_site(self):
         from collector import cvelist
         # Log4j's record (CVE-2021-45046) lists SonicWall's note as CONFIRM before Cisco's vendor-advisory.
@@ -601,6 +617,30 @@ class ReleaseGroupTest(unittest.TestCase):
         ranged = {"containers": {"cna": {"affected": [{"vendor": "wpvibes", "product": "anywhere_elementor", "versions":
                   [{"version": "0", "lessThanOrEqual": "1.2.11", "status": "affected"}]}]}}}
         self.assertEqual(record_fix_keys(ranged), ["wpvibes:anywhere_elementor<=1.2.11"])
+
+    def test_a_range_written_into_the_version_string_keys_on_the_bound_it_states(self):
+        # 11-15: GitHub's records write "< 1.4.5" as the version; the key was "bacnet-stack:bacnet-stack<=< 1.6.0".
+        from collector.cvelist import record_fix_keys
+        record = lambda cve: json.loads((FIXTURES / "cvelist" / f"{cve}.json").read_bytes())
+        self.assertEqual(record_fix_keys(record("CVE-2026-67540")), ["heymrun:heym<0.0.70"])
+        self.assertEqual(record_fix_keys(record("CVE-2026-52786")),
+                         ["bacnet-stack:bacnet-stack<1.4.5", "bacnet-stack:bacnet-stack<1.5.1", "bacnet-stack:bacnet-stack<1.6.0"])
+        for version, key in ((">= 8.0.0, < 8.10.2", "a:b<8.10.2"), ("before version v5.4.2.1", "a:b<5.4.2.1"),
+                             ("All driver versions prior to 615.71.09", "a:b<615.71.09"), ("<= 7.0.0", "a:b<=7.0.0"),
+                             (">= 0.11.0, <= 0.16.0", "a:b<=0.16.0"), ("= 1.27.0", "a:b<=1.27.0"),
+                             ("25.05.0 through 25.05.8", "a:b<=25.05.8"), ("11.13.1 and earlier", "a:b<=11.13.1"),
+                             (">= 6.7.0", "a:b<=>= 6.7.0"), ("Versions prior to latest one", "a:b<=Versions prior to latest one")):
+            listed = {"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [{"version": version, "status": "affected"}]}]}}}
+            self.assertEqual(record_fix_keys(listed), [key], version)
+
+    def test_a_fixed_version_below_bacnets_stated_bound_is_rejected_and_the_fix_itself_passes(self):
+        # 11-15: a re-summary of CVE-2026-52786 said "update to 1.4.4"; the record says 1.4.5, 1.5.1 and 1.6.0 fix it.
+        from collector import cvelist, summaries
+        group = cvelist.mention_group(json.loads((FIXTURES / "cvelist" / "CVE-2026-52786.json").read_bytes()))
+        incident = {"fix_keys": group["fix_keys"]}
+        self.assertIn("1.4.4 is below 1.4.5", summaries.fixed_conflict(incident, {"fixed": "1.4.4"}))
+        for fixed in ("1.4.5", "1.5.1", "1.6.0"):
+            self.assertEqual(summaries.fixed_conflict(incident, {"fixed": fixed}), "", fixed)
 
     def test_two_stay_apart_and_a_third_joins_them_into_one_incident(self):
         from collector.incidents import group_releases

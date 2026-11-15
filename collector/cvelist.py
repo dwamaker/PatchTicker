@@ -20,6 +20,12 @@ WRITEUP_TAGS = {"third-party-advisory", "technical-description", "exploit", "x_r
 COMPANY_WORDS = {"inc", "corp", "corporation", "co", "ltd", "limited", "llc", "gmbh", "ag", "sa", "plc", "foundation"}
 # Coordinator CNAs, which file for other vendors, and the site label of their own write-ups (jvn.jp).
 COORDINATORS = {"jpcert": "jvn"}
+# CNAs that file for themselves under a vendor name other than their own, as their records write it (owner, 11-15: kept by
+# hand, matched exactly). Each was checked in the records: every affected product theirs, references on their own site.
+VENDOR_CNAS = {"hpe": {"Hewlett Packard Enterprise (HPE)"}, "absolute": {"Absolute Software", "Absolute Security"},
+               "unisoc": {"Unisoc (Shanghai) Technologies Co., Ltd."}, "intel": {"n/a"}, "postgresql": {"n/a"},
+               "sap": {"SAP_SE"}, "netscaler": {"Citrix", "Citrix NetScaler"}, "axis": {"Axis Communications AB"},
+               "octopus": {"Octopus Deploy"}, "zoom": {"Zoom Communications"}}
 # Second-level labels under a country code that are not the site's own ("example.co.jp").
 SECOND_LEVEL = {"co", "com", "ne", "or", "ac", "go", "gov", "net", "org", "edu"}
 # A tracker, code review or forum page (Bugzilla, Jira, Phabricator, Gerrit, issues, pull requests, Discourse): outsiders
@@ -126,12 +132,14 @@ def has_id(url):
 def own_names(record):
     """Site labels that are the affected vendor's own: its name joined when a coordinator wrote the record; that or
     its first word ("samsung" for Samsung Semiconductor) when the vendor itself did, its CNA name being the vendor's
-    in whole words (the Joomla CNA files for joomlaboat.com, which is not Joomla's); else none."""
+    in whole words (the Joomla CNA files for joomlaboat.com, which is not Joomla's) or paired with it in VENDOR_CNAS,
+    and then the CNA name too (support.hpe.com for "Hewlett Packard Enterprise (HPE)"); else none."""
     cna = (record["cveMetadata"].get("assignerShortName") or "").lower()
-    names = [w for w in (words(a.get("vendor") or "") for a in record["containers"]["cna"].get("affected", [])) if w]
+    vendors = [a.get("vendor") or "" for a in record["containers"]["cna"].get("affected", [])]
     if cna in COORDINATORS:
-        return {"".join(w) for w in names}
-    return {n for w in names if "".join(w) == "".join(words(cna)) for n in ("".join(w), w[0])}
+        return {"".join(w) for w in map(words, vendors) if w}
+    own = [w for v, w in zip(vendors, map(words, vendors)) if w and ("".join(w) == "".join(words(cna)) or v in VENDOR_CNAS.get(cna, ()))]
+    return {n for w in own for n in ("".join(w), w[0], "".join(words(cna)))}
 
 
 def mention_group(record):
@@ -190,16 +198,34 @@ def cna_products(record):
         yield f"{vendor}:{product}".lower().replace(" ", "_"), html.unescape(product), a
 
 
+# A range written into "version" (GitHub's records, NVIDIA's, Intel's): "< 1.4.5", ">= 8.0.0, < 8.10.2", "<= 7.0.0",
+# "= 1.27.0", "before version 2.4.0", "prior to 615.71.09", "25.05.0 through 25.05.8", "11.13.1 and earlier".
+UPPER_BOUND = re.compile(r"(<=|<|(?<![<>])=|\bbefore|\bprior to|\bthrough)\s*(?:version\s+)?v?(\d\S*)$", re.I)
+AND_EARLIER = re.compile(r"v?(\d[^\s,]*)\s+and (?:earlier|prior)", re.I)
+
+
+def stated_bound(version):
+    """("<", "1.4.5") for a first fixed version, ("<=", "7.0.0") for a last affected one, or None: no range stated."""
+    found = UPPER_BOUND.search(version.strip())
+    if found:
+        return ("<" if found[1].lower() in ("<", "before", "prior to") else "<="), found[2]
+    found = AND_EARLIER.search(version)
+    return ("<=", found[1]) if found else None
+
+
 def record_fix_keys(record):
     """Product and first fixed version pairs ("openemr:openemr<8.3.0") from the CNA's affected ranges, so CVEs one
     release fixed together can be grouped into one Incident (incidents.group_releases)."""
     keys = set()
     for key, _, a in cna_products(record):
-        keys |= {f"{key}<{v['lessThan']}" for v in a.get("versions", []) if v.get("status") == "affected" and v.get("lessThan")}
+        affected = [v for v in a.get("versions", []) if v.get("status") == "affected"]
+        keys |= {f"{key}<{v['lessThan']}" for v in affected if v.get("lessThan")}
+        stated = [(v, stated_bound(str(v["version"]))) for v in affected if v.get("version") and not v.get("lessThan")]
+        keys |= {f"{key}<{bound[1]}" for _, bound in stated if bound and bound[0] == "<"}
         # No range given (VulDB lists every affected version): the last affected one stands for the fix that follows it.
-        # "0 up to 1.2.11" (lessThanOrEqual, Wordfence and IBM records) counts as 1.2.11.
-        listed = [v.get("lessThanOrEqual") or v["version"] for v in a.get("versions", [])
-                  if v.get("status") == "affected" and v.get("version") and not v.get("lessThan")]
+        # "0 up to 1.2.11" (lessThanOrEqual, Wordfence and IBM records) counts as 1.2.11, "<= 7.0.0" as 7.0.0.
+        listed = [v.get("lessThanOrEqual") or (bound[1] if bound else v["version"]) for v, bound in stated
+                  if not (bound and bound[0] == "<")]
         if listed and not any(k.startswith(f"{key}<") for k in keys):
             # ASCII digits only and short: isdigit() passes "²", which int() rejects, as it does over 4300 digits.
             top = max(listed, key=lambda v: [int(p) if p.isascii() and p.isdigit() and len(p) < 20 else -1
