@@ -11,12 +11,13 @@ visitor sees when the news first broke, not when a cycle noticed it ("first_seen
 
 import fnmatch
 import hashlib
+import html.parser
 import json
 import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
 
@@ -423,7 +424,55 @@ def page_keys(page, page_url):
     own site are its navigation, not citations."""
     own = url_key(page_url).split("/", 1)[0]
     urls = {url_key(u) for u in urls_in(page)}
-    return {"cves": cves_in(page), "urls": sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]}
+    return {"cves": page_cves(page, page_url), "urls": sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]}
+
+
+class _Links(html.parser.HTMLParser):
+    """A page's text (no script or style) and its links as [href, text]."""
+    def __init__(self):
+        super().__init__()
+        self.text, self.links, self.skip, self.open = [], [], 0, False
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style", "template"):
+            self.skip += 1
+        elif tag == "a":
+            self.links.append([dict(attrs).get("href") or "", ""])
+            self.open = True
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style", "template") and self.skip:
+            self.skip -= 1
+        elif tag == "a":
+            self.open = False
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.text.append(data)
+            if self.open:
+                self.links[-1][1] += data
+
+
+def page_cves(page, page_url):
+    """The CVE IDs a page cites: in a link to another site, in its own address, or in its text unless a link to another
+    page of the same site names the ID in its address or text and the ID is no link's whole text. A "related posts"
+    card or a sidebar names other posts' CVEs (aikido.dev, 11-12: a story folded into an unrelated Incident); a
+    notice's reference list links each CVE to the site's own page with the ID as its text."""
+    if "<" not in page[:2000]:
+        return cves_in(page)  # plain text, e.g. an OpenSSH release note
+    parser = _Links()
+    parser.feed(page)
+    own, here = url_key(page_url).split("/", 1)[0], url_key(page_url)
+    links = []
+    for href, text in parser.links:
+        try:
+            links.append((url_key(urljoin(page_url, href)), text.strip()))
+        except ValueError:  # "http://[..." in scraped markup
+            continue
+    elsewhere = cves_in(" ".join(u for u, _ in links if u.split("/", 1)[0] != own)) + cves_in(page_url)
+    siblings = {c for u, t in links if u.split("/", 1)[0] == own and u != here for c in cves_in(f"{u} {t}")}
+    whole = {t.upper() for _, t in links if CVE_RE.fullmatch(t)}
+    return list(dict.fromkeys(elsewhere + [c for c in cves_in(" ".join(parser.text)) if c not in siblings or c in whole]))
 
 
 def cited_by(incidents, keys):

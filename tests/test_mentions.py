@@ -234,6 +234,27 @@ class StoryPageTest(unittest.TestCase):
         self.assertEqual(self.rejoin(), set())
         self.assertEqual(len(self.incidents), 4)
 
+    def test_a_page_naming_a_cve_only_in_its_related_posts_cards_stands_alone(self):
+        apache = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-119618"}],
+                  "cves": ["CVE-2026-119618"], "urls": [], "text": "x"}
+        self.link(self.incidents, apache, "2026-11-06T00:00:00Z")
+        url = "https://www.aikido.dev/blog/compromised-github-accounts-push-ci-secret-stealer-to-tens-of-thousands-of-repositories"
+        page = (FIXTURES / "pages" / "aikido-wfx-loot.html").read_text(encoding="utf-8")  # HN 50462319, folded into Brotli on 11-12
+        self.link(self.incidents, self.story(page, url, 50462319), "2026-11-12T03:00:00Z")
+        self.assertEqual(self.incidents[3]["cites"]["cves"], [])
+        self.assertEqual(self.rejoin(), set())
+
+    def test_a_cve_in_the_text_in_a_link_elsewhere_or_as_a_links_whole_text_is_cited_not_one_only_a_sibling_page_names(self):
+        from collector.incidents import page_keys
+        page = ('<p>A flaw, CVE-2026-1001, and <a href="https://nvd.nist.gov/vuln/detail/cve-2026-1002">its NVD entry</a>.</p>'
+                '<a href="/security/CVE-2026-1003">CVE-2026-1003</a>'
+                '<div class="card"><h2>CVE-2026-1004 explained</h2><a href="/blog/cve-2026-1004-explained"></a></div>'
+                '<ul class="sidebar"><li><a href="/notices/USN-2">USN-2: CVE-2026-1005 in the login</a></li></ul>')
+        self.assertCountEqual(page_keys(page, "https://ubuntu.com/security/notices/USN-1")["cves"],
+                              ["CVE-2026-1001", "CVE-2026-1002", "CVE-2026-1003"])
+        own = '<p>We analysed CVE-2026-1006.</p><a href="/blog/cve-2026-1006-rce/?share=x">share</a>'  # a page links itself
+        self.assertEqual(page_keys(own, "https://blog.example.org/blog/cve-2026-1006-rce/")["cves"], ["CVE-2026-1006"])
+
     def test_citations_are_dropped_after_a_week(self):
         from collector.incidents import rejoin
         self.link(self.incidents, self.story("CVE-2026-123158 and CVE-2026-9999"), "2026-11-08T03:00:00Z")
