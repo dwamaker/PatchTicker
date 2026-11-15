@@ -6,7 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
-from collector import curators, cvelist, incidents, news, osssec, summary_input
+from collector import curators, cvelist, incidents, news, numbers, osssec, summary_input
 
 NOW = "2026-11-10T12:00:00Z"
 
@@ -177,6 +177,33 @@ class CveFieldsTest(unittest.TestCase):
         text = summary_input.summary_input(incident, lambda url: raw.encode())
         self.assertIn("The vulnerability requires keycloak.enabled=true.", text)
         self.assertNotIn("<code>", text)
+
+    def test_a_table_whose_value_glues_its_cells_reaches_the_input_cell_by_cell(self):
+        # IBM's value reads "6.1.0.0 - 6.1.0.46.1.0.5": the fixed version 6.1.0.5 was never a number of its own.
+        raw = (Path(__file__).parent / "fixtures" / "cvelist" / "CVE-2026-18525.json").read_text(encoding="utf-8")
+        fields = summary_input.cve_fields(raw)
+        self.assertIn("6.1.0.0 - 6.1.0.4 6.1.0.5 Fix Central", fields)
+        self.assertNotIn("6.1.0.46.1.0.5", fields)
+        self.assertTrue({"6.1.0.5", "6.2.1.3"} <= numbers.numbers(fields))
+        self.assertNotIn("<td>", fields)
+        self.assertNotIn("supportingMedia", json.dumps(json.loads(fields)["solutions"]))
+
+    def item(self, value, html):
+        cna = {"solutions": [{"lang": "en", "value": value,
+                              "supportingMedia": [{"type": "text/html", "base64": False, "value": html}]}]}
+        return json.loads(summary_input.cve_fields(json.dumps({"containers": {"cna": cna}})))["solutions"][0]["value"]
+
+    def test_inline_markup_in_the_html_copy_leaves_a_setting_whole(self):
+        self.assertEqual(self.item("Set DISABLE_HTTP_GIT=true in app.ini.", "<p>Set <code>DISABLE_HTTP_GIT</code>=true in <b>app.ini</b>.</p>"),
+                         "Set DISABLE_HTTP_GIT=true in app.ini.")
+
+    def test_the_records_own_value_is_kept_when_its_html_copy_lost_something(self):
+        # Arista (CVE-2026-121291): an unescaped "<ASN>" in <pre> is read as a tag; Palo Alto: an <ol> drops "1." and "2.".
+        cases = {"router bgp <ASN>\n  rpki cache <cache-name>": "<pre>router bgp <ASN>\n  rpki cache <cache-name></pre>",
+                 "1. Open Gateways. 2. Turn off the portal.": "<ol><li>Open Gateways.</li><li>Turn off the portal.</li></ol>"}
+        for value, html in cases.items():
+            with self.subTest(value):
+                self.assertEqual(self.item(value, html), value)
 
     def test_a_record_without_solutions_workarounds_or_configurations_gives_what_it_gave_before(self):
         cna = {"title": "Widget flaw", "descriptions": [{"lang": "en", "value": "Widget lets an attacker read files."}],

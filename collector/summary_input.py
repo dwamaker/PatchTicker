@@ -119,9 +119,26 @@ def cve_fields(raw):
         return ""
     keep = {k: cna[k] for k in ("title", "descriptions", "affected", "problemTypes") if k in cna}
     # supportingMedia repeats value as HTML or base64: more tokens, stray digits for the number check, markup in a stopgap.
-    keep |= {k: [{f: v for f, v in i.items() if f != "supportingMedia"} if isinstance(i, dict) else i for i in cna[k]]
+    keep |= {k: [readable(i) if isinstance(i, dict) else i for i in cna[k]]
              for k in ("solutions", "workarounds", "configurations") if isinstance(cna.get(k), list)}
     return json.dumps(keep, ensure_ascii=False)
+
+
+URL = re.compile(r"https?://\S+")
+
+
+def readable(item):
+    """A solutions, workarounds or configurations item without supportingMedia. Its HTML copy's text stands in for value
+    when it holds all of value but the links: IBM's value glues table cells ("6.1.0.0 - 6.1.0.46.1.0.5", CVE-2026-18525).
+    Not when the copy lost something: list numbers, or an unescaped "<ASN>" the parser read as a tag (CVE-2026-121291)."""
+    out = {f: v for f, v in item.items() if f != "supportingMedia"}
+    html = [m["value"] for m in item.get("supportingMedia") or [] if isinstance(m, dict) and m.get("type") == "text/html"
+            and not m.get("base64") and isinstance(m.get("value"), str)]
+    text = " ".join(map(cell_text, html))
+    flat = lambda s: "".join(s.split()).lower()  # noqa: E731
+    if text and isinstance(item.get("value"), str) and flat(URL.sub("", item["value"])) in flat(text):
+        out["value"] = text
+    return out
 
 
 class _Text(html.parser.HTMLParser):
@@ -140,6 +157,26 @@ class _Text(html.parser.HTMLParser):
     def handle_data(self, data):
         if not self.skip:
             self.parts.append(data)
+
+
+BLOCKS = {"br", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "ol", "p", "pre", "table", "td", "th", "tr", "ul"}
+
+
+class _Cells(_Text):
+    """Text with a space only between blocks and table cells; inline tags ("<code>a</code>=1") join as written."""
+    def handle_starttag(self, tag, attrs):
+        super().handle_starttag(tag, attrs)
+        self.parts.append(" " if tag in BLOCKS else "")
+
+    def handle_endtag(self, tag):
+        super().handle_endtag(tag)
+        self.parts.append(" " if tag in BLOCKS else "")
+
+
+def cell_text(html_text):
+    parser = _Cells()
+    parser.feed(html_text)
+    return " ".join("".join(parser.parts).split())
 
 
 def page_text(page):
