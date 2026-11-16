@@ -6,7 +6,7 @@ Incidents. edge/check.mjs reads them; it normalizes asked names with productKey,
 import hashlib
 from urllib.parse import quote
 
-from collector.incidents import (WELL_KNOWN, is_exploited, known_product, on_board, page_slug, product_key, products_of,
+from collector.incidents import (WELL_KNOWN, cve_order, is_exploited, known_product, on_board, page_slug, product_key, products_of,
                                  published_at, risk_level, search_worthy, vendor_words)
 
 SITE = "https://patchticker.com"
@@ -39,7 +39,7 @@ def entry(incident):
     url = f"{SITE}/i/{page_slug(incident['id'])}" if search_worthy(incident) else f"{SITE}/#i={quote(incident['id'], safe='')}"
     return {"id": incident["id"], "url": url, "first_seen": incident["first_seen"], "published": published_at(incident),
             "level": risk_level(incident), "exploited": is_exploited(incident), "cvss": incident.get("cvss"),
-            "cve_count": len(incident["cves"]), "cves": incident["cves"][:CVES_SHOWN], "fixed": summary.get("fixed") or "",
+            "cve_count": len(incident["cves"]), "cves": cve_order(incident)[:CVES_SHOWN], "fixed": summary.get("fixed") or "",
             "title_en": title("en"), "title_ko": title("ko")}
 
 

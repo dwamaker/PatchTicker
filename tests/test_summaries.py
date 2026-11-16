@@ -343,6 +343,13 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertNotIn("widely_used", summaries.SCHEMA["properties"])
         self.assertNotIn("widely_used", summaries.INSTRUCTIONS)
 
+    def test_the_schema_does_not_ask_for_exploited_cves(self):
+        # Step 4, 11-16: even optional, it made --smoke fail with 400 "compiled grammar is too large" (widely_used, 11-11).
+        self.assertNotIn("exploited_cves", summaries.SCHEMA["required"])
+        self.assertNotIn("exploited_cves", summaries.SCHEMA["properties"])
+        self.assertNotIn("exploited_cves", summaries.INSTRUCTIONS)
+        self.assertIn("Lead CVE", summaries.INSTRUCTIONS)
+
     def test_the_instructions_ask_for_the_attack_source_and_name_the_product_in_easy_headlines(self):
         self.assertIn("exploited_source", summaries.INSTRUCTIONS)
         self.assertIn("in the wild", summaries.INSTRUCTIONS)
@@ -603,6 +610,36 @@ class NumberCheckTest(unittest.TestCase):
             "최대 1억 3,400만 달러가 빠져나갔습니다.", "Up to $133 million was taken."))
         self.assertNotIn("summary", incident)
         self.assertIn("numbers not in the input", incident["summary_error"]["reason"])
+
+
+class ExploitedCvesTest(unittest.TestCase):
+    """Step 4: a group's Summary names the CVEs its exploited_source reports attacked; only the Incident's own, by exact id."""
+
+    ADVISORY = "https://vendor.example/advisory"
+    INPUT = "\n".join(["Incident: CVE-2026-125350, CVE-2026-125345", "Lead CVE: CVE-2026-125350", "CVSS: not rated yet",
+                       "Exploited in the wild (CISA KEV): no", "Products: unknown", "Description: Browser flaws.", "Mentions:",
+                       f"- advisory {ADVISORY}"])
+
+    def parsed(self, **fields):
+        data = news_reply("", "") | {"exploited": True, "exploited_source": self.ADVISORY} | fields
+        reply = SimpleNamespace(content=[SimpleNamespace(type="text", text=json.dumps(data))], stop_reason="end_turn",
+                                usage=SimpleNamespace(input_tokens=0, output_tokens=0))
+        return summaries.parse(reply, self.INPUT, [self.ADVISORY])
+
+    def test_attacked_cves_outside_the_incident_are_dropped_by_exact_id(self):
+        summary = self.parsed(exploited_cves=["CVE-2026-125350", "CVE-2026-12534", "CVE-2026-999999", "cve-2026-125345",
+                                              "CVE-2026-125350", 7])
+        self.assertEqual(summary.get("exploited_cves", []), ["CVE-2026-125350"])
+
+    def test_the_list_empties_when_exploited_does_not_survive(self):
+        summary = self.parsed(exploited_source="https://example.com/attacks", exploited_cves=["CVE-2026-125350"])
+        self.assertEqual((summary["exploited"], summary.get("exploited_cves", [])), (False, []))
+        self.assertEqual(self.parsed(exploited=False, exploited_cves=["CVE-2026-125350"]).get("exploited_cves", []), [])
+
+    def test_an_old_reply_without_the_field_parses(self):
+        summary = self.parsed()
+        self.assertEqual((summary["exploited"], summary.get("exploited_cves", [])), (True, []))
+        self.assertEqual(self.parsed(exploited_cves="CVE-2026-125350").get("exploited_cves", []), [])  # not a list: none named
 
 
 class EasyJargonTest(unittest.TestCase):

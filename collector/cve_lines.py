@@ -6,6 +6,7 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector.model import CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_RETRY, MODEL, reply_json
 from collector.numbers import ko_numbers, number_words, numbers
+from collector.incidents import cve_order
 from collector.summary_input import CVE_LINES_MAX
 
 # Owner, 2026-11-10: the CVEs past summary_input.CVE_LINES_MAX go out LINES_PER_REQUEST to a batch request, for at most
@@ -76,7 +77,7 @@ def lines_params(text, max_tokens=MAX_TOKENS):
 
 
 def save_lines(incident, reply, cves):
-    """Add each checked line to the Summary, in the Incident's CVE order. A line is dropped, never the rest, when it names
+    """Add each checked line to the Summary, in the Incident's CVE order (cve_order). A line is dropped, never the rest, when it names
     a CVE not asked for, holds a CVE ID, a number its CVE's own description lacks, or Korean and English whole numbers
     that differ; its CVE is asked again in the next round. A digit may stand for a number word (number_words).
     A reply cut off at MAX_TOKENS gets MAX_TOKENS_RETRY in the next round, as a Summary does (retry()); one cut off in
@@ -114,6 +115,6 @@ def save_lines(incident, reply, cves):
             summary[lang]["cve_lines"].append({"cve": cve, "text": item[lang]})
     if dropped:
         print(f"summaries: lines for {incident['id']}: dropped {len(dropped)} of {len(items)}: {'; '.join(dropped)}", file=sys.stderr)
-    order = {c: n for n, c in enumerate(incident["cves"])}
+    order = {c: n for n, c in enumerate(cve_order(incident))}  # the order the Summary's own lines follow (summary_input)
     for lang in ("ko", "en"):
         summary[lang]["cve_lines"].sort(key=lambda line: order.get(line["cve"], len(order)))

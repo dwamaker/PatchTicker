@@ -202,3 +202,65 @@ class WellKnownTest(unittest.TestCase):
                 self.assertNotIn("known", view(base))
                 self.assertNotIn("known_rank", view(base))
                 self.assertNotIn("known", zoom)  # worked out at write time, never stored
+
+
+class CveOrderTest(unittest.TestCase):
+    """Step 4: the page lists an Incident's CVEs exploited first, then by score, then by arrival (cve_order); its first is
+    the Lead CVE. top_cve names the CVE that holds the Incident's cvss, or none."""
+
+    def group(self, **fields):
+        scores = {"A": 6.5, "B": 8.8, "D": 8.8, "E": 7.5}  # C has no score yet
+        return {"id": "A", "cves": ["A", "B", "C", "D", "E"], "first_seen": "2026-11-08T00:00:00Z", "cvss": 8.8,
+                "cve_scores": {c: {"cvss": s, "vector": f"CVSS:3.1/{c}"} for c, s in scores.items()}, "mentions": [],
+                "brief": {"text": "x", "lead": ""}} | fields
+
+    def test_an_exploited_cve_leads_then_the_highest_score_then_the_first_to_arrive(self):
+        from collector.incidents import cve_order
+        # The Chrome group: CVE-2026-125350 arrived last, is KEV-listed and leads.
+        self.assertEqual(cve_order(self.group(kev=True, kev_cves={"E": "2026-11-06"})), ["E", "B", "D", "A", "C"])
+        self.assertEqual(cve_order(self.group()), ["B", "D", "E", "A", "C"])
+
+    def test_two_exploited_cves_the_higher_scored_leads_both_before_the_rest(self):
+        from collector.incidents import cve_order
+        incident = self.group(kev_cves={"A": ""}, summary={"exploited": True, "exploited_source": "u", "exploited_cves": ["E"]})
+        self.assertEqual(cve_order(incident), ["E", "A", "B", "D", "C"])
+
+    def test_a_half_filled_score_map_names_no_top_cve(self):
+        from collector.incidents import top_cve
+        self.assertIsNone(top_cve(self.group(cvss=9.8)))  # 9.8 came from a CVE not in the map yet
+        self.assertIsNone(top_cve(self.group(cve_scores={})))
+        self.assertEqual(top_cve(self.group(cvss=8.8, cve_scores={"C": {"cvss": 8.8, "vector": ""}})), "C")
+
+    def test_of_two_cves_at_the_top_score_the_one_first_in_the_order_is_the_top_cve(self):
+        from collector.incidents import top_cve
+        self.assertEqual(top_cve(self.group()), "B")
+        self.assertEqual(top_cve(self.group(kev_cves={"D": "2026-11-06"})), "D")
+        self.assertEqual(top_cve(self.group(cvss=9)), None)
+        self.assertEqual(top_cve(self.group(cvss=9, cve_scores={"C": {"cvss": 9.0, "vector": ""}})), "C")  # 9 == 9.0
+
+    def test_the_stored_cves_and_the_id_keep_arrival_order(self):
+        incident = self.group(kev_cves={"E": "2026-11-06"})
+        view = board_view(incident)
+        self.assertEqual((view["id"], view["cves"]), ("A", ["E", "B", "D", "A", "C"]))
+        self.assertEqual((incident["id"], incident["cves"]), ("A", ["A", "B", "C", "D", "E"]))
+        self.assertEqual((view["top_cve"], view["kev_cves"], view["cve_scores"]), ("B", {"E": "2026-11-06"}, incident["cve_scores"]))
+        self.assertEqual(list(view)[:2], ["id", "cves"])  # the key keeps its place in the document
+
+    def test_a_row_view_carries_the_order_and_the_top_cve_no_score_map(self):
+        row = rows_view(self.group(kev_cves={"E": "2026-11-06"}))
+        self.assertEqual((row["cves"], row["top_cve"]), (["E", "B", "D", "A", "C"], "B"))
+        for dropped in ("cve_scores", "kev_cves"):
+            self.assertNotIn(dropped, row)
+
+    def test_a_one_cve_incident_gets_no_top_cve_and_no_maps(self):
+        one = {"id": "A", "cves": ["A"], "first_seen": "2026-11-08T00:00:00Z", "cvss": 9.8, "kev": True,
+               "kev_cves": {"A": ""}, "cve_scores": {"A": {"cvss": 9.8, "vector": "v"}}, "mentions": [], "brief": {"text": "x", "lead": ""}}
+        for view in (board_view(one), rows_view(one)):
+            self.assertEqual(view["cves"], ["A"])
+            for absent in ("top_cve", "cve_scores", "kev_cves"):
+                self.assertNotIn(absent, view)
+
+    def test_api_check_lists_the_first_five_in_the_view_order(self):
+        from collector.checks import entry
+        self.assertEqual(entry(self.group(kev_cves={"E": ""}))["cves"], ["E", "B", "D", "A", "C"])
+        self.assertEqual(entry(self.group(cves=list("ABCDEFG")))["cves"], ["B", "D", "E", "A", "C"])

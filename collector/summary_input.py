@@ -10,7 +10,7 @@ from itertools import accumulate
 from urllib.parse import urlsplit
 
 from collector import cvelist
-from collector.incidents import is_news
+from collector.incidents import cve_order, is_news, top_cve
 
 PAGE_CHARS = 8000  # shortcut: page text past this is cut; sshhole.com's Mitigation sits at ~7,000.
 MAX_PAGES = 2
@@ -31,11 +31,18 @@ LEAD_MARK = " (the Lead: its numbers win when sources disagree)"
 
 
 def summary_input(incident, http_get):
+    # Step 4: a group's CVEs in cve_order (its Lead CVE first, the twelve records read are the highest-scored) with each
+    # CVE's score; a one-CVE input stays as it was, byte for byte.
+    cves, group = cve_order(incident), len(incident["cves"]) > 1
+    scores = (incident.get("cve_scores") or {}) if group else {}
+    top = top_cve(incident) if group else None
+    listed = [c for c in cves if c in (incident.get("kev_cves") or {})] if group and incident.get("kev") else []
     lines = [
-        f"Incident: {', '.join(incident['cves']) or 'no CVE yet'}",
-        *([f"{CVE_LINES_ONLY} {', '.join(incident['cves'][:CVE_LINES_MAX])}"] if len(incident["cves"]) > CVE_LINES_MAX else []),
-        f"CVSS: {incident.get('cvss', 'not rated yet')}",
-        f"Exploited in the wild (CISA KEV): {'yes' if incident.get('kev') else 'no'}",
+        f"Incident: {', '.join(cves) or 'no CVE yet'}",
+        *([f"Lead CVE: {cves[0]}"] if group else []),
+        *([f"{CVE_LINES_ONLY} {', '.join(cves[:CVE_LINES_MAX])}"] if len(cves) > CVE_LINES_MAX else []),
+        f"CVSS: {incident.get('cvss', 'not rated yet')}" + (f" (highest, {top})" if top else ""),
+        f"Exploited in the wild (CISA KEV): {'yes' if incident.get('kev') else 'no'}" + (f" ({', '.join(listed)})" if listed else ""),
         f"Products: {', '.join(p['name'] for p in incident.get('products', [])) or 'unknown'}",
         f"Description: {incident['brief']['text']}",
         "Mentions:",
@@ -57,14 +64,14 @@ def summary_input(incident, http_get):
         if page:
             mark = LEAD_MARK if m["url"] == lead else ""
             lines += [f"Text of {m['url']}{mark}:", page_text(page)[:PAGE_CHARS]]
-    for cve in incident["cves"][:CVE_LINES_MAX]:
+    for cve in cves[:CVE_LINES_MAX]:
         record = fetch_page(http_get, cvelist.record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
-            lines += [f"CVE record {cve}:", cve_fields(record)]
+            lines += [f"CVE record {cve}:", cve_fields(record, scores.get(cve))]
     # The rest get the Incident's own one-line description and no request. Whitespace is folded so a description
     # cannot start a line that trusted() would read as a Mention or a source block.
     texts = incident.get("cve_texts") or {}
-    others = [f"{cve}: {' '.join(texts[cve].split())}" for cve in incident["cves"][CVE_LINES_MAX:] if texts.get(cve)]
+    others = [f"{scored(cve, scores.get(cve))}: {' '.join(texts[cve].split())}" for cve in cves[CVE_LINES_MAX:] if texts.get(cve)]
     if others:
         room = INPUT_CHARS_MAX - len("\n".join(lines)) - 100  # 100: the heading and the closing line
         shown = sum(1 for total in accumulate(len(line) + 1 for line in others) if total <= room)
@@ -72,6 +79,15 @@ def summary_input(incident, http_get):
         if shown < len(others):
             lines.append(f"… and {len(others) - shown} more CVEs not shown")
     return "\n".join(lines)
+
+
+def scored(cve, score):
+    """An Other CVEs line's head: "CVE-X (CVSS 7.5, CVSS:3.1/...)", or the bare id without a score. Never in a "CVE record"
+    header: SOURCE_RE would stop reading the record as trusted."""
+    if not score:
+        return cve
+    vector = " ".join(score["vector"].split())  # CNA text: folded like the descriptions
+    return f"{cve} (CVSS {score['cvss']}{', ' + vector if vector else ''})"
 
 
 # Pages that draw their text with script hold nothing in their HTML; read the JSON the page itself loads instead.
@@ -110,9 +126,10 @@ def sonicwall_advisory(http_get, advisory_id):
                                     for key, label in SONICWALL_FIELDS) + "</body></html>"
 
 
-def cve_fields(raw):
+def cve_fields(raw, score=None):
     """The CVE record's relevant fields: descriptions, affected products and versions, problem types, and the
-    solutions, workarounds and configurations some CNAs write (Fortinet's fixed versions are only in solutions)."""
+    solutions, workarounds and configurations some CNAs write (Fortinet's fixed versions are only in solutions). A group's
+    record also carries its CVE's cve_scores entry (score), inside the JSON, as "cvss" and "vector"."""
     try:
         cna = json.loads(raw)["containers"]["cna"]
     except (ValueError, KeyError, TypeError):
@@ -121,6 +138,8 @@ def cve_fields(raw):
     # supportingMedia repeats value as HTML or base64: more tokens, stray digits for the number check, markup in a stopgap.
     keep |= {k: [readable(i) if isinstance(i, dict) else i for i in cna[k]]
              for k in ("solutions", "workarounds", "configurations") if isinstance(cna.get(k), list)}
+    if score:
+        keep |= {"cvss": score["cvss"], "vector": score["vector"]}
     return json.dumps(keep, ensure_ascii=False)
 
 

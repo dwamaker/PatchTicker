@@ -155,6 +155,7 @@ def mention_group(record):
     tagged = {r["url"] for r in refs if (ADVISORY_TAGS | WRITEUP_TAGS) & set(r.get("tags") or [])}
     untagged = [r["url"] for r in containers[0].get("references", [])
                 if is_http(r.get("url")) and not r.get("tags") and r["url"] not in tagged and has_id(r["url"])]
+    score, vector = record_cvss(containers)
     names, coordinator = own_names(record), COORDINATORS.get((record["cveMetadata"].get("assignerShortName") or "").lower())
     own_first = sorted(refs, key=lambda r: not OWN_TAGS & set(r.get("tags") or []))  # stable: reference order otherwise
     vendor_tagged = {r["url"] for r in refs if OWN_TAGS & set(r.get("tags") or [])}
@@ -172,7 +173,8 @@ def mention_group(record):
         "urls": [r["url"] for r in refs],
         "text": one_line_description(record),
         "published": to_stamp(record["cveMetadata"].get("datePublished")),
-        "cvss": record_cvss(containers),
+        "cvss": score,
+        **({"cve_scores": {cve: {"cvss": score, "vector": vector}}} if score is not None else {}),
         "products": record_products(record),
         "fix_keys": record_fix_keys(record),
     }
@@ -242,15 +244,17 @@ def record_products(record):
 
 
 def record_cvss(containers):
-    """The record's own base score (the CNA's, else an ADP's such as CISA's), or None. NVD often defers its
-    analysis, so this is the only score most new CVEs have; enrich() keeps the higher when NVD adds one."""
+    """(score, vector) of the record's own base score (the CNA's, else an ADP's such as CISA's), or (None, ""). NVD often
+    defers its analysis, so this is the only score most new CVEs have; enrich() keeps the higher when NVD adds one. The
+    vector is the same metric's vectorString as given ("" when the record has none)."""
     for key in CVSS_KEYS:
         for c in containers:
             for metric in c.get("metrics", []):
                 score = metric.get(key, {}).get("baseScore")
                 if isinstance(score, (int, float)):
-                    return score
-    return None
+                    vector = metric[key].get("vectorString")
+                    return score, vector if isinstance(vector, str) else ""
+    return None, ""
 
 
 def one_line_description(record):

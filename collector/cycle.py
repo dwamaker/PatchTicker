@@ -118,10 +118,15 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         before = json.dumps(incident)
         for cve in incident["cves"]:
             if cve in enriched:
-                enrich(incident, enriched[cve])
+                enrich(incident, enriched[cve], cve)
         listed = exploited.keys() & set(incident["cves"])
         if listed:
             incident["kev"] = True
+            # Each listed CVE by name (step 4), updated, never replaced: a CVE listed once stays named and keeps its day
+            # (a catalogue entry that loses its dateAdded, "", does not blank it), as absorb keeps it.
+            named = incident.setdefault("kev_cves", {})
+            for cve in sorted(listed):
+                named[cve] = named.get(cve) or exploited[cve]
             # The earliest listing day of its CVEs: the panel's "CISA KEV 등재 · 2026-11-06" (critique 14).
             days = sorted(exploited[cve] for cve in listed if exploited[cve])
             if days:

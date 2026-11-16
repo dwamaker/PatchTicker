@@ -397,10 +397,28 @@ class StoryPageTest(unittest.TestCase):
 
     def test_the_records_own_cvss_is_used_cna_first_then_adp_and_v3_before_v4(self):
         from collector.cvelist import record_cvss
-        self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}, {}]), 8.1)  # sshole's CNA score
-        self.assertEqual(record_cvss([{}, {"metrics": [{"cvssV3_1": {"baseScore": 7.5}}]}]), 7.5)  # CISA ADP only
-        self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3}}, {"cvssV3_1": {"baseScore": 8.8}}]}]), 8.8)
-        self.assertIsNone(record_cvss([{"metrics": [{"other": {"content": {}}}]}]))
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}, {}])[0], 8.1)  # sshole's CNA score
+        self.assertEqual(record_cvss([{}, {"metrics": [{"cvssV3_1": {"baseScore": 7.5}}]}])[0], 7.5)  # CISA ADP only
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3}}, {"cvssV3_1": {"baseScore": 8.8}}]}])[0], 8.8)
+        self.assertEqual(record_cvss([{"metrics": [{"other": {"content": {}}}]}]), (None, ""))
+
+    def test_a_records_score_comes_with_the_vector_of_the_same_metric_cna_first_v3_1_before_v4_0(self):
+        from collector.cvelist import record_cvss
+        v31, v40, adp = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", "CVSS:4.0/AV:N/AC:L", "CVSS:3.1/AV:L/AC:H"
+        cna = {"metrics": [{"cvssV4_0": {"baseScore": 9.3, "vectorString": v40}},
+                           {"cvssV3_1": {"baseScore": 9.8, "vectorString": v31}}]}
+        self.assertEqual(record_cvss([cna, {"metrics": [{"cvssV3_1": {"baseScore": 5.5, "vectorString": adp}}]}]), (9.8, v31))
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3, "vectorString": v40}}]}]), (9.3, v40))
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}]), (8.1, ""))  # a score with no vector
+
+    def test_a_one_cve_record_group_carries_its_score_and_vector_by_cve(self):
+        from collector import cvelist
+        record = json.loads((FIXTURES / "cvelist" / "CVE-2026-123158.json").read_bytes())
+        self.assertNotIn("cve_scores", cvelist.mention_group(record))  # no score, no entry
+        record["containers"]["cna"]["metrics"] = [{"cvssV3_1": {"baseScore": 8.1, "vectorString": "CVSS:3.1/AV:N"}}]
+        group = cvelist.mention_group(record)
+        self.assertEqual(group["cvss"], 8.1)
+        self.assertEqual(group["cve_scores"], {"CVE-2026-123158": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}})
 
     def test_an_updated_record_is_read_only_for_a_cve_on_the_board(self):
         from collector import cvelist
@@ -680,3 +698,85 @@ class ReleaseGroupTest(unittest.TestCase):
         self.assertEqual(len(incidents), 1)
         self.assertIn("CVE-2026-6", incidents[0]["cve_texts"])
 
+
+
+class ScoreByCveTest(unittest.TestCase):
+    """Step 4 (H3): each CVE keeps its own score and vector (cve_scores) and its KEV listing (kev_cves) through every merge;
+    the Incident's cvss stays the highest, as before."""
+
+    def group(self, cve, score=None, vector="", published="2026-11-08T22:10:00Z", key="acme:widget<2.0"):
+        """A one-CVE record group, as cvelist.mention_group makes it."""
+        return {"mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}], "cves": [cve],
+                "urls": [], "text": f"{cve} text", "published": published, "cvss": score, "fix_keys": [key],
+                **({"cve_scores": {cve: {"cvss": score, "vector": vector}}} if score is not None else {})}
+
+    def linked(self, *groups):
+        from collector.incidents import link
+        incidents = []
+        for g in groups:
+            link(incidents, g, "2026-11-08T22:30:00Z")
+        return incidents
+
+    def test_two_incidents_that_merge_keep_each_cves_own_score_and_vector(self):
+        from collector.incidents import fold
+        a, b = self.linked(self.group("CVE-2026-1", 9.8, "CVSS:3.1/A", key="k<1"), self.group("CVE-2026-2", 5.3, "CVSS:3.1/B", key="k<2"))
+        fold([a, b], a, b)
+        self.assertEqual(a["cve_scores"], {"CVE-2026-1": {"cvss": 9.8, "vector": "CVSS:3.1/A"},
+                                           "CVE-2026-2": {"cvss": 5.3, "vector": "CVSS:3.1/B"}})
+        self.assertEqual(a["cvss"], 9.8)
+
+    def test_a_group_of_three_keeps_9_8_on_its_cve_not_on_the_id(self):
+        from collector.incidents import group_releases
+        incidents = self.linked(self.group("CVE-2026-1", 5.0, "v1", "2026-11-08T22:11:00Z"),
+                                self.group("CVE-2026-2", 9.8, "v2", "2026-11-08T22:12:00Z"),
+                                self.group("CVE-2026-3", None, "", "2026-11-08T22:13:00Z"))
+        group_releases(incidents)
+        [g] = incidents
+        self.assertEqual(g["id"], "CVE-2026-1")
+        self.assertEqual(g["cvss"], 9.8)
+        self.assertEqual(g["cve_scores"], {"CVE-2026-1": {"cvss": 5.0, "vector": "v1"}, "CVE-2026-2": {"cvss": 9.8, "vector": "v2"}})
+
+    def test_a_lower_nvd_score_does_not_replace_a_higher_record_score_and_its_vector_stays_with_the_higher(self):
+        from collector.incidents import enrich
+        [i] = self.linked(self.group("CVE-2026-1", 9.8, "CVSS:3.1/record"))
+        enrich(i, {"cvss": 7.5, "vector": "CVSS:3.1/nvd", "products": []}, "CVE-2026-1")
+        self.assertEqual((i["cvss"], i["cve_scores"]["CVE-2026-1"]), (9.8, {"cvss": 9.8, "vector": "CVSS:3.1/record"}))
+        enrich(i, {"cvss": 10.0, "vector": "CVSS:3.1/higher", "products": []}, "CVE-2026-1")
+        self.assertEqual((i["cvss"], i["cve_scores"]["CVE-2026-1"]), (10.0, {"cvss": 10.0, "vector": "CVSS:3.1/higher"}))
+
+    def test_an_equal_score_never_replaces_the_stored_vector(self):
+        from collector.incidents import enrich, merge_score
+        [i] = self.linked(self.group("CVE-2026-1", 9.8, "CVSS:3.1/first"))
+        enrich(i, {"cvss": 9.8, "vector": "CVSS:4.0/second", "products": []}, "CVE-2026-1")
+        self.assertEqual(i["cve_scores"]["CVE-2026-1"]["vector"], "CVSS:3.1/first")
+        self.assertFalse(merge_score(i["cve_scores"], "CVE-2026-1", 9.8, "CVSS:4.0/second"))
+        self.assertTrue(merge_score(i["cve_scores"], "CVE-2026-1", 9.9, "CVSS:4.0/second"))
+
+    def test_a_cve_scored_after_its_incident_was_grouped_gets_its_own_entry(self):
+        from collector.incidents import enrich, group_releases
+        incidents = self.linked(*(self.group(f"CVE-2026-{n}", None, "", f"2026-11-08T22:1{n}:00Z") for n in (1, 2, 3)))
+        group_releases(incidents)
+        [g] = incidents
+        self.assertNotIn("cve_scores", g)
+        enrich(g, {"cvss": 8.8, "vector": "CVSS:3.1/later", "products": []}, "CVE-2026-3")
+        self.assertEqual(g["cve_scores"], {"CVE-2026-3": {"cvss": 8.8, "vector": "CVSS:3.1/later"}})
+        self.assertEqual(g["cvss"], 8.8)
+        enrich(g, {"cvss": None, "vector": "", "products": []}, "CVE-2026-2")  # no score, no entry
+        self.assertNotIn("CVE-2026-2", g["cve_scores"])
+
+    def test_a_narrowed_join_lends_no_score_for_a_cve_the_target_does_not_hold(self):
+        from collector.incidents import absorb
+        [i] = self.linked(self.group("CVE-2026-1", 5.0, "v1"))
+        absorb(i, {"cves": [], "mentions": [], "urls": [], "brief": {"text": "", "lead": ""},
+                   "cve_scores": {"CVE-2026-9": {"cvss": 9.9, "vector": "v9"}}})
+        self.assertEqual(list(i["cve_scores"]), ["CVE-2026-1"])
+
+    def test_a_fold_in_a_cycle_whose_kev_fetch_failed_keeps_kev_kev_date_and_kev_cves(self):
+        from collector.incidents import fold
+        a, b, c = self.linked(*(self.group(f"CVE-2026-{n}", None, key=f"k<{n}") for n in (1, 2, 3)))
+        b |= {"kev": True, "kev_date": "2026-11-06", "kev_cves": {"CVE-2026-2": "2026-11-06"}}
+        c |= {"kev": True, "kev_date": "2026-11-02", "kev_cves": {"CVE-2026-3": "2026-11-02"}}
+        fold([a, b, c], a, b)
+        fold([a, c], a, c)
+        self.assertEqual((a["kev"], a["kev_date"]), (True, "2026-11-02"))
+        self.assertEqual(a["kev_cves"], {"CVE-2026-2": "2026-11-06", "CVE-2026-3": "2026-11-02"})

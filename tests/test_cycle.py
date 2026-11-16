@@ -449,7 +449,8 @@ class HnOutageTest(OutageTest):
 class KevOutageTest(OutageTest):
     def rows(self):
         # Flagged by an earlier cycle; CVE-2026-19868 is listed in kev.json but not flagged yet.
-        return [{**incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z"), "kev": True, "kev_date": "2026-11-01"},
+        return [{**incident("CVE-2026-123158", "SSHole ...", "2026-11-07T09:00:00Z"), "kev": True, "kev_date": "2026-11-01",
+                 "kev_cves": {"CVE-2026-123158": "2026-11-01"}},
                 incident("CVE-2026-19868", "SonicWall SonicOS SSLVPN ...", "2026-11-07T09:00:00Z")]
 
     def test_a_failed_catalog_skips_kev_and_keeps_every_flag(self):
@@ -457,6 +458,7 @@ class KevOutageTest(OutageTest):
 
         self.assertEqual((self.held("CVE-2026-123158")["kev"], self.held("CVE-2026-123158")["kev_date"]), (True, "2026-11-01"))
         self.assertNotIn("kev", self.held("CVE-2026-19868"))
+        self.assertEqual(self.held("CVE-2026-123158")["kev_cves"], {"CVE-2026-123158": "2026-11-01"})  # a failed catalogue clears none
 
     def test_the_next_cycle_flags_a_newly_listed_cve(self):
         self.cycle(self.answering(lambda url: url.startswith(kev.FEED_URL), unavailable), "kev")
@@ -464,6 +466,18 @@ class KevOutageTest(OutageTest):
 
         self.assertEqual((self.held("CVE-2026-19868")["kev"], self.held("CVE-2026-19868")["kev_date"]), (True, "2026-11-06"))
         self.assertIs(self.held("CVE-2026-123158")["kev"], True)
+
+    def test_the_kev_loop_names_each_listed_cve_and_leaves_the_others_out(self):
+        group = {**incident("CVE-2026-19868", "SonicWall SonicOS SSLVPN ...", "2026-11-07T09:00:00Z"),
+                 "cves": ["CVE-2026-1", "CVE-2026-19868", "CVE-2024-27834", "CVE-2026-39987"],
+                 "kev_cves": {"CVE-2026-39987": "2026-04-22"}}  # a stored day stays as it is
+        self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [group]})
+        self.cycle(recorded(kev="kev.json"), "kev")
+
+        held = self.held("CVE-2026-19868")
+        self.assertEqual(held["kev_cves"], {"CVE-2026-19868": "2026-11-06", "CVE-2024-27834": "2026-11-04",
+                                            "CVE-2026-39987": "2026-04-22"})
+        self.assertEqual((held["kev"], held["kev_date"]), (True, "2026-04-23"))  # kev_date reads the catalogue, as before
 
 
 class NvdEnrichmentTest(unittest.TestCase):
@@ -505,6 +519,18 @@ class NvdEnrichmentTest(unittest.TestCase):
         self.assertEqual(self.store.read("checkpoints.json")["nvd"], "2026-11-07T13:30:00.000Z")
         # Vendors not in web/vendors.json whose Product names lack them, with an example, for a person or agent to add.
         self.assertEqual(self.store.read("unknown_vendors.json"), {"openbsd": "OpenSSH", "totolink": "Ca300-poe Firmware"})
+
+    def test_nvds_primary_score_comes_with_its_vector(self):
+        cve = {"metrics": {"cvssMetricV31": [
+            {"type": "Secondary", "cvssData": {"baseScore": 9.8, "vectorString": "CVSS:3.1/AV:N/AC:L"}},
+            {"type": "Primary", "cvssData": {"baseScore": 7.5, "vectorString": "CVSS:3.1/AV:N/AC:H"}}]}}
+        self.assertEqual(nvd.cvss(cve), (7.5, "CVSS:3.1/AV:N/AC:H"))
+        # v2 is the last fallback; its vector has no "CVSS:" prefix and is kept as given.
+        self.assertEqual(nvd.cvss({"metrics": {"cvssMetricV2": [{"type": "Primary", "cvssData": {"baseScore": 5.0, "vectorString": "AV:N/AC:L/Au:N"}}]}}),
+                         (5.0, "AV:N/AC:L/Au:N"))
+        self.assertEqual(nvd.cvss({"metrics": {}}), (None, ""))
+        found, _ = nvd.fetch("2026-11-07T13:15:00.000Z", at("2026-11-07T13:30:00"), recorded(nvd_pages=("page-0.json", "page-2.json")), lambda s: None)
+        self.assertEqual((found["CVE-2026-123957"]["cvss"], found["CVE-2026-123957"]["vector"]), (9.9, ""))  # the fixture has none
 
     def test_nvd_outage_still_publishes_new_cves_and_retries_the_same_range(self):
         cvelist_get = recorded()

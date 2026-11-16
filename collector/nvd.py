@@ -13,7 +13,7 @@ METRICS = ("cvssMetricV31", "cvssMetricV30", "cvssMetricV40", "cvssMetricV2")
 
 
 def fetch(checkpoint, now, http_get, sleep, api_key=""):
-    """Return ({CVE ID: {"cvss": score or None, "products": [...]}}, next checkpoint).
+    """Return ({CVE ID: {"cvss": score or None, "vector": its vector or "", "products": [...]}}, next checkpoint).
 
     The checkpoint is the end of the last range read, as NVD wants it ("...T13:15:00.000Z")."""
     end = stamp(now)
@@ -35,7 +35,9 @@ def fetch(checkpoint, now, http_get, sleep, api_key=""):
         total = page["totalResults"]
         index += len(page["vulnerabilities"])
         for item in page["vulnerabilities"]:
-            found[item["cve"]["id"]] = {"cvss": cvss(item["cve"]), "products": products(item["cve"]), "published": item["cve"].get("published")}
+            score, vector = cvss(item["cve"])
+            found[item["cve"]["id"]] = {"cvss": score, "vector": vector, "products": products(item["cve"]),
+                                        "published": item["cve"].get("published")}
     return found, end
 
 
@@ -44,12 +46,16 @@ def stamp(when):
 
 
 def cvss(cve):
+    """(score, vector) of the first metric version present, NVD's Primary first; (None, "") when none. A v2 vector has no
+    "CVSS:" prefix ("AV:N/AC:L/Au:N") and is kept as given."""
     for key in METRICS:
         scores = cve.get("metrics", {}).get(key)
         if scores:
             primary = [s for s in scores if s["type"] == "Primary"]  # NVD's own score beats the CNA's
-            return (primary or scores)[0]["cvssData"]["baseScore"]
-    return None
+            data = (primary or scores)[0]["cvssData"]
+            vector = data.get("vectorString")
+            return data["baseScore"], vector if isinstance(vector, str) else ""
+    return None, ""
 
 
 def products(cve):

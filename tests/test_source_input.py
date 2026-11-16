@@ -246,7 +246,8 @@ class SummaryInputBoundTest(unittest.TestCase):
 
     def test_an_incident_of_twelve_cves_gets_the_same_input_as_before(self):
         incident = group(12)
-        expected = "\n".join([f"Incident: {', '.join(incident['cves'])}", "CVSS: not rated yet",
+        # Step 4: a group names its Lead CVE (with no score or KEV listing yet, the first to arrive).
+        expected = "\n".join([f"Incident: {', '.join(incident['cves'])}", "Lead CVE: CVE-2026-1000", "CVSS: not rated yet",
                               "Exploited in the wild (CISA KEV): no", "Products: unknown", "Description: Widget flaws.",
                               "Mentions:", f"- cve_record {RECORD_URL}", f"- advisory {LEAD} (Widget advisory)",
                               f"Text of {LEAD}{summary_input.LEAD_MARK}:", "Fixed in Widget 2.0.",
@@ -307,6 +308,59 @@ class SummaryInputBoundTest(unittest.TestCase):
         self.assertIn(f"Text of {LEAD}{summary_input.LEAD_MARK}:\nFixed in Widget 2.0.\n", text)
         for cve in incident["cves"][:12]:
             self.assertIn(f"CVE record {cve}:\n{json.dumps(record(cve))}\n", text)
+
+    # Step 4: a group's input follows cve_order and carries each CVE's score; a one-CVE input is unchanged.
+
+    def scored(self, n, scores, **fields):
+        incident = group(n) | fields
+        incident["cve_scores"] = {c: {"cvss": s, "vector": f"CVSS:3.1/AV:N/{c[-4:]}"} for c, s in scores.items()}
+        incident["cvss"] = max(scores.values())
+        return incident
+
+    def test_a_groups_input_lists_cves_by_cve_order_and_reads_the_twelve_highest_scored_records(self):
+        incident = self.scored(14, {"CVE-2026-1012": 9.8, "CVE-2026-1013": 8.8, "CVE-2026-1000": 5.0})
+        order = summary_input.cve_order(incident)
+        self.assertEqual(order[:3], ["CVE-2026-1012", "CVE-2026-1013", "CVE-2026-1000"])
+        text = summary_input.summary_input(incident, self.http_get)
+        lines = text.split("\n")
+        self.assertEqual(lines[:5], [f"Incident: {', '.join(order)}", "Lead CVE: CVE-2026-1012",
+                                     f"{summary_input.CVE_LINES_ONLY} {', '.join(order[:12])}", "CVSS: 9.8 (highest, CVE-2026-1012)",
+                                     "Exploited in the wild (CISA KEV): no"])
+        self.assertEqual([u.rsplit("/", 1)[-1].removesuffix(".json") for u in self.records_asked()], order[:12])
+        self.assertEqual([line.split(":")[0] for line in lines if line.startswith("CVE-")], order[12:])
+
+    def test_the_kev_line_names_the_listed_cves(self):
+        incident = self.scored(3, {"CVE-2026-1001": 7.5}, kev=True, kev_cves={"CVE-2026-1002": "2026-11-06"})
+        text = summary_input.summary_input(incident, self.http_get)
+        self.assertIn("\nExploited in the wild (CISA KEV): yes (CVE-2026-1002)\n", text)
+        self.assertIn("\nLead CVE: CVE-2026-1002\n", text)
+
+    def test_each_record_line_carries_its_score_and_vector_inside_the_json_and_still_counts_as_trusted(self):
+        incident = self.scored(3, {"CVE-2026-1001": 7.5})
+        text = summary_input.summary_input(incident, self.http_get)
+        line = json.dumps(record("CVE-2026-1001") | {"cvss": 7.5, "vector": "CVSS:3.1/AV:N/1001"})
+        self.assertIn(f"\nCVE record CVE-2026-1001:\n{line}\n", text)
+        self.assertIn(f"\nCVE record CVE-2026-1000:\n{json.dumps(record('CVE-2026-1000'))}", text)  # no score, no keys
+        self.assertIn(line, summary_input.trusted(text)[0])
+
+    def test_a_one_cve_input_is_unchanged(self):
+        incident = self.scored(1, {"CVE-2026-1000": 9.8}, kev=True, kev_cves={"CVE-2026-1000": "2026-11-06"})
+        expected = "\n".join(["Incident: CVE-2026-1000", "CVSS: 9.8", "Exploited in the wild (CISA KEV): yes", "Products: unknown",
+                              "Description: Widget flaws.", "Mentions:", f"- cve_record {RECORD_URL}",
+                              f"- advisory {LEAD} (Widget advisory)", f"Text of {LEAD}{summary_input.LEAD_MARK}:",
+                              "Fixed in Widget 2.0.", "CVE record CVE-2026-1000:", json.dumps(record("CVE-2026-1000"))])
+        self.assertEqual(summary_input.summary_input(incident, self.http_get), expected)
+
+    def test_past_twelve_each_line_carries_its_score(self):
+        incident = self.scored(14, {"CVE-2026-1000": 9.8, "CVE-2026-1001": 9.1, **{f"CVE-2026-10{n:02}": 8.0 for n in range(2, 12)},
+                                    "CVE-2026-1012": 4.3})
+        incident["cve_scores"]["CVE-2026-1012"]["vector"] = ""
+        later = [line for line in summary_input.summary_input(incident, self.http_get).split("\n") if line.startswith("CVE-")]
+        self.assertEqual(later, ["CVE-2026-1012 (CVSS 4.3): CVE-2026-1012 lets an attacker read files.",
+                                 "CVE-2026-1013: CVE-2026-1013 lets an attacker read files."])
+        incident["cve_scores"]["CVE-2026-1012"]["vector"] = "CVSS:3.1/AV:N/X"
+        self.assertIn("CVE-2026-1012 (CVSS 4.3, CVSS:3.1/AV:N/X): CVE-2026-1012 lets",
+                      summary_input.summary_input(incident, self.http_get))
 
 
 if __name__ == "__main__":

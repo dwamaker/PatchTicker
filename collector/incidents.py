@@ -43,10 +43,40 @@ PAGE_FIELDS = ("id", "cves", "first_seen", "published", "mentions", "brief", "cv
 
 def board_view(incident):
     """The page's copy of an Incident; a failed Summary keeps only its final flag (the page's 'unavailable' note)."""
-    view = {k: incident[k] for k in PAGE_FIELDS if k in incident}
+    view = {k: incident[k] for k in PAGE_FIELDS if k in incident} | order_fields(incident, maps=True)
     if incident.get("summary_error", {}).get("final"):
         view["summary_error"] = {"final": True}
     return view | known_field(incident)
+
+
+def exploited_cves(incident):
+    """The CVEs named as attacked: KEV-listed (kev_cves) or named by the Summary's source (summary.exploited_cves)."""
+    return set(incident.get("kev_cves") or {}) | set((incident.get("summary") or {}).get("exploited_cves") or [])
+
+
+def cve_order(incident):
+    """The CVEs as the page lists them (step 4), worked out at each write and never stored (`cves` keeps arrival order,
+    ADR 0001): exploited first, then by score high to low, unscored last, ties in arrival order. The first is the Lead CVE."""
+    attacked, scores = exploited_cves(incident), incident.get("cve_scores") or {}
+    return sorted(incident["cves"], key=lambda c: (c not in attacked, c not in scores, -scores[c]["cvss"] if c in scores else 0))
+
+
+def top_cve(incident):
+    """The first CVE in cve_order whose own score is the Incident's cvss, or None: a half-filled cve_scores (or a cvss
+    lowered per CVE before step 4) names no CVE rather than a wrong one."""
+    scores = incident.get("cve_scores") or {}
+    return next((c for c in cve_order(incident) if c in scores and scores[c]["cvss"] == incident.get("cvss")), None)
+
+
+def order_fields(incident, maps):
+    """`cves` in cve_order, so every cves[0] reader on the site shows the Lead CVE; with more than one CVE also top_cve
+    and, for a whole Incident (maps), the per-CVE cve_scores and kev_cves."""
+    fields = {"cves": cve_order(incident)}
+    if len(incident["cves"]) > 1:
+        top = top_cve(incident)
+        fields |= ({"top_cve": top} if top else {}) | (
+            {k: incident[k] for k in ("cve_scores", "kev_cves") if incident.get(k)} if maps else {})
+    return fields
 
 
 def known_field(incident):
@@ -66,7 +96,7 @@ ROW_SUMMARY = ("exploited", "exploited_source", "platforms", "products", "librar
 def rows_view(incident):
     """board/rows.json's copy of an Incident (owner, 11-10: the Board draws first from a light file): what a row, the
     filters, folds and Highlights read, marked rows; the opened details and the text search wait for board/recent.json."""
-    view = {k: incident[k] for k in ROW_FIELDS if k in incident}
+    view = {k: incident[k] for k in ROW_FIELDS if k in incident} | order_fields(incident, maps=False)
     if incident.get("summary_error", {}).get("final"):
         view["summary_error"] = {"final": True}
     view |= {"rows": True, "wp_plugin": is_wordpress_plugin(incident)}  # its regex reads text a row view no longer has
@@ -376,6 +406,7 @@ def link(incidents, group, stamp):
         # A source without its own time leaves it unknown: the cycle's time is not when the news broke.
         **({"published": min(group["published"], stamp)} if group.get("published") else {}),
         **({"cvss": group["cvss"]} if group.get("cvss") is not None else {}),
+        **({"cve_scores": dict(group["cve_scores"])} if group.get("cve_scores") else {}),
         **({"products": group["products"]} if group.get("products") else {}),
         **({"fix_keys": group["fix_keys"]} if group.get("fix_keys") else {}),
         "mentions": mentions,
@@ -545,6 +576,21 @@ def absorb(target, other):
     if other.get("published"):
         set_published(target, other["published"])
     enrich(target, {"cvss": other.get("cvss"), "products": other.get("products", [])})
+    # Per CVE, only for CVEs the target holds: a narrowed join (link, not trusted) lends no other CVE's score.
+    for cve, entry in (other.get("cve_scores") or {}).items():
+        if cve in target["cves"]:
+            merge_score(target.setdefault("cve_scores", {}), cve, entry["cvss"], entry["vector"])
+    for cve, day in (other.get("kev_cves") or {}).items():
+        if cve in target["cves"]:
+            listed = target.setdefault("kev_cves", {})
+            listed[cve] = listed.get(cve) or day
+    # link and group_releases fold before the cycle's KEV loop, which skips a cycle whose catalogue failed: the flag and
+    # its earliest day travel with the CVEs, or basis() and needs_summary would read the fold as unlisted.
+    if other.get("kev"):
+        target["kev"] = True
+    days = sorted(d for d in (target.get("kev_date"), other.get("kev_date")) if d)
+    if days:
+        target["kev_date"] = days[0]
 
 
 # User, 2026-11-09: more than two CVEs for one product, fixed in the same version and published within two days, are one
@@ -604,11 +650,23 @@ def cite(incident, citation):
             incident["mentions"].append(citation["mention"])
 
 
-def enrich(incident, data):
-    """Fold one CVE's NVD data into its Incident; an Incident with several CVEs keeps the union."""
+def merge_score(scores, cve, score, vector):
+    """Keep `score` and its own vector as `cve`'s entry in a cve_scores map when it has none or this one is strictly
+    higher, so an equal score never flips the vector between cycles. True when the entry changed."""
+    if score is None or cve in scores and score <= scores[cve]["cvss"]:
+        return False
+    scores[cve] = {"cvss": score, "vector": vector or ""}
+    return True
+
+
+def enrich(incident, data, cve=None):
+    """Fold one CVE's NVD data into its Incident; an Incident with several CVEs keeps the union. Given the CVE, its score
+    and vector also go to cve_scores (merge_score)."""
     if data["cvss"] is not None:
-        # shortcut: keeps the highest score, so a downward NVD revision is not applied; store per-CVE scores if that matters.
+        # shortcut: keeps the highest score, so a downward NVD revision is not applied (per CVE too).
         incident["cvss"] = max(incident.get("cvss", 0), data["cvss"])
+        if cve:
+            merge_score(incident.setdefault("cve_scores", {}), cve, data["cvss"], data.get("vector"))
     merged = {p["id"]: p for p in incident.get("products", []) + data["products"]}
     if merged:
         incident["products"] = sorted(merged.values(), key=lambda p: p["id"])
