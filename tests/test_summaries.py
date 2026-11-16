@@ -811,6 +811,49 @@ class EasyJargonTest(unittest.TestCase):
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"easy_action": "OpenSSH 10.6p2 이상으로 업데이트하세요."}}
         self.assertIn("summary", self.save(reply))
 
+    # 11-16 read of group Summaries: eleven Easy actions said to wait for a release the Summary already names.
+    def test_an_easy_action_that_waits_for_a_release_the_summary_names_is_sent_back(self):
+        for lang, action in (("ko", "새 버전이 나오면 바로 업데이트하세요."), ("ko", "수정 버전이 출시되면 업데이트하세요."),
+                             ("en", "Update as soon as a new version is out."), ("en", "Update to the new version when it arrives."),
+                             ("en", "Update to the newest version as soon as one is available.")):
+            reply = SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {"easy_action": action}}
+            self.assertEqual(summaries.easy_action_mismatch(reply), [lang], action)
+            self.assertIn("Easy action", self.save(reply)["summary_error"]["reason"])
+
+    # 11-16 trial: MongoDB's group summary kept "단독 mongod는 해당하지 않습니다" under the prompt's absolute rule.
+    def test_a_groups_summary_or_easy_text_saying_who_is_not_affected_is_sent_back(self):
+        for lang, field, said in (("ko", "summary", "복제 세트 멤버가 해당하며 단독 mongod는 해당하지 않습니다."),
+                                  ("ko", "easy", "일반 설치는 영향을 받지 않습니다!"), ("ko", "easy_title", "PC는 영향이 없음"),
+                                  ("en", "summary", "Standalone mongod is not affected."), ("en", "easy", "Home users are safe."),
+                                  ("en", "easy_title", "Unaffected desktops")):
+            reply = SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {field: said}}
+            self.assertEqual(summaries.group_scope(reply), f"{summaries.GROUP_SCOPE} ({lang} {field})", said)
+        for field in ("conditions", "easy_conditions", "mitigation"):
+            reply = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {field: ["Standalone mongod is not affected."]
+                                                                    if "conditions" in field else "Panorama is not affected."}}
+            self.assertEqual(summaries.group_scope(reply), "", field)
+
+    def test_only_a_group_is_checked_for_who_is_not_affected(self):
+        reply = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"summary": SSHOLE_SUMMARY["en"]["summary"] + " Windows is not affected."}}
+        self.assertIn("summary", self.save(reply))  # one CVE: as before
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        text = ("Incident: CVE-2026-0001, CVE-2026-0002\nLead CVE: CVE-2026-0001\n"
+                f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False))
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                             "2026-11-08T12:00:00Z")
+        self.assertNotIn("summary", incident)
+        self.assertTrue(incident["summary_error"]["reason"].startswith(summaries.GROUP_SCOPE))
+
+    def test_waiting_for_a_release_passes_when_no_fixed_version_is_named(self):
+        reply = SSHOLE_SUMMARY | {"fixed": "", "fixes": [], "ko": SSHOLE_SUMMARY["ko"] | {"easy_action": "새 버전이 나오면 바로 업데이트하세요."},
+                                  "en": SSHOLE_SUMMARY["en"] | {"easy_action": "Update as soon as a new version is out."}}
+        self.assertEqual(summaries.easy_action_mismatch(reply), [])
+        for action in ("새로 나온 버전으로 바로 업데이트하세요.", "Update to the newest version right away.",
+                       "Update as soon as possible."):
+            lang = "en" if action.isascii() else "ko"
+            reply = SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {"easy_action": action}}
+            self.assertEqual(summaries.easy_action_mismatch(reply), [], action)
+
     def test_the_banned_words_are_the_ones_the_prompt_names(self):
         for word in summaries.EASY_BANNED:
             self.assertIn(word, summaries.INSTRUCTIONS)
@@ -837,6 +880,23 @@ class ScriptPageTest(unittest.TestCase):
         data["detail"] = "<p>" + "Long technical detail. " * 1000 + "</p>"
         page = summary_input.fetch_page(lambda url: json.dumps(data).encode(), "https://psirt.global.sonicwall.com/vuln-detail/SNWLID-2026-0014")
         self.assertIn("7.3.4-7013 and higher", summary_input.page_text(page)[:summary_input.PAGE_CHARS])
+
+
+class GroupPromptTest(unittest.TestCase):
+    """11-16 read of group Summaries: a group's title, summary and scope sentences spoke for one of its flaws."""
+
+    def test_a_group_request_carries_the_group_rule_and_a_one_cve_request_does_not(self):
+        single = summaries.params("Incident: CVE-2026-0001\nProducts: Widget")
+        group = summaries.params("Incident: CVE-2026-0001, CVE-2026-0002\nLead CVE: CVE-2026-0001\nProducts: Widget")
+        self.assertEqual([b["text"] for b in single["system"]], [summaries.INSTRUCTIONS])
+        self.assertEqual([b["text"] for b in group["system"]], [summaries.INSTRUCTIONS, summaries.GROUP_INSTRUCTIONS])
+        self.assertIn("cache_control", group["system"][0])  # the shared instructions stay cached for both
+        # 11-16 trial: "must hold for every CVE, or name the ids" was read as optional (MongoDB kept "standalone mongod is
+        # not affected"), so the limits are banned outright and sent to the conditions.
+        for words in ("gravest", "first sentence", "second sentence", "NO sentence about who or what is not affected",
+                      "only into conditions", "the group's widest", "stopgap", "easy"):
+            self.assertIn(words, summaries.GROUP_INSTRUCTIONS)
+        self.assertNotIn(summaries.GROUP_INSTRUCTIONS, summaries.INSTRUCTIONS)
 
 
 if __name__ == "__main__":

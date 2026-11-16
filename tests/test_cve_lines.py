@@ -109,6 +109,22 @@ class LineCheckTest(unittest.TestCase):
         self.assertEqual(second.get("cve_lines_rounds"), None)
         self.assertTrue(second["cve_lines_room"])
 
+    def test_a_cve_of_a_small_group_the_summary_wrote_no_line_for_goes_to_a_batch(self):
+        # 11-16 read of group Summaries: no check asked again for a group of twelve or fewer whose reply left a line out.
+        row = lines_row() | {"cves": MANY[:3]}
+        for lang in ("ko", "en"):
+            row["summary"][lang]["cve_lines"] = [{"cve": c, "text": "Files can be read."} for c in MANY[:2]]
+        self.assertEqual(cve_lines.missing_lines(row), [MANY[2]])
+        self.assertEqual(cve_lines.missing_lines(row | {"cves": MANY[:2]}), [])
+        self.assertEqual(cve_lines.missing_lines(row | {"cves": MANY[:1]}), [])  # one CVE: no lines at all
+
+    def test_a_cve_the_reply_left_out_is_logged(self):
+        # 11-16: four groups kept a CVE without a line and the log said nothing of it.
+        row = lines_row()
+        cves, log = saved(row, line(MANY[MAX], "파일을 읽을 수 있습니다.", "Files can be read."))
+        self.assertEqual(cves, [MANY[MAX]])
+        self.assertIn(f"no line for {MANY[MAX + 1]}", log)
+
     def test_an_unparsable_reply_is_logged_and_changes_nothing(self):
         row = lines_row()
         before = repr(row["summary"])

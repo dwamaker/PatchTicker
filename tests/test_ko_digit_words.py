@@ -54,6 +54,12 @@ class KoreanDigitWordTest(unittest.TestCase):
         self.assertEqual(cves, [MANY[MAX]])
         self.assertNotIn("dropped", log)
 
+    def test_a_cve_id_before_man_only_is_not_an_amount(self):
+        # 11-16, Rails CVE-2026-126067: "CVE-2026-126067만" (만: "only") was read as 1260670000, not in the input.
+        self.assertEqual(numbers.ko_numbers("CVE-2026-126067만 해당합니다"), {"2026", "126067"})
+        self.assertEqual(numbers.ko_numbers("cve-2026-126067만"), {"2026", "126067"})
+        self.assertEqual(numbers.ko_numbers("580만 명, 2만 건"), {"5800000", "20000"})
+
 
 if __name__ == "__main__":
     unittest.main()

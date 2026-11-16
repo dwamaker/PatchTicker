@@ -8,7 +8,12 @@ NUMBER_RE = re.compile(r"\d+(?:\.\d+)*(?:[a-z]+\d+)?", re.IGNORECASE)
 SCALES = {"천": 3, "만": 4, "억": 8, "조": 12, "thousand": 3, "million": 6, "billion": 9, "trillion": 12, "M": 6, "bn": 9}
 # Korean pieces add up ("1억 3300만", "7천715"); bare digits count only right after a unit. Never from inside a
 # version: "4.3.2만" is "only 4.3.2", not 4. and 3.2만 (11-16: Zephyr rejected for "4.32000").
-KO_AMOUNT_RE = re.compile(r"(?<![\d.])\d+(?:\.\d+)?\s?[천만억조]+(?:\s?\d+(?:\.\d+)?\s?[천만억조]+)*(?:\d+(?![\d.]))?")
+# 천/만/억/조 is a scale only before a counter ("3만 대", "580만여 명", "1억 2천만 명"): 만 also means "only"
+# ("CVE-2026-126067만", "Windows 11만", "TLS 1.3만"), and 조 an article ("제3조") (11-16, Rails; audit F7).
+KO_COUNTER = (r"(?=\s?여?\s?(?:명|원|달러|건|개|대|곳|회|번|가구|위안|엔|유로|파운드|배|장|줄|바이트|단어|페이지|행|가지|마리|권|채"
+              r"|시간|개월|년|톤|사용자|고객|기업|계정|기기|사이트|서버))")
+KO_AMOUNT_RE = re.compile(r"(?<![\d.])(?<![Cc][Vv][Ee]-\d{4}-)\d+(?:\.\d+)?\s?[천만억조]+(?:\s?\d+(?:\.\d+)?\s?[천만억조]+)*(?:\d+(?![\d.]))?"
+                          + KO_COUNTER)
 KO_PIECE_RE = re.compile(r"(\d+(?:\.\d+)?)\s?([천만억조]*)")
 EN_AMOUNT_RE = re.compile(r"(?<![\d.])(\d+(?:\.\d+)?)\s?(thousand|million|billion|trillion|M|bn)\b")
 

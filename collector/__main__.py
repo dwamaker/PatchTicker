@@ -157,6 +157,9 @@ def smoke(claude):
     line a shape and returns the exit code: 0 when all are accepted, 1 when any is rejected."""
     shapes = {
         "summary": summaries.params(f"Incident: CVE-2026-0001\nProducts: Widget\n{SMOKE_TEXT}"),
+        # A group request adds GROUP_INSTRUCTIONS as a second system block (11-16).
+        "group summary": summaries.params(
+            f"Incident: CVE-2026-0001, CVE-2026-0002\nLead CVE: CVE-2026-0001\nProducts: Widget\n{SMOKE_TEXT}"),
         "quick titles": summaries.title_params([SMOKE_INCIDENT]),
         "cve lines": cve_lines.lines_params(cve_lines.lines_input(SMOKE_INCIDENT, SMOKE_INCIDENT["cves"])),
     }

@@ -61,6 +61,17 @@ class RetryFeedbackTest(unittest.TestCase):
         self.assertEqual(claude.sent[0]["max_tokens"], model.MAX_TOKENS_RETRY)
         self.assertGreater(model.MAX_TOKENS_RETRY, model.MAX_TOKENS)
 
+    def test_a_title_with_a_stray_bracket_costs_a_retry(self):
+        # 11-16, CVE-2025-15711: "Live Composer 워드프레스 플러그인 저장형 XSS 기준)" passed every check.
+        cut = copy.deepcopy(SSHOLE_SUMMARY)
+        cut["ko"]["title"] += " 기준)"
+        claude = FakeClaude(cut, SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+
+        self.assertIn("ko title", board(self.store)[HN_STORY]["summary_error"]["reason"])
+        self.run_at("2026-11-07T12:45:00", claude)
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["ko"]["title"], SSHOLE_SUMMARY["ko"]["title"])
+
     def test_a_summary_given_up_over_a_number_is_not_tried_again(self):
         claude = FakeClaude(*[SHORTENED] * (summaries.MAX_TRIES + 1))
         self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
@@ -102,8 +113,36 @@ class ExactNumbersTest(unittest.TestCase):
                    "easy_title": "", "easy_action": "", "easy_conditions": []}, "en": {"names": [], "easy": "", "easy_title": "",
                    "easy_action": "", "easy_conditions": []}}
         self.assertEqual(summaries.easy_jargon(summary), [])
-        summary["ko"]["easy"] = "API 키가 새어 나갈 수 있습니다!"
-        self.assertEqual(summaries.easy_jargon(summary), ["API"])
+        summary["ko"]["easy"] = "SQL 명령이 새어 나갈 수 있습니다!"
+        self.assertEqual(summaries.easy_jargon(summary), ["SQL"])
+
+    def test_one_word_of_the_products_name_is_not_jargon(self):
+        # 11-16, CVE-2026-120631: "CGI for Perl" was rejected again and again for "CGI" in its Easy view.
+        summary = {"products": ["CGI for Perl"], "devices": [], "ko": {"names": ["CGI for Perl"], "easy": "Perl CGI 모듈에 구멍이 있습니다!",
+                   "easy_title": "CGI.pm 해킹 위험", "easy_action": "", "easy_conditions": []}, "en": {"names": [], "easy": "",
+                   "easy_title": "", "easy_action": "", "easy_conditions": []}}
+        self.assertEqual(summaries.easy_jargon(summary), [])
+        summary["en"]["easy"] = "A CGI script can leak SQL data!"
+        self.assertEqual(summaries.easy_jargon(summary), ["SQL"])
+
+
+class UnbalancedTitleTest(unittest.TestCase):
+    def check(self, title, field="title", lang="ko"):
+        summary = {lang: {"title": "", "easy_title": ""} for lang in ("ko", "en")}
+        summary[lang][field] = title
+        return summaries.unbalanced_title(summary)
+
+    def test_a_stray_bracket_or_quote_in_a_title_is_caught(self):
+        self.assertEqual(self.check("Live Composer 워드프레스 플러그인 저장형 XSS 기준)"), "unbalanced brackets or quotes in the ko title")
+        self.assertTrue(self.check("Foo (stored XSS", lang="en"))
+        self.assertTrue(self.check('Foo "stored XSS', field="easy_title"))
+        self.assertTrue(self.check("Foo “stored XSS", field="easy_title", lang="en"))
+        self.assertTrue(self.check("Foo ) bar (", lang="en"))
+
+    def test_balanced_titles_and_version_ranges_pass(self):
+        for title in ("OpenSSH sshd 신호 처리 경쟁 상태 (regreSSHion)", "Foo [1.0, 2.0) 버전", 'Foo "Bar" (CVE-2026-1)',
+                      "Firefox's “Baz” flaw", "Foo 「Bar」"):
+            self.assertEqual(self.check(title), "", title)
 
 
 class MonthNameTest(unittest.TestCase):
