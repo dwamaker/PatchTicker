@@ -808,7 +808,9 @@ class EasyJargonTest(unittest.TestCase):
         self.assertEqual(incident["summary"]["en"]["easy_action"], SSHOLE_SUMMARY["en"]["easy_action"])
 
     def test_an_easy_action_that_agrees_with_the_mitigation_passes(self):
-        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"easy_action": "OpenSSH 10.6p2 이상으로 업데이트하세요."}}
+        # Owner 11-16: a version named in the Easy action stands in both languages.
+        reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"easy_action": "OpenSSH 10.6p2 이상으로 업데이트하세요."},
+                                  "en": SSHOLE_SUMMARY["en"] | {"easy_action": "Update OpenSSH to 10.6p2 or later."}}
         self.assertIn("summary", self.save(reply))
 
     # 11-16 read of group Summaries: eleven Easy actions said to wait for a release the Summary already names.
@@ -916,14 +918,14 @@ class EasyConditionsTest(unittest.TestCase):
 class FixedConflictTest(unittest.TestCase):
     """Owner, 2026-11-10: FreeRDP's advisory has a typo ("Patched versions 3.22.2" for 3.32.2), the model copied it and
     the number check passed, so the page told readers to install a version every CVE record calls affected. A fixed
-    version below the CVE records' first fixed version of the same major is a failed try, the last one included."""
+    version below the CVE records' first fixed version of the same release line (major.minor; owner 11-16, so a backport passes) is a failed try, the last one included."""
     FREERDP = {"fix_keys": ["freerdp:freerdp<3.32.2"]}
 
     def conflict(self, fixed="", fixes=(), keys=FREERDP["fix_keys"]):
         return summaries.fixed_conflict({"fix_keys": list(keys)}, {"fixed": fixed, "fixes": [{"for": "x", "version": v} for v in fixes]})
 
     def test_a_fixed_version_below_the_records_first_fixed_version_conflicts(self):
-        self.assertEqual(self.conflict("3.22.2"), "fixed version 3.22.2 is below 3.32.2, the first fixed version in the CVE"
+        self.assertEqual(self.conflict("3.32.1"), "fixed version 3.32.1 is below 3.32.2, the first fixed version in the CVE"
                                                   " records; a version below it is still affected")
 
     def test_a_version_equal_to_a_bound_or_higher_passes(self):
@@ -943,32 +945,32 @@ class FixedConflictTest(unittest.TestCase):
         self.assertEqual(self.conflict(fixes=["unknown"], keys=keys), "")
 
     def test_no_check_across_products_or_on_listed_versions_or_without_a_version(self):
-        self.assertEqual(self.conflict("3.22.2", keys=["freerdp:freerdp<3.32.2", "freerdp:winpr<3.32.2"]), "")
-        self.assertEqual(self.conflict("3.22.2", keys=["freerdp:freerdp<=3.32.1"]), "")
-        self.assertIn("3.22.2", self.conflict("3.22.2", keys=["freerdp:freerdp<3.32.2", "freerdp:winpr<=3.40"]))
+        self.assertEqual(self.conflict("3.32.1", keys=["freerdp:freerdp<3.32.2", "freerdp:winpr<3.32.2"]), "")
+        self.assertEqual(self.conflict("3.32.1", keys=["freerdp:freerdp<=3.32.1"]), "")
+        self.assertIn("3.32.1", self.conflict("3.32.1", keys=["freerdp:freerdp<3.32.2", "freerdp:winpr<=3.40"]))
         self.assertEqual(self.conflict("1.2", keys=["acme:widget<1." + "9" * 5000]), "")  # too long to be a version
-        self.assertEqual(self.conflict("3.22.2", keys=[]), "")
+        self.assertEqual(self.conflict("3.32.1", keys=[]), "")
         for fixed in ("", "latest"):
             self.assertEqual(self.conflict(fixed), "")
 
     def test_a_distributions_package_under_fixes_passes_but_not_as_the_bare_fixed_version(self):
         # Owner, 2026-11-12: GStreamer's Red Hat backports (CVE-2026-125712) were rejected three times against 1.28.4.
-        keys = ["gstreamer:gst-plugins-base<1.28.4"]
+        keys = ["gstreamer:gst-plugins-base<1.16.4"]
         for version in ("1.16.1-8.el8_10", "0:1.16.1-3.el8_10", "1.22.12-10.el9_9.1", "1.22.0-2+deb12u3", "1.24.2-1ubuntu0.2",
                         "1.16.2-7.1.hum1", "10.3_p1-r2", "3.0.15-r0"):  # 11-15: Red Hat Hardened Images, Alpine (review N2)
             with self.subTest(version):
                 self.assertEqual(self.conflict(fixes=[version], keys=keys), "")
-        self.assertEqual(self.conflict("1.16.1-3.el8_10", keys=keys), "fixed version 1.16.1 is below 1.28.4, the first fixed"
+        self.assertEqual(self.conflict("1.16.1-3.el8_10", keys=keys), "fixed version 1.16.1 is below 1.16.4, the first fixed"
                          " version in the CVE records; a version below it is still affected")
-        self.assertIn("1.16.1 is below 1.28.4", self.conflict(fixes=["1.16.1"], keys=keys))
-        for plain in ("1.16.1", "3.22.2", "2.0.0-rc1", "KobiPBX-FOP3-SEC-r1", "10.6p2"):  # a build named "-r1" is no package
+        self.assertIn("1.16.1 is below 1.16.4", self.conflict(fixes=["1.16.1"], keys=keys))
+        for plain in ("1.16.1", "3.32.1", "2.0.0-rc1", "KobiPBX-FOP3-SEC-r1", "10.6p2"):  # a build named "-r1" is no package
             self.assertIsNone(summaries.DISTRO_PACKAGE.search(plain))
 
     def test_the_retry_note_for_a_conflict_asks_only_for_a_version_the_input_writes(self):
         # 11-15: the bound came from the fix keys, not the input; the old note sent the model to it (CVE-2026-125712).
         sentence = "never write the bound yourself"
-        note = summaries.retry({"summary_error": {"reason": self.conflict("1.16.1-3.el8_10", keys=["gstreamer:gst-plugins-base<1.28.4"])}})["note"]
-        self.assertIn("rejected: fixed version 1.16.1 is below 1.28.4", note)
+        note = summaries.retry({"summary_error": {"reason": self.conflict("1.16.1-3.el8_10", keys=["gstreamer:gst-plugins-base<1.16.4"])}})["note"]
+        self.assertIn("rejected: fixed version 1.16.1 is below 1.16.4", note)
         self.assertIn(sentence, note)
         self.assertNotIn("write the product's own first fixed version", note)
         self.assertNotIn("never shorten or round", note)
@@ -978,7 +980,7 @@ class FixedConflictTest(unittest.TestCase):
 
     def save(self, tries=0):
         # SSHOLE_SUMMARY says 10.6p2; a record bound of 10.7 makes it the FreeRDP shape.
-        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}], "fix_keys": ["openbsd:openssh<10.7"]}
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}], "fix_keys": ["openbsd:openssh<10.6.3"]}
         if tries:
             incident["summary_error"] = {"tries": tries, "reason": "earlier"}
         text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
@@ -990,7 +992,7 @@ class FixedConflictTest(unittest.TestCase):
         fixes = [{"for": "Red Hat Enterprise Linux 8", "version": "1.16.1-3.el8_10", "devices": []}]
         reply = SSHOLE_SUMMARY | {"fixed": "1.16.1-3.el8_10", "fixes": fixes}
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}],
-                    "fix_keys": ["gstreamer:gst-plugins-base<1.28.4"]}
+                    "fix_keys": ["gstreamer:gst-plugins-base<1.16.4"]}
         text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(reply, ensure_ascii=False)
         summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-15T12:00:00Z")
         self.assertNotIn("summary_error", incident)
@@ -1003,17 +1005,17 @@ class FixedConflictTest(unittest.TestCase):
             with self.subTest(tries=tries):
                 incident = self.save(tries)
                 self.assertNotIn("summary", incident)
-                self.assertIn("fixed version 10.6 is below 10.7", incident["summary_error"]["reason"])
+                self.assertIn("fixed version 10.6 is below 10.6.3", incident["summary_error"]["reason"])
         self.assertTrue(incident["summary_error"]["final"])
 
     def test_the_retry_note_carries_the_reason_without_the_number_hints(self):
         note = summaries.retry(self.save(), "")["note"]
-        self.assertIn("rejected: fixed version 10.6 is below 10.7", note)
+        self.assertIn("rejected: fixed version 10.6 is below 10.6.3", note)
         self.assertNotIn("For each rejected number", note)
 
     def test_a_stored_conflicting_summary_is_made_again_within_the_limit(self):
         incident = {"id": "CVE-2026-121386", "cves": ["CVE-2026-121386"], "kev": False, "mentions": [], **self.FREERDP,
-                    "summary": {"fixed": "3.22.2", "fixes": []}, "summary_basis": {"cves": ["CVE-2026-121386"], "kev": False, "advisories": [], "n": 1}}
+                    "summary": {"fixed": "3.32.1", "fixes": []}, "summary_basis": {"cves": ["CVE-2026-121386"], "kev": False, "advisories": [], "n": 1}}
         self.assertTrue(summaries.needs_summary(incident))
         self.assertFalse(summaries.needs_summary(incident | {"summary": {"fixed": "3.32.2", "fixes": []}}))
         self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))

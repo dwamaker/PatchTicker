@@ -112,7 +112,7 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
 - When the flaw needs a condition (a system such as musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it; never widen it to every user of the product, and never narrow it either: when the sources name a kind with examples ("musl-based Linux such as Alpine or OpenWrt"), name every example (the kind itself is often a technical term), never one example alone, or a reader who runs another one thinks they are safe ("Alpine·OpenWrt SSH 서버 아무 비밀번호 통과", "SSH on Alpine or OpenWrt accepts any long password"; never "Alpine SSH 서버 …" alone).
 - easy_title: a headline of at most 5 words for the same reader, ending in the plain danger ("Windows 그림판 해킹 위험", "SonicWall VPN 장비 뚫림 위험"): it must name the product as its users call it, first, with what it is when that is unclear, then the danger in everyday words ("OpenSSH 원격 접속 서버 장악 위험", "Brotli 압축 부품 서버 멈춤 위험", "Brotli flaw stalls web servers"; never "서버 멈춤 위험" alone). No versions, no CVE ID, and the same ban on technical terms.
-- easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전으로 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Tell the reader to wait for a new version only when fixed and fixes are both empty. Never a path, a setting name, a command, a version range or a product version; the page shows the fixed version and any command itself. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). When mitigation says there is no fix, never say to update: give its workaround, migration or replacement, else "아직 고친 버전이 없습니다." / "There is no fix yet." Empty string when mitigation is empty.
+- easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전으로 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Tell the reader to wait for a new version only when fixed and fixes are both empty. Never a path, a setting name, a command or a version range; the page shows any command itself. It may name the fixed version to update to, as mitigation does, in both languages ("ash_ai를 1.5.1 이상으로 업데이트하세요.", "Update ash_ai to 1.5.1 or later."), never a version that fixed, fixes and mitigation do not name. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). When mitigation says there is no fix, never say to update: give its workaround, migration or replacement, else "아직 고친 버전이 없습니다." / "There is no fix yet." Empty string when mitigation is empty.
 - command_for: when "command" is not empty, the system it is for as a short phrase the page shows before it ("Alpine 리눅스라면", "On Alpine Linux"; "Debian·Ubuntu라면", "On Debian or Ubuntu"), from what a source says or the package tool itself (apk is Alpine's, apt Debian's and Ubuntu's, dnf Fedora's and RHEL's). Empty string when command is empty or nothing tells.
 - cve_lines: when the Incident lists more than one CVE (one vendor release fixing several), one entry per CVE in the
   input's order, only for the CVEs a "Per-CVE lines only for:" line names when the input has one: "cve" copied exactly, "text" one short line on what that CVE lets an attacker do, in the same plain
@@ -257,21 +257,24 @@ NOT_OUT_RE = re.compile(r"출시되지 않|출시 전|출시 예정|예정일|�
 
 def easy_action_mismatch(summary):
     """The Easy action must agree with the normal mitigation (critique 13: Userplace, OpenEMR): every version it names
-    is in the mitigation, it never sends the reader to update now when the mitigation begins by saying there is no
-    fix (audit F11: the old rule needed a version, which the prompt bans there), and it never says to wait for a release
-    when fixed or fixes names one and the mitigation does not itself say the fix is not out (11-16: "새 버전이 나오면 바로
-    업데이트하세요" beside a fixed 1.6.3). The languages that disagree."""
+    is one fixed, fixes or the mitigation names, and the other language's Easy action names it too (owner 11-16: a
+    version is allowed there, never a new one); it never sends the reader to update now when the mitigation begins by
+    saying there is no fix (audit F11), and it never says to wait for a release when fixed or fixes names one and the
+    mitigation does not itself say the fix is not out (11-16: "새 버전이 나오면 바로 업데이트하세요" beside a fixed
+    1.6.3). The languages that disagree."""
     released = bool(summary["fixed"] or summary["fixes"])
+    named = numbers("\n".join([summary["fixed"], *(str(f.get("version", "")) for f in summary["fixes"] if isinstance(f, dict))]))
+    acted = {lang: {t for t in numbers(summary[lang]["easy_action"]) if "." in t} for lang in ("ko", "en")}
 
-    def disagrees(fields):
-        versions = {t for t in numbers(fields["easy_action"]) if "." in t}
+    def disagrees(lang):
+        fields, versions = summary[lang], acted[lang]
         action, mitigation = fields["easy_action"], fields["mitigation"]
         wait = WAIT_RE.search(action)
-        return bool(versions - numbers(mitigation)
+        return bool(versions - numbers(mitigation) - named or versions - acted["en" if lang == "ko" else "ko"]
                     or versions and NO_FIX_RE.search(mitigation) and UPDATE_RE.search(action)
                     or mitigation.startswith(NO_FIX_START) and UPDATE_RE.search(action) and not wait
                     or released and wait and not NO_FIX_RE.search(mitigation) and not NOT_OUT_RE.search(mitigation))
-    return [lang for lang in ("ko", "en") if disagrees(summary[lang])]
+    return [lang for lang in ("ko", "en") if disagrees(lang)]
 
 
 GROUP_SCOPE = "a group's summary says who is not affected: move it to conditions with its CVE ids"
@@ -340,8 +343,9 @@ FIXED_CONFLICT = "fixed version "  # retry() gives it its own sentence
 def fixed_conflict(incident, summary):
     """A fixed version the CVE records call affected (FreeRDP, 11-10: the advisory's typo "3.22.2" for 3.32.2 reached
     the page): below every record bound ("product<VALUE" fix_keys of one product; VALUE may list several versions,
-    as JetBrains records do) that shares its major, and equal to none; a distribution's package under "fixes" is not
-    checked (DISTRO_PACKAGE). The reason, or ""."""
+    as JetBrains records do) of its own major.minor line, and equal to none; a distribution's package under "fixes" is
+    not checked (DISTRO_PACKAGE). Since 11-16 a typo across lines (FreeRDP's 3.22 for 3.32) is no longer caught: it
+    cannot be told from a backport. The reason, or ""."""
     # A distribution's package build ("red_hat:…:krb5<0:1.21.1-10.el9_9.2", 11-16) groups but bounds nothing: its digits
     # are not the product's versions ("9_9.2" would read as 9.2).
     strict = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k and not DISTRO_PACKAGE.search(k)]
@@ -355,7 +359,9 @@ def fixed_conflict(incident, summary):
                                          if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
         found = isinstance(text, str) and VERSION_RE.search(text)
         version = found and tuple(map(int, found[0].split(".")))
-        same = [b for b in bounds if version and b[0] == version[0]]
+        # Owner 11-16: only a bound of the fix's own release line (major.minor); a backport on an older line
+        # (2.2.35 beside records bounded at <2.4.62) passes. A bound of a lower line can never reject a higher fix.
+        same = [b for b in bounds if version and b[:2] == version[:2]]
         if same and version not in bounds and all(version < b for b in same):
             return (f"{FIXED_CONFLICT}{found[0]} is below {'.'.join(map(str, min(same)))}, the first fixed version in the CVE"
                     " records; a version below it is still affected")
@@ -368,13 +374,17 @@ STRAY_RUN = re.compile(r"(?:(?![\x00-\x7f\u00aa-\u024f\u1100-\u11ff\u3130-\u318f
 STRAY_REASON = "text in another script"  # incidents.FREE_TEXT_REASONS cuts it: it quotes model text
 
 
-def stray_script(incident, summary):
-    """A word in a script the Incident's own text never writes (11-11: "1.3.3보다 новее인지" in a Korean mitigation,
-    CVE-2026-29508). A run of other letters passes only when the Brief, a CVE description, a product name or a Mention
-    title has it verbatim ("mView 豆瓣电影", Persian plugin names). The reason, or ""."""
-    own = "\n".join([(incident.get("brief") or {}).get("text") or "", *(incident.get("cve_texts") or {}).values(),
-                     *(p.get("name") or "" for p in incident.get("products", [])),
-                     *(m.get("title") or "" for m in incident.get("mentions", []))])
+def own_text(incident):
+    """The Incident's own text a run of other letters may come from: the Brief, CVE descriptions, product names, Mention
+    titles, and the words a stored Summary took from its request's input (script_words)."""
+    return "\n".join([(incident.get("brief") or {}).get("text") or "", *(incident.get("cve_texts") or {}).values(),
+                      *(p.get("name") or "" for p in incident.get("products", [])),
+                      *(m.get("title") or "" for m in incident.get("mentions", [])), *incident.get("script_words", [])])
+
+
+def script_runs(summary):
+    """The runs of letters outside Latin and Hangul (STRAY_RUN) in a Summary's text, both languages."""
+    runs = []
     for lang in ("ko", "en"):
         # .get: stored Summaries from before some fields came are read here too (needs_summary).
         fields = summary.get(lang) or {}
@@ -382,10 +392,18 @@ def stray_script(incident, summary):
                                            "command_for", "stopgap_then")),
                  *(t for k in ("conditions", "easy_conditions", "names") for t in fields.get(k) or []),
                  *(line.get("text") for line in fields.get("cve_lines") or [] if isinstance(line, dict))]
-        for run in STRAY_RUN.findall("\n".join(t for t in texts if isinstance(t, str))):
-            if run not in own:
-                return f"{STRAY_REASON}: {run}"
-    return ""
+        runs += STRAY_RUN.findall("\n".join(t for t in texts if isinstance(t, str)))
+    return runs
+
+
+def stray_script(incident, summary, text=""):
+    """A word in a script the Incident's own text never writes (11-11: "1.3.3보다 новее인지" in a Korean mitigation,
+    CVE-2026-29508). A run of other letters passes only when own_text() has it verbatim ("mView 豆瓣电影", Persian
+    plugin names) or the request's input does (text; owner 11-16: a name only a fetched page writes was rejected on
+    every draw). The reason, or ""."""
+    own = f"{own_text(incident)}\n{text}"
+    run = next((r for r in script_runs(summary) if r not in own), None)
+    return f"{STRAY_REASON}: {run}" if run else ""
 
 
 class Rejected(ValueError):
@@ -580,13 +598,14 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
         return
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
-    conflict = fixed_conflict(incident, summary) or stray_script(incident, summary)
+    conflict = fixed_conflict(incident, summary) or stray_script(incident, summary, text)
     if conflict:
         failed(incident, conflict)
         return
     # Jargon in the Easy view, a stopgap without the step its mitigation says it needs, a field or version in one
     # language only or a forbidden Korean word (language_gaps), or a stray bracket in a title costs a retry, never the Summary: the last try is kept as
     # it is.
+    words = sorted({r for r in script_runs(summary) if r not in own_text(incident)})  # stray_script passed: from the input
     # Every one is reported, so the retry note answers each (audit F4).
     mismatch = easy_action_mismatch(summary)
     problem = SEPARATOR.join(p for p in (
@@ -596,14 +615,18 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     if problem and incident.get("summary_error", {}).get("tries", 0) + 1 < MAX_TRIES:
         failed(incident, problem)
         # Kept for the last try: should it fail hard, this draft is stored instead of nothing (audit F5).
-        incident["summary_error"]["draft"] = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due}
+        incident["summary_error"]["draft"] = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed),
+                                              "due": due, "words": words}
         return
-    keep(incident, summary, seen, stamp, listed, due)
+    keep(incident, summary, seen, stamp, listed, due, words)
 
 
-def keep(incident, summary, seen, stamp, listed, due):
+def keep(incident, summary, seen, stamp, listed, due, words=()):
     """Store a checked Summary. The last try keeps it, but never an Easy action that contradicts it: the Easy view then
-    shows the mitigation."""
+    shows the mitigation. words: the runs of other letters only the request's input had, kept so the stored Summary
+    passes stray_script() in needs_summary(), which has no input."""
+    if words:
+        incident["script_words"] = sorted(set(incident.get("script_words", [])) | set(words))
     for lang in easy_action_mismatch(summary):
         summary[lang]["easy_action"] = ""
     same = summary.pop("same_as")
@@ -647,7 +670,8 @@ RETRY_SENTENCES = [
              " of the product's own name may stay."),
     ("stopgap step missing", " When the mitigation says a restart or reload must follow the stopgap, write that step in"
                              " stopgap_then in both languages."),
-    (EASY_MISMATCH, " Make easy_action agree with mitigation: name no version, never say to update when there is no fix,"
+    (EASY_MISMATCH, " Make easy_action agree with mitigation: name only a version fixed, fixes or mitigation names, in both"
+                    " languages, never say to update when there is no fix,"
                     " and when fixed or fixes names a version say to update now, never to wait for a new version."),
     ("unbalanced brackets or quotes", " Write each title as one whole phrase: close every bracket and quote, or leave"
                                       " them out."),
