@@ -518,6 +518,13 @@ export function isLibrary(i) {
 
 // When the news first broke: the earliest source post time; Incidents stored before 11-08 only have first_seen.
 export const publishedAt = (i) => i.published || i.first_seen;
+// The calendar day (YYYY-MM-DD) of an instant in the visitor's own zone: the date a row shows (dateCell in app.mjs) and the
+// day a vendor fold gathers (owner, 11-16), so the two never disagree.
+export const localDay = (iso) => {
+  const d = new Date(iso);
+  const two = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+};
 
 // The row's name: the first CVE ID and how many more the Incident joins; null before any CVE exists.
 export const cveHead = (cves = []) => (cves.length ? { id: cves[0], more: cves.length - 1 } : null);
@@ -753,7 +760,8 @@ export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
 // ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin. Also in collector/incidents.py
 // (WP_PLUGIN, is_wordpress_plugin: a row view carries the answer as wp_plugin), kept in step by rows-case.json.
 export const WORDPRESS = 'wordpress';
-const WP_PLUGIN = /(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme)s?\s+for\s+wordpress/i;
+// Owner, 11-16: WooCommerce and what is made for it count too, and an extension or add-on "for ... WordPress".
+const WP_PLUGIN = /(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme|extension|add-?on)s?\s+for\s+[^.;:!?\n]{0,40}?wordpress|\bwoocommerce\b|우커머스/i;
 // Kept per Incident object: every redraw folds ~2,000 rows, and this regex over their text took half of a phone's
 // view switch (11-10). Fresh data arrives as new objects (mergeIncidents), never as edits, so a kept answer stays true.
 const wpPlugin = new WeakMap();
@@ -777,9 +785,10 @@ export function linkedPlace(items, id, page) {
   return index < 0 ? null : { index, shown: (Math.floor(index / page) + 1) * page };
 }
 
-export function foldByVendor(rows, min = VENDOR_FOLD_MIN) {
+// dayOf: the publish day's function, the visitor's day by default (tests name a zone).
+export function foldByVendor(rows, min = VENDOR_FOLD_MIN, dayOf = localDay) {
   if (!min) return rows;
-  const key = (i) => (foldKeyOf(i) ? `${foldKeyOf(i)} ${publishedAt(i).slice(0, 10)}` : '');
+  const key = (i) => (foldKeyOf(i) ? `${foldKeyOf(i)} ${dayOf(publishedAt(i))}` : '');
   const count = new Map();
   for (const i of rows) if (key(i)) count.set(key(i), (count.get(key(i)) || 0) + 1);
   const out = [];

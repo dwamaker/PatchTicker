@@ -2,7 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay } from '../web/board.mjs';
+// A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
+const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
+const utcDay = zoneDay('UTC');
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -739,12 +742,12 @@ test('WordPress plugins and themes of a day fold like one vendor, ahead of their
   ];
   const ibm = [6, 7, 8, 9].map((n) => ({ id: `i${n}`, ...at(n), brief: { text: 'IBM notice' }, products: [{ id: `ibm:p${n}`, name: `P${n}` }] }));
   const core = { id: 'c', ...at(0), brief: { text: 'Brotli reaches stock WordPress through pingbacks' } }; // not a plugin
-  const items = foldByVendor([...wp, core, ...ibm], 5);
+  const items = foldByVendor([...wp, core, ...ibm], 5, utcDay);
   assert.equal(items[0].vendor, 'wordpress');
   assert.deepEqual(items[0].incidents.map((i) => i.id), ['w1', 'w2', 'w3', 'w4', 'w5']);
   assert.deepEqual(items.slice(1).map((i) => i.id), ['c', 'i6', 'i7', 'i8', 'i9']); // IBM keeps four: below five, no fold
   const itself = { id: 'x', ...at(0), brief: { text: 'WordPress before 6.4 lets a plugin upload files' }, summary: { products: ['WordPress'] } };
-  assert.equal(foldByVendor([itself, ...wp.slice(0, 4)], 5).length, 5); // WordPress itself is not a plugin
+  assert.equal(foldByVendor([itself, ...wp.slice(0, 4)], 5, utcDay).length, 5); // WordPress itself is not a plugin
   assert.deepEqual(['JWT Auth 워드프레스 플러그인', 'Confection WordPress plugin', 'Hello theme for WordPress', 'WPForms'].map(pluginName),
     ['JWT Auth', 'Confection', 'Hello', 'WPForms']); // the fold's line names plugins without repeating "plugin"
 });
@@ -983,6 +986,8 @@ test('a row view of board/rows.json draws, filters, folds and pins as its full I
   const now = Date.parse(kase.now);
   const full = kase.cases.map((c) => c.full);
   const rows = kase.cases.map((c) => c.row);
+  // WooCommerce add-ons fold with WordPress plugins, WordPress itself does not (the same cases in tests/test_products.py).
+  for (const [brief, first, answer] of kase.wp_texts) assert.equal(isWordPressPlugin({ brief: { text: brief }, summary: { products: [first] } }), answer, brief);
   for (const c of kase.cases) {
     assert.equal(highlightScore(c.full), c.highlight_score, c.full.id);
     assert.equal(isWordPressPlugin(c.full), c.wp_plugin, c.full.id);
@@ -998,11 +1003,11 @@ test('a row view of board/rows.json draws, filters, folds and pins as its full I
     [[], { cvssMin: 7 }], [[], { cve: 'no' }], [[], { has: ['advisory'] }], [['os:windows'], {}], [['name:gembooking'], {}]]) {
     const [a, b] = [filterBoard(full, picks, '', now, opts), filterBoard(rows, picks, '', now, opts)];
     assert.deepEqual([ids(b.highlights), ids(b.list), b.variants], [ids(a.highlights), ids(a.list), a.variants], JSON.stringify([picks, opts]));
-    assert.deepEqual(shape(foldByVendor(b.list)), shape(foldByVendor(a.list)));
+    assert.deepEqual(shape(foldByVendor(b.list, undefined, utcDay)), shape(foldByVendor(a.list, undefined, utcDay)));
   }
   // CVE-2026-9003's row view has no text that says "theme for WordPress": the collector's answer keeps it in the fold.
   // Opened, the 9.8 member leads (owner, 11-16), then Score pending, then 참고.
-  assert.deepEqual(shape(foldByVendor(filterBoard(rows, [], '', now).list)).find(Array.isArray), ['wordpress 2026-11-08', ['CVE-2026-9001', 'CVE-2026-9003', 'CVE-2026-9002']]);
+  assert.deepEqual(shape(foldByVendor(filterBoard(rows, [], '', now).list, undefined, utcDay)).find(Array.isArray), ['wordpress 2026-11-08', ['CVE-2026-9001', 'CVE-2026-9003', 'CVE-2026-9002']]);
 });
 
 test('a row view replaces a held full Incident only when what its row shows changed; full Incidents replace as before', () => {
@@ -1363,29 +1368,56 @@ const WP = [wpAt('p65', 6.5, '2026-11-16T08:00:00Z'), wpAt('p71a', 7.1, '2026-11
   wpAt('p50', 5.0, '2026-11-16T05:00:00Z'), wpAt('p98', 9.8, '2026-11-16T04:00:00Z'), wpAt('pnone', null, '2026-11-16T03:00:00Z')];
 
 test('inside a fold the gravest member leads and equal members keep the visitor\'s order', () => {
-  const [fold] = foldByVendor(WP, 5);
+  const [fold] = foldByVendor(WP, 5, utcDay);
   assert.deepEqual(fold.incidents.map((i) => i.id), ['p98', 'p71a', 'p71b', 'pnone', 'p65', 'p50']); // score pending above 참고
   // Another order in (as a CVSS sort would give): equal members keep it, not newest first.
-  const [byScore] = foldByVendor([WP[4], WP[2], WP[1], WP[0], WP[3], WP[5]], 5);
+  const [byScore] = foldByVendor([WP[4], WP[2], WP[1], WP[0], WP[3], WP[5]], 5, utcDay);
   assert.deepEqual(byScore.incidents.map((i) => i.id), ['p98', 'p71b', 'p71a', 'pnone', 'p65', 'p50']);
   // An exploited member is 긴급 as a 9.8 is: one rank, so the visitor's order decides between them.
   const kev = wpAt('pkev', 9.1, '2026-11-16T02:00:00Z', { kev: true });
-  assert.deepEqual(foldByVendor([...WP, kev], 5)[0].incidents.slice(0, 2).map((i) => i.id), ['p98', 'pkev']); // both 긴급: visitor's order
+  assert.deepEqual(foldByVendor([...WP, kev], 5, utcDay)[0].incidents.slice(0, 2).map((i) => i.id), ['p98', 'pkev']); // both 긴급: visitor's order
   const ranked = [...WP, kev].sort(orderBy('risk'));
-  assert.deepEqual(foldByVendor(ranked, 5)[0].incidents.map((i) => i.id), ranked.map((i) => i.id)); // the risk sort's own order stands
+  assert.deepEqual(foldByVendor(ranked, 5, utcDay)[0].incidents.map((i) => i.id), ranked.map((i) => i.id)); // the risk sort's own order stands
 });
 
 test('the fold stays at its first row\'s place', () => {
   const other = { id: 'o', cves: ['o'], first_seen: '2026-11-16T09:00:00Z', published: '2026-11-16T07:30:00Z', cvss: 9.9, mentions: [],
     products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }], brief: { text: 'OpenSSH' } };
-  const items = foldByVendor([WP[0], other, ...WP.slice(1)], 5);
+  const items = foldByVendor([WP[0], other, ...WP.slice(1)], 5, utcDay);
   assert.deepEqual(items.map((x) => x.fold || x.id), [`wordpress 2026-11-16`, 'o']);
   assert.equal(linkedPlace(items, 'p98', 100).index, 0); // a member is still found
 });
 
 test('the fold row still shows the newest member\'s date', () => {
-  const [fold] = foldByVendor(WP, 5);
+  const [fold] = foldByVendor(WP, 5, utcDay);
   assert.equal(fold.incidents[0].id, 'p98');
   assert.equal(foldNewest(fold).id, 'p65');
   assert.equal(foldNewest({ incidents: [wpAt('a', 1, undefined, { first_seen: '2026-11-16T10:00:00Z' }), WP[0]] }).id, 'a'); // first seen stands in
+});
+
+// Owner, 11-16: a vendor fold's "one publish day" is the day the visitor sees, the date the row shows (localDay).
+const amd = (n, published) => ({ id: `CVE-2026-7${n}`, cves: [`CVE-2026-7${n}`], first_seen: '2026-11-16T12:00:00Z', published, cvss: 5,
+  products: [{ id: `amd:part_${n}`, name: `Part ${n}` }], mentions: [], brief: { text: '' } });
+const seoul = zoneDay('Asia/Seoul');
+
+test('three rows of one vendor on one local day fold though they straddle the UTC day', () => {
+  // 2026-11-16 20:00, 23:30 and 2026-11-17 01:00 UTC: all 2026-11-17 in Seoul.
+  const rows = [amd(1, '2026-11-17T01:00:00Z'), amd(2, '2026-11-16T23:30:00Z'), amd(3, '2026-11-16T20:00:00Z')];
+  const [fold, ...rest] = foldByVendor(rows, 3, seoul);
+  assert.deepEqual([fold.fold, fold.incidents.map((i) => i.id), rest.length], ['amd 2026-11-17', ['CVE-2026-71', 'CVE-2026-72', 'CVE-2026-73'], 0]);
+  assert.equal(foldByVendor(rows, 3, utcDay).length, 3); // by the UTC day they would not
+});
+
+test('three rows on one UTC day that fall on two local days do not fold as one', () => {
+  // 2026-11-16 13:00, 16:00 and 14:00 UTC: 22:00 and 23:00 on 11-16 in Seoul, but 01:00 on 11-17.
+  const rows = [amd(1, '2026-11-16T16:00:00Z'), amd(2, '2026-11-16T14:00:00Z'), amd(3, '2026-11-16T13:00:00Z')];
+  assert.deepEqual(foldByVendor(rows, 3, seoul).map((x) => x.id), rows.map((i) => i.id));
+  assert.equal(foldByVendor(rows, 3, utcDay).length, 1);
+});
+
+test('the fold\'s day is the date the row shows: the visitor\'s calendar day', () => {
+  const at = '2026-11-16T23:30:00Z';
+  const d = new Date(at);
+  assert.equal(localDay(at), `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  assert.equal(foldByVendor([amd(1, at), amd(2, at), amd(3, at)], 3)[0].fold, `amd ${localDay(at)}`); // the default
 });

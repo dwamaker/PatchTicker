@@ -496,7 +496,8 @@ Restrained outlined buttons for theme, language and copying a command.
   they cannot be taken for rows of the main list, their columns aligned with each other; opening announces the
   count, closing from the bottom brings the fold row back into view. Its members run gravest first, ranked as the
   위험도순 sort ranks, members of one level keeping the visitor's order, so the sign and ring the fold row promises lead
-  its list (owner, 11-16); the fold keeps its place and its newest date.
+  its list (owner, 11-16); the fold keeps its place and its newest date. Its "one publish day" is the visitor's own
+  calendar day, the date the rows show, not the UTC day (owner, 11-16: in Korea the UTC day broke folds at 09:00).
 - **Group ground and tag (11-09, owner: groups were hard to find):** a row that stands for several Incidents (a release
   group of three or more CVEs, or a vendor fold) sits on `--group` (#e6ebf1 / #1a2028, a cool step off the page,
   distinct from the opened-row white) and leads its badge cell with a "묶음" tag: square corners, ink outline, so it

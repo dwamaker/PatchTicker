@@ -1007,5 +1007,16 @@
    },
    "highlight_score": 69.0
   }
+ ],
+ "wp_note": "Owner, 11-16: WooCommerce and what is made for it fold with WordPress plugins, and so does an extension or add-on for WordPress; WordPress itself does not. Real Briefs of the live week. Each: an Incident's Brief, its Summary's first product, the answer of is_wordpress_plugin and isWordPressPlugin.",
+ "wp_texts": [
+  ["Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal') vulnerability in Acowebs Woocommerce Custom Product Addons Pro.", "Acowebs Woocommerce Custom Product Addons Pro", true],
+  ["WooCommerce PayPal Pro Payment Gateway plugin before 4.1.1 contains an unauthenticated payment bypass vulnerability.", "Payment Gateway for PayPal Pro, PayPal Checkout & Subscriptions for WooCommerce", true],
+  ["Concurrent Execution using Shared Resource with Improper Synchronization ('Race Condition') vulnerability in Automattic WooCommerce.", "WooCommerce", true],
+  ["AcyMailing extension for Joomla and WordPress allows an open redirect.", "AcyMailing", true],
+  ["The Ninja Forms - File Uploads add-on for WordPress is vulnerable to Arbitrary File Deletion.", "Ninja Forms - File Uploads", true],
+  ["Ninja Forms File Uploads allows arbitrary file deletion.", "Ninja Forms - File Uploads", false],
+  ["WordPress before 6.8.3 lets a contributor run a plugin's shortcode with stored cross-site scripting.", "WordPress", false],
+  ["The AcyMailing extension for Joomla allows an open redirect.", "AcyMailing", false]
  ]
 }
