@@ -524,3 +524,41 @@ test('a group\'s condition shows the ids it holds for as a mark before its text,
   assert.match(conditions, /<li>Windows: version 11<\/li>/);
   assert.match(conditions, /<li>CVE-2026-999999: an id not of this Incident<\/li>/);
 });
+
+// Step 10 (owner, 11-15/16): the Distribution table, folded under the Mitigation, with its credit line (fixtures/board/distro-case.json).
+const DISTRO = JSON.parse(readFileSync(new URL('./fixtures/board/distro-case.json', import.meta.url), 'utf8'));
+const todoOf = (html) => html.slice(html.indexOf('id="s-todo"'), html.indexOf('id="s-products"'));
+
+test('the page shows the table folded under the Mitigation in both languages with the credit line under it', async () => {
+  const doc = { ...SSHOLE, distro_rows: DISTRO.one.distro_rows, distro_credits: DISTRO.one.distro_credits };
+  const ko = todoOf(await (await page(doc, 'ko')).text());
+  assert.match(ko, /<details class="more"><summary>배포판별 패키지 \(3\)<\/summary><ul class="cves lines">/);
+  assert.ok(ko.indexOf('9.9p2') < ko.indexOf('<details class="more">')); // under the Mitigation
+  assert.match(ko, /<li><strong><a href="https:\/\/ubuntu.com\/security\/CVE-2026-123158"[^>]*>Ubuntu 24.04 LTS<span class="sr-only">[^<]*<\/span><\/a><\/strong> openssh · 영향 없음<\/li>/);
+  assert.match(ko, />Alpine 3.24<span[^>]*>[^<]*<\/span><\/a><\/strong> openssh · 10.3_p1-r2에서 수정됨<\/li>/);
+  assert.match(ko, /openssh · 10\.3_p1-r2에서 수정됨<\/li><\/ul><p class="credits">출처: <a href="https:\/\/security-tracker.debian.org\/tracker\/"[^>]*>Debian Security Tracker<span/);
+  assert.match(ko, />Ubuntu Security Notices \(Canonical\)<span[^>]*>[^<]*<\/span><\/a> \(<a href="https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/"[^>]*>CC BY-SA 4.0<span[^>]*>[^<]*<\/span><\/a>\)<\/p><\/details><\/section>/);
+  assert.doesNotMatch(ko, /cve-src/); // one CVE: no ids on a line
+  const en = todoOf(await (await page(doc, 'en')).text());
+  assert.match(en, /<summary>Distribution packages \(3\)<\/summary>/);
+  assert.match(en, /openssh-ssh1 · will not be fixed<\/li>/);
+  assert.match(en, /<p class="credits">Sources: /);
+});
+
+test('a grouped Incident\'s table keeps each differing version with the ids it holds for', async () => {
+  const doc = { ...SSHOLE, cves: DISTRO.group.cves, distro_rows: DISTRO.group.distro_rows, distro_credits: DISTRO.group.distro_credits };
+  const en = todoOf(await (await page(doc, 'en')).text());
+  assert.match(en, /linux · fixed in 6\.1\.192-1 <span class="cve-src">CVE-2026-99218<\/span><\/li>/);
+  assert.match(en, /linux · fixed in 6\.1\.76-1 <span class="cve-src">CVE-2024-1086<\/span><\/li>/);
+  assert.match(en, /linux-hwe-6\.2 · will not be fixed<\/li>/); // holds for both: no ids
+});
+
+test('a page without the table keys is unchanged, and an unknown state is plain text', async () => {
+  const plain = await (await page(SSHOLE, 'ko')).text();
+  assert.doesNotMatch(plain, /배포판별|class="credits"/);
+  const odd = { ...SSHOLE, distro_rows: [{ label: 'RHEL 9', package: 'openssh', state: '<b>under_review</b>', url: 'javascript:alert(1)' }] };
+  const res = await page(odd, 'en');
+  assert.equal(res.status, 200);
+  const todo = todoOf(await res.text());
+  assert.match(todo, /<li><strong>RHEL 9<\/strong> openssh · &lt;b&gt;under_review&lt;\/b&gt;<\/li><\/ul><\/details>/); // no link, no credits
+});

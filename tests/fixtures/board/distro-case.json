@@ -1,0 +1,147 @@
+{
+ "_about": "The two examples of the step-10 site contract (.scratch/checks/step10-plan.md, 'Site contract'): what board_view adds to an Incident with Distribution table rows. The grouped example's credits are the collector's (collector/distros.py CREDITS) for its two distributions.",
+ "one": {
+  "cves": [
+   "CVE-2026-123158"
+  ],
+  "distro_rows": [
+   {
+    "distro": "Ubuntu",
+    "release": "noble",
+    "label": "Ubuntu 24.04 LTS",
+    "package": "openssh",
+    "state": "not_affected",
+    "version": "",
+    "url": "https://ubuntu.com/security/CVE-2026-123158",
+    "cves": [
+     "CVE-2026-123158"
+    ]
+   },
+   {
+    "distro": "Ubuntu",
+    "release": "noble",
+    "label": "Ubuntu 24.04 LTS",
+    "package": "openssh-ssh1",
+    "state": "wont_fix",
+    "version": "",
+    "url": "https://ubuntu.com/security/CVE-2026-123158",
+    "cves": [
+     "CVE-2026-123158"
+    ]
+   },
+   {
+    "distro": "Alpine",
+    "release": "v3.24",
+    "label": "Alpine 3.24",
+    "package": "openssh",
+    "state": "fixed",
+    "version": "10.3_p1-r2",
+    "url": "https://security.alpinelinux.org/vuln/CVE-2026-123158",
+    "cves": [
+     "CVE-2026-123158"
+    ]
+   }
+  ],
+  "distro_credits": [
+   {
+    "distro": "Debian",
+    "name": "Debian Security Tracker",
+    "url": "https://security-tracker.debian.org/tracker/",
+    "licence": "",
+    "licence_url": ""
+   },
+   {
+    "distro": "Ubuntu",
+    "name": "Ubuntu Security Notices (Canonical)",
+    "url": "https://github.com/canonical/ubuntu-security-notices",
+    "licence": "CC BY-SA 4.0",
+    "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+   }
+  ]
+ },
+ "group": {
+  "cves": [
+   "CVE-2024-1086",
+   "CVE-2026-99218"
+  ],
+  "distro_rows": [
+   {
+    "distro": "Debian",
+    "release": "bookworm",
+    "label": "Debian 12 (bookworm)",
+    "package": "linux",
+    "state": "fixed",
+    "version": "6.1.192-1",
+    "url": "https://security-tracker.debian.org/tracker/CVE-2026-99218",
+    "cves": [
+     "CVE-2026-99218"
+    ]
+   },
+   {
+    "distro": "Debian",
+    "release": "bookworm",
+    "label": "Debian 12 (bookworm)",
+    "package": "linux",
+    "state": "fixed",
+    "version": "6.1.76-1",
+    "url": "https://security-tracker.debian.org/tracker/CVE-2024-1086",
+    "cves": [
+     "CVE-2024-1086"
+    ]
+   },
+   {
+    "distro": "Ubuntu",
+    "release": "jammy",
+    "label": "Ubuntu 22.04 LTS",
+    "package": "linux",
+    "state": "fixed",
+    "version": "5.15.0-101.111",
+    "url": "https://ubuntu.com/security/CVE-2024-1086",
+    "cves": [
+     "CVE-2024-1086"
+    ]
+   },
+   {
+    "distro": "Ubuntu",
+    "release": "jammy",
+    "label": "Ubuntu 22.04 LTS",
+    "package": "linux",
+    "state": "not_fixed",
+    "version": "",
+    "url": "https://ubuntu.com/security/CVE-2026-99218",
+    "cves": [
+     "CVE-2026-99218"
+    ]
+   },
+   {
+    "distro": "Ubuntu",
+    "release": "jammy",
+    "label": "Ubuntu 22.04 LTS",
+    "package": "linux-hwe-6.2",
+    "state": "wont_fix",
+    "version": "",
+    "url": "https://ubuntu.com/security/CVE-2024-1086",
+    "cves": [
+     "CVE-2024-1086",
+     "CVE-2026-99218"
+    ]
+   }
+  ],
+  "distro_credits": [
+   {
+    "distro": "Debian",
+    "name": "Debian Security Tracker",
+    "url": "https://security-tracker.debian.org/tracker/",
+    "licence": "",
+    "licence_url": ""
+   },
+   {
+    "distro": "Ubuntu",
+    "name": "Ubuntu Security Notices (Canonical)",
+    "url": "https://github.com/canonical/ubuntu-security-notices",
+    "licence": "CC BY-SA 4.0",
+    "licence_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+   }
+  ]
+ }
+}

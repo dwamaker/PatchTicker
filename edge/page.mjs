@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -108,7 +108,8 @@ code{font-family:var(--mono);font-size:.875rem}
 .cves.lines{display:block}.cves.lines li+li{margin-top:.375rem}
 .cves,time,#s-todo~ul li{font-variant-numeric:tabular-nums}
 .cve-src{white-space:nowrap;font-size:.8125rem;font-variant-numeric:tabular-nums}
-@media (pointer:coarse){:is(.sources,.cves,.others) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
+.credits{color:var(--ink-2);font-size:.875rem}
+@media (pointer:coarse){:is(.sources,.cves,.others,.credits) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
 .more summary{width:fit-content;padding:.375rem 0;color:var(--focus);font-weight:600;cursor:pointer;text-underline-offset:3px}
 @media (pointer:coarse){.more summary{padding-block:.75rem}}
 @media (hover:hover) and (pointer:fine){.more summary:hover{text-decoration:underline}}
@@ -198,9 +199,23 @@ function othersLink(i, lang, t, others) {
 
 // H4 (owner, 11-16): a group's condition of some CVEs only shows their ids as a small mark before its text, as the
 // Board's opened row does; any other entry is its text as written.
+const idMark = (ids) => ids.map((id) => `<span class="cve-src">${esc(id)}</span>`).join(', ');
 function condition(entry, cves) {
   const { ids, text } = conditionIds(entry, cves);
-  return ids.length ? `${ids.map((id) => `<span class="cve-src">${esc(id)}</span>`).join(', ')} ${esc(text)}` : esc(entry);
+  return ids.length ? `${idMark(ids)} ${esc(text)}` : esc(entry);
+}
+
+// Step 10 (owner, 11-15/16): the Distribution table under the Mitigation, folded: release, package and state, the release
+// linking that distribution's own page for the CVE, and in a group the CVEs a line holds for when not all. The credit
+// line under it, inside the fold: each source linked, with its licence where the data gives one.
+function distroFold(i, lang, t) {
+  const table = distroTable(i, lang);
+  if (!table) return '';
+  const lines = table.lines.map((l) => `<strong>${link(l.url, l.label, t) || esc(l.label)}</strong> ${l.package ? `${esc(l.package)} · ` : ''}`
+    + `${esc(l.state)}${l.ids.length ? ` ${idMark(l.ids)}` : ''}`);
+  const credits = table.credits.map((c) => (link(c.url, c.name, t) || esc(c.name)) + (c.licence ? ` (${link(c.licenceUrl, c.licence, t) || esc(c.licence)})` : ''));
+  return `<details class="more"><summary>${esc(table.title)}</summary>${ul(lines, 'cves lines')}`
+    + `${credits.length ? `<p class="credits">${esc(t.distroSources)} ${credits.join(' · ')}</p>` : ''}</details>`;
 }
 
 // Every Mention by kind, in the Lead order; on the Korean page an English title shows the Summary's Korean line.
@@ -280,7 +295,7 @@ export function pageHtml(i, lang, slug, others = null) {
     p(plain, 'easy'),
     section('summary', t.summary, p(s.summary)),
     section('conditions', t.conditions, ul(strings(s.conditions).map((c) => condition(c, i.cves)))),
-    section('todo', t.todo, whatToDo(i, lang) + othersLink(i, lang, t, others)),
+    section('todo', t.todo, whatToDo(i, lang) + othersLink(i, lang, t, others) + distroFold(i, lang, t)),
     section('products', t.products, products(i, lang)),
     section('cves', t.cves, cveList(i, lang, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),

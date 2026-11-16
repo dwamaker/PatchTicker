@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -1769,9 +1769,42 @@ function labelled(className, label, text) {
 
 // H4 (owner, 11-16): a group's condition of some CVEs only shows their ids as a small mark before its text, like the step-4
 // marks beside a CVE line (.cve-src); any other entry is its text as written.
+const idMarks = (ids) => ids.flatMap((id, n) => [...(n ? [', '] : []), el('span', 'cve-src', id)]);
 function condition(entry, cves) {
   const { ids, text } = conditionIds(entry, cves);
-  return ids.length ? [...ids.flatMap((id, n) => [...(n ? [', '] : []), el('span', 'cve-src', id)]), ' ', text] : [entry];
+  return ids.length ? [...idMarks(ids), ' ', text] : [entry];
+}
+
+// Step 10 (owner, 11-15/16): the Distribution table under the Mitigation, folded like a group's other long lists: release
+// (linking that distribution's own page for the CVE), package and state, and in a group the CVEs a line holds for when not
+// all (the conditions' id mark). The credit line under it, inside the fold: each source linked, its licence where given.
+function distroFold(incident) {
+  const table = distroTable(incident, lang);
+  if (!table) return [];
+  const t = TEXT[lang];
+  const linkOr = (url, text) => (/^https?:\/\//i.test(url) ? anchor(url, text, false) : text);
+  const list = el('ul', 'cve-lines');
+  list.append(...table.lines.map((l) => {
+    const li = el('li');
+    const name = el('strong');
+    name.append(linkOr(l.url, l.label));
+    li.append(name, l.package ? `${l.package} · ${l.state}` : l.state);
+    if (l.ids.length) li.append(' ', ...idMarks(l.ids));
+    return li;
+  }));
+  const body = el('div');
+  body.append(list);
+  if (table.credits.length) {
+    const credits = para('credits', `${t.distroSources} `);
+    table.credits.forEach((c, n) => {
+      credits.append(...(n ? [' · '] : []), linkOr(c.url, c.name));
+      if (c.licence) credits.append(' (', linkOr(c.licenceUrl, c.licence), ')');
+    });
+    body.append(credits);
+  }
+  const head = el('summary', '', table.title);
+  head.append(el('span', 'sr-only', t.newTabAll)); // said once for the table, not after each of its links
+  return [foldable(el('details', 'models'), head, body)];
 }
 
 function summary(s, cves) {
@@ -2182,6 +2215,7 @@ function details(incident) {
     line.append(Object.assign(el('a', '', t.productOthers(elsewhere.n)), { href: elsewhere.hash }));
     parts.push(line);
   }
+  if (!easy) parts.push(...distroFold(incident)); // Normal view only (owner, 11-16)
   const list = easy ? [] : cveList(incident); // every CVE's issue in the Normal view (user, 2026-11-09)
   // Public exploit code without reported attacks: no sign, a red line in the summary text (owner, 2026-11-09).
   if (incident.summary?.poc_public === true && !isExploited(incident)) parts.splice(easy ? 0 : 1, 0, para('kev', easy ? t.pocEasy : t.poc));

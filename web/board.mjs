@@ -577,6 +577,29 @@ export function conditionIds(entry, cves = []) {
   const ids = found ? found[1].split(', ') : [];
   return found && ids.every((id) => cves.includes(id)) ? { ids, text: found[2] } : { ids: [], text: entry };
 }
+// Step 10 (owner, 11-15/16): the Distribution table the collector writes (distro_rows, distro_credits; collector/distros.py
+// merge and credits), as plain lines for the opened row's Normal view and the Incident page; null without rows. A row's
+// state in words, an unknown one as written; its CVEs only when the Incident has several and the row holds for some of
+// them. Release, package, distribution and source names are shown as given, never translated.
+export function distroTable(i, lang = 'en') {
+  const w = WORDS[lang];
+  const str = (x) => (typeof x === 'string' ? x : '');
+  const rows = (Array.isArray(i.distro_rows) ? i.distro_rows : []).filter((r) => r && typeof r === 'object' && str(r.label));
+  if (!rows.length) return null;
+  const all = Array.isArray(i.cves) ? i.cves : [];
+  const stateOf = (r) => {
+    if (r.state === 'fixed' && str(r.version)) return w.distroStates.fixed(r.version);
+    return r.state !== 'fixed' && Object.hasOwn(w.distroStates, r.state) ? w.distroStates[r.state] : str(r.state);
+  };
+  const lines = rows.map((r) => {
+    const cves = Array.isArray(r.cves) ? r.cves.filter((c) => typeof c === 'string') : [];
+    const some = all.length > 1 && !all.every((c) => cves.includes(c));
+    return { label: r.label, url: str(r.url), package: str(r.package), state: stateOf(r), ids: some ? cves : [] };
+  });
+  const credits = (Array.isArray(i.distro_credits) ? i.distro_credits : []).filter((c) => c && typeof c === 'object' && str(c.name))
+    .map((c) => ({ name: c.name, url: str(c.url), licence: str(c.licence), licenceUrl: str(c.licence_url) }));
+  return { title: w.distroTable(lines.length), lines, credits };
+}
 // M4 (owner, 11-15): the Lead CVE's Public date, which the collector writes only when it is not the Published day; '' else.
 export const publicDay = (i) => (typeof i.public_date === 'string' && DAY.test(i.public_date) ? i.public_date : '');
 
@@ -601,6 +624,8 @@ export const WORDS = {
     levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
     publicDate: '공개일', productOthers: (n) => `최근 30일 동안 이 제품의 다른 사건 ${n}건`,
+    distroTable: (n) => `배포판별 패키지 (${n})`, distroSources: '출처:',
+    distroStates: { fixed: (v) => `${v}에서 수정됨`, not_affected: '영향 없음', not_fixed: '아직 수정 안 됨', wont_fix: '수정 계획 없음' },
     scoreOf: (cve) => `${cve}의 점수`, kevSource: 'CISA KEV',
     none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
@@ -619,6 +644,8 @@ export const WORDS = {
     levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
     publicDate: 'Public date', productOthers: (n) => `${n} other Incident${n === 1 ? '' : 's'} of this product in the last 30 days`,
+    distroTable: (n) => `Distribution packages (${n})`, distroSources: 'Sources:',
+    distroStates: { fixed: (v) => `fixed in ${v}`, not_affected: 'not affected', not_fixed: 'not fixed yet', wont_fix: 'will not be fixed' },
     scoreOf: (cve) => `Score of ${cve}`, kevSource: 'CISA KEV',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },

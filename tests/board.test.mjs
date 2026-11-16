@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -1307,4 +1307,49 @@ test('a condition\'s CVE prefix is split into its ids and text, and anything els
   whole('CVE-2026-125343:'); // nothing after the prefix
   whole('CVE-2026-125343 and CVE-2026-125349: not the collector\'s form');
   assert.deepEqual(conditionIds('CVE-2026-125343: x'), { ids: [], text: 'CVE-2026-125343: x' }); // no CVE list given
+});
+
+// Step 10 (owner, 11-15/16): the Distribution table, from the collector's distro_rows and distro_credits (the contract's two
+// examples in fixtures/board/distro-case.json).
+const DISTRO = JSON.parse(readFileSync(new URL('./fixtures/board/distro-case.json', import.meta.url), 'utf8'));
+
+test('the Distribution table gives each row its release, package and state in words, and the credits as written', () => {
+  const ko = distroTable(DISTRO.one, 'ko');
+  assert.equal(ko.title, '배포판별 패키지 (3)');
+  assert.deepEqual(ko.lines.map((l) => [l.label, l.package, l.state, l.ids]), [
+    ['Ubuntu 24.04 LTS', 'openssh', '영향 없음', []], ['Ubuntu 24.04 LTS', 'openssh-ssh1', '수정 계획 없음', []],
+    ['Alpine 3.24', 'openssh', '10.3_p1-r2에서 수정됨', []]]);
+  assert.equal(ko.lines[2].url, 'https://security.alpinelinux.org/vuln/CVE-2026-123158');
+  const en = distroTable(DISTRO.one, 'en');
+  assert.equal(en.title, 'Distribution packages (3)');
+  assert.deepEqual(en.lines.map((l) => l.state), ['not affected', 'will not be fixed', 'fixed in 10.3_p1-r2']);
+  assert.deepEqual(en.credits, [
+    { name: 'Debian Security Tracker', url: 'https://security-tracker.debian.org/tracker/', licence: '', licenceUrl: '' },
+    { name: 'Ubuntu Security Notices (Canonical)', url: 'https://github.com/canonical/ubuntu-security-notices', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/' }]);
+  assert.equal(WORDS.ko.distroSources, '출처:');
+  assert.equal(WORDS.en.distroSources, 'Sources:');
+  assert.equal(WORDS.en.distroStates.not_fixed, 'not fixed yet');
+  assert.equal(WORDS.ko.distroStates.not_fixed, '아직 수정 안 됨');
+});
+
+test('a grouped Incident keeps every differing version and names the CVEs only on a row that holds for some of them', () => {
+  const en = distroTable(DISTRO.group, 'en');
+  assert.deepEqual(en.lines.map((l) => [l.label, l.package, l.state, l.ids]), [
+    ['Debian 12 (bookworm)', 'linux', 'fixed in 6.1.192-1', ['CVE-2026-99218']],
+    ['Debian 12 (bookworm)', 'linux', 'fixed in 6.1.76-1', ['CVE-2024-1086']],
+    ['Ubuntu 22.04 LTS', 'linux', 'fixed in 5.15.0-101.111', ['CVE-2024-1086']],
+    ['Ubuntu 22.04 LTS', 'linux', 'not fixed yet', ['CVE-2026-99218']],
+    ['Ubuntu 22.04 LTS', 'linux-hwe-6.2', 'will not be fixed', []]]);
+});
+
+test('a document without rows has no table, and an unknown or broken row never breaks it', () => {
+  for (const i of [{ cves: ['A'] }, { cves: ['A'], distro_rows: [] }, { cves: ['A'], distro_rows: 'x' }, { cves: ['A'], distro_rows: [null, 3, {}] }]) {
+    assert.equal(distroTable(i, 'en'), null, JSON.stringify(i));
+  }
+  const odd = distroTable({ cves: ['A'], distro_rows: [
+    { label: 'RHEL 9', package: 'openssh', state: 'under_review', version: '', url: 'javascript:alert(1)' },
+    { label: 'RHEL 8', package: 'openssh', state: 'fixed', version: '' }, // fixed with no version: the state as written
+    { label: 'RHEL 7', package: 7, state: 'constructor' }, null], distro_credits: [{ name: 'Red Hat Security Data', url: 5 }, 'x'] }, 'en');
+  assert.deepEqual(odd.lines.map((l) => [l.label, l.package, l.state]), [['RHEL 9', 'openssh', 'under_review'], ['RHEL 8', 'openssh', 'fixed'], ['RHEL 7', '', 'constructor']]);
+  assert.deepEqual(odd.credits, [{ name: 'Red Hat Security Data', url: '', licence: '', licenceUrl: '' }]);
 });
