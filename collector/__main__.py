@@ -3,6 +3,8 @@
 Rebuild the store from the SQLite backup instead: python -m collector --restore [path/to/envfile]
 Copy the whole store into the SQLite backup once:  python -m collector --seed-backup [path/to/envfile]
 Send one small real request of every schema request shape: python -m collector --smoke [path/to/envfile]  (exit 1 on a rejection)
+After a cycle (compose.yaml's loop), count it and post a Discord line when due: python -m collector --cycle-end <exit code> [path/to/envfile]
+Post one marked test line to the Discord webhook, counting nothing: python -m collector --alert-test [path/to/envfile]
 """
 
 import os
@@ -12,7 +14,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import curators, cve_lines, discord, indexnow, kisa, news, summaries
+from collector import alert, curators, cve_lines, discord, indexnow, kisa, news, summaries
 from collector.cycle import run_cycle
 from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -68,7 +70,57 @@ def main():
         return seed_backup_main(args[1] if len(args) > 1 else ".env")
     if args[:1] == ["--smoke"]:
         sys.exit(smoke_main(args[1] if len(args) > 1 else ".env"))
-    settings = load_settings(args[0] if args else ".env")
+    if args[:1] == ["--cycle-end"]:
+        return cycle_end_main(args[1] if len(args) > 1 else "", args[2] if len(args) > 2 else ".env")
+    if args[:1] == ["--alert-test"]:
+        sys.exit(alert_test_main(args[1] if len(args) > 1 else ".env"))
+    path = args[0] if args else ".env"
+    try:
+        cycle_main(path)
+    except BaseException as err:
+        # Left for --cycle-end, which posts it; the exception still ends the cycle as before (traceback, exit 1).
+        alert.record_error(alert.state_path(lenient_settings(path)), err, datetime.now(timezone.utc))
+        raise
+
+
+def lenient_settings(path):
+    """The settings without the required check, so an alert still finds its webhook and state when they are missing."""
+    try:
+        return load_settings(path)
+    except (SystemExit, Exception):  # noqa: BLE001
+        return dict(os.environ)
+
+
+def cycle_end_main(code, path):
+    """compose.yaml's loop runs this after every cycle. Never fails and always exits 0: the alert never changes a cycle's
+    outcome."""
+    try:
+        settings = lenient_settings(path)
+        url = settings.get("VR_DISCORD_WEBHOOK")
+        post = make_http_post(f"vuln-radar/0.1 ({settings.get('VR_CONTACT', 'collector')})")
+        # Built only when a line is due: make_notifier logs a line each time it is made.
+        notify = (lambda line: (discord.make_notifier(url, post) or (lambda _: None))(line)) if url else None
+        alert.cycle_end(alert.state_path(settings), int(code) if code.lstrip("-").isdigit() else 1, notify,
+                        datetime.now(timezone.utc))
+    except Exception as err:  # noqa: BLE001
+        print(f"alert: cycle end not handled: {type(err).__name__}", file=sys.stderr)
+
+
+def alert_test_main(path):
+    """One marked line to the webhook, by hand after a deploy; the failure count is not touched. Exit 1 when not sent."""
+    settings = lenient_settings(path)
+    agent = f"vuln-radar/0.1 ({settings.get('VR_CONTACT', 'collector')})"
+    notify = discord.make_notifier(settings.get("VR_DISCORD_WEBHOOK"), make_http_post(agent))
+    if notify is None:
+        print("alert-test: VR_DISCORD_WEBHOOK is not set or not a Discord webhook address; nothing was sent")
+        return 1
+    sent = notify(alert.TEST_LINE)
+    print("alert-test: sent" if sent else "alert-test: NOT sent (see the discord: line above)")
+    return 0 if sent else 1
+
+
+def cycle_main(path):
+    settings = load_settings(path)
     key = settings.get("ANTHROPIC_API_KEY")
     agent = f"vuln-radar/0.1 ({settings['VR_CONTACT']})"
     run_cycle(

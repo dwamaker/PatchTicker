@@ -24,12 +24,15 @@ def make_notifier(url, post):
     print("discord: VR_DISCORD_WEBHOOK set", file=sys.stderr)
 
     def notify(text):
+        """True when Discord took the post."""
         try:
             # The text quotes model output and source titles: no @everyone, role or user ping may fire.
             post(url, {"content": text, "allowed_mentions": {"parse": []}})
+            return True
         except (OSError, ValueError) as err:
             # Only the status or the error's kind: an error's text may hold the URL.
             print(f"discord: post failed: {err.code if isinstance(err, urllib.error.HTTPError) else type(err).__name__}", file=sys.stderr)
+            return False
 
     return notify
 

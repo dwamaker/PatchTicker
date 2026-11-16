@@ -21,11 +21,15 @@ services:
     # A failed cycle is logged and the next one runs on time; the loop itself never exits.
     # A cycle is stopped after 50 min (audit run-1: one that hangs blocked every later one): the slowest real cycles,
     # 500-record backfills, took 30-40 min, and a stopped cycle writes no checkpoint, so the limit must stay above them.
+    # After every cycle, --cycle-end counts it by its exit code and posts to Discord when due (collector/alert.py): a
+    # timed-out cycle runs no Python handler, so only the loop can report it. 3000 is also alert.TIMEOUT_S.
     command:
       - sh
       - -c
       - |
         while :; do
           sleep $$((600 - $$(date +%s) % 600))
-          timeout -k 60 3000 python -m collector || { c=$$?; if [ $$c = 124 ]; then echo "cycle timed out after 3000 s"; else echo "cycle failed with exit $$c"; fi; }
+          timeout -k 60 3000 python -m collector; c=$$?
+          if [ $$c = 124 ]; then echo "cycle timed out after 3000 s"; elif [ $$c != 0 ]; then echo "cycle failed with exit $$c"; fi
+          timeout -k 5 60 python -m collector --cycle-end $$c
         done

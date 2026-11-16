@@ -50,6 +50,14 @@ The same message says when the Summary step stops on an API error (the error's t
 characters; new rows show their source text as the title until it is fixed) and when it works again, once each:
 `status.json` keeps `"summaries": "paused"` (a budget error) or `"stopped"` (any other), and a cycle compares with the
 state the last cycle left, so a stop that lasts says nothing more.
+A cycle that fails posts too (`collector/alert.py`): compose.yaml's loop runs `python -m collector --cycle-end <exit
+code>` after every cycle, so an uncaught exception (its type and first line, which `main()` leaves in the state file),
+the 3000 s timeout (exit 124: the process is killed and no Python handler runs) and any other non-zero exit all reach
+it. The first failed cycle posts at once, then at most one line an hour while they keep failing (how many, since when),
+and the first success after them posts "복구". The count lives in `cycle_alert.json` beside `VR_BACKUP_DB` (`/backup`),
+so it survives a failing R2. The posted text never carries an environment value or a query string. The step always
+exits 0 and never changes a cycle's outcome. After a deploy, send one marked test line by hand, without touching the
+count: `docker compose exec collector python -m collector --alert-test` (exit 1 when nothing was sent).
 
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
 of its URLs (`collector/incidents.py`, ADR 0001).
