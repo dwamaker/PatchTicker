@@ -17,7 +17,8 @@ from anthropic.types.messages.batch_create_params import Request
 from collector import hn
 from collector.cve_lines import save_lines
 from collector.incidents import is_news, published_at, stamp_ago
-from collector.model import CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_RETRY, MODEL, reply_json
+from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
+                             REQUEST_TIMEOUT, reply_json)
 from collector.numbers import ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
 from collector.summary_input import CVE_LINES_ONLY, is_hn, summary_input, trusted
@@ -456,15 +457,20 @@ def needs_summary(incident):
     KEV listing, a newly attached CVE, reported attacks without the source that reports them (written before
     critique 14), a fixed version the CVE records call affected (fixed_conflict), a word in a script the Incident's own
     text never writes (stray_script), or an Incident merged in by same_as
-    (apply_same_as; news stories bring write-ups, which no other trigger reads), at most MAX_SUMMARIES in all."""
+    (apply_same_as; news stories bring write-ups, which no other trigger reads), at most MAX_SUMMARIES in all; past that,
+    only CVEs the last Summary did not see (a merge) ask once more."""
     if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
         return False
     if "summary" not in incident:
         return True
     seen = incident.get("summary_basis")  # Summaries from before ticket 07 have none: never re-summarized
-    if not seen or seen["n"] >= MAX_SUMMARIES:
+    if not seen:
         return False
     now = basis(incident)
+    if seen["n"] >= MAX_SUMMARIES:
+        # Owner, 11-16 ("합쳐져서 CVE가 늘면 한 번 더 허용"): a merge that adds CVEs earns one more Summary past the cap
+        # (the RHEL krb5 group of 11 kept its one-CVE Summary); its basis then counts them, so only another gain asks again.
+        return bool(set(now["cves"]) - set(seen["cves"]))
     unsourced = incident["summary"].get("exploited") and not incident["summary"].get("exploited_source")
     return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
                 or set(now["advisories"]) - set(seen["advisories"]) or set(now.get("merged", [])) - set(seen.get("merged", [])) or unsourced
@@ -481,8 +487,10 @@ def summarize_now(incident, claude, http_get, stamp, candidates=()):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
     candidates: its same_as_candidates(), listed beside the input."""
     text, seen = summary_input(incident, http_get), basis(incident)
+    asked = params(text, candidates=same_as_text(candidates), **retry(incident, text))
     try:
-        reply = claude.messages.create(**params(text, candidates=same_as_text(candidates), **retry(incident, text)))
+        # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
+        reply = claude.messages.create(**asked, **({"timeout": REQUEST_TIMEOUT} if asked["max_tokens"] > MAX_TOKENS_RETRY else {}))
     except anthropic.APIStatusError as err:
         # Too long for this request alone: a counted try, or it blocks every later one each cycle. Any other 400 may be
         # the same for every request (a parameter the API stopped accepting), so it stops the cycle and costs no try.
@@ -534,11 +542,30 @@ def save_reply(incident, reply, text, seen, stamp, listed=()):
     incident["summary_basis"] = seen | {"n": n + 1 if due else max(n, 1)}
 
 
+CUT_OFF = "stop_reason max_tokens"  # parse()'s reason for a reply cut off at max_tokens
+
+
 def failed(incident, reason):
-    tries = incident.get("summary_error", {}).get("tries", 0) + 1
+    before = incident.get("summary_error", {})
+    tries = before.get("tries", 0) + 1
     # reason: the next try carries it (retry()). final: no more tries, so the page stops saying a Summary is coming
-    # (spec story 24).
-    incident["summary_error"] = {"tries": tries, "reason": reason[:200]} | ({"final": True} if tries >= MAX_TRIES else {})
+    # (spec story 24). cut: a reply of this Incident was once cut off, so every later try keeps the larger budget whatever
+    # the later failure (11-16: Zephyr was cut, rejected for a number, then cut again at the small budget).
+    # A cut-off counts as a try: past the budget it is a runaway reply more often than a long one, and uncounted it would
+    # be asked again every cycle.
+    cut = before.get("cut") or reason.startswith(CUT_OFF)
+    incident["summary_error"] = ({"tries": tries, "reason": reason[:200]} | ({"cut": True} if cut else {})
+                                 | ({"final": True} if tries >= MAX_TRIES else {}))
+
+
+def budget(incident):
+    """max_tokens for this Incident's next Summary request: a group's from the first try, else the larger one once a
+    reply was cut off."""
+    if len(incident.get("cves") or []) > 1:
+        return MAX_TOKENS_GROUP
+    error = incident.get("summary_error", {})
+    # An error stored before "cut" came says so by its reason only.
+    return MAX_TOKENS_RETRY if error.get("cut") or error.get("reason", "").startswith(CUT_OFF) else MAX_TOKENS
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
@@ -595,8 +622,10 @@ def retry(incident, text=""):
     A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
     10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact)."""
     reason = incident.get("summary_error", {}).get("reason", "")
+    # A one-CVE Incident never cut off asks with params()' own MAX_TOKENS, as before.
+    room = {"max_tokens": budget(incident)} if budget(incident) != MAX_TOKENS else {}
     if not reason:
-        return {}
+        return room
     note = f"Your previous reply for this Incident was rejected: {reason}." + (
         " Write Korean in Korean and English in English; leave out the word in another script unless the input writes"
         " that exact name." if reason.startswith(STRAY_REASON) else
@@ -626,7 +655,7 @@ def retry(incident, text=""):
             lines.append(f"- {token}: the input has {', '.join(behind)}; write one of them exactly, or the range as the input"
                          " writes it" if behind else f"- {token}: not in the input, leave it out")
         note += " For each rejected number:\n" + "\n".join(lines)
-    return {"note": note} | ({"max_tokens": MAX_TOKENS_RETRY} if reason.startswith("stop_reason max_tokens") else {})
+    return {"note": note} | room
 
 
 def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):

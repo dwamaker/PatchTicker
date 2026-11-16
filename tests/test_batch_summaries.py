@@ -245,7 +245,7 @@ class ReSummaryTest(unittest.TestCase):
         self.store.write("checkpoints.json", {"cvelist": "2026-11-05T12:00:00.000Z"})
 
     def test_a_new_cve_and_a_kev_listing_each_bring_a_new_summary_and_three_is_the_limit(self):
-        claude = FakeClaude(SSHOLE_SUMMARY, SSHOLE_SUMMARY, SSHOLE_SUMMARY)
+        claude = FakeClaude(SSHOLE_SUMMARY, SSHOLE_SUMMARY, SSHOLE_SUMMARY, SSHOLE_SUMMARY)
         self.run_at("2026-11-05T12:30:00", claude, hn="sshole.json")  # an Unassigned incident: Summary 1
         self.run_at("2026-11-05T16:00:00", claude, delta_log="deltaLog-sshole.json")  # its CVE attaches: 2
         self.assertEqual(len(claude.sent), 2)
@@ -258,9 +258,12 @@ class ReSummaryTest(unittest.TestCase):
         self.assertEqual(len(claude.sent), 3)
         self.assertEqual(board(self.store)[HN_STORY]["summary"]["at"], "2026-11-06T10:00:00Z")
 
-        self.run_at("2026-11-06T11:00:00", claude, oss="sshole-cves.rss")  # another CVE, but three is enough
+        # Owner, 11-16: past the three, only gained CVEs ask once more ("합쳐져서 CVE가 늘면 한 번 더 허용").
+        self.run_at("2026-11-06T11:00:00", claude, oss="sshole-cves.rss")
         self.assertEqual(board(self.store)[HN_STORY]["cves"], [SSHOLE, "CVE-2026-123999"])
-        self.assertEqual(len(claude.sent), 3)
+        self.assertEqual(len(claude.sent), 4)
+        self.run_at("2026-11-06T11:15:00", claude)  # nothing gained since: no request
+        self.assertEqual(len(claude.sent), 4)
         self.assertEqual(claude.batches, [])
 
     def test_a_new_kev_listing_is_summarized_at_once_however_old_the_incident(self):
@@ -335,10 +338,33 @@ class SummaryCountTest(unittest.TestCase):
         self.save(incident)
         self.assertEqual(incident["summary_basis"]["n"], 2)
 
+    def test_an_incident_at_the_cap_that_gained_cves_through_a_merge_is_due_once(self):
+        # Owner, 11-16: the RHEL krb5 group of 11 CVEs kept the Summary written for its first one.
+        from collector import summaries
+        incident = self.made(summaries.MAX_SUMMARIES) | {"cves": ["CVE-2026-7", "CVE-2026-8"]}
+        self.assertTrue(summaries.needs_summary(incident))
+        self.save(incident)
+        self.assertEqual(incident["summary_basis"]["n"], summaries.MAX_SUMMARIES + 1)
+
+    def test_after_that_summary_it_is_not_due_until_it_gains_cves_again(self):
+        from collector import summaries
+        incident = self.made(summaries.MAX_SUMMARIES) | {"cves": ["CVE-2026-7", "CVE-2026-8"]}
+        self.save(incident)
+        self.assertFalse(summaries.needs_summary(incident))
+        incident["cves"].append("CVE-2026-9")
+        self.assertTrue(summaries.needs_summary(incident))
+
+    def test_at_the_cap_a_new_advisory_alone_does_not_make_it_due(self):
+        from collector import summaries
+        incident = self.made(summaries.MAX_SUMMARIES)
+        incident["mentions"] = incident["mentions"] + [{"kind": "advisory", "url": "https://vendor.example/new-advisory"}]
+        self.assertFalse(summaries.needs_summary(incident))
+        self.assertFalse(summaries.needs_summary(self.made(summaries.MAX_SUMMARIES) | {"kev": True}))
+
     def test_a_batch_reply_for_an_incident_at_the_limit_is_not_read_even_from_other_sources(self):
         from collector import summaries
         claude, _ = self.stub("ended")
-        incident = self.made(summaries.MAX_SUMMARIES, cves=())
+        incident = self.made(summaries.MAX_SUMMARIES)  # the request's sources differ (basis below), its own CVEs do not
         pending = {"id": "b1", "requests": {"r0": {"incident": "CVE-2026-7", "input": "x", "basis": {"cves": ["CVE-2026-6"], "kev": False, "advisories": []}}}}
         summaries.collect_batch(pending, [incident], claude, "2026-11-09T12:00:00Z")
         self.assertEqual(incident["summary"], {"at": "2026-11-09T11:00:00Z"})

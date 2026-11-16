@@ -3,6 +3,8 @@
 pages/sshhole.com.html and pages/release-10.6p2.txt are the real pages (2026-11-07), trimmed.
 """
 
+import contextlib
+import io
 import json
 import re
 import unittest
@@ -10,6 +12,7 @@ import urllib.error
 from types import SimpleNamespace
 
 from collector import summaries, summary_input
+from collector.model import MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, REQUEST_TIMEOUT
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 from test_cycle import FIXTURES, at, incident, recorded
@@ -694,6 +697,47 @@ class ConditionsPerCveTest(unittest.TestCase):
     def test_the_prompt_asks_for_the_ids_only_in_a_group(self):
         self.assertIn("a condition that holds for every CVE has no ID", summaries.INSTRUCTIONS)
         self.assertIn("keeping the same CVE IDs at the start of the same entries", summaries.INSTRUCTIONS)
+
+
+class ReplyBudgetTest(unittest.TestCase):
+    """11-16: Zephyr's 13-CVE group was given up after two cut-offs and a rejection between them."""
+
+    def incident(self, n):
+        cves = [f"CVE-2026-{100 + k}" for k in range(n)]
+        return {"id": cves[0], "cves": cves, "first_seen": "2026-11-16T00:00:00Z", "brief": {"text": "Widget flaws.", "lead": ""},
+                "mentions": [], "urls": [], "products": []}
+
+    def sent_budget(self, incident):
+        def offline(url, headers=None):
+            raise OSError("offline")
+        claude = FakeClaude(cut("{"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(incident, claude, offline, "2026-11-16T00:00:00Z")
+        return claude.sent[0]["max_tokens"], claude.sent[0].get("timeout")
+
+    def test_a_groups_request_asks_with_the_larger_budget_from_the_first_try(self):
+        self.assertEqual(self.sent_budget(self.incident(4)), (MAX_TOKENS_GROUP, REQUEST_TIMEOUT))
+        claude = FakeClaude()
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.submit_batch([self.incident(4)], claude, lambda url, headers=None: b"")
+        self.assertEqual(claude.batches[0]["requests"][0]["params"]["max_tokens"], MAX_TOKENS_GROUP)  # no SDK check there
+
+    def test_after_a_cut_off_a_try_that_follows_a_different_failure_still_asks_with_the_larger_budget(self):
+        one = self.incident(1)
+        self.assertEqual(self.sent_budget(one), (MAX_TOKENS, None))  # one CVE: the request as before
+        self.assertEqual(one["summary_error"]["reason"], "stop_reason max_tokens")
+        summaries.failed(one, "numbers not in the input: ['4.4']")
+        self.assertEqual(summaries.retry(one)["max_tokens"], MAX_TOKENS_RETRY)
+        # An error stored before "cut" came still gives the larger budget by its reason.
+        self.assertEqual(summaries.retry({"cves": ["CVE-1"], "summary_error": {"tries": 1, "reason": "stop_reason max_tokens"}})["max_tokens"],
+                         MAX_TOKENS_RETRY)
+        self.assertNotIn("max_tokens", summaries.retry({"cves": ["CVE-1"], "summary_error": {"tries": 1, "reason": "x"}}))
+
+    def test_a_cut_off_counts_as_one_of_the_three_tries(self):
+        group = self.incident(13)
+        for _ in range(summaries.MAX_TRIES):
+            self.sent_budget(group)
+        self.assertEqual({k: group["summary_error"][k] for k in ("tries", "cut", "final")}, {"tries": 3, "cut": True, "final": True})
 
 
 class EasyJargonTest(unittest.TestCase):
