@@ -61,9 +61,10 @@ def summary_input(incident, http_get):
     readable = [m for m in preferred if m["kind"] in PAGE_KINDS and not is_hn(m["url"])]
     for m in readable[:MAX_PAGES]:
         page = fetch_page(http_get, m["url"])
-        if page:
+        text = page_text(page, m["url"]) if page else None  # None: not loaded, or not parsed; the input goes on
+        if text is not None:
             mark = LEAD_MARK if m["url"] == lead else ""
-            lines += [f"Text of {m['url']}{mark}:", page_text(page)[:PAGE_CHARS]]
+            lines += [f"Text of {m['url']}{mark}:", text[:PAGE_CHARS]]
     for cve in cves[:CVE_LINES_MAX]:
         record = fetch_page(http_get, cvelist.record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
@@ -110,7 +111,11 @@ def fetch_page(http_get, url):
     except (OSError, ValueError, http.client.HTTPException) as err:  # HTTPException: a cited page's malformed answer
         print(f"summaries: skipped {url}: {err!r}", file=sys.stderr)
         return None
-    return None if b"\0" in raw[:1024] else raw.decode("utf-8", errors="replace")  # binary: not text
+    # Binary, not text: a NUL early on, or a PDF, which has none in its head (11-16: Axis's advisory PDF of CVE-2026-4762).
+    if b"\0" in raw[:1024] or raw.lstrip()[:5] == b"%PDF-":
+        print(f"summaries: skipped {url}: not text", file=sys.stderr)
+        return None
+    return raw.decode("utf-8", errors="replace")
 
 
 def sonicwall_advisory(http_get, advisory_id):
@@ -192,18 +197,27 @@ class _Cells(_Text):
         self.parts.append(" " if tag in BLOCKS else "")
 
 
+def parsed(parser, text, url):
+    """Feed text to parser; False, with one line on stderr, when html.parser gives up on it."""
+    try:
+        parser.feed(text)
+    except Exception as err:  # html.parser asserts on junk ("<![" then binary, 11-16); any input, never the cycle
+        print(f"summaries: skipped {url}: {err!r}"[:300], file=sys.stderr)
+        return False
+    return True
+
+
 def cell_text(html_text):
     parser = _Cells()
-    parser.feed(html_text)
-    return " ".join("".join(parser.parts).split())
+    return " ".join("".join(parser.parts).split()) if parsed(parser, html_text, "a CVE record's HTML") else ""
 
 
-def page_text(page):
+def page_text(page, url=""):
+    """The page's text, or None when it cannot be parsed: then it counts as a page that failed to load."""
     if "<" not in page[:2000]:
         return " ".join(page.split())  # plain text, e.g. an OpenSSH release note
     parser = _Text()
-    parser.feed(page)
-    return " ".join(" ".join(parser.parts).split())
+    return " ".join(" ".join(parser.parts).split()) if parsed(parser, page, url) else None
 
 
 def is_hn(url):

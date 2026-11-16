@@ -365,3 +365,31 @@ class SummaryInputBoundTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NotHtmlPageTest(unittest.TestCase):
+    """11-16: Axis's advisory of CVE-2026-4762 is a PDF; html.parser asserted on its bytes and the input stopped."""
+
+    JUNK = (Path(__file__).parent / "fixtures" / "pages" / "not-html.bin").read_bytes()  # 48 bytes cut from that PDF
+    PAGES = {LEAD: b"<html>" + b" " * 1100 + JUNK,  # its NUL falls past the first 1024 bytes, as in the PDF
+             "https://widget.example/report.pdf": b"%PDF-1.7\r\n<</Type/Catalog>>" + JUNK}
+
+    def http_get(self, url, headers=None):
+        if url in self.PAGES:
+            return self.PAGES[url]
+        return json.dumps({"containers": {"cna": record(url.rsplit("/", 1)[-1].removesuffix(".json"))}}).encode()
+
+    def test_a_page_that_is_not_html_does_not_break_the_input_it_is_skipped_like_a_failed_fetch(self):
+        mentions = [{"kind": "advisory", "url": LEAD}, {"kind": "advisory", "url": "https://widget.example/report.pdf"}]
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            text = summary_input.summary_input(group(2, mentions), self.http_get)
+        self.assertNotIn("Text of", text)
+        self.assertIn("CVE record CVE-2026-1001:", text)
+        self.assertIn(f"summaries: skipped {LEAD}: AssertionError", err.getvalue())
+        self.assertIn("summaries: skipped https://widget.example/report.pdf: not text", err.getvalue())
+
+    def test_page_text_and_a_records_html_never_raise(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertIsNone(summary_input.page_text(self.JUNK.decode("utf-8", errors="replace"), LEAD))
+            self.assertEqual(summary_input.cell_text("<p>x</p>" + self.JUNK.decode("utf-8", errors="replace")), "")
