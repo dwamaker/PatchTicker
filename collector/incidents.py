@@ -214,7 +214,10 @@ def highlight_score(incident):
 
 # A port of WP_PLUGIN and isWordPressPlugin in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step):
 # WordPress plugins and themes fold as one, and a row view carries this answer as wp_plugin.
-WP_PLUGIN = re.compile(r"(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)|(?:plugin|theme)s?\s+for\s+wordpress", re.IGNORECASE)
+# Owner, 11-16: WooCommerce and what is made for it count, and so does an extension or add-on "for … WordPress" (AcyMailing,
+# "extension for Joomla and WordPress"); a name that gives no sign (Ninja Forms) may stay out.
+WP_PLUGIN = re.compile(r"(?:wordpress|워드프레스)[^.;:!?\n]{0,40}?(?:plugin|theme|플러그인|테마)"
+                       r"|(?:plugin|theme|extension|add-?on)s?\s+for\s+[^.;:!?\n]{0,40}?wordpress|\bwoocommerce\b|우커머스", re.IGNORECASE)
 
 
 def is_wordpress_plugin(incident):
@@ -634,30 +637,48 @@ GROUP_MIN_CVES = 3
 GROUP_HOURS = 48
 
 
+def release_clusters(members):
+    """The holders of one fix key (sorted by publish time) cut into bursts: a burst starts at a member and takes those
+    published within GROUP_HOURS of it; the next starts at the first one past that (owner, 11-16: one Airflow holder
+    from August kept 11 Incidents published within three hours on 11-09 apart)."""
+    clusters = []
+    for i in members:
+        when = datetime.strptime(published_at(i), STAMP)
+        if clusters and (when - clusters[-1][0]).total_seconds() <= GROUP_HOURS * 3600:
+            clusters[-1][1].append(i)
+        else:
+            clusters.append((when, [i]))
+    return [found for _, found in clusters]
+
+
 def group_releases(incidents):
-    """Merge the Incidents of one release (same fix key, published within GROUP_HOURS of the earliest) once they hold
-    GROUP_MIN_CVES CVEs or more; the earliest seen keeps its id. Each CVE's own description stays in "cve_texts" for the
-    page. Returns the months changed."""
+    """Merge the Incidents of one release (same fix key, one burst of release_clusters) once they hold GROUP_MIN_CVES
+    CVEs or more; the earliest seen keeps its id. A group whose burst has passed takes no late joiner: that one starts a
+    burst of its own. Each CVE's own description stays in "cve_texts" for the page. Returns the months changed."""
     changed = set()
     for key in sorted({k for i in incidents for k in i.get("fix_keys", [])}):
-        members = sorted((i for i in incidents if key in i.get("fix_keys", [])), key=published_at)
-        if not members:
+        if not re.search(r"[0-9]", key.split("<", 1)[-1]):
+            continue  # owner, 11-16: no digit, no version; stored ones ("google:android<=Android kernel") tie nothing
+        for members in release_clusters(sorted((i for i in incidents if key in i.get("fix_keys", [])), key=published_at)):
+            changed |= fold_release(incidents, members)  # bursts share no member, so one's fold leaves the next whole
+    return changed
+
+
+def fold_release(incidents, members):
+    """One burst's Incidents into the earliest seen, when they are 2 or more with GROUP_MIN_CVES CVEs; the months changed."""
+    if len(members) < 2 or len({c for i in members for c in i["cves"]}) < GROUP_MIN_CVES:
+        return set()
+    target = min(members, key=lambda i: i["first_seen"])
+    texts = target.setdefault("cve_texts", {c: target["brief"]["text"] for c in target["cves"]})
+    links = target.setdefault("cve_links", own_links(target))
+    changed = {month_of(target["first_seen"])}
+    for other in members:
+        if other is target:
             continue
-        start = datetime.strptime(published_at(members[0]), STAMP)
-        members = [i for i in members if (datetime.strptime(published_at(i), STAMP) - start).total_seconds() <= GROUP_HOURS * 3600]
-        if len(members) < 2 or len({c for i in members for c in i["cves"]}) < GROUP_MIN_CVES:
-            continue
-        target = min(members, key=lambda i: i["first_seen"])
-        texts = target.setdefault("cve_texts", {c: target["brief"]["text"] for c in target["cves"]})
-        links = target.setdefault("cve_links", own_links(target))
-        for other in members:
-            if other is target:
-                continue
-            texts.update(other.get("cve_texts") or {c: other["brief"]["text"] for c in other["cves"]})
-            links.update(other.get("cve_links") or own_links(other))
-            fold(incidents, target, other)
-            changed.add(month_of(other["first_seen"]))
-        changed.add(month_of(target["first_seen"]))
+        texts.update(other.get("cve_texts") or {c: other["brief"]["text"] for c in other["cves"]})
+        links.update(other.get("cve_links") or own_links(other))
+        fold(incidents, target, other)
+        changed.add(month_of(other["first_seen"]))
     return changed
 
 

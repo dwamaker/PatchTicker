@@ -276,7 +276,9 @@ def fixed_conflict(incident, summary):
     the page): below every record bound ("product<VALUE" fix_keys of one product; VALUE may list several versions,
     as JetBrains records do) that shares its major, and equal to none; a distribution's package under "fixes" is not
     checked (DISTRO_PACKAGE). The reason, or ""."""
-    strict = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k]
+    # A distribution's package build ("red_hat:…:krb5<0:1.21.1-10.el9_9.2", 11-16) groups but bounds nothing: its digits
+    # are not the product's versions ("9_9.2" would read as 9.2).
+    strict = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k and not DISTRO_PACKAGE.search(k)]
     if len({product for product, _ in strict}) != 1:
         return ""
     bounds = {tuple(map(int, v.split("."))) for _, value in strict for v in VERSION_RE.findall(value)}

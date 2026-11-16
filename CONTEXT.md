@@ -6,7 +6,8 @@ A public, no-login page that lists security incidents newest first and lets each
 
 **Incident** (사건):
 One real-world vulnerability event, the unit of one row on the board. It may carry zero, one or several CVEs. A vendor release that fixes more than two CVEs of one product in the same version, published within
-48 hours, is one Incident (a release group, 2026-11-09).
+48 hours, is one Incident (a release group, 2026-11-09). The 48 hours run from the first of each burst of that fix, not
+from the first Incident that ever held it, so an old CVE of the same fixed version keeps no later release apart (2026-11-16).
 _Avoid_: item, entry, vuln, CVE (as a row)
 
 **Mention** (언급):

@@ -235,7 +235,23 @@ def record_fix_keys(record):
             top = max(listed, key=lambda v: [int(p) if p.isascii() and p.isdigit() and len(p) < 20 else -1
                                              for p in re.split(r"[.\-]", v)])
             keys.add(f"{key}<={top}")
-    return sorted(keys)
+        if not any(k.startswith(f"{key}<") for k in keys):
+            # 11-16, only when the affected entries gave none: the fix stated as "unaffected from X" (Mozilla: 160 up to
+            # "*"; Red Hat: a package build up to "*", its packageName in the key so two packages with one version string
+            # stay apart). Never a list of single versions.
+            package = (a.get("packageName") or "").strip().lower().replace(" ", "_")
+            keys |= {f"{key}{':' + package if package else ''}<{v['version']}" for v in a.get("versions", [])
+                     if v.get("status") == "unaffected" and v.get("version") and open_above(v)}
+    # Owner, 11-16: a "version" without a digit is no version ("google:android<=Android kernel" tied 159 Incidents).
+    return sorted(k for k in keys if re.search(r"[0-9]", k.split("<", 1)[1]))
+
+
+def open_above(entry):
+    """An unaffected entry open at the top ("*") or within its own line ("153.7" up to "153.*")."""
+    top = str(entry.get("lessThan") or entry.get("lessThanOrEqual") or "")
+    if re.fullmatch(r"0(?:[.:\-]0)*", str(entry["version"])):
+        return False  # unaffected from 0: never affected, not a fix (it would tie every CVE of the vendor's batch)
+    return top == "*" or top.endswith(".*") and str(entry["version"]).startswith(top[:-1])
 
 
 def record_products(record):

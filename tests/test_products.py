@@ -128,6 +128,11 @@ class RowsViewTest(unittest.TestCase):
             with self.subTest(case["incident"]["id"]):
                 self.assertEqual(highlight_score(case["incident"]), case["highlight_score"])
 
+    def test_woocommerce_add_ons_fold_with_wordpress_plugins_wordpress_itself_does_not(self):
+        for brief, first, answer in ROWS["wp_texts"]:
+            with self.subTest(brief[:40]):
+                self.assertEqual(is_wordpress_plugin({"brief": {"text": brief}, "summary": {"products": [first]}}), answer)
+
     def test_mentions_count_up_to_ten_and_exploited_outranks_a_300_mention_release(self):
         def scored(n, **fields):
             return highlight_score({"mentions": [{"kind": "advisory"}] * n, **fields})

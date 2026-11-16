@@ -647,9 +647,58 @@ class ReleaseGroupTest(unittest.TestCase):
                              ("All driver versions prior to 615.71.09", "a:b<615.71.09"), ("<= 7.0.0", "a:b<=7.0.0"),
                              (">= 0.11.0, <= 0.16.0", "a:b<=0.16.0"), ("= 1.27.0", "a:b<=1.27.0"),
                              ("25.05.0 through 25.05.8", "a:b<=25.05.8"), ("11.13.1 and earlier", "a:b<=11.13.1"),
-                             (">= 6.7.0", "a:b<=>= 6.7.0"), ("Versions prior to latest one", "a:b<=Versions prior to latest one")):
+                             (">= 6.7.0", "a:b<=>= 6.7.0"), ("Versions prior to latest one", None)):
             listed = {"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [{"version": version, "status": "affected"}]}]}}}
-            self.assertEqual(record_fix_keys(listed), [key], version)
+            self.assertEqual(record_fix_keys(listed), [key] if key else [], version)
+
+    def test_a_key_without_a_digit_is_not_a_key(self):
+        # Owner, 11-16: "google:android<=Android kernel" tied 159 Incidents together.
+        from collector.cvelist import record_fix_keys
+        android = {"containers": {"cna": {"affected": [{"vendor": "Google", "product": "Android", "versions": [
+            {"version": "Android kernel", "status": "affected"}]}]}}}
+        self.assertEqual(record_fix_keys(android), [])
+        # Stored Incidents still holding one are not grouped by it, before or after the one-off removes it.
+        from collector.incidents import group_releases
+        rows = [self.row(f"CVE-2026-{n}", f"2026-11-09T0{n}:00:00Z", key="google:android<=Android kernel") for n in (1, 2, 3)]
+        self.assertEqual((group_releases(rows), len(rows)), (set(), 3))
+
+    def test_a_record_that_says_unaffected_from_160_gives_the_key_of_160(self):
+        from collector.cvelist import record_fix_keys
+        record = lambda cve: json.loads((FIXTURES / "cvelist" / f"{cve}.json").read_bytes())
+        self.assertEqual(record_fix_keys(record("CVE-2026-124852")), ["mozilla:firefox<160", "mozilla:thunderbird<160"])
+        esr = {"containers": {"cna": {"affected": [{"vendor": "Mozilla", "product": "Firefox ESR", "versions": [
+            {"status": "unaffected", "version": "153.7", "lessThanOrEqual": "153.*"}]}]}}}
+        self.assertEqual(record_fix_keys(esr), ["mozilla:firefox_esr<153.7"])
+        other_line = {"containers": {"cna": {"affected": [{"vendor": "Mozilla", "product": "Firefox ESR", "versions": [
+            {"status": "unaffected", "version": "153.7", "lessThanOrEqual": "140.*"}]}]}}}
+        self.assertEqual(record_fix_keys(other_line), [])
+
+    def test_red_hats_two_packages_with_one_version_string_stay_apart(self):
+        from collector.cvelist import record_fix_keys
+        keys = record_fix_keys(json.loads((FIXTURES / "cvelist" / "CVE-2026-112323.json").read_bytes()))
+        self.assertIn("red_hat:red_hat_enterprise_linux_9:krb5<0:1.21.1-10.el9_9.2", keys)
+        self.assertIn("red_hat:red_hat_hardened_images:krb5-main<1.22.3-0.1.hum1", keys)
+        two = {"containers": {"cna": {"affected": [
+            {"vendor": "Red Hat", "product": "Red Hat Enterprise Linux 9", "packageName": name, "defaultStatus": "affected",
+             "versions": [{"version": "0:2.0-1.el9", "lessThan": "*", "status": "unaffected", "versionType": "rpm"}]}
+            for name in ("libfoo", "libbar")]}}}
+        self.assertEqual(record_fix_keys(two), ["red_hat:red_hat_enterprise_linux_9:libbar<0:2.0-1.el9",
+                                                "red_hat:red_hat_enterprise_linux_9:libfoo<0:2.0-1.el9"])
+
+    def test_a_list_of_unaffected_versions_gives_no_key(self):
+        from collector.cvelist import record_fix_keys
+        listed = {"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [
+            {"version": v, "status": "unaffected"} for v in ("1.2.9", "1.3.4", "2.0.1")]}]}}}
+        self.assertEqual(record_fix_keys(listed), [])
+        never = {"containers": {"cna": {"affected": [{"vendor": "a", "product": "b", "versions": [
+            {"version": "0", "status": "unaffected", "lessThan": "*"}]}]}}}
+        self.assertEqual(record_fix_keys(never), [])  # never affected: no fix to share
+
+    def test_a_red_hat_build_groups_but_bounds_no_fixed_version(self):
+        # "9_9.2" inside the build would read as a bound 9.2 and reject a Summary's "9.1" for a one-product record.
+        from collector import summaries
+        incident = {"fix_keys": ["red_hat:red_hat_enterprise_linux_9:krb5<0:1.21.1-10.el9_9.2"]}
+        self.assertEqual(summaries.fixed_conflict(incident, {"fixed": "9.1"}), "")
 
     def test_a_fixed_version_below_bacnets_stated_bound_is_rejected_and_the_fix_itself_passes(self):
         # 11-15: a re-summary of CVE-2026-52786 said "update to 1.4.4"; the record says 1.4.5, 1.5.1 and 1.6.0 fix it.
@@ -674,6 +723,30 @@ class ReleaseGroupTest(unittest.TestCase):
         self.assertEqual(group["cvss"], 8.8)
         self.assertEqual(group["cve_texts"], {f"CVE-2026-{n}": f"CVE-2026-{n} text" for n in (1, 2, 3)})
         self.assertEqual([i["id"] for i in incidents], ["CVE-2026-1", "CVE-2026-4", "CVE-2026-5"])
+
+    def test_a_later_burst_of_one_key_groups_though_an_older_incident_holds_the_key(self):
+        # 11-16: one apache_airflow<3.4.0 holder from August kept 11 Incidents of 11-09 apart.
+        from collector.incidents import group_releases
+        old = self.row("CVE-2026-9", "2026-08-20T10:00:00Z")
+        burst = [self.row(f"CVE-2026-{n}", f"2026-11-09T0{n}:00:00Z") for n in (1, 2, 3)]
+        incidents = [old, *burst]
+        self.assertEqual(group_releases(incidents), {"2026-11"})
+        self.assertEqual([i["cves"] for i in incidents], [["CVE-2026-9"], ["CVE-2026-1", "CVE-2026-2", "CVE-2026-3"]])
+
+    def test_two_bursts_of_one_key_days_apart_are_two_groups(self):
+        from collector.incidents import group_releases
+        incidents = [self.row(f"CVE-2026-{n}", f"2026-11-{day}T0{n}:00:00Z") for n, day in
+                     ((1, "02"), (2, "02"), (3, "02"), (4, "09"), (5, "09"), (6, "09"))]
+        group_releases(incidents)
+        self.assertEqual([i["cves"] for i in incidents], [["CVE-2026-1", "CVE-2026-2", "CVE-2026-3"],
+                                                          ["CVE-2026-4", "CVE-2026-5", "CVE-2026-6"]])
+        # Each burst is GROUP_HOURS from its own first holder, never a chain of holders a day apart each.
+        chain = [self.row(f"CVE-2026-{n}", f"2026-11-{day:02d}T00:00:00Z") for n, day in ((1, 1), (3, 2), (5, 4), (7, 5))]
+        for row in chain:
+            row["cves"].append(f"CVE-2026-{int(row['id'][9:]) + 1}")  # two CVEs each, so a pair reaches GROUP_MIN_CVES
+        group_releases(chain)
+        self.assertEqual([i["cves"] for i in chain], [["CVE-2026-1", "CVE-2026-2", "CVE-2026-3", "CVE-2026-4"],
+                                                      ["CVE-2026-5", "CVE-2026-6", "CVE-2026-7", "CVE-2026-8"]])
 
     def test_each_cve_keeps_its_own_advisory_and_write_up_links_in_the_group(self):
         from collector.incidents import group_releases
