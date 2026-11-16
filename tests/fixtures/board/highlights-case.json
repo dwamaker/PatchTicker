@@ -71,10 +71,10 @@
     ],
     "expected": ["CVE-2026-118", "CVE-2026-117", "CVE-2026-116", "CVE-2026-115", "CVE-2026-114", "CVE-2026-113", "CVE-2026-112", "CVE-2026-111", "CVE-2026-110", "CVE-2026-109", "CVE-2026-108", "CVE-2026-107", "CVE-2026-106", "CVE-2026-105", "CVE-2026-104", "CVE-2026-103", "CVE-2026-102", "CVE-2026-101", "CVE-2026-205", "CVE-2026-204"]
   },
-  "kev_week_note": "Owner, 11-16: a KEV listing in the last seven days counts as news (the latest of kev_last, the per-CVE kev_cves days and kev_date), so 801 and 803 are in and 802 is not; a label an exploited Highlight holds is not lifted again, so the second Chrome row (806) stays with the rest. Same now and window as above.",
+  "kev_week_note": "Owner, 11-17: only an Incident published in the last seven days can be a Highlight; a KEV listing this week no longer brings an older one in, so 801, 802 and 803 (first seen 11-01, listed 11-09 and 11-05) stay out; a label an exploited Highlight holds is not lifted again, so the second Chrome row (806) comes with the rest, by score. Same now and window as above.",
   "kev_week": {
     "incidents": [
-      {"id": "CVE-2026-801", "cves": ["CVE-2026-801"], "first_seen": "2026-11-01T00:00:00Z", "cvss": 9.8, "kev": true, "kev_date": "2026-11-01", "kev_last": "2026-11-09", "mentions": [{"kind": "cve_record"}]},
+      {"id": "CVE-2026-801", "cves": ["CVE-2026-801"], "first_seen": "2026-11-01T00:00:00Z", "cvss": 9.8, "kev": true, "kev_date": "2026-11-09", "mentions": [{"kind": "cve_record"}]},
       {"id": "CVE-2026-802", "cves": ["CVE-2026-802"], "first_seen": "2026-11-01T00:00:00Z", "cvss": 9.8, "kev": true, "kev_date": "2026-11-02", "mentions": [{"kind": "cve_record"}]},
       {"id": "CVE-2026-803", "cves": ["CVE-2026-803", "CVE-2026-804"], "first_seen": "2026-11-01T00:00:00Z", "cvss": 8.1, "kev": true, "kev_date": "2026-11-01", "kev_cves": {"CVE-2026-803": "2026-11-01", "CVE-2026-804": "2026-11-05"}, "mentions": [{"kind": "cve_record"}]},
       {"id": "CVE-2026-805", "cves": ["CVE-2026-805"], "first_seen": "2026-11-09T00:00:00Z", "cvss": 9.6, "kev": true, "kev_date": "2026-11-09", "known": "Chrome", "known_rank": 11, "mentions": [{"kind": "cve_record"}]},
@@ -82,6 +82,6 @@
       {"id": "CVE-2026-807", "cves": ["CVE-2026-807"], "first_seen": "2026-11-10T01:00:00Z", "cvss": 9.6, "known": "Zoom", "known_rank": 43, "mentions": [{"kind": "cve_record"}]},
       {"id": "CVE-2026-808", "cves": ["CVE-2026-808"], "first_seen": "2026-11-10T02:00:00Z", "cvss": 9.9, "mentions": [{"kind": "cve_record"}]}
     ],
-    "expected": ["CVE-2026-801", "CVE-2026-805", "CVE-2026-803", "CVE-2026-807", "CVE-2026-808", "CVE-2026-806"]
+    "expected": ["CVE-2026-805", "CVE-2026-807", "CVE-2026-808", "CVE-2026-806"]
   }
 }

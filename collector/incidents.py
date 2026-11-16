@@ -102,11 +102,6 @@ def order_fields(incident, maps):
     """`cves` in cve_order, so every cves[0] reader on the site shows the Lead CVE; with more than one CVE also top_cve
     and, for a whole Incident (maps), the per-CVE cve_scores and kev_cves."""
     fields = {"cves": cve_order(incident)}
-    # The latest KEV listing day, for the Highlight window (owner 11-16: a CVE listed this week, published earlier),
-    # only where it differs from kev_date (the earliest), so no page or row document changes for the rest.
-    last = max((d for d in (incident.get("kev_cves") or {}).values() if d), default=None)
-    if last and last != incident.get("kev_date"):
-        fields["kev_last"] = last
     if len(incident["cves"]) > 1:
         top = top_cve(incident)
         fields |= ({"top_cve": top} if top else {}) | (

@@ -215,7 +215,8 @@ class CycleTest(unittest.TestCase):
         plain = [{k: v for k, v in i.items() if k != "known"} for i in case["incidents"]]
         self.assertEqual([i["id"] for i in cycle.highlights(plain, since)], case["expected_without_known"])
         self.assertEqual([i["id"] for i in cycle.highlights(case["capped"]["incidents"], since)], case["capped"]["expected"])
-        # Owner, 11-16: a KEV listing this week is news, and an exploited row's label is not lifted again.
+        # Owner, 11-17: a KEV listing this week does not bring an older Incident in; an exploited row's label is not
+        # lifted again (11-16).
         self.assertEqual([i["id"] for i in cycle.highlights(case["kev_week"]["incidents"], since)], case["kev_week"]["expected"])
 
     def test_status_file_holds_last_update_and_collector(self):

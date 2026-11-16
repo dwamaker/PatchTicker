@@ -311,18 +311,24 @@ class ExploitedEvidenceTest(unittest.TestCase):
         self.assertEqual(summaries.recheck_exploited([weak, strong]), [])  # a second pass changes nothing
 
 
-class KevLastTest(unittest.TestCase):
-    """Owner, 11-16: a row is a Highlight candidate when one of its CVEs was listed in KEV in the last seven days; rows
-    carry the latest listing day as kev_last, only where it differs from kev_date (the earliest), so no page changes."""
+class KevWindowTest(unittest.TestCase):
+    """Owner, 11-17: only an Incident published in the last seven days can be a Highlight; a KEV listing this week no
+    longer brings an older one in, so rows carry no kev_last (11-16's field for that rule) any more."""
 
-    def test_kev_last_only_when_it_differs(self):
+    def test_no_kev_last_on_rows(self):
         from collector.incidents import order_fields
         group = {"id": "x", "cves": ["CVE-2026-1", "CVE-2026-2"], "kev": True, "kev_date": "2026-11-01",
                  "kev_cves": {"CVE-2026-1": "2026-11-01", "CVE-2026-2": "2026-11-13"}}
         for maps in (True, False):
-            self.assertEqual(order_fields(group, maps).get("kev_last"), "2026-11-13")
-        one = group | {"kev_cves": {"CVE-2026-1": "2026-11-01"}}
-        self.assertNotIn("kev_last", order_fields(one, False))
+            self.assertNotIn("kev_last", order_fields(group, maps))
+
+    def test_an_old_incident_listed_this_week_is_not_a_highlight(self):
+        from collector import cycle
+        old = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-10-17T00:00:00Z", "cvss": 9.8, "kev": True,
+               "kev_date": "2026-11-15", "mentions": [{"kind": "cve_record"}]}
+        self.assertEqual(cycle.highlights([old], "2026-11-09T12:00:00Z"), [])
+        self.assertEqual([v["id"] for v in cycle.highlights([old | {"published": "2026-11-10T00:00:00Z"}], "2026-11-09T12:00:00Z")],
+                         ["CVE-2026-1"])
 
 
 class WiredTest(unittest.TestCase):

@@ -56,7 +56,8 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주요 사건):
-(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09), or with a CVE whose CISA KEV listing day falls in those seven days (a listing is news: owner, 2026-11-16): every exploited one, then one Incident at 최고 for each well-known product not already held by an exploited one (the best-scored; owner, 2026-11-11, 2026-11-16), in
+(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09) only: a CISA KEV listing this week does not bring an older Incident in (owner, 2026-11-17: "일주일로 잡아야지 적어도", after
+an August Incident listed this week stood among them): every exploited one, then one Incident at 최고 for each well-known product not already held by an exploited one (the best-scored; owner, 2026-11-11, 2026-11-16), in
 the order of the hand-kept list, so its order is the priority (a product moved up is promoted), then
 the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,

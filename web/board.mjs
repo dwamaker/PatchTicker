@@ -237,12 +237,7 @@ export function exploitReason(i) {
 // name no CVE and show as before). The KEV catalogue page: its search box does not read an address parameter (checked
 // 2026-11-16: ?search_api_fulltext= still lists the whole catalogue), so the link is the catalogue itself.
 export const KEV_CATALOG = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog';
-const kevCves = (i) => (i.kev_cves && typeof i.kev_cves === 'object' ? i.kev_cves : {});
-// The latest KEV listing day among a row's CVEs (YYYY-MM-DD), '' when none: the collector's kev_last where it writes it,
-// else the per-CVE days (kev_cves, on a group's whole entry), else kev_date (the earliest listing).
-export const kevLastDay = (i) => [i.kev_last, ...Object.values(kevCves(i)), i.kev_date]
-  .filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)).map((d) => d.slice(0, 10)).sort().pop() || '';
-const summaryCves = (i) => (sourced(i.summary) && Array.isArray(i.summary.exploited_cves) ? i.summary.exploited_cves : []);
+const kevCves = (i) => (i.kev_cves && typeof i.kev_cves === 'object' ? i.kev_cves : {});const summaryCves = (i) => (sourced(i.summary) && Array.isArray(i.summary.exploited_cves) ? i.summary.exploited_cves : []);
 // Why this one CVE is exploited: CISA lists it, else the Summary's source names it as attacked; null otherwise.
 export function cveExploit(i, cve) {
   if (Object.hasOwn(kevCves(i), cve)) return { kind: 'kev', url: KEV_CATALOG };
@@ -469,11 +464,10 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   });
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
-  // A KEV listing is news too (owner, 11-16): a row also counts when the latest KEV listing day of its CVEs falls on or
-  // after the window's first UTC day. Also collector/cycle.py (highlights).
-  const recent = (i) => publishedAt(i) >= since || (kevLastDay(i) !== '' && kevLastDay(i) >= since.slice(0, 10));
+  // Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in; Cisco
+  // BroadWorks, published 08-19, stood among them). Also collector/cycle.py (highlights).
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
-  const candidates = list.filter((i) => recent(i) && riskLevel(i) !== 'notice')
+  const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
     .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
   const highlights = pickHighlights(candidates);
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length };

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, kevLastDay, pinOrder, vendorKey } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey } from '../web/board.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -543,7 +543,8 @@ test('Highlights take every exploited row, then one well-known 최고 row per pr
   assert.equal(filterBoard(kase.incidents, [], '', now).list.length, kase.incidents.length);
   // At the cap the file's order wins over the score (owner, 11-11: Zoom was cut while SAP NetWeaver stayed).
   assert.deepEqual(ids(filterBoard(kase.capped.incidents, [], '', now).highlights), kase.capped.expected);
-  // Owner, 11-16: a KEV listing this week is news; an exploited row's label is not lifted again (collector side too).
+  // Owner, 11-17: a KEV listing this week does not bring an older Incident in; an exploited row's label is not lifted
+  // again (11-16; collector side too).
   assert.deepEqual(ids(filterBoard(kase.kev_week.incidents, [], '', now).highlights), kase.kev_week.expected);
 });
 
@@ -1484,24 +1485,20 @@ test('a fold made only of Highlights stands in the list, gravest first, as any f
   assert.deepEqual([fold.incidents.length, fold.incidents[0].id], [5, 'p98']);
 });
 
-// Owner, 11-16 (.scratch/checks/highlights-analysis-2026-11-16.md): a KEV listing is news; the four pins go to four
-// vendors; the pins and the rest are shown by importance whatever the sort.
+// Owner, 11-16 (.scratch/checks/highlights-analysis-2026-11-16.md): the four pins go to four vendors; the pins and the
+// rest are shown by importance whatever the sort. (A KEV listing as news was taken back on 11-17.)
 const hlRow = (id, extra = {}) => ({ id, cves: [id], first_seen: '2026-11-16T00:00:00Z', published: '2026-11-15T00:00:00Z', cvss: 9.8,
   mentions: [{ kind: 'cve_record' }], brief: { text: id }, ...extra });
 const HL_NOW = Date.parse('2026-11-16T12:00:00Z');
 
-test('a row published before the window is a candidate when one of its CVEs was listed in KEV inside it', () => {
-  const old = (extra) => hlRow('CVE-2026-1', { published: '2026-11-01T00:00:00Z', first_seen: '2026-11-01T00:00:00Z', ...extra });
+// Owner, 11-17 ("일주일로 잡아야지 적어도"): only an Incident published in the last seven days can be a Highlight; a KEV
+// listing this week no longer brings an older one in (Cisco BroadWorks, published 08-19, listed 11-10).
+test('an exploited Incident published 30 days ago with a KEV date of yesterday is not a Highlight', () => {
+  const old = (extra) => hlRow('CVE-2026-1', { published: '2026-10-17T00:00:00Z', first_seen: '2026-10-17T00:00:00Z', ...extra });
   const pick = (i) => filterBoard([i], [], '', HL_NOW).highlights.map((x) => x.id);
-  assert.deepEqual(pick(old({})), []); // 9.8, but published 15 days ago
-  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-13' })), ['CVE-2026-1']); // listed 3 days ago
-  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-02' })), []); // listed 14 days ago
-  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-09' })), ['CVE-2026-1']); // the window's first day (11-09 12:00 UTC)
-  // a group: its earliest listing is old, a second CVE was listed inside the window (kev_cves, or the collector's kev_last)
-  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-10-01', kev_cves: { a: '2026-10-01', b: '2026-11-14' } })), ['CVE-2026-1']);
-  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-10-01', kev_last: '2026-11-14' })), ['CVE-2026-1']);
-  assert.equal(kevLastDay({ kev_date: '2026-10-01', kev_cves: { a: '2026-11-14', b: 'x' }, kev_last: 7 }), '2026-11-14');
-  assert.equal(kevLastDay({}), '');
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-15' })), []);
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-10-01', kev_cves: { a: '2026-10-01', b: '2026-11-15' } })), []); // a group too
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-15', published: '2026-11-10T00:00:00Z' })), ['CVE-2026-1']); // published this week
 });
 
 test('a well-known label already held by an exploited Highlight is not lifted again', () => {

@@ -1,7 +1,6 @@
 """One collection cycle: read the store, fetch each source, link Mentions, write changed files."""
 
 import hashlib
-import re
 import json
 import sys
 import time
@@ -38,24 +37,14 @@ PAGE_DAYS = 90
 MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 
 
-def kev_last_day(view):
-    """The latest KEV listing day of a row's CVEs (YYYY-MM-DD), "" when none: kevLastDay in web/board.mjs (kev_last,
-    the per-CVE kev_cves days, kev_date)."""
-    days = [view.get("kev_last"), *(view.get("kev_cves") or {}).values(), view.get("kev_date")]
-    return max((d[:10] for d in days if isinstance(d, str) and re.match(r"\d{4}-\d{2}-\d{2}", d)), default="")
-
-
 def highlights(views, since):
     """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs;
     tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above published
     since `since`, by score and newest first among equals, every exploited one (owner, 11-10), then the best-scored
     well-known one of each product (owner, 11-11) in the order of collector/well_known.json (known_rank; one on no list
     last, by score), then the rest; HIGHLIGHTS..HIGHLIGHTS_MAX in all."""
-    # Owner, 11-16 (kevLastDay and recent in web/board.mjs): a KEV listing on or after the window's first day is news too.
-    def recent(v):
-        return published_at(v) >= since or kev_last_day(v) >= since[:10]  # "" (no listing) sorts before every day
-
-    top = sorted((v for v in views if on_board(v) and recent(v) and risk_level(v) != "notice"),
+    # Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in).
+    top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice"),
                  key=lambda v: (highlight_score(v), published_at(v)), reverse=True)
     # A label an exploited Highlight holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
     known, labels = [], {v["known"] for v in top if is_exploited(v) and v.get("known")}
