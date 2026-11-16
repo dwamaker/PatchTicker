@@ -156,6 +156,7 @@ def mention_group(record):
     untagged = [r["url"] for r in containers[0].get("references", [])
                 if is_http(r.get("url")) and not r.get("tags") and r["url"] not in tagged and has_id(r["url"])]
     score, vector = record_cvss(containers)
+    public = to_stamp(containers[0].get("datePublic"))  # M4: the day the CNA says the flaw became public
     names, coordinator = own_names(record), COORDINATORS.get((record["cveMetadata"].get("assignerShortName") or "").lower())
     own_first = sorted(refs, key=lambda r: not OWN_TAGS & set(r.get("tags") or []))  # stable: reference order otherwise
     vendor_tagged = {r["url"] for r in refs if OWN_TAGS & set(r.get("tags") or [])}
@@ -175,6 +176,7 @@ def mention_group(record):
         "published": to_stamp(record["cveMetadata"].get("datePublished")),
         "cvss": score,
         **({"cve_scores": {cve: {"cvss": score, "vector": vector}}} if score is not None else {}),
+        **({"public_dates": {cve: public[:10]}} if public else {}),
         "products": record_products(record),
         "fix_keys": record_fix_keys(record),
     }

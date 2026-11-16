@@ -555,6 +555,21 @@ export function tagFilters(i, lang = 'en') {
 }
 // One tagFilters entry as the Board address that applies it alone ("#p=os%3Alinux", "#q=TZ270"): the Incident page's links.
 export const tagHash = (tag) => `#${filterToQuery(tag.pick ? { picks: [tag.pick], query: '' } : { picks: [], query: tag.query })}`;
+// M1 (owner, 11-15): under the Mitigation, how many other Incidents the row's first Product had in the last 30 days and the
+// Board address filtered to it. others: board/others.json, {since, counts: {Product id: Board Incidents published since}}
+// (owner, 11-16: one document, never a count inside each Incident's). The Incident itself is taken out when its own
+// Published time is in the window (always, when the document names no window). null when none is left, when the first
+// name is a device model rather than a Product, or without the document.
+export function productOthers(i, lang = 'en', others = null) {
+  const counts = others?.counts;
+  const tag = tagFilters(i, lang).find((x) => x.kind !== 'os');
+  if (tag?.kind !== 'product' || !counts || typeof counts !== 'object' || !Object.hasOwn(counts, tag.pick)) return null;
+  const inside = typeof others.since !== 'string' || publishedAt(i) >= others.since;
+  const n = Number.isInteger(counts[tag.pick]) ? counts[tag.pick] - (inside ? 1 : 0) : 0;
+  return n > 0 ? { n, hash: tagHash(tag) } : null;
+}
+// M4 (owner, 11-15): the Lead CVE's Public date, which the collector writes only when it is not the Published day; '' else.
+export const publicDay = (i) => (typeof i.public_date === 'string' && DAY.test(i.public_date) ? i.public_date : '');
 
 // The row's first Product that is not an operating system: what an update line, headline or fold line names.
 export const firstProduct = (i, lang = 'en') => rowTags(i, lang).find((n) => !OSES.includes(n));
@@ -574,8 +589,9 @@ export const WORDS = {
     version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
     fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
-    levels: { highest: '고위험', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
+    levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
+    publicDate: '공개일', productOthers: (n) => `최근 30일 동안 이 제품의 다른 사건 ${n}건`,
     scoreOf: (cve) => `${cve}의 점수`, kevSource: 'CISA KEV',
     none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
@@ -591,8 +607,9 @@ export const WORDS = {
     version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
     fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
-    levels: { highest: 'High risk', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
+    levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
+    publicDate: 'Public date', productOthers: (n) => `${n} other Incident${n === 1 ? '' : 's'} of this product in the last 30 days`,
     scoreOf: (cve) => `Score of ${cve}`, kevSource: 'CISA KEV',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },

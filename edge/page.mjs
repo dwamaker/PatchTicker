@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { cveExploit, cveLines, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { cveExploit, cveLines, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -107,7 +107,7 @@ code{font-family:var(--mono);font-size:.875rem}
 .cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
 .cves.lines{display:block}.cves.lines li+li{margin-top:.375rem}
 .cves,time,#s-todo~ul li{font-variant-numeric:tabular-nums}
-@media (pointer:coarse){:is(.sources,.cves) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
+@media (pointer:coarse){:is(.sources,.cves,.others) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
 .more summary{width:fit-content;padding:.375rem 0;color:var(--focus);font-weight:600;cursor:pointer;text-underline-offset:3px}
 @media (pointer:coarse){.more summary{padding-block:.75rem}}
 @media (hover:hover) and (pointer:fine){.more summary:hover{text-decoration:underline}}
@@ -189,6 +189,12 @@ function products(i, lang) {
   return `<ul class="tags">${shown.join('')}</ul>${rest}`;
 }
 
+// M1 (owner, 11-15): under the Mitigation, the Board filtered to the first Product when it had other Incidents lately.
+function othersLink(i, lang, t, others) {
+  const found = productOthers(i, lang, others);
+  return found ? `<p class="others"><a href="/${esc(found.hash)}">${esc(t.productOthers(found.n))}</a></p>` : '';
+}
+
 // Every Mention by kind, in the Lead order; on the Korean page an English title shows the Summary's Korean line.
 function mentions(i, lang, t) {
   const glosses = Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : [];
@@ -230,7 +236,8 @@ ${footer(t)}
 </html>`;
 }
 
-export function pageHtml(i, lang, slug) {
+// others: board/others.json (M1), or null.
+export function pageHtml(i, lang, slug, others = null) {
   const t = TEXT[lang];
   const s = i.summary?.[lang] || {};
   const level = riskLevel(i);
@@ -257,13 +264,15 @@ export function pageHtml(i, lang, slug) {
     `<meta property="og:locale" content="${t.locale}">`,
     `<meta property="og:locale:alternate" content="${TEXT[t.otherLang].locale}">`,
     '<meta name="twitter:card" content="summary_large_image">'].join('\n');
-  const times = [i.published ? `${esc(t.published)} ${when(i.published, lang)}` : '', `${esc(t.firstSeen)} ${when(i.first_seen, lang)}`].filter(Boolean);
+  // M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
+  const times = [i.published ? `${esc(t.published)} ${when(i.published, lang)}` : '',
+    publicDay(i) ? `${esc(t.publicDate)} ${esc(publicDay(i))}` : '', `${esc(t.firstSeen)} ${when(i.first_seen, lang)}`].filter(Boolean);
   const main = [`<article><h1>${esc(title)}</h1>`,
     banner(i, t),
     p(plain, 'easy'),
     section('summary', t.summary, p(s.summary)),
     section('conditions', t.conditions, ul(strings(s.conditions).map(esc))),
-    section('todo', t.todo, whatToDo(i, lang)),
+    section('todo', t.todo, whatToDo(i, lang) + othersLink(i, lang, t, others)),
     section('products', t.products, products(i, lang)),
     section('cves', t.cves, cveList(i, lang, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
@@ -314,10 +323,12 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     }
     if (!withinPageDays(doc.first_seen, now)) return expired(doc);
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
-    return new Response(pageHtml(doc, lang, slug), {
+    // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
+    const others = await readJson(bucket, 'board/others.json').catch(() => null);
+    return new Response(pageHtml(doc, lang, slug, others), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE,
         // One script, LOCAL_TIME, by its hash; inline styles only (the Board's tokens and line colours).
-        'content-security-policy': `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` },
+        'content-security-policy': `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}' https://static.cloudflareinsights.com; connect-src https://cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` },
     });
   }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));
 }

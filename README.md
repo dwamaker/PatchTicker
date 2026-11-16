@@ -48,7 +48,7 @@ readers with no security background.
 - **Every claim links to its source**: commands are shown only when a source states them word for word.
 - **Shareable**: every summarized Incident has its own page and address; filters live in the address. Light and
   dark themes, phone ready.
-- **RSS**: the newest high-risk, exploited and CVE-less Incidents in [Korean](https://patchticker.com/feed.xml) and [English](https://patchticker.com/en/feed.xml).
+- **RSS**: the newest Incidents at the Elevated level or above, exploited, or without a CVE, in [Korean](https://patchticker.com/feed.xml) and [English](https://patchticker.com/en/feed.xml).
 - **For AI agents**: `GET https://patchticker.com/api/check?products=openssh,chrome` answers which Incidents touch
   the products you run, as JSON. How to ask: [llms.txt](https://patchticker.com/llms.txt).
 
@@ -58,7 +58,7 @@ Rules set the level, never the AI.
 
 | Sign | Rule |
 | --- | --- |
-| **High risk** | Exploited (CISA KEV, or a source reporting attacks) or CVSS 9.0+ |
+| **Urgent** | Exploited (CISA KEV, or a source reporting attacks) or CVSS 9.0+ |
 | **Elevated** | CVSS 7.0+ |
 | **Notice** | Everything else |
 

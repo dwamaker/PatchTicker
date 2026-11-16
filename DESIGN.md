@@ -199,11 +199,11 @@ A graphite-and-paper ground, a strict three-colour risk alphabet, and a subway-m
 for Products only.
 
 ### Primary
-- **Emergency Red** (`emergency-red`): the 고위험 risk sign and word, the KEV marker, the left edge
-  and faint wash of a 고위험 Highlight frame. Used only for risk.
+- **Emergency Red** (`emergency-red`): the 긴급 risk sign and word, the KEV marker, the left edge
+  and faint wash of a 긴급 Highlight frame. Used only for risk.
 - **Caution Amber** (`caution-amber`, text) and **Caution Amber Mark** (`caution-amber-mark`, marks): the 위험 word is
   the dark gold (#8a6100 by day, 4.77:1+); its sign ring, CVSS ring arc, frame edge and wash are the brighter gold (#a87700 by day,
-  non-text, 3.4:1+), so 위험 reads gold and never as the red of 고위험 (user, 11-08). By night both are #f5b400.
+  non-text, 3.4:1+), so 위험 reads gold and never as the red of 긴급 (user, 11-08). By night both are #f5b400.
 - **Notice Slate** (`notice-slate`): the 참고 risk sign and word (#5a6570 by day since critique 13: 4.96:1+ on the hover and group grounds), the default Highlight edge, and the
   CVSS ring below 7.0.
 - The CVSS ring uses the same three: Emergency Red at 9.0+, Caution Amber at 7.0+, Notice Slate below.
@@ -410,7 +410,7 @@ Restrained outlined buttons for theme, language and copying a command.
 
 ### Highlight frame (signature)
 - **Style:** Kiosk Panel, 1px Rail border, 10px radius, 3px left edge in the risk colour, the Alert
-  lift shadow. A 고위험 frame adds a faint red wash (7%) and a 위험 frame a fainter amber one (5%), each fading out by 40% of its width. Details open inside
+  lift shadow. A 긴급 frame adds a faint red wash (7%) and a 위험 frame a fainter amber one (5%), each fading out by 40% of its width. Details open inside
   the frame.
 
 ### Command line
@@ -423,7 +423,7 @@ Restrained outlined buttons for theme, language and copying a command.
   14px/700 under the sign, where 악용 발생 would sit, and an empty dashed ring stands in the ring's place (also on
   phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
-- In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (고위험 / 심각!) in
+- In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 심각!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
   15px/800. Rings are never filled (user, 11-09). 악용 발생 sits centred under the ring (beside it on phones), and a
   row with no CVSS shows its dash centred where a score ring would be.
@@ -573,7 +573,7 @@ Restrained outlined buttons for theme, language and copying a command.
   their result line; the product and search fields have spellcheck off.
 - **Clarify (critique 10, 11-09):** "위험" names a level only; the 10-point measure is "CVSS 점수" everywhere (first-visit
   line, guide, filter field "최소 CVSS 점수"). 필터 적용 reads "필터 적용 · N건" and recounts as choices change. When
-  filters leave nothing, the empty state offers up to three single conditions back ("‘고위험’ 빼기 · 12건 보기"),
+  filters leave nothing, the empty state offers up to three single conditions back ("‘긴급’ 빼기 · 12건 보기"),
   the ones that bring back the most first, beside 필터 모두 지우기.
 - **Layout pass (critique 10, 11-09):** the filter panel on 1024px and wider puts risk, attacks and OS side by side and
   CVSS, CVE and the dates on one line; a checked risk chip is a ring in its level's colour on a faint tint, never a

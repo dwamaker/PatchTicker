@@ -9,8 +9,8 @@ import anthropic
 
 from collector import (checks, curators, cve_lines, cvelist, discord, github, hn, kev, kisa, model, news, nvd, osssec, same_event,
                        summaries, summary_input)
-from collector.incidents import (PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
-                                 on_board, page_keys, page_slug, product_list, published_at, rejoin, risk_level, rows_view,
+from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
+                                 on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
@@ -192,6 +192,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     write_checks(store, incidents, now)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
+    # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
+    # rewrite thousands of them (owner, 11-16).
+    others_since = stamp_ago(now, days=OTHERS_DAYS)
+    store.write("board/others.json", {"since": others_since, "counts": product_counts(incidents, others_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
     # Summaries given up for good, for a person or an agent to fix by hand (docs/agents/summary-failures.md).
     failures = summary_failures(incidents, stamp_ago(now, days=summaries.BATCH_DAYS))

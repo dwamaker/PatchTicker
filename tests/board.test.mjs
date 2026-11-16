@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -1251,4 +1251,42 @@ test('the step 4 words say the same in both languages', () => {
   assert.equal(WORDS.en.scoreOf('CVE-2026-1'), 'Score of CVE-2026-1');
   assert.equal(WORDS.ko.kevSource, 'CISA KEV');
   assert.equal(WORDS.en.kevSource, 'CISA KEV');
+});
+
+// M4 (owner, 11-15): the collector stamps public_date only when it is not the Published day; the site shows a valid day as is.
+test('the Public date is shown as the collector wrote it, and nothing for a missing or unreadable one', () => {
+  assert.equal(publicDay({ public_date: '2026-11-06' }), '2026-11-06');
+  for (const public_date of [undefined, '', '2026-11-06T22:17:21Z', 'soon', 20261106, null]) assert.equal(publicDay({ public_date }), '', String(public_date));
+});
+
+// M1 (owner, 11-15; 11-16: from board/others.json): the row's first Product's count of other Incidents in the last 30 days,
+// linked to the Board filtered to it.
+test('the other Incidents link names the first Product\'s count less the Incident itself, and filters the Board to it', () => {
+  const i = { id: 'A', cves: ['A'], published: '2026-11-09T00:00:00Z', products: [{ id: 'acme:widget', name: 'Widget' }, { id: 'acme:gadget', name: 'Gadget' }] };
+  const others = { since: '2026-10-17T12:00:00Z', counts: { 'acme:widget': 4, 'acme:gadget': 2 } };
+  assert.deepEqual(productOthers(i, 'en', others), { n: 3, hash: '#p=acme%3Awidget' });
+  // Published before the window: every counted one is another; first seen stands in for a missing Published time.
+  assert.equal(productOthers({ ...i, published: '2026-10-01T00:00:00Z' }, 'en', others).n, 4);
+  assert.equal(productOthers({ ...i, published: undefined, first_seen: '2026-10-01T00:00:00Z' }, 'en', others).n, 4);
+  // A document without its window takes the Incident out, so the count is never too high.
+  assert.equal(productOthers({ ...i, published: '2026-10-01T00:00:00Z' }, 'en', { counts: others.counts }).n, 3);
+  // An operating system on the row first is skipped; the first Product decides even when only another one has a count.
+  const linux = { ...i, summary: { platforms: ['Linux'], products: ['Widget', 'Gadget'] } };
+  assert.deepEqual(productOthers(linux, 'ko', others), { n: 3, hash: '#p=acme%3Awidget' });
+  assert.equal(productOthers(i, 'en', { ...others, counts: { 'acme:gadget': 9 } }), null);
+  assert.equal(productOthers(i, 'en', { ...others, counts: { 'acme:widget': 1 } }), null); // only itself
+  for (const doc of [undefined, null, {}, { counts: null }, { counts: 'x' }, { ...others, counts: { 'acme:widget': '3' } }, { ...others, counts: { 'acme:widget': 2.5 } }]) {
+    assert.equal(productOthers(i, 'en', doc), null, JSON.stringify(doc));
+  }
+  // A device model named first is a search, not a Product: no link; nor for an inherited key.
+  assert.equal(productOthers({ ...i, summary: { products: [], devices: ['TZ270'] }, products: [] }, 'en', others), null);
+  assert.equal(productOthers({ ...i, products: [{ id: 'constructor', name: 'constructor' }] }, 'en', others), null);
+});
+
+test('the new words are in both languages', () => {
+  assert.equal(WORDS.ko.publicDate, '공개일');
+  assert.equal(WORDS.en.publicDate, 'Public date');
+  assert.equal(WORDS.ko.productOthers(3), '최근 30일 동안 이 제품의 다른 사건 3건');
+  assert.equal(WORDS.en.productOthers(3), '3 other Incidents of this product in the last 30 days');
+  assert.equal(WORDS.en.productOthers(1), '1 other Incident of this product in the last 30 days');
 });

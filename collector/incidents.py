@@ -46,7 +46,27 @@ def board_view(incident):
     view = {k: incident[k] for k in PAGE_FIELDS if k in incident} | order_fields(incident, maps=True)
     if incident.get("summary_error", {}).get("final"):
         view["summary_error"] = {"final": True}
-    return view | known_field(incident)
+    return view | known_field(incident) | public_field(incident, view["cves"])
+
+
+def public_field(incident, order):
+    """M4 (owner, 11-15): the Lead CVE's Public date (its record's datePublic, a UTC day), shown only when it is not the
+    day of the Published time; the Board's order and the Highlight window keep the Published time."""
+    day = (incident.get("public_dates") or {}).get(order[0]) if order else None
+    return {"public_date": day} if day and day != published_at(incident)[:10] else {}
+
+
+OTHERS_DAYS = 30  # M1: "N other Incidents of this product in the last 30 days"
+
+
+def product_counts(incidents, since):
+    """M1 (owner, 11-15; 11-16: kept out of the per-Incident documents, whose rewrites it would multiply): {Product id: N},
+    N the Board Incidents of that Product published since `since`, operating systems aside, only where N is 2 or more
+    (board/others.json). The site takes the Incident itself out of N when its own Published time is in the window, and
+    links the row's first Product to the Board filtered to it. Ids are productsOf's, so they are the Board's filter picks."""
+    count = Counter(pid for i in incidents if on_board(i) and published_at(i) >= since
+                    for pid in {p["id"] for p in products_of(i, "en") if not p["id"].startswith("os:")})
+    return {pid: n for pid, n in sorted(count.items()) if n >= 2}
 
 
 def exploited_cves(incident):
@@ -407,6 +427,7 @@ def link(incidents, group, stamp):
         **({"published": min(group["published"], stamp)} if group.get("published") else {}),
         **({"cvss": group["cvss"]} if group.get("cvss") is not None else {}),
         **({"cve_scores": dict(group["cve_scores"])} if group.get("cve_scores") else {}),
+        **({"public_dates": dict(group["public_dates"])} if group.get("public_dates") else {}),
         **({"products": group["products"]} if group.get("products") else {}),
         **({"fix_keys": group["fix_keys"]} if group.get("fix_keys") else {}),
         "mentions": mentions,
@@ -584,6 +605,7 @@ def absorb(target, other):
         if cve in target["cves"]:
             listed = target.setdefault("kev_cves", {})
             listed[cve] = listed.get(cve) or day
+    merge_public_dates(target, other.get("public_dates"))
     # link and group_releases fold before the cycle's KEV loop, which skips a cycle whose catalogue failed: the flag and
     # its earliest day travel with the CVEs, or basis() and needs_summary would read the fold as unlisted.
     if other.get("kev"):
@@ -648,6 +670,17 @@ def cite(incident, citation):
     if set(incident["cves"]) & set(citation["cves"]) or set(incident["urls"]) & {url_key(u) for u in citation["urls"]}:
         if all(m["url"] != citation["mention"]["url"] for m in incident["mentions"]):
             incident["mentions"].append(citation["mention"])
+
+
+def merge_public_dates(incident, dates):
+    """M4: keep each CVE's earliest Public date (a UTC day) on the Incident, for CVEs it holds only (a narrowed join lends
+    none). True when an entry changed; the Public date backfill applies its patch through this too."""
+    changed = False
+    for cve, day in (dates or {}).items():
+        if cve in incident["cves"] and day < (incident.get("public_dates") or {}).get(cve, "9999"):
+            incident.setdefault("public_dates", {})[cve] = day
+            changed = True
+    return changed
 
 
 def merge_score(scores, cve, score, vector):

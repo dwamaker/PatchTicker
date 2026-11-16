@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -74,7 +74,7 @@ const TEXT = {
       ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 점선 링 안에 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기로, 제품마다 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각 (내 시간대 기준). 원문에 시각이 없으면 "처음 확인"과 함께 이 현황판이 처음 본 시각을 보여 줍니다.',
-      pin: '‘위험’이나 ‘고위험’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 최근 7일 안에 공개된 것에서 중요한 4건을 골라 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다.',
+      pin: '‘위험’이나 ‘긴급’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 최근 7일 안에 공개된 것에서 중요한 4건을 골라 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다.',
       group: '한 번의 업데이트로 함께 고쳐진 CVE 묶음입니다. 링은 그중 가장 높은 점수이고, 펼치면 CVE마다 한 줄씩 나옵니다.',
       brief: '아직 요약 전이라 원문을 그대로 보여 주는 사건입니다. 영어일 수 있습니다.',
       open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다. 키보드로는 ↑ ↓ 키로 행 사이를 옮겨 다닙니다.',
@@ -475,6 +475,17 @@ function ensureFull() {
     fullWeek = null;
     checkForNew(); // a check skipped while the week came (a return, say) runs now
   }));
+}
+
+// M1 (owner, 11-16): board/others.json, the Products' counts of the last 30 days, fetched once, the first time a row
+// opens, by getJson's time limits; the Board redraws once it comes, so an open row gains its link. A failure only leaves
+// the link out until the next visit (an empty document stands in, so it is not asked again on every opening).
+let productCounts = null;
+let othersAsked = false;
+function ensureOthers() {
+  if (othersAsked) return;
+  othersAsked = true;
+  getJson('board/others.json').then((doc) => { productCounts = doc; holdPlace(render); }, () => { productCounts = {}; });
 }
 
 // The notice at the top of the window: how many highlighted rows sit above it. It leaves once they are reached.
@@ -2149,6 +2160,15 @@ function details(incident) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
   const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang]);
+  // M1 (owner, 11-15): under the Mitigation, the Board filtered to the row's first Product when it had other Incidents
+  // in the last 30 days; same tab, as the address is this page's own filter.
+  ensureOthers();
+  const elsewhere = productOthers(incident, lang, productCounts);
+  if (elsewhere) {
+    const line = para('others', '');
+    line.append(Object.assign(el('a', '', t.productOthers(elsewhere.n)), { href: elsewhere.hash }));
+    parts.push(line);
+  }
   const list = easy ? [] : cveList(incident); // every CVE's issue in the Normal view (user, 2026-11-09)
   // Public exploit code without reported attacks: no sign, a red line in the summary text (owner, 2026-11-09).
   if (incident.summary?.poc_public === true && !isExploited(incident)) parts.splice(easy ? 0 : 1, 0, para('kev', easy ? t.pocEasy : t.poc));
@@ -2180,6 +2200,8 @@ function details(incident) {
     head.append(el('span', 'sr-only', t.newTabAll));
     parts.push(foldable(fold, head, ids));
   }
+  // M4 (owner, 11-15): the Lead CVE's Public date, under the score, when it is not the day of the Published time.
+  if (publicDay(incident)) parts.unshift(para('why-line', `${t.publicDate} ${publicDay(incident)}`));
   // The group's score with the CVE it belongs to (step 4), under the IDs, in both views.
   const top = scoreCve(incident);
   if (top) parts.unshift(para('why-line', `CVSS ${incident.cvss.toFixed(1)} · ${top}`));

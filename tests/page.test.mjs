@@ -98,7 +98,7 @@ test('a group whose only Mentions are its CVE records keeps the Lead record unde
 
 test('the page shows what the Board panel shows, with the Board rules', async () => {
   const html = await (await page(SSHOLE)).text();
-  assert.match(html, />고위험</); // riskLevel: KEV
+  assert.match(html, />긴급</); // riskLevel: KEV
   assert.match(html, /악용 발생/);
   assert.match(html, /CISA KEV 등재 · 2026-11-07/); // exploitReason
   assert.match(html, /9\.8/);
@@ -189,7 +189,7 @@ test('the English page is the English Summary, canonical to itself', async () =>
   assert.match(html, /<link rel="alternate" hreflang="x-default" href="https:\/\/patchticker.com\/i\/CVE-2026-123158">/);
   assert.match(html, /<h1>OpenSSH sshd authentication bypass \(sshole\)<\/h1>/);
   assert.match(html, /<meta property="og:locale" content="en_US">/);
-  assert.match(html, />High risk</);
+  assert.match(html, />Urgent</);
   assert.match(html, /Listed in CISA KEV/);
   assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 10:00 UTC<\/time>/);
   assert.match(html.split('</header>')[0], /<a class="lang" href="\/i\/CVE-2026-123158" hreflang="ko" lang="ko" aria-label="한국어"><span class="full">한국어<\/span><span class="short">한<\/span><\/a>/);
@@ -198,7 +198,10 @@ test('the English page is the English Summary, canonical to itself', async () =>
 test('where scripts run, the times show in the visitor zone, by the one script the page policy allows by its hash', async () => {
   const res = await page(SSHOLE);
   const script = (await res.text()).match(/<script>([^<]*)<\/script>/)[1];
-  assert.equal(res.headers.get('content-security-policy').match(/script-src ([^;]*)/)[1], `'sha256-${createHash('sha256').update(script).digest('base64')}'`);
+  // Besides its own script, only the Web Analytics beacon Cloudflare injects (as web/_headers allows on the Board).
+  const csp = res.headers.get('content-security-policy');
+  assert.equal(csp.match(/script-src ([^;]*)/)[1], `'sha256-${createHash('sha256').update(script).digest('base64')}' https://static.cloudflareinsights.com`);
+  assert.equal(csp.match(/connect-src ([^;]*)/)[1], 'https://cloudflareinsights.com');
   const times = ['2026-11-05T10:00:00Z', '2026-11-06T00:46:00Z', 'not a date'].map((dateTime) => ({ dateTime, textContent: 'fixed' }));
   runInNewContext(script, { document: { querySelectorAll: () => times } });
   for (const { dateTime, textContent } of times.slice(0, 2)) { // local time plus its offset is the stamp again
@@ -466,5 +469,45 @@ test('a document without the step 4 keys shows no CVE beside the score and no ma
     assert.doesNotMatch(html, /의 점수/, doc.id);
     assert.doesNotMatch(cveSection(html), /class="kev"/, doc.id);
     assert.doesNotMatch(html, /<p class="reason">[^<]* · CVE-/, doc.id);
+  }
+});
+
+// M4 and M1 (owner, 11-15): the Public date among the times, and the other Incidents link under the Mitigation. The
+// counts come from board/others.json, read beside the page document (owner, 11-16).
+const OTHERS = { since: '2026-10-10T12:00:00Z', counts: { 'openbsd:openssh': 5 } };
+const withOthers = (doc, lang, others) => pageResponse(bucket({ 'pages/CVE-2026-123158.json': doc, 'board/others.json': others }), lang, 'CVE-2026-123158', NOW);
+
+test('the page shows the Public date among the times and links the product\'s other Incidents under the Mitigation', async () => {
+  const doc = { ...SSHOLE, public_date: '2026-10-30' };
+  const ko = await (await withOthers(doc, 'ko', OTHERS)).text();
+  const times = ko.slice(ko.indexOf('id="s-times"'));
+  assert.match(times, /<p>공개일 2026-10-30<\/p>/);
+  const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));
+  // 5 counted, the Incident itself among them (published 11-05, inside the window): 4 others.
+  assert.match(todo, /<p class="others"><a href="\/#p=openbsd%3Aopenssh">최근 30일 동안 이 제품의 다른 사건 4건<\/a><\/p><\/section>/);
+  const en = await (await withOthers(doc, 'en', OTHERS)).text();
+  assert.match(en, /<p>Public date 2026-10-30<\/p>/);
+  assert.match(en, />4 other Incidents of this product in the last 30 days<\/a>/);
+});
+
+test('the page reads the counts once, and a missing or broken counts document only drops the link', async () => {
+  reads.length = 0;
+  await withOthers(SSHOLE, 'ko', OTHERS);
+  assert.deepEqual(reads, ['pages/CVE-2026-123158.json', 'board/others.json']);
+  const broken = { get: async (key) => (key === 'board/others.json' ? { text: async () => '{not json' } : { text: async () => JSON.stringify(SSHOLE) }) };
+  const failing = { get: async (key) => { if (key === 'board/others.json') throw new Error('R2 down'); return { text: async () => JSON.stringify(SSHOLE) }; } };
+  for (const store of [bucket({ 'pages/CVE-2026-123158.json': SSHOLE }), broken, failing]) {
+    const res = await pageResponse(store, 'ko', 'CVE-2026-123158', NOW);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.match(html, /OpenSSH sshd 인증 우회/);
+    assert.doesNotMatch(html, /다른 사건/);
+  }
+});
+
+test('a page without the new keys, or with unreadable ones, shows neither line', async () => {
+  for (const [doc, others] of [[SSHOLE, undefined], [{ ...SSHOLE, public_date: '2026-10-30T00:00:00Z' }, { ...OTHERS, counts: { 'openbsd:openssh': 1 } }]]) {
+    const html = await (await withOthers(doc, 'ko', others)).text();
+    assert.doesNotMatch(html, /공개일|다른 사건/);
   }
 });
