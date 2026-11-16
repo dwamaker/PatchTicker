@@ -123,7 +123,8 @@ _Avoid_: fix, workaround, remediation
 
 **Distribution table** (배포판 표):
 For an Incident's CVEs, what each Linux distribution's own security data says about its packages, one line per
-release: the fixed package version, not affected, or not fixed yet. Built by rule from that data, never written by
+release: the fixed package version, not affected, or not fixed yet (for Ubuntu also: will not be fixed, 2026-11-16).
+Built by rule from that data, never written by
 the Summary, and checked again while distributions catch up; a release the data does not name gets no line. A
 distribution's package version appears only here: the Mitigation's fixed version is the product's own (owner,
 2026-11-15).

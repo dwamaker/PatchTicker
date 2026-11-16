@@ -19,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
+from collector import distros
+
 STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
 
 
@@ -46,7 +48,15 @@ def board_view(incident):
     view = {k: incident[k] for k in PAGE_FIELDS if k in incident} | order_fields(incident, maps=True)
     if incident.get("summary_error", {}).get("final"):
         view["summary_error"] = {"final": True}
-    return view | known_field(incident) | public_field(incident, view["cves"])
+    return view | known_field(incident) | public_field(incident, view["cves"]) | distro_fields(incident, view["cves"])
+
+
+def distro_fields(incident, order):
+    """Step 10: the Distribution table, merged over the Incident's CVEs in cve_order, and the credit line of the
+    distributions it shows; worked out at each write from the stored per-CVE lines (distro_lines)."""
+    lines = incident.get("distro_lines") or {}
+    rows = distros.merge({cve: lines[cve] for cve in order if lines.get(cve)})
+    return {"distro_rows": rows, "distro_credits": distros.credits(rows)} if rows else {}
 
 
 def public_field(incident, order):
@@ -606,6 +616,9 @@ def absorb(target, other):
             listed = target.setdefault("kev_cves", {})
             listed[cve] = listed.get(cve) or day
     merge_public_dates(target, other.get("public_dates"))
+    for cve, lines in (other.get("distro_lines") or {}).items():
+        if cve in target["cves"]:
+            target.setdefault("distro_lines", {}).setdefault(cve, lines)
     # link and group_releases fold before the cycle's KEV loop, which skips a cycle whose catalogue failed: the flag and
     # its earliest day travel with the CVEs, or basis() and needs_summary would read the fold as unlisted.
     if other.get("kev"):

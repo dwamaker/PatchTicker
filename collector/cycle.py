@@ -4,16 +4,25 @@ import hashlib
 import json
 import sys
 import time
+from datetime import date
 
 import anthropic
 
-from collector import (checks, curators, cve_lines, cvelist, discord, github, hn, kev, kisa, model, news, nvd, osssec, same_event,
-                       summaries, summary_input)
+from collector import (checks, curators, cve_lines, cvelist, discord, distros, github, hn, kev, kisa, model, news, nvd, osssec,
+                       same_event, summaries, summary_input)
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
+# The Distribution table (step 10). CVEs looked up a cycle: each costs about 4 s and 3 to 6 requests, and changes at
+# most one Incident, so this bounds both the cycle's time and the pages it rewrites (about 2,100 lookups a day).
+DISTRO_PER_CYCLE = 15
+DISTRO_PAUSE = 1  # seconds between two CVEs' lookups: no distribution's server sees a burst
+# Owner, 2026-11-15: a CVE is asked once a day for 7 days; one that got a line is followed 30 days more, until every
+# line is fixed or not affected. A never-asked CVE of an Incident first seen in the last 30 days is asked too: that is
+# how Incidents posted before step 10 get their table, at the budget's pace after new CVEs and re-checks.
+DISTRO_FIRST_DAYS, DISTRO_FOLLOW_DAYS, DISTRO_BACKFILL_DAYS = 7, 37, 30
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
 # Highlights as filterBoard picks them (HIGHLIGHTS, HIGHLIGHTS_MAX and pickHighlights in web/board.mjs).
 WHOLE_NEWEST = 100
@@ -46,9 +55,10 @@ def highlights(views, since):
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None):
+              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False):
     """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None.
-    ping: indexnow.make_pinger's function, or None."""
+    ping: indexnow.make_pinger's function, or None. distro_table: look up the Distribution table (step 10); off by
+    default, as its pauses and requests would reach every test cycle."""
     stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
@@ -136,6 +146,14 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         if json.dumps(incident) != before:
             changed.add(month_of(incident["first_seen"]))
 
+    distro_state = None
+    try:
+        if distro_table:
+            months, distro_state = refresh_distros(store, incidents, http_get, now, sleep)
+            changed |= months
+    except Exception as err:  # noqa: BLE001 - six outside sources and an unfinished API: any surprise costs the table only
+        print(f"distros: skipped this cycle: {err!r}"[:300], file=sys.stderr)
+
     status = {"updated": stamp, "collector": collector_id}
     batches = store.read("batches.json") or []
     decisions, stopped, resumed = [], None, False
@@ -162,6 +180,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     for m in changed & kept:
         # Incidents stay in the month they were first seen; a merge can empty an older month's row.
         store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if month_of(i["first_seen"]) == m]})
+    if distro_state is not None:  # after the lines it records are stored: a cycle cut short before here asks again
+        store.write("distros/state.json", distro_state)
     # The page's slim files: changed months, any month not written yet, and the last week every cycle.
     for m in (changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}) & kept:
         store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
@@ -217,6 +237,61 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     if ping:
         # Search-worthy pages written this cycle only (the rest say noindex): never the whole set, even on a first run.
         ping(sorted(slug for slug in sitemap["pages"] if pages[slug] != had_page.get(slug)))
+
+
+def refresh_distros(store, incidents, http_get, now, sleep):
+    """Step 10: look up at most DISTRO_PER_CYCLE due CVEs in the distributions' data. Returns the months changed and the
+    state for distros/state.json (the caller writes it after the months), or None when it did not change.
+
+    distros/index.json holds the day's Debian and Alpine answers for the CVEs held (rebuilt on the day's first cycle; a
+    distribution whose files fail keeps the last). The state holds, for every CVE held, the day it was first seen and
+    the first and last day it was asked: a new CVE that folds into an older Incident is new by its own day. The first
+    run seeds each CVE's day from its Incident's first_seen, so Incidents posted before step 10 are backfill. An Incident
+    holds only its lines ("distro_lines", {cve: lines}), changed only when a line changes, so a lookup that finds
+    nothing new rewrites no page. A distribution that fails keeps the lines it gave before."""
+    today = now.strftime("%Y-%m-%d")
+    held = {cve: i for i in incidents for cve in i["cves"]}
+    index = store.read("distros/index.json") or {}
+    if index.get("day") != today:
+        index = {d: index[d] for d in distros.BULK if d in index} | distros.daily_index(http_get, sorted(held)) | {"day": today}
+        store.write("distros/index.json", index)
+    stored = store.read("distros/state.json")
+    state = {cve: entry for cve, entry in (stored or {}).items() if cve in held}
+    for cve, incident in held.items():
+        state.setdefault(cve, {"seen": today if stored is not None else incident["first_seen"][:10]})
+    age = lambda day: (date.fromisoformat(today) - date.fromisoformat(day)).days  # noqa: E731
+    new, follow, backfill = {}, {}, {}
+    for cve, entry in state.items():
+        lines = (held[cve].get("distro_lines") or {}).get(cve)
+        if "asked" not in entry:
+            if age(entry["seen"]) < DISTRO_FIRST_DAYS:
+                new[cve] = entry["seen"]
+            elif age(entry["seen"]) < DISTRO_BACKFILL_DAYS:
+                backfill[cve] = entry["seen"]
+        elif entry["asked"] < today and (age(entry["first"]) < DISTRO_FIRST_DAYS or lines and not distros.settled(lines)
+                                         and age(entry["first"]) < DISTRO_FOLLOW_DAYS):
+            follow[cve] = entry["asked"]
+    due = (sorted(new, key=new.get, reverse=True) + sorted(follow, key=follow.get)
+           + sorted(backfill, key=backfill.get, reverse=True))[:DISTRO_PER_CYCLE]
+    bulk = {d: index[d] for d in distros.BULK if d in index}
+    changed = set()
+    for n, cve in enumerate(due):
+        if n:
+            sleep(DISTRO_PAUSE)
+        incident = held[cve]
+        old = (incident.get("distro_lines") or {}).get(cve, [])
+        try:
+            found = distros.lookup(cve, http_get, date.fromisoformat(today), bulk)
+        except Exception as err:  # noqa: BLE001 - an unlisted shape fails this CVE alone, like a failed distribution
+            print(f"distros: {cve} failed: {err!r}"[:300], file=sys.stderr)
+            found = {"lines": [], "failed": distros.DISTROS}
+        kept = [line for line in old if line["distro"] in found["failed"]]
+        lines = sorted(found["lines"] + kept, key=lambda line: distros.DISTROS.index(line["distro"]))
+        if lines != old:
+            incident.setdefault("distro_lines", {})[cve] = lines
+            changed.add(month_of(incident["first_seen"]))
+        state[cve] = state[cve] | {"first": state[cve].get("first", today), "asked": today}
+    return changed, (state if state != stored else None)
 
 
 def prune(incidents, since):
