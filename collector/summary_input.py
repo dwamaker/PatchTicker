@@ -232,6 +232,13 @@ SOURCE_RE = re.compile(rf"^(?:Text of (\S+)({re.escape(LEAD_MARK)})?|CVE record 
 MENTION_LINE = re.compile(r"^- (\w+) (\S+)", re.M)
 
 
+def mention_kinds(input_text):
+    """{url: kind} of the input's Mentions list (its head, before any page text, so no page can forge a line)."""
+    blocks = list(SOURCE_RE.finditer(input_text))
+    head = input_text[:blocks[0].start()] if blocks else input_text
+    return {url: kind for kind, url in MENTION_LINE.findall(head)}
+
+
 def trusted(input_text):
     """The text a command or stopgap may come from: the Lead's, the official advisories' and the CVE records'. And the
     URLs whose report of attacks counts: advisories, CVE records, curators and news sites. Not a write-up, the Lead

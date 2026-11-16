@@ -341,7 +341,8 @@ details stay flat. The phone filter sheet is set apart by the Scrim (`--scrim`, 
 Three radii: gently rounded controls (8px), slightly softer frames for fields and Highlights (10px),
 and full pills for line badges and the view switch (999px). Command code uses 6px, the small
 "원문" marker 4px. Borders are 1px throughout; the only thicker edge is the 3px risk-coloured left
-edge of a Highlight frame and the 3px band of a group's frame, in its kind's colour. The risk sign is a 1.5px ring around the word
+edge of a Highlight frame (also at the left of a Highlight's row in the list) and the 3px band of a group's frame, in
+its kind's colour. The risk sign is a 1.5px ring around the word
 (dashed while no score), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring
 (1.75rem, Chevron Ring; Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a
 control without moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it, and the chevron 0.5rem in from the row's edge, so the
@@ -366,8 +367,9 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
   (on phones, under the product field next to search); the panel opens right under that row.
-- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line (모두 펼치기 at the list head when there are no Highlights); one order
-  serves 주요 사건 and the list (주요 사건 is still chosen by importance), and the list heading names it.
+- **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line (모두 펼치기 at the list head when there are no Highlights); the order
+  serves the list, and the list heading names it. 주요 사건 is chosen and shown by importance whatever the order, its four
+  pins of four different vendors (owner, 2026-11-16; until then the pins followed the visitor's order).
 - **Panel:** opens under that line in Kiosk Panel with a Rail border: 게시일 시작/끝, 최소 CVSS, CVE, then chip rows
   for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS, then 정렬. Nothing changes until 필터 적용;
   필터 초기화 clears the panel only (Products picked at the top and the search stay). Everything lives in the hash.
@@ -432,6 +434,12 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Style:** Kiosk Panel, 1px Rail border, 10px radius, 3px left edge in the risk colour, the Alert
   lift shadow. A 긴급 frame adds a faint red wash (7%) and a 위험 frame a fainter amber one (5%), each fading out by 40% of its width. Details open inside
   the frame.
+- **In the list too (owner, 11-16):** the list under the frames is the whole Board, so every Highlight also stands at its
+  own place there (never inside a vendor fold, which holds and counts the rest or unfolds below its minimum; owner,
+  11-17), as an ordinary row with the frame's 3px Risk-colour edge at its
+  left (`li.hl`, drawn over the row so it sits beside a group frame's band) and no wash, lift or badge; screen readers
+  hear "주요 사건" / "Highlight" after its level. A pinned one is then drawn twice: each copy opens on its own, `#i=`
+  links land on the pinned copy, and counts (results, new rows above) count Incidents, not rows.
 
 ### Command line
 - **Style:** the command in the code face on Recessed Panel with a 1px Rail border and 6px radius,

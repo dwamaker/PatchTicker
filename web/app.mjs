@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -46,7 +46,7 @@ const TEXT = {
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     repo: 'GitHub 저장소', search: '검색', searchHint: '키워드, CVE 번호, 버전', searchHintShort: '키워드, CVE 번호', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 공개', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
-    pin: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, firstSeen: '게시 시각을 모르는 사건이라 이 현황판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, easyWhen: '이럴 때만 해당돼요:', someFlaws: '일부 취약점만', foldClosed: (v) => `${v} 묶음을 접었습니다.`, kevEasy: '지금 실제 공격에 쓰이고 있어요!', pocEasy: '공격 코드가 공개됐어요!', originalEn: '원문(영어)',
+    pin: '주요 사건', pinOne: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, firstSeen: '게시 시각을 모르는 사건이라 이 현황판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, easyWhen: '이럴 때만 해당돼요:', someFlaws: '일부 취약점만', foldClosed: (v) => `${v} 묶음을 접었습니다.`, kevEasy: '지금 실제 공격에 쓰이고 있어요!', pocEasy: '공격 코드가 공개됐어요!', originalEn: '원문(영어)',
     caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 현황판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: '업데이트가 멈춰 있습니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다.', staleShort: '업데이트 멈춤', scopeWeek: '이 현황판에 최근 7일 동안 올라온 사건에서 찾았습니다.', scopeMonths: '이 현황판에 올라온 사건에서 불러온 이전 사건까지 포함해 찾았습니다.', searchOlder: '이전 사건에서도 찾기',
     linkNotFound: '이 링크의 사건을 찾지 못했습니다. 보관 기간 90일이 지났거나 다른 사건과 합쳐졌을 수 있습니다.',
@@ -74,7 +74,7 @@ const TEXT = {
       ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 점선 링 안에 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기로, 제품마다 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각 (내 시간대 기준). 원문에 시각이 없으면 "처음 확인"과 함께 이 현황판이 처음 본 시각을 보여 줍니다.',
-      pin: '‘위험’이나 ‘긴급’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 최근 7일 안에 공개된 것에서 중요한 4건을 골라 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다.',
+      pin: '‘위험’이나 ‘긴급’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 최근 7일 안에 공개됐거나 CISA KEV에 새로 오른 것에서 중요한 4건을 서로 다른 회사로 골라, 중요한 순서대로 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다. 주요 사건은 아래 목록의 제자리에도 그대로 있고, 왼쪽의 위험도 색 띠로 표시됩니다.',
       group: '한 제품의 여러 CVE가 함께 공개된 묶음입니다. 같은 버전에서 고쳐졌거나, 아직 고쳐지지 않았지만 같은 버전까지 영향받는 CVE들입니다. 링은 그중 가장 높은 점수이고, 펼치면 CVE마다 한 줄씩 나옵니다.',
       brief: '아직 요약 전이라 원문을 그대로 보여 주는 사건입니다. 영어일 수 있습니다.',
       open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다. 키보드로는 ↑ ↓ 키로 행 사이를 옮겨 다닙니다.',
@@ -95,7 +95,7 @@ const TEXT = {
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     repo: 'GitHub repository', search: 'Search', searchHint: 'Keyword, CVE ID, version', searchHintShort: 'Keyword or CVE ID', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'Disclosed together', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
-    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, kevReasonEasy: 'Under attack', easyWhen: 'Only affects you if:', someFlaws: 'some of the flaws only', foldClosed: (v) => `Folded the ${v} group.`, kevEasy: 'Attackers are using this right now!', pocEasy: 'Exploit code is public!', originalEn: 'Source text',
+    pin: 'Highlights', pinOne: 'Highlight', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, kevReasonEasy: 'Under attack', easyWhen: 'Only affects you if:', someFlaws: 'some of the flaws only', foldClosed: (v) => `Folded the ${v} group.`, kevEasy: 'Attackers are using this right now!', pocEasy: 'Exploit code is public!', originalEn: 'Source text',
     caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: 'Updates have stopped. Collection may be down, so recent Incidents may be missing.', staleShort: 'Updates stopped', scopeWeek: 'Searched Incidents added to the Board in the last 7 days.', scopeMonths: 'Searched Incidents added to the Board, loaded earlier Incidents included.', searchOlder: 'Search older Incidents too',
     linkNotFound: "This link's Incident was not found. It may be past the 90 days kept, or merged into another Incident.",
@@ -123,7 +123,7 @@ const TEXT = {
       ring: 'The CVSS score: how severe a flaw is, out of 10, on an international standard. The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as — in a dashed ring.',
       tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
       date: 'When it was first published, in your time zone. With no time in the source, "first seen" shows when the Board first saw it.',
-      pin: 'The four most important Incidents at the Elevated level or above (exploited, or scored 7 or more) made public in the last seven days stay on top. More Highlights adds the rest below them.',
+      pin: 'The four most important Incidents at the Elevated level or above (exploited, or scored 7 or more) made public, or newly listed in CISA KEV, in the last seven days stay on top, one per vendor, most important first. More Highlights adds the rest below them. Every Highlight also keeps its place in the list below, marked by a left edge in its risk colour.',
       group: 'CVEs of one product disclosed together, shown as one row: fixed in the same version, or not fixed yet and affecting the same versions. The ring is the highest score among them; open it for a line on each.',
       brief: '',
       open: 'Open a row for the summary, who is affected, the fix and the source links. On a keyboard, ↑ and ↓ move between rows.',
@@ -490,7 +490,8 @@ function ensureOthers() {
 
 // The notice at the top of the window: how many highlighted rows sit above it. It leaves once they are reached.
 function noticeAbove() {
-  const above = [...document.querySelectorAll('li.fresh')].filter((li) => li.getBoundingClientRect().bottom < 0).length;
+  // Counted by Incident: a pinned one's list copy is not a second new Incident.
+  const above = new Set([...document.querySelectorAll('li.fresh')].filter((li) => li.getBoundingClientRect().bottom < 0).map((li) => li.dataset.ids)).size;
   const box = $('new-above');
   box.classList.toggle('off', !above);
   if (above) {
@@ -552,7 +553,12 @@ async function openLinked() {
   }
   open.add(id);
   // Past the first page (owner, 11-10: a link from 11-04 landed on the top with nothing open): draw up to its page.
-  shown = Math.max(shown, linkedPlace(boardLists().items, id, PAGE)?.shown || 0);
+  // A pinned Highlight is reached on top (its list copy waits at its own place): no page of the list is drawn for it.
+  const lists = boardLists();
+  const onTop = [...lists.pinned].some((i) => i.id === id);
+  // A Highlight behind 주요 사건 더 보기 is reached in the list, where its copy keys apart (rowKey): open that copy.
+  if (!onTop && [...highlightedNow].some((i) => i.id === id)) open.add(`list:${id}`);
+  shown = Math.max(shown, onTop ? 0 : linkedPlace(lists.items, id, PAGE)?.shown || 0);
   render();
   let li = [...document.querySelectorAll('li[data-ids]')].find((x) => x.dataset.ids === id);
   if (!li) { // inside a closed vendor fold: open that fold only
@@ -996,19 +1002,23 @@ function filtered() {
   return lastBoard.result;
 }
 
+let highlightedNow = new Set(); // every Highlight, pinned or behind 주요 사건 더 보기: edged in the list
 // What render() draws, in its order: the pinned Highlights, then the list items (rows and vendor folds); openLinked counts
 // a linked row's place in the same items, so the two never disagree.
 function boardLists() {
   const { highlights: chosen, list, variants } = filtered();
-  // 주요 사건 더 보기 adds only Highlights worth a notice: 위험 or above, or a reason the row cannot show (newsletter, HN).
-  const extra = chosen.slice(PINNED); // filterBoard already keeps 주요 사건 to 위험 and above (user, 2026-11-09)
-  // Which Incidents are pinned is decided by importance (highlightScore); the order they show in is the visitor's sort.
-  // 더 보기 appends below the first four, which keep their place (user, 2026-11-09).
-  const highlights = [...chosen.slice(0, PINNED).sort(orderBy(filter.sort)), ...(pinAll ? [...extra].sort(orderBy(filter.sort)) : [])];
+  // The pins go to four different vendors and show by importance, whatever the visitor's sort (owner, 11-16; pinOrder);
+  // 주요 사건 더 보기 appends the rest below them, a pinned vendor's other rows first, then by importance too.
+  const { pins, rest: extra } = pinOrder(chosen);
+  const highlights = [...pins, ...(pinAll ? extra : [])];
   const pinned = new Set(highlights);
-  const rest = list.filter((i) => !pinned.has(i));
+  // Owner, 11-16: the list is the whole Board in the visitor's order, Highlights included at their own place (edged in
+  // their Risk colour, row()); a pinned one is drawn twice, each copy keyed apart (rowKey).
+  const rest = list;
+  highlightedNow = new Set(chosen);
   // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
-  const folded = filter.picks.length || applied() ? rest : foldByVendor(rest);
+  // A Highlight never folds (owner, 11-17): it stands at its own place, banded, and its fold counts the rest.
+  const folded = filter.picks.length || applied() ? rest : foldByVendor(rest, undefined, undefined, (i) => highlightedNow.has(i));
   return { list, variants, extra, highlights, pinned, rest, folded, items: folding ? folded : rest };
 }
 
@@ -1055,12 +1065,14 @@ function render() {
     // A picked Product also shows Incidents filed under a variant of its name (board.mjs, critique 14); say how many.
     ...(variants && list.length ? [el('p', 'pick-note', TEXT[lang].variants(variants))] : []));
   $('conds').replaceChildren(...conds, ...(conds.length ? clearAll : []));
-  $('all-head').hidden = !list.some((i) => !pinned.has(i));
+  $('all-head').hidden = !list.length;
   $('all-head').textContent = TEXT[lang].fp.sorts[filter.sort]; // the list's heading says its order
   $('sort').replaceChildren(...SORTS.map((key) => Object.assign(new Option(TEXT[lang].fp.sorts[key], key), { selected: key === filter.sort })));
   $('stuck-sort').replaceChildren(...[...$('sort').options].map((o) => o.cloneNode(true)));
   $('stuck-sort').value = filter.sort;
-  visibleIds = [...highlights, ...items.slice(0, shown).flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i]))].map((i) => i.id);
+  // Keys, not ids: a Highlight's list copy opens on its own (rowKey), so 모두 펼치기 counts each drawn row once.
+  visibleIds = [...highlights.map((i) => i.id),
+    ...items.slice(0, shown).flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i])).map((i) => rowKey(i, highlightedNow, false))];
   $('expand-all').hidden = !visibleIds.length;
   // With no Highlights, 모두 펼치기 stands at the list's head, not alone on the 주요 사건 line (critique 14).
   const expandHome = highlights.length ? $('pinned-head') : $('all-head');
@@ -2526,8 +2538,13 @@ function row(incident, pinned, vendor = '') {
   const li = el('li', pinned ? `alert risk-${riskLevel(incident)}` : isGroup(incident) ? 'grouped' : '');
   li.dataset.ids = incident.id;
   if (fresh.has(incident.id)) li.classList.add('fresh');
-  li.dataset.vt = rowName(incident.id); // boardTransition names it: the same row before and after a redraw
-  const body = Object.assign(el('div', defaultView === 'easy' ? 'details easy' : 'details'), { id: `details-${++rowCount}`, hidden: !open.has(incident.id) });
+  // A Highlight's list copy keys apart (rowKey): its own open state and transition name, never a duplicate.
+  const key = rowKey(incident, highlightedNow, pinned);
+  // A Highlight in the list wears the pinned frame's Risk-colour edge (owner, 11-16); screen readers hear the word.
+  const marked = !pinned && highlightedNow.has(incident);
+  if (marked) li.classList.add('hl', `hl-${riskLevel(incident)}`);
+  li.dataset.vt = rowName(key); // boardTransition names it: the same row before and after a redraw
+  const body = Object.assign(el('div', defaultView === 'easy' ? 'details easy' : 'details'), { id: `details-${++rowCount}`, hidden: !open.has(key) });
   const button = Object.assign(el('button', 'row'), { type: 'button' });
   button.setAttribute('aria-controls', body.id);
   button.setAttribute('aria-expanded', !body.hidden);
@@ -2536,6 +2553,7 @@ function row(incident, pinned, vendor = '') {
   const risk = riskCell(incident);
   const why = pinned && pinReason(incident);
   if (why) risk.append(el('small', 'why', TEXT[lang].why[why]));
+  if (marked) risk.append(el('span', 'sr-only', ` ${TEXT[lang].pinOne}`)); // part of the row's name, read after its level
   const cells = { risk, title: titleCell(incident, vendor), score: scoreCell(incident), tags: tagsCell(incident), date: dateCell(incident) };
   for (const [k, cell] of Object.entries(cells)) cell.id = `${body.id}-${k}`;
   cells.title.querySelector('.title').id = `${body.id}-name`;
@@ -2555,16 +2573,16 @@ function row(incident, pinned, vendor = '') {
     ensureFull().catch(() => body.replaceChildren(para('preparing', TEXT[lang].loadError)));
   };
   button.addEventListener('click', () => {
-    const opening = !open.has(incident.id);
+    const opening = !open.has(key);
     button.setAttribute('aria-expanded', opening);
     if (opening) {
-      open.add(incident.id);
+      open.add(key);
       fill(true);
       body.hidden = false;
       fold(body, true);
     } else {
-      open.delete(incident.id);
-      fold(body, false, () => { body.hidden = !open.has(incident.id); }); // reopened mid-way: stay open
+      open.delete(key);
+      fold(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
     }
   });
   if (!body.hidden) fill();

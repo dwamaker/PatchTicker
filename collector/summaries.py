@@ -21,7 +21,7 @@ from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKE
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
-from collector.summary_input import CVE_LINES_ONLY, is_hn, summary_input, trusted
+from collector.summary_input import CVE_LINES_ONLY, is_hn, mention_kinds, summary_input, trusted
 
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
@@ -292,6 +292,39 @@ def group_scope(summary):
             if NOT_AFFECTED_RE.search(summary[lang][field]):
                 return f"{GROUP_SCOPE} ({lang} {field})"
     return ""
+
+
+# Owner, 11-16 ("근거를 엄격하게", then "공격을 밝히면 인정"): exploited only with a KEV CVE (the Board's own rule) or a
+# Summary that reports that attacks were seen, whatever its source: the Incident's own advisory or CVE record counts too
+# when it reports them (a vendor's PSIRT bulletin; Huatian's record citing Shadowserver), and never when it does not.
+ATTACK_SEEN = re.compile(r"in the wild|zero-day|actively (?:exploited|attacked)|being exploited|used in (?:real )?attacks|in real attacks"
+                         r"|(?:was|were|has been|have been|is being|are being) (?:exploited|abused|attacked|targeted)"
+                         r"|attackers? (?:are|is|have|has|were|was) (?:exploiting|abusing|using|targeting|breaching|hacking)"
+                         r"|attackers? used|attack(?:s| attempts)? (?:are|were|have been) (?:targeting|seen|observed|reported)"
+                         r"|exploitation (?:was|has been|is|were) (?:\w+ )?(?:seen|observed|reported|detected)", re.I)
+
+
+def attacks_evidenced(summary, kind):
+    """Whether a Summary's exploited flag stands: its English title or summary reports that attacks were seen. kind (the
+    source's Mention kind) no longer decides (owner 11-16); it stays in the call for the reporter rule's callers."""
+    return bool(ATTACK_SEEN.search(f"{summary['en'].get('title', '')}\n{summary['en'].get('summary', '')}"))
+
+
+def recheck_exploited(incidents):
+    """Each cycle, the stored Summaries' exploited flags by attacks_evidenced(), the source's kind read from the
+    Incident's Mentions; one that fails is cleared (exploited, exploited_source, exploited_cves), as parse() clears a
+    new one. A KEV Incident is left alone: KEV decides on its own. Returns the Incidents changed."""
+    changed = []
+    for i in incidents:
+        summary = i.get("summary") or {}
+        if i.get("kev") or not summary.get("exploited") or not isinstance(summary.get("en"), dict):
+            continue
+        kind = next((m["kind"] for m in i.get("mentions", []) if m["url"] == summary.get("exploited_source")), None)
+        if not attacks_evidenced(summary, kind):
+            summary["exploited"], summary["exploited_source"] = False, ""
+            summary.pop("exploited_cves", None)
+            changed.append(i)
+    return changed
 
 
 NO_FIX_RELEASE = "a group with no fixed version says a release fixes its other flaws"
@@ -1249,7 +1282,8 @@ def parse(reply, input_text, urls):
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
     # never the Summary.
     trusted_text, reporters = trusted(input_text)
-    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters):
+    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters
+            and attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"]))):
         summary["exploited"], summary["exploited_source"] = False, ""
     # Step 4: the attacked CVEs of a group, each one of the Incident's own by exact id; none once exploited is dropped.
     # Stored only when it names one, so a Summary without it reads as before (readers default to []). SCHEMA has no room

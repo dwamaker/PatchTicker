@@ -3,6 +3,7 @@
 import html
 import http.client
 import unittest
+import unittest.mock
 
 from collector import cvelist, summaries, summary_input
 from test_batch_summaries import plain
@@ -93,6 +94,9 @@ class CommandProvenanceTest(unittest.TestCase):
         summary = checked(item, {ADVISORY: "Update Widget.", other: f"Run {command}."}, {"command": command, "stopgap": command})
         self.assertEqual((summary["command"], summary["stopgap"]), ("", ""))
 
+    # These check the URL and reporter rules; the owner's evidence rule of 11-16 (own source, reported attacks) has its
+    # own tests in test_rules_1116_night.py, so it is set aside here.
+    @unittest.mock.patch("collector.summaries.attacks_evidenced", lambda summary, kind: True)
     def test_reported_attacks_need_more_than_the_hn_posters_own_page(self):
         attacks = {"exploited": True, "exploited_source": POSTER}
         alone = incident([{"kind": "writeup", "url": POSTER}])

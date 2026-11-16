@@ -56,12 +56,16 @@ An Incident that has no CVE yet. It joins the same Incident when a CVE appears l
 _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주요 사건):
-(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09): every exploited one, then one Incident at 최고 for each well-known product (the best-scored; owner, 2026-11-11), in
+(Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09), or with a CVE whose CISA KEV listing day falls in those seven days (a listing is news: owner, 2026-11-16): every exploited one, then one Incident at 최고 for each well-known product not already held by an exploited one (the best-scored; owner, 2026-11-11, 2026-11-16), in
 the order of the hand-kept list, so its order is the priority (a product moved up is promoted), then
 the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
-owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), shown in the visitor's sort order (newest first by default, 2026-11-08); 더 보기 appends the rest below the first four,
-which keep their place (2026-11-09); the rest stay in the list below.
+owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), each of a different vendor,
+shown by importance whatever the visitor's sort (owner, 2026-11-16: "고정 네 자리는 서로 다른 회사로", "중요도순으로 고정"); 더
+보기 appends the rest below the first four, a pinned vendor's other Highlights first, then by importance; the four keep their place (2026-11-09); the rest stay in the list below. The list is the whole Board in the visitor's
+order: every Highlight, pinned or not, also stands at its own place there, edged in its Risk colour like its pinned frame
+(owner, 2026-11-16), never inside a vendor fold: the fold holds and counts the rest, or unfolds below its minimum (owner,
+2026-11-17).
 _Avoid_: featured, top, hot, pinned item
 
 **Published time** (게시 시각):
@@ -112,6 +116,8 @@ _Avoid_: simple mode, ELI5, beginner view
 The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model. Exploited
 (악용 발생) means a CISA KEV listing or a Summary whose sources report attacks (2026-11-08), naming the source that says
 so (2026-11-09; public exploit code alone is not exploited): the model reports what the sources say; the rule sets the level.
+The Summary must itself say that attacks were seen; a source of any kind counts then, the product's own advisory or CVE
+record included, and never when it only describes the flaw (owner, 2026-11-16: bird-lg-go's own advisory reported none).
 _Avoid_: alert, badge, warning level
 
 **Score pending** (점수 대기):

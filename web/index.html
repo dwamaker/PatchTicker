@@ -459,6 +459,12 @@
     .alert .row { padding-left: calc(0.75rem - 2px); }
     .alert .details { padding-left: calc(0.75rem - 2px + var(--pre) + var(--gap)); } /* starts under the title, as in the list */
     .alert .row:focus-visible { outline-offset: -3px; } /* the frame clips (overflow: hidden): draw the ring inside */
+    /* a Highlight in the list (owner, 11-16): the pinned frame's Risk-colour edge, 3px at the row's left, so a reader
+       scrolling the list sees it is one; drawn over the row, it sits beside a group frame's own band, never replacing it */
+    .list li.hl { position: relative; }
+    .list li.hl::before { content: ""; position: absolute; inset: 0 auto 0 0; z-index: 1; width: 3px; background: var(--note); pointer-events: none; }
+    .list li.hl-highest::before { background: var(--high); }
+    .list li.hl-high::before { background: var(--mid-mark); }
 
     /* 최신순: plain rows on one hairline each */
     .list { border-top: 1px solid var(--rule-2); }

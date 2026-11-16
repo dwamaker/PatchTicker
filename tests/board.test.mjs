@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, kevLastDay, pinOrder, vendorKey } from '../web/board.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -543,6 +543,8 @@ test('Highlights take every exploited row, then one well-known 최고 row per pr
   assert.equal(filterBoard(kase.incidents, [], '', now).list.length, kase.incidents.length);
   // At the cap the file's order wins over the score (owner, 11-11: Zoom was cut while SAP NetWeaver stayed).
   assert.deepEqual(ids(filterBoard(kase.capped.incidents, [], '', now).highlights), kase.capped.expected);
+  // Owner, 11-16: a KEV listing this week is news; an exploited row's label is not lifted again (collector side too).
+  assert.deepEqual(ids(filterBoard(kase.kev_week.incidents, [], '', now).highlights), kase.kev_week.expected);
 });
 
 test('a well-known row is one at 최고 that is not exploited; an exploited one counts once, as exploited', () => {
@@ -1463,4 +1465,87 @@ test('the fixed-version list starts at four usable lines and shows five of them'
   assert.equal(WORDS.en.fixesTitle, 'Fixed version by product');
   assert.equal(WORDS.ko.fixesMore(12), '12줄 더 보기');
   assert.equal(WORDS.en.fixesMore(12), '12 more');
+});
+
+// Owner, 11-16: the list under the pinned Highlights is the whole Board, so a pinned Incident stands there too, as its own
+// copy: the list copy keys its open state and transition name apart (rowKey); every other row keys by its id.
+test('a pinned Incident\'s list copy has its own key, and every other row keys by its id', () => {
+  // A Highlight's list copy keys apart whatever is pinned, so 주요 사건 더 보기 never moves the open state (11-17 defect A).
+  const [a, b] = [{ id: 'CVE-2026-1' }, { id: 'CVE-2026-2' }];
+  const highlights = new Set([a]);
+  assert.equal(rowKey(a, highlights, true), 'CVE-2026-1'); // the pinned copy: its id (#i= links open it)
+  assert.equal(rowKey(a, highlights, false), 'list:CVE-2026-1'); // the list copy, pinned now or behind 더 보기 alike
+  assert.equal(rowKey(b, highlights, false), 'CVE-2026-2'); // not a Highlight: one copy, its id
+});
+
+test('a fold made only of Highlights stands in the list, gravest first, as any fold does', () => {
+  const list = [WP[0], WP[1], WP[2], WP[3], WP[4]]; // all five Highlights, all pinned too
+  const [fold] = foldByVendor(list, 5, utcDay);
+  assert.deepEqual([fold.incidents.length, fold.incidents[0].id], [5, 'p98']);
+});
+
+// Owner, 11-16 (.scratch/checks/highlights-analysis-2026-11-16.md): a KEV listing is news; the four pins go to four
+// vendors; the pins and the rest are shown by importance whatever the sort.
+const hlRow = (id, extra = {}) => ({ id, cves: [id], first_seen: '2026-11-16T00:00:00Z', published: '2026-11-15T00:00:00Z', cvss: 9.8,
+  mentions: [{ kind: 'cve_record' }], brief: { text: id }, ...extra });
+const HL_NOW = Date.parse('2026-11-16T12:00:00Z');
+
+test('a row published before the window is a candidate when one of its CVEs was listed in KEV inside it', () => {
+  const old = (extra) => hlRow('CVE-2026-1', { published: '2026-11-01T00:00:00Z', first_seen: '2026-11-01T00:00:00Z', ...extra });
+  const pick = (i) => filterBoard([i], [], '', HL_NOW).highlights.map((x) => x.id);
+  assert.deepEqual(pick(old({})), []); // 9.8, but published 15 days ago
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-13' })), ['CVE-2026-1']); // listed 3 days ago
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-02' })), []); // listed 14 days ago
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-11-09' })), ['CVE-2026-1']); // the window's first day (11-09 12:00 UTC)
+  // a group: its earliest listing is old, a second CVE was listed inside the window (kev_cves, or the collector's kev_last)
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-10-01', kev_cves: { a: '2026-10-01', b: '2026-11-14' } })), ['CVE-2026-1']);
+  assert.deepEqual(pick(old({ kev: true, kev_date: '2026-10-01', kev_last: '2026-11-14' })), ['CVE-2026-1']);
+  assert.equal(kevLastDay({ kev_date: '2026-10-01', kev_cves: { a: '2026-11-14', b: 'x' }, kev_last: 7 }), '2026-11-14');
+  assert.equal(kevLastDay({}), '');
+});
+
+test('a well-known label already held by an exploited Highlight is not lifted again', () => {
+  const kevChrome = hlRow('CVE-2026-10', { kev: true, kev_date: '2026-11-15', known: 'Chrome', known_rank: 11, products: [{ id: 'google:chrome', name: 'Chrome' }] });
+  const chrome2 = hlRow('CVE-2026-11', { known: 'Chrome', known_rank: 11, cvss: 9.0, products: [{ id: 'google:chrome', name: 'Chrome' }] });
+  const zoom = hlRow('CVE-2026-12', { known: 'Zoom', known_rank: 43, cvss: 9.0, products: [{ id: 'zoom:zoom', name: 'Zoom' }] });
+  const ids = filterBoard([kevChrome, chrome2, zoom], [], '', HL_NOW).highlights.map((i) => i.id);
+  assert.deepEqual(ids, ['CVE-2026-10', 'CVE-2026-12', 'CVE-2026-11']); // the second Chrome is no longer lifted: it comes by score
+});
+
+test('the four pins go to four vendors, a row of a pinned vendor heads the rest, and both run by importance', () => {
+  const ms = (id, score) => hlRow(id, { cvss: score, kev: true, kev_date: '2026-11-15', products: [{ id: `microsoft:${id}`, name: 'Windows' }] });
+  const v = (id, vendor, score) => hlRow(id, { cvss: score, products: [{ id: `${vendor}:x`, name: vendor }] });
+  // Microsoft twice among the best four: the second Microsoft row leaves the pins and leads the rest.
+  const story = hlRow('https://news/outlook', { cves: [], cvss: undefined, summary: { products: ['Microsoft Outlook'], exploited: true, exploited_source: 'https://x' } });
+  const chosen = [ms('W', 9.8), v('G', 'google', 9.6), story, v('C', 'checkpoint', 9.9), v('S', 'connectwise', 9.0), v('B', 'barracuda', 9.1)];
+  const { pins, rest } = pinOrder(chosen);
+  assert.deepEqual(new Set(pins.map(vendorKey)).size, 4);
+  assert.deepEqual(pins.map((i) => i.id).sort(), ['C', 'G', 'S', 'W']);
+  assert.equal(rest[0].id, 'https://news/outlook'); // displaced: heads the rest
+  assert.equal(vendorKey(story), 'microsoft'); // no Product id: the first word of its product name
+  assert.equal(vendorKey(hlRow('lone', { products: [] })), 'id:lone'); // nothing to tell: its own vendor
+  // shown by importance (highlightScore), whatever order came in
+  const scores = pins.map(highlightScore);
+  assert.deepEqual(scores, [...scores].sort((a, b) => b - a));
+  // Fewer vendors than places (a search for one product, 11-17 defect B): the free places go to the held rows in rank
+  // order, so 더 보기 never shows while a place is free.
+  const three = pinOrder(chosen.slice(0, 3));
+  assert.deepEqual([three.pins.length, three.rest.length], [3, 0]);
+  const google = [v('G1', 'google', 9.6), v('G2', 'google', 9.0)];
+  assert.deepEqual([pinOrder(google).pins.map((i) => i.id), pinOrder(google).rest.length], [['G1', 'G2'], 0]);
+});
+
+// Owner, 11-17: a Highlight is never a member of a fold; it stands at its own place (banded) and the fold holds the rest,
+// its count saying so; a fold left below the minimum is plain rows again.
+test('a Highlight stands out of its fold, which keeps the rest and its count, or unfolds below the minimum', () => {
+  const ms = (n) => ({ id: `CVE-2026-8${n}`, cves: [`CVE-2026-8${n}`], first_seen: '2026-11-16T12:00:00Z', published: `2026-11-16T0${n}:00:00Z`,
+    cvss: 5, products: [{ id: `microsoft:p${n}`, name: `P${n}` }], mentions: [], brief: { text: '' } });
+  const rows = [1, 2, 3, 4].map(ms);
+  const keep = (i) => i.id === 'CVE-2026-82';
+  const items = foldByVendor(rows, 3, utcDay, keep);
+  assert.deepEqual(items.map((x) => (x.fold ? `fold:${x.incidents.map((i) => i.id).join(',')}` : x.id)),
+    ['fold:CVE-2026-81,CVE-2026-83,CVE-2026-84', 'CVE-2026-82']);
+  // two Highlights leave two members: below the minimum of three, no fold at all
+  assert.deepEqual(foldByVendor(rows, 3, utcDay, (i) => ['CVE-2026-82', 'CVE-2026-83'].includes(i.id)).map((x) => x.id), rows.map((i) => i.id));
+  assert.equal(foldByVendor(rows, 3, utcDay).length, 1); // no keep: one fold, as before
 });

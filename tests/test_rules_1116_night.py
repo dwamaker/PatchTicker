@@ -5,6 +5,7 @@ import contextlib
 import io
 import json
 import unittest
+import unittest.mock
 
 from collector import cve_lines, numbers, summaries, summary_input
 from test_cve_lines import MANY, MAX, line, lines_row, saved
@@ -270,6 +271,58 @@ class FieldNameTest(unittest.TestCase):
                      "Fixed in 10.6p2; the summary of the advisory lists the conditions.", "It signs tokens with the fixed key 'k'."):
             with self.subTest(text):
                 self.assertEqual(summaries.field_names(with_fields("en", mitigation=text)), "", text)
+
+
+class ExploitedEvidenceTest(unittest.TestCase):
+    """Owner, 11-16 ("근거를 엄격하게", then "공격을 밝히면 인정"): exploited only with a KEV CVE, or a Summary reporting that
+    attacks were seen, whatever its source, the Incident's own advisory or record included (bird-lg-go cited its own GHSA
+    advisory and reported none: it loses the flag; Huatian's own record reports Shadowserver's observations: it keeps it)."""
+    ATTACKED = "Attackers are exploiting the flaw to take over servers."
+    QUIET = "An unauthenticated attacker can read local files."
+
+    def stored(self, kind, text, url="https://example.com/a"):
+        summary = SSHOLE_SUMMARY | {"exploited": True, "exploited_source": url, "en": SSHOLE_SUMMARY["en"] | {"summary": text}}
+        return {"id": "x", "cves": ["CVE-2026-1"], "mentions": [{"kind": kind, "url": url}], "summary": summary}
+
+    def test_a_third_party_report_of_attacks_keeps_the_flag(self):
+        for kind in ("news", "curator", "notice"):
+            self.assertTrue(summaries.attacks_evidenced(self.stored(kind, self.ATTACKED)["summary"], kind), kind)
+        # Huatian CVE-2024-58406's words
+        first = "Exploitation was first observed by the Shadowserver Foundation on 2024-11-20."
+        self.assertTrue(summaries.attacks_evidenced(self.stored("news", first)["summary"], "news"))
+
+    def test_a_summary_that_reports_no_attack_loses_it_whatever_the_source(self):
+        for kind in ("advisory", "cve_record", "writeup", "news"):
+            self.assertFalse(summaries.attacks_evidenced(self.stored(kind, self.QUIET)["summary"], kind), kind)
+
+    def test_an_own_advisory_or_record_that_reports_attacks_counts(self):
+        # The owner's answer of 11-16: a vendor's PSIRT bulletin, or a record that reports observed attacks, is evidence.
+        for kind in ("advisory", "cve_record"):
+            self.assertTrue(summaries.attacks_evidenced(self.stored(kind, self.ATTACKED)["summary"], kind), kind)
+
+    def test_stored_flags_without_evidence_are_cleared_each_cycle(self):
+        weak, strong = self.stored("advisory", self.QUIET), self.stored("news", self.ATTACKED)
+        kev = self.stored("advisory", self.QUIET) | {"kev": True}
+        changed = summaries.recheck_exploited([weak, strong, kev])
+        self.assertEqual([i["id"] for i in changed], ["x"])
+        self.assertEqual((weak["summary"]["exploited"], weak["summary"]["exploited_source"]), (False, ""))
+        self.assertTrue(strong["summary"]["exploited"])
+        self.assertTrue(kev["summary"]["exploited"])  # KEV decides on its own; the Summary flag is not touched
+        self.assertEqual(summaries.recheck_exploited([weak, strong]), [])  # a second pass changes nothing
+
+
+class KevLastTest(unittest.TestCase):
+    """Owner, 11-16: a row is a Highlight candidate when one of its CVEs was listed in KEV in the last seven days; rows
+    carry the latest listing day as kev_last, only where it differs from kev_date (the earliest), so no page changes."""
+
+    def test_kev_last_only_when_it_differs(self):
+        from collector.incidents import order_fields
+        group = {"id": "x", "cves": ["CVE-2026-1", "CVE-2026-2"], "kev": True, "kev_date": "2026-11-01",
+                 "kev_cves": {"CVE-2026-1": "2026-11-01", "CVE-2026-2": "2026-11-13"}}
+        for maps in (True, False):
+            self.assertEqual(order_fields(group, maps).get("kev_last"), "2026-11-13")
+        one = group | {"kev_cves": {"CVE-2026-1": "2026-11-01"}}
+        self.assertNotIn("kev_last", order_fields(one, False))
 
 
 class WiredTest(unittest.TestCase):

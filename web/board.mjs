@@ -157,12 +157,34 @@ export const wellKnown = (i) => Boolean(i.known) && riskLevel(i) === 'highest' &
 // tests/fixtures/board/highlights-case.json.
 const knownRank = (i) => i.known_rank ?? Number.MAX_SAFE_INTEGER;
 export function pickHighlights(candidates) {
-  const labels = new Set();
+  // A label an exploited Highlight already holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
+  const labels = new Set(candidates.filter((i) => isExploited(i) && i.known).map((i) => i.known));
   const lead = [...candidates.filter(isExploited),
     ...candidates.filter((i) => wellKnown(i) && !labels.has(i.known) && labels.add(i.known))
       .sort((a, b) => knownRank(a) - knownRank(b))]; // a stable sort: equal ranks stay by score
   const rest = candidates.filter((i) => !lead.includes(i));
   return [...lead, ...rest].slice(0, Math.min(HIGHLIGHTS_MAX, Math.max(HIGHLIGHTS, lead.length)));
+}
+// The vendor a pin stands for: the first Product id's vendor, else the first word of the row's product name ("Microsoft
+// Outlook" in a news story's Summary), else the row itself.
+export const vendorKey = (i) => vendorOf(i) || String(firstProduct(i, 'en') || '').toLowerCase().split(/\s+/)[0] || `id:${i.id}`;
+// Owner, 11-16 ("고정 네 자리는 서로 다른 회사로", "중요도순으로 고정"): walking the Highlights in importance, the PINNED places go
+// to rows of different vendors; one whose vendor already holds a place leads the rest (주요 사건 더 보기). Both runs are
+// shown by highlightScore, newest first among equals, whatever the visitor's sort. With fewer vendors than places (a
+// search for one product), the free places go to the held rows in rank order, so 더 보기 never shows beside a free place.
+export function pinOrder(chosen, places = PINNED) {
+  const byScore = (a, b) => highlightScore(b) - highlightScore(a) || newest(a, b);
+  const vendors = new Set();
+  const pins = [];
+  const held = [];
+  for (const i of chosen) {
+    if (pins.length >= places) break;
+    if (vendors.has(vendorKey(i))) held.push(i);
+    else vendors.add(vendorKey(i)) && pins.push(i);
+  }
+  while (pins.length < places && held.length) pins.push(held.shift());
+  const rest = chosen.filter((i) => !pins.includes(i) && !held.includes(i));
+  return { pins: pins.sort(byScore), rest: [...held.sort(byScore), ...rest.sort(byScore)] };
 }
 // Owner, 11-10: a release counts a record, an advisory and a write-up per CVE, so uncapped FFmpeg (331 Mentions), Chrome,
 // IBM API Connect and FreeRDP took all four pins over 15 exploited Incidents. Also in collector/incidents.py.
@@ -216,6 +238,10 @@ export function exploitReason(i) {
 // 2026-11-16: ?search_api_fulltext= still lists the whole catalogue), so the link is the catalogue itself.
 export const KEV_CATALOG = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog';
 const kevCves = (i) => (i.kev_cves && typeof i.kev_cves === 'object' ? i.kev_cves : {});
+// The latest KEV listing day among a row's CVEs (YYYY-MM-DD), '' when none: the collector's kev_last where it writes it,
+// else the per-CVE days (kev_cves, on a group's whole entry), else kev_date (the earliest listing).
+export const kevLastDay = (i) => [i.kev_last, ...Object.values(kevCves(i)), i.kev_date]
+  .filter((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)).map((d) => d.slice(0, 10)).sort().pop() || '';
 const summaryCves = (i) => (sourced(i.summary) && Array.isArray(i.summary.exploited_cves) ? i.summary.exploited_cves : []);
 // Why this one CVE is exploited: CISA lists it, else the Summary's source names it as attacked; null otherwise.
 export function cveExploit(i, cve) {
@@ -443,8 +469,11 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   });
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
+  // A KEV listing is news too (owner, 11-16): a row also counts when the latest KEV listing day of its CVEs falls on or
+  // after the window's first UTC day. Also collector/cycle.py (highlights).
+  const recent = (i) => publishedAt(i) >= since || (kevLastDay(i) !== '' && kevLastDay(i) >= since.slice(0, 10));
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
-  const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
+  const candidates = list.filter((i) => recent(i) && riskLevel(i) !== 'notice')
     .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
   const highlights = pickHighlights(candidates);
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
@@ -802,10 +831,16 @@ export function linkedPlace(items, id, page) {
   return index < 0 ? null : { index, shown: (Math.floor(index / page) + 1) * page };
 }
 
-// dayOf: the publish day's function, the visitor's day by default (tests name a zone).
-export function foldByVendor(rows, min = VENDOR_FOLD_MIN, dayOf = localDay) {
+// Owner, 11-16: the list under the pinned Highlights is the whole Board, so a pinned Incident is drawn twice. The key of
+// a row's open state and view-transition name: the pinned copy (which #i= links open) keys by its id; the list copy of
+// any Highlight keys apart ("list:<id>") whether it is pinned now or behind 주요 사건 더 보기, so pressing 더 보기 never
+// moves the open state from one copy to the other (11-17); every other row keys by its id.
+export const rowKey = (i, highlights, pinned) => (!pinned && highlights.has(i) ? `list:${i.id}` : i.id);
+// dayOf: the publish day's function, the visitor's day by default (tests name a zone). keep: rows that never fold (the
+// Board's Highlights, owner 11-17: they stand at their own place, banded; the fold holds the rest, or unfolds below min).
+export function foldByVendor(rows, min = VENDOR_FOLD_MIN, dayOf = localDay, keep = () => false) {
   if (!min) return rows;
-  const key = (i) => (foldKeyOf(i) ? `${foldKeyOf(i)} ${dayOf(publishedAt(i))}` : '');
+  const key = (i) => (foldKeyOf(i) && !keep(i) ? `${foldKeyOf(i)} ${dayOf(publishedAt(i))}` : '');
   const count = new Map();
   for (const i of rows) if (key(i)) count.set(key(i), (count.get(key(i)) || 0) + 1);
   const out = [];

@@ -8,6 +8,7 @@ import io
 import json
 import re
 import unittest
+import unittest.mock
 import urllib.error
 from types import SimpleNamespace
 
@@ -312,6 +313,9 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertEqual((summary["ko"]["command_for"], summary["en"]["command_for"]), ("Alpine 리눅스라면", "On Alpine Linux"))
         self.assertEqual(summary["stopgap_file"], "/etc/ssh/sshd_config.d/00-no-passwords.conf")
 
+    # These check the URL and reporter rules; the owner's evidence rule of 11-16 (own source, reported attacks) has its
+    # own tests in test_rules_1116_night.py, so it is set aside here.
+    @unittest.mock.patch("collector.summaries.attacks_evidenced", lambda summary, kind: True)
     def test_reported_attacks_need_the_input_url_that_reports_them_and_old_replies_say_no(self):
         # Owner, 11-09: Brotli was 악용 발생 from a write-up, an HN post and PoC repos; no source reported attacks.
         advisory = "https://www.openssh.com/txt/release-10.6p2"
@@ -635,6 +639,9 @@ class ExploitedCvesTest(unittest.TestCase):
                                 usage=SimpleNamespace(input_tokens=0, output_tokens=0))
         return summaries.parse(reply, self.INPUT, [self.ADVISORY])
 
+    # These check the URL and reporter rules; the owner's evidence rule of 11-16 (own source, reported attacks) has its
+    # own tests in test_rules_1116_night.py, so it is set aside here.
+    @unittest.mock.patch("collector.summaries.attacks_evidenced", lambda summary, kind: True)
     def test_attacked_cves_outside_the_incident_are_dropped_by_exact_id(self):
         summary = self.parsed(exploited_cves=["CVE-2026-125350", "CVE-2026-12534", "CVE-2026-999999", "cve-2026-125345",
                                               "CVE-2026-125350", 7])
@@ -645,6 +652,9 @@ class ExploitedCvesTest(unittest.TestCase):
         self.assertEqual((summary["exploited"], summary.get("exploited_cves", [])), (False, []))
         self.assertEqual(self.parsed(exploited=False, exploited_cves=["CVE-2026-125350"]).get("exploited_cves", []), [])
 
+    # These check the URL and reporter rules; the owner's evidence rule of 11-16 (own source, reported attacks) has its
+    # own tests in test_rules_1116_night.py, so it is set aside here.
+    @unittest.mock.patch("collector.summaries.attacks_evidenced", lambda summary, kind: True)
     def test_an_old_reply_without_the_field_parses(self):
         summary = self.parsed()
         self.assertEqual((summary["exploited"], summary.get("exploited_cves", [])), (True, []))
