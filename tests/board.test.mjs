@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -1289,4 +1289,22 @@ test('the new words are in both languages', () => {
   assert.equal(WORDS.ko.productOthers(3), '최근 30일 동안 이 제품의 다른 사건 3건');
   assert.equal(WORDS.en.productOthers(3), '3 other Incidents of this product in the last 30 days');
   assert.equal(WORDS.en.productOthers(1), '1 other Incident of this product in the last 30 days');
+});
+
+// H4 (owner, 11-16): a group's condition that holds for some of its CVEs only opens with their ids (collector/summaries.py
+// per_cve: ids joined by ", ", then ": "). The ids become a mark in the Normal view and words in the Easy view.
+test('a condition\'s CVE prefix is split into its ids and text, and anything else stays whole text', () => {
+  const cves = ['CVE-2026-125343', 'CVE-2026-125349', 'CVE-2026-125350'];
+  assert.deepEqual(conditionIds('CVE-2026-125343: the renderer process must first be compromised', cves),
+    { ids: ['CVE-2026-125343'], text: 'the renderer process must first be compromised' });
+  assert.deepEqual(conditionIds('CVE-2026-125343, CVE-2026-125349: 렌더러 프로세스가 먼저 장악된 경우', cves),
+    { ids: ['CVE-2026-125343', 'CVE-2026-125349'], text: '렌더러 프로세스가 먼저 장악된 경우' });
+  const whole = (entry) => assert.deepEqual(conditionIds(entry, cves), { ids: [], text: entry }, entry);
+  whole('A user opens a crafted page'); // no prefix: as today
+  whole('Windows: version 11'); // a colon inside an unprefixed entry
+  whole('CVE-2026-999999: a CVE that is not the Incident\'s'); // not one of its ids: text, not dropped
+  whole('CVE-2026-125343, CVE-2026-999999: one of two not the Incident\'s');
+  whole('CVE-2026-125343:'); // nothing after the prefix
+  whole('CVE-2026-125343 and CVE-2026-125349: not the collector\'s form');
+  assert.deepEqual(conditionIds('CVE-2026-125343: x'), { ids: [], text: 'CVE-2026-125343: x' }); // no CVE list given
 });

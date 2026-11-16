@@ -568,6 +568,15 @@ export function productOthers(i, lang = 'en', others = null) {
   const n = Number.isInteger(counts[tag.pick]) ? counts[tag.pick] - (inside ? 1 : 0) : 0;
   return n > 0 ? { n, hash: tagHash(tag) } : null;
 }
+// H4 (owner, 11-16): in a group, a condition that holds for some of its CVEs only opens with their ids, as
+// collector/summaries.py (per_cve) writes it: "CVE-…, CVE-…: text". {ids, text}; ids [] and the whole entry as text when it
+// has no such prefix, or names a CVE that is not one of `cves` (nothing is dropped).
+const CONDITION_IDS = /^(CVE-\d{4}-\d{4,7}(?:, CVE-\d{4}-\d{4,7})*): (\S[\s\S]*)$/;
+export function conditionIds(entry, cves = []) {
+  const found = CONDITION_IDS.exec(entry);
+  const ids = found ? found[1].split(', ') : [];
+  return found && ids.every((id) => cves.includes(id)) ? { ids, text: found[2] } : { ids: [], text: entry };
+}
 // M4 (owner, 11-15): the Lead CVE's Public date, which the collector writes only when it is not the Published day; '' else.
 export const publicDay = (i) => (typeof i.public_date === 'string' && DAY.test(i.public_date) ? i.public_date : '');
 

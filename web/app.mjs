@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -46,7 +46,7 @@ const TEXT = {
     status: (updated, shown, total) => `마지막 업데이트 ${updated} · ` + (shown === total ? `${total}건` : `전체 ${total}건 중 ${shown}건`),
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     repo: 'GitHub 저장소', search: '검색', searchHint: '키워드, CVE 번호, 버전', searchHintShort: '키워드, CVE 번호', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 패치', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
-    pin: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, firstSeen: '게시 시각을 모르는 사건이라 이 현황판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, easyWhen: '이럴 때만 해당돼요:', foldClosed: (v) => `${v} 묶음을 접었습니다.`, kevEasy: '지금 실제 공격에 쓰이고 있어요!', pocEasy: '공격 코드가 공개됐어요!', originalEn: '원문(영어)',
+    pin: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, firstSeen: '게시 시각을 모르는 사건이라 이 현황판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, easyWhen: '이럴 때만 해당돼요:', someFlaws: '일부 취약점만', foldClosed: (v) => `${v} 묶음을 접었습니다.`, kevEasy: '지금 실제 공격에 쓰이고 있어요!', pocEasy: '공격 코드가 공개됐어요!', originalEn: '원문(영어)',
     caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 현황판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: '업데이트가 멈춰 있습니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다.', staleShort: '업데이트 멈춤', scopeWeek: '이 현황판에 최근 7일 동안 올라온 사건에서 찾았습니다.', scopeMonths: '이 현황판에 올라온 사건에서 불러온 이전 사건까지 포함해 찾았습니다.', searchOlder: '이전 사건에서도 찾기',
     linkNotFound: '이 링크의 사건을 찾지 못했습니다. 보관 기간 90일이 지났거나 다른 사건과 합쳐졌을 수 있습니다.',
@@ -95,7 +95,7 @@ const TEXT = {
     status: (updated, shown, total) => `Last updated ${updated} · ` + (shown === total ? `${total} incidents` : `${shown} of ${total} incidents`),
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     repo: 'GitHub repository', search: 'Search', searchHint: 'Keyword, CVE ID, version', searchHintShort: 'Keyword or CVE ID', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'One fix', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
-    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, kevReasonEasy: 'Under attack', easyWhen: 'Only affects you if:', foldClosed: (v) => `Folded the ${v} group.`, kevEasy: 'Attackers are using this right now!', pocEasy: 'Exploit code is public!', originalEn: 'Source text',
+    pin: 'Highlights', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, kevReasonEasy: 'Under attack', easyWhen: 'Only affects you if:', someFlaws: 'some of the flaws only', foldClosed: (v) => `Folded the ${v} group.`, kevEasy: 'Attackers are using this right now!', pocEasy: 'Exploit code is public!', originalEn: 'Source text',
     caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: 'Updates have stopped. Collection may be down, so recent Incidents may be missing.', staleShort: 'Updates stopped', scopeWeek: 'Searched Incidents added to the Board in the last 7 days.', scopeMonths: 'Searched Incidents added to the Board, loaded earlier Incidents included.', searchOlder: 'Search older Incidents too',
     linkNotFound: "This link's Incident was not found. It may be past the 90 days kept, or merged into another Incident.",
@@ -1128,7 +1128,9 @@ function easyPanel(incident) {
   // "Does this touch me?" comes before "what to do": the Summary's conditions, in its own words, at body weight so the
   // action stays the one heavy line. One condition on the line, several as a list.
   // The everyday-words version when the Summary has one (easy_conditions, after critique 12), else the conditions as written.
-  const when = (s[lang].easy_conditions?.length ? s[lang].easy_conditions : s[lang].conditions || []).filter((c) => typeof c === 'string' && c);
+  // H4 (owner, 11-16): no CVE id here; a condition of some CVEs only says so in words after its text.
+  const when = (s[lang].easy_conditions?.length ? s[lang].easy_conditions : s[lang].conditions || []).filter((c) => typeof c === 'string' && c)
+    .map((c) => { const { ids, text } = conditionIds(c, incident.cves); return ids.length ? `${text} (${TEXT[lang].someFlaws})` : c; });
   if (when.length === 1) parts.unshift(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
   if (when.length > 1) {
     const list = el('ul', 'cond-list');
@@ -1765,13 +1767,24 @@ function labelled(className, label, text) {
   return p;
 }
 
-function summary(s) {
+// H4 (owner, 11-16): a group's condition of some CVEs only shows their ids as a small mark before its text, like the step-4
+// marks beside a CVE line (.cve-src); any other entry is its text as written.
+function condition(entry, cves) {
+  const { ids, text } = conditionIds(entry, cves);
+  return ids.length ? [...ids.flatMap((id, n) => [...(n ? [', '] : []), el('span', 'cve-src', id)]), ' ', text] : [entry];
+}
+
+function summary(s, cves) {
   const parts = [para('summary', s.summary)];
   // One condition stays on its line; several are a list ("팩스·SMS" has its own dot, so " · " between them misread).
-  if (s.conditions.length === 1) parts.push(labelled('conditions', TEXT[lang].conditions, s.conditions[0]));
+  if (s.conditions.length === 1) {
+    const line = labelled('conditions', TEXT[lang].conditions, '');
+    line.append(...condition(s.conditions[0], cves));
+    parts.push(line);
+  }
   if (s.conditions.length > 1) {
     const list = el('ul', 'cond-list');
-    list.append(...s.conditions.map((c) => el('li', '', c)));
+    list.append(...s.conditions.map((c) => { const li = el('li', ''); li.append(...condition(c, cves)); return li; }));
     parts.push(labelled('conditions', TEXT[lang].conditions, ''), list);
   }
   // Always said, so a row with no known fix does not go straight from the summary to the source link.
@@ -2159,7 +2172,7 @@ function dateCell(incident) {
 function details(incident) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
-  const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang]);
+  const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang], incident.cves);
   // M1 (owner, 11-15): under the Mitigation, the Board filtered to the row's first Product when it had other Incidents
   // in the last 30 days; same tab, as the address is this page's own filter.
   ensureOthers();

@@ -511,3 +511,16 @@ test('a page without the new keys, or with unreadable ones, shows neither line',
     assert.doesNotMatch(html, /공개일|다른 사건/);
   }
 });
+
+// H4 (owner, 11-16): a group's condition of some CVEs only opens with their ids; the page shows them as a mark.
+test('a group\'s condition shows the ids it holds for as a mark before its text, and an entry without them as today', async () => {
+  const group = { ...SSHOLE, cves: ['CVE-2026-123158', 'CVE-2026-123159', 'CVE-2026-123160'],
+    summary: { ...SSHOLE.summary, en: { ...SSHOLE.summary.en, conditions: [
+      'CVE-2026-123159, CVE-2026-123160: the renderer process must first be compromised', 'Windows: version 11',
+      'CVE-2026-999999: an id not of this Incident'] } } };
+  const html = await (await page(group, 'en')).text();
+  const conditions = html.slice(html.indexOf('id="s-conditions"'), html.indexOf('id="s-todo"'));
+  assert.match(conditions, /<li><span class="cve-src">CVE-2026-123159<\/span>, <span class="cve-src">CVE-2026-123160<\/span> the renderer process must first be compromised<\/li>/);
+  assert.match(conditions, /<li>Windows: version 11<\/li>/);
+  assert.match(conditions, /<li>CVE-2026-999999: an id not of this Incident<\/li>/);
+});
