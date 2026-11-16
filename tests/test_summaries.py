@@ -642,6 +642,60 @@ class ExploitedCvesTest(unittest.TestCase):
         self.assertEqual(self.parsed(exploited_cves="CVE-2026-125350").get("exploited_cves", []), [])  # not a list: none named
 
 
+class ConditionsPerCveTest(unittest.TestCase):
+    """H4: a group's condition opens with the ids of the CVEs it holds for; one for every CVE has none."""
+
+    A, B, C = "CVE-2026-125350", "CVE-2026-125345", "CVE-2026-12534"
+    GROUP = "\n".join([f"Incident: {A}, {B}, {C}", f"Lead CVE: {A}", "CVSS: not rated yet", "Exploited in the wild (CISA KEV): no",
+                       "Products: unknown", "Description: Browser flaws, see also CVE-2026-999999.", "Mentions:"])
+
+    def parsed(self, conditions, text=GROUP, easy=None, field="conditions"):
+        data = news_reply("", "")
+        for lang in ("ko", "en"):
+            data[lang] |= {"conditions": conditions, "easy_conditions": conditions if easy is None else easy}
+        reply = SimpleNamespace(content=[SimpleNamespace(type="text", text=json.dumps(data))], stop_reason="end_turn",
+                                usage=SimpleNamespace(input_tokens=0, output_tokens=0))
+        summary = summaries.parse(reply, text, [])
+        if easy is None:
+            self.assertEqual(summary["ko"]["easy_conditions"], summary["ko"]["conditions"])
+        return summary["en"][field]
+
+    def test_an_easy_condition_takes_its_twins_ids_or_is_left_to_the_conditions(self):
+        A, B = self.A, self.B
+        self.assertEqual(self.parsed([f"{A}: admin page open", "CVE-2026-999999: other", "every user"],
+                                     easy=["admin page reachable", "other one", f"{B}: everyone"], field="easy_conditions"),
+                         [f"{A}: admin page reachable", "everyone"])
+        self.assertEqual(self.parsed([f"{A}: admin page open"], easy=["admin page", "extra"], field="easy_conditions"), [])
+
+    def test_other_prefix_forms_and_ids_inside_the_text(self):
+        A, B, C = self.A, self.B, self.C
+        self.assertEqual(self.parsed([f"{A} and {C}： iBGP", f"{A}/{B}/{C}: admin page", f"{A} 및 {B}: 로그인",
+                                      f"after CVE-2026-999999 is used", f"{A} — no login, as for {B}"]),
+                         [f"{A}, {C}: iBGP", "admin page", f"{A}, {B}: 로그인", f"{A} — no login, as for {B}"])
+
+    def test_only_the_incidents_own_ids_stay_in_its_order(self):
+        A, B, C = self.A, self.B, self.C
+        self.assertEqual(self.parsed([f"{A}: no login", f"{C} ,  {A}:iBGP set", "every user", f"cve-2026-125345: lower case"]),
+                         [f"{A}: no login", f"{A}, {C}: iBGP set", "every user", f"{B}: lower case"])
+
+    def test_an_id_outside_the_incident_drops_the_entry_rather_than_widen_it(self):
+        # CVE-2026-999999 is in the input (the Description) but not the Incident's; CVE-2026-12534 is a prefix of 125345.
+        self.assertEqual(self.parsed(["CVE-2026-999999: other flaw", f"CVE-2026-999999, {self.C}: only C", f"{self.A}:  "]),
+                         [f"{self.C}: only C"])
+
+    def test_a_condition_naming_every_cve_loses_its_ids(self):
+        self.assertEqual(self.parsed([f"{self.B}, {self.A}, {self.C}: admin page open"]), ["admin page open"])
+
+    def test_a_one_cve_incident_is_parsed_as_before(self):
+        one = self.GROUP.replace(f"Incident: {self.A}, {self.B}, {self.C}", f"Incident: {self.A}")
+        self.assertEqual(self.parsed([f"{self.A}: no login", "CVE-2026-999999: kept as written"], one),
+                         [f"{self.A}: no login", "CVE-2026-999999: kept as written"])
+
+    def test_the_prompt_asks_for_the_ids_only_in_a_group(self):
+        self.assertIn("a condition that holds for every CVE has no ID", summaries.INSTRUCTIONS)
+        self.assertIn("keeping the same CVE IDs at the start of the same entries", summaries.INSTRUCTIONS)
+
+
 class EasyJargonTest(unittest.TestCase):
     """The Easy view's three fields are checked for the words the prompt bans; a hit costs a retry, never the Summary."""
 

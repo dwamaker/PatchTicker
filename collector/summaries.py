@@ -105,8 +105,8 @@ INSTRUCTIONS = """You write entries for vuln-radar, a free public board of secur
 Return one JSON object with the same content in Korean ("ko") and English ("en"):
 - title: one short line naming the product and the problem. No CVE ID, no severity words.
 - summary: at most two sentences. What the problem is and who is affected. Plain words, no hype. When a source withholds the names of the affected companies ("two automakers, which we'll call Automaker #1 and #2"), say they were not named; never guess them from other names on the page (a list of earlier targets is not this one).
-- conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). A CVE record's configurations names the settings that must be present. Empty list when the text names none.
-- easy_conditions: the same conditions for the easy reader: as many as in conditions, in the same order, each one rewritten in everyday words with the same ban on technical terms as easy ("관리 화면을 인터넷에 열어 둔 경우", "If the admin page is reachable from the internet"). Empty list when conditions is empty.
+- conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). A CVE record's configurations names the settings that must be present. Empty list when the text names none. When the Incident lists more than one CVE, a condition that holds for only some of them opens with those CVE IDs, copied exactly from the Incident line, then a colon ("CVE-2026-76954: 관리 화면이 인터넷에 열려 있음", "CVE-2026-76954, CVE-2026-76955: iBGP neighbor configured"); a condition that holds for every CVE has no ID. When the input has a "Per-CVE lines only for:" line, name only CVEs it lists. Never write one condition that joins what different CVEs need.
+- easy_conditions: the same conditions for the easy reader: as many as in conditions, in the same order, each one rewritten in everyday words with the same ban on technical terms as easy ("관리 화면을 인터넷에 열어 둔 경우", "If the admin page is reachable from the internet"), keeping the same CVE IDs at the start of the same entries. Empty list when conditions is empty.
 - mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory. Never name a version the sources do not. When a source says a whole product line is affected ("7.0 all versions") and names no fixed version on it, tell that line's users to move to a line that has one, never to look for a version newer than a bound. When several lines are affected and only some have a fixed version, give each of those its version and say the others have none confirmed ("7.2 계열의 수정 버전은 확인되지 않았습니다.", "A fixed version for the 7.2 line is not confirmed."), or what a source tells them to do; never send them to another line's version. When a source says the service must be restarted or the device rebooted after the update, say so right after the update ("업데이트한 뒤 sshd를 다시 시작하세요.", "Then restart sshd."). The mitigation is read on its own: it names the versions and lines itself even when fixes lists them, and never points at another field or part of the page ("the range above", "listed below", "아래 목록"). When a source says this flaw has no fix (no patch available, no fixed release, no solution reported yet, the product no longer maintained), that wins over the upper-bound advice and holds even when nothing else can be done: begin with exactly one of these sentences, word for word: "수정 버전은 아직 없습니다." / "There is no fix yet.", or for a product no longer maintained "더 이상 지원되지 않아 수정 버전이 없습니다." / "It is no longer maintained, so no fixed version exists." (never both, and no "아직" or "yet" then), then tell the reader to do what a source says instead (a workaround, a migration, replacing the device) as an instruction ("지원되는 기기로 교체하세요.", "Replace it with a supported device."), never as a report of the advice, and never an update to a version or build no source names. When only some product lines have no fix, give the others' fixed versions first, then name the lines with no fix and what a source says they should do (such as moving to a fixed line). A source that only names no fixed version does not say there is none. Leave out advice written for the product's developers (how to change its code). When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Empty string when no source says anything a reader can act on.
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
 - When the flaw needs a condition (a system such as musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it; never widen it to every user of the product, and never narrow it either: when the sources name a kind with examples ("musl-based Linux such as Alpine or OpenWrt"), name every example (the kind itself is often a technical term), never one example alone, or a reader who runs another one thinks they are safe ("Alpine·OpenWrt SSH 서버 아무 비밀번호 통과", "SSH on Alpine or OpenWrt accepts any long password"; never "Alpine SSH 서버 …" alone).
@@ -725,6 +725,16 @@ def parse(reply, input_text, urls):
         for line in summary[lang]["cve_lines"]:
             if not CVE_ID.fullmatch(line["cve"]) or line["cve"] not in input_text:
                 raise Rejected(f"cve_lines names a CVE not in the input: {line['cve']}")
+    # H4 (owner, 11-15): a group's condition names the CVEs it holds for; one CVE is parsed as before.
+    own = input_cves(input_text)
+    for fields in (summary["ko"], summary["en"]) if len(own) > 1 else ():
+        conditions = [per_cve(c, own) for c in fields["conditions"]]
+        easy = [per_cve(c, own) for c in fields["easy_conditions"]]
+        # The Easy entry takes its twin's ids (the easy rules ban ids, so the model may leave them out, and the Easy
+        # view would then read it as holding for every CVE); unpaired, the page falls back to the conditions.
+        easy = [c and e and (c[0], e[1]) for c, e in zip(conditions, easy)] if len(easy) == len(conditions) else []
+        fields["conditions"], fields["easy_conditions"] = ([f"{', '.join(ids)}: {text}" if ids else text for ids, text in filter(None, entries)]
+                                                           for entries in (conditions, easy))
     if summary["lead"] and summary["lead"] not in urls:
         raise Rejected(f"lead is not an input URL: {summary['lead']}")
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
@@ -765,9 +775,25 @@ def parse(reply, input_text, urls):
 
 
 def input_cves(input_text):
-    """The CVE ids of the input's "Incident:" line, as a set to test whole ids against ("no CVE yet" names none)."""
+    """The CVE ids of the input's "Incident:" line in its order, to test whole ids against ("no CVE yet" names none)."""
     found = re.search(r"^Incident: (.*)$", input_text, re.M)
-    return {c for c in found[1].split(", ") if CVE_ID.fullmatch(c)} if found else set()
+    return list(dict.fromkeys(c for c in found[1].split(", ") if CVE_ID.fullmatch(c))) if found else []
+
+
+ANY_CVE = re.compile(CVE_ID.pattern, re.I)
+CONDITION_IDS = re.compile(r"\s*(CVE-\d{4}-\d{4,}(?:\s*(?:,|/|&|、|\band\b|및)\s*CVE-\d{4}-\d{4,})*)\s*[:：]\s*", re.I)
+
+
+def per_cve(condition, own):
+    """A group's condition as (ids, text), its leading CVE ids ("CVE-A, CVE-B: text") cut to the Incident's own (own: the
+    Incident line's ids, in order; exact ids, never a substring); ids [] when it holds for every CVE. None when it names
+    none of them, or any other CVE anywhere: kept, it would read as holding for every CVE of this Incident."""
+    found = CONDITION_IDS.match(condition)
+    named = {c.upper() for c in ANY_CVE.findall(found[1])} if found else set()
+    ids, text = [c for c in own if c in named], condition[found.end():].strip() if found else condition
+    if found and not ids or not text or {c.upper() for c in ANY_CVE.findall(text)} - set(own):
+        return None
+    return [] if len(ids) == len(own) else ids, text
 
 
 CVE_IN_TITLE = re.compile(r"\s*[(\[]?\bCVE-\d{4}-\d{4,}\b[)\]]?", re.I)
