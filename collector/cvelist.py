@@ -221,7 +221,7 @@ def record_fix_keys(record):
     """Product and first fixed version pairs ("openemr:openemr<8.3.0") from the CNA's affected ranges, so CVEs one
     release fixed together can be grouped into one Incident (incidents.group_releases)."""
     keys = set()
-    for key, _, a in cna_products(record):
+    for key, a in fix_key_entries(record):
         affected = [v for v in a.get("versions", []) if v.get("status") == "affected"]
         keys |= {f"{key}<{v['lessThan']}" for v in affected if v.get("lessThan")}
         stated = [(v, stated_bound(str(v["version"]))) for v in affected if v.get("version") and not v.get("lessThan")]
@@ -240,10 +240,40 @@ def record_fix_keys(record):
             # "*"; Red Hat: a package build up to "*", its packageName in the key so two packages with one version string
             # stay apart). Never a list of single versions.
             package = (a.get("packageName") or "").strip().lower().replace(" ", "_")
+            package = "" if key.endswith(f":{package}") else package  # a package record's key is the package already
             keys |= {f"{key}{':' + package if package else ''}<{v['version']}" for v in a.get("versions", [])
                      if v.get("status") == "unaffected" and v.get("version") and open_above(v)}
     # Owner, 11-16: a "version" without a digit is no version ("google:android<=Android kernel" tied 159 Incidents).
     return sorted(k for k in keys if re.search(r"[0-9]", k.split("<", 1)[1]))
+
+
+PURL_TYPE = re.compile(r"pkg:([a-z0-9.+-]+)/", re.I)
+# Names that stand for no product: never a key's namespace.
+PLACEHOLDER_PRODUCTS = {"n/a", "unknown", "all", "multiple", "multiple products", "unspecified", "various", "none"}
+
+
+def fix_key_entries(record):
+    """(key, affected entry) pairs the fix keys are read from: the CNA's named products (cna_products), and (11-16) the
+    entries cna_products skips: a package with no vendor or product (CPANSec: "pkg:cpan/JSON-XS" gives "cpan:json-xs";
+    the purl's type, else the collection's host, keeps two ecosystems' packages of one name apart), or a product a third
+    party names under vendor "Unknown" or "n/a" (WPScan), keyed under that CNA's name. Never a key with neither."""
+    named = list(cna_products(record))
+    out, taken = [(key, a) for key, _, a in named], {id(a) for _, _, a in named}
+    assigner = (record.get("cveMetadata", {}).get("assignerShortName") or "").strip()
+    for a in record["containers"]["cna"].get("affected", []):
+        if id(a) in taken:
+            continue
+        package, product = (a.get("packageName") or "").strip(), (a.get("product") or "").strip()
+        purl = PURL_TYPE.match(a.get("packageURL") or "")
+        where = urlsplit(a.get("collectionURL") or "")
+        # The collection's host and path, not the host alone: github.com/a/x and github.com/b/x are two homes.
+        ecosystem = purl[1] if purl else f"{where.hostname}{where.path.rstrip('/')}" if where.hostname else None
+        name = (f"{ecosystem}:{package}" if package and ecosystem and not (a.get("vendor") or "").strip() else
+                f"{assigner}:{product}" if assigner and re.search(r"[a-z]{3}", product.lower())
+                and product.lower() not in PLACEHOLDER_PRODUCTS else None)
+        if name and "<" not in name:
+            out.append((name.lower().replace(" ", "_"), a))
+    return out
 
 
 def open_above(entry):

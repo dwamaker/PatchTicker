@@ -16,7 +16,7 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn
 from collector.cve_lines import save_lines
-from collector.incidents import is_news, published_at, stamp_ago
+from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import ko_numbers, number_words, numbers, without_line_names
@@ -266,9 +266,7 @@ def language_gaps(summary):
 
 
 VERSION_RE = re.compile(r"(?<!\d)\d{1,20}(?:\.\d{1,20})+(?!\d)")  # bounded: int() rejects over 4300 digits
-# A Red Hat (also its Hardened Images), Fedora, Amazon, openEuler, Debian, Ubuntu or Alpine package version
-# ("1.16.1-8.el8_10", "1.16.2-7.1.hum1", "1.22.0-2+deb12u3", "10.3_p1-r2"). A digit before "-r": "KobiPBX-FOP3-SEC-r1" is a build.
-DISTRO_PACKAGE = re.compile(r"-\d+(?:\.\d+)*\.(?:el|fc|amzn|oe|hum)\d|[+~-]\d*(?:deb|ubuntu)\d|\d-r\d+\b")
+# DISTRO_PACKAGE (incidents.py, where group_releases needs it too): a distribution's package version.
 FIXED_CONFLICT = "fixed version "  # retry() gives it its own sentence
 
 

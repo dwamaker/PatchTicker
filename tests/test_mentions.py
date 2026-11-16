@@ -673,6 +673,77 @@ class ReleaseGroupTest(unittest.TestCase):
             {"status": "unaffected", "version": "153.7", "lessThanOrEqual": "140.*"}]}]}}}
         self.assertEqual(record_fix_keys(other_line), [])
 
+    def test_a_record_that_names_a_package_and_no_product_gives_a_key_for_the_package(self):
+        # 11-16: five JSON::XS Incidents of one minute, fixed in 4.05, stood apart (CPANSec writes no vendor or product).
+        from collector.cvelist import record_fix_keys
+        self.assertEqual(record_fix_keys(json.loads((FIXTURES / "cvelist" / "CVE-2026-129114.json").read_bytes())), ["cpan:json-xs<4.05"])
+        npm = {"containers": {"cna": {"affected": [{"collectionURL": "https://registry.npmjs.org", "packageName": "JSON-XS",
+                                                    "versions": [{"version": "0", "lessThan": "4.05", "status": "affected"}]}]}}}
+        self.assertEqual(record_fix_keys(npm), ["registry.npmjs.org:json-xs<4.05"])  # another ecosystem stays apart
+        nowhere = {"containers": {"cna": {"affected": [{"packageName": "JSON-XS", "versions": [
+            {"version": "0", "lessThan": "4.05", "status": "affected"}]}]}}}
+        self.assertEqual(record_fix_keys(nowhere), [])  # a package of no named ecosystem could be anyone's
+
+    def test_a_product_a_third_party_names_under_vendor_unknown_is_keyed_under_that_cna(self):
+        from collector.cvelist import record_fix_keys
+        wpscan = {"cveMetadata": {"assignerShortName": "WPScan"}, "containers": {"cna": {"affected": [
+            {"vendor": "Unknown", "product": "Essential Real Estate", "versions": [{"version": "4.4.3", "lessThan": "5.3.5", "status": "affected"}]}]}}}
+        self.assertEqual(record_fix_keys(wpscan), ["wpscan:essential_real_estate<5.3.5"])
+        for placeholder in ("-", "All", "Multiple products"):
+            wpscan["containers"]["cna"]["affected"][0]["product"] = placeholder
+            self.assertEqual(record_fix_keys(wpscan), [], placeholder)
+        two_homes = [{"containers": {"cna": {"affected": [{"collectionURL": f"https://github.com/{owner}/x", "packageName": "core",
+                                                           "versions": [{"version": "0", "lessThan": "2.0", "status": "affected"}]}]}}}
+                     for owner in ("a", "b")]
+        self.assertEqual([record_fix_keys(r) for r in two_homes], [["github.com/a/x:core<2.0"], ["github.com/b/x:core<2.0"]])
+
+    def summarized(self, cve, published, product="Apache Shiro", fixed="3.0.2"):
+        row = self.row(cve, published)
+        del row["fix_keys"]
+        return row | {"summary": {"products": [product], "fixed": fixed, "incident": True}, "summary_basis": {"cves": [cve], "n": 1}}
+
+    def test_a_summary_written_for_other_cves_or_a_group_makes_no_summary_key(self):
+        from collector.incidents import summary_key
+        stale = self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z")
+        stale["cves"].append("CVE-2026-9")  # a merge brought a CVE the Summary never saw
+        self.assertIsNone(summary_key(stale))
+        stale["summary_basis"]["cves"] = ["CVE-2026-1", "CVE-2026-9"]
+        self.assertIsNone(summary_key(stale))  # a group's own Summary may name the next release: groups take no Summary key
+
+    def test_two_key_less_incidents_of_one_product_and_one_fixed_version_in_one_burst_group(self):
+        # 11-16: six Apache Shiro Incidents of 11-14 whose records were not published yet.
+        from collector.incidents import group_releases
+        incidents = [self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z"), self.summarized("CVE-2026-2", "2026-11-14T02:00:00Z", product="apache-shiro"),
+                     self.summarized("CVE-2026-3", "2026-11-14T03:00:00Z")]
+        group_releases(incidents)
+        self.assertEqual([i["cves"] for i in incidents], [["CVE-2026-1", "CVE-2026-2", "CVE-2026-3"]])
+        self.assertNotIn("fix_keys", incidents[0])  # a Summary key is never stored, so it binds nothing later
+
+    def test_a_different_fixed_version_does_not_join(self):
+        from collector.incidents import group_releases
+        incidents = [self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z"), self.summarized("CVE-2026-2", "2026-11-14T02:00:00Z"),
+                     self.summarized("CVE-2026-3", "2026-11-14T03:00:00Z", fixed="3.0.1")]
+        group_releases(incidents)
+        self.assertEqual(len(incidents), 3)  # two of 3.0.2 hold two CVEs, under GROUP_MIN_CVES
+
+    def test_a_summary_key_is_dropped_once_a_record_gives_a_key(self):
+        from collector.incidents import release_keys, summary_key
+        shiro = self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z")
+        self.assertEqual(release_keys(shiro), ["summary:apache shiro=3.0.2"])
+        shiro["fix_keys"] = ["apache_software_foundation:apache_shiro<3.0.2"]
+        self.assertEqual((release_keys(shiro), summary_key(shiro)), (["apache_software_foundation:apache_shiro<3.0.2"], None))
+
+    def test_a_distributions_package_version_or_a_version_without_a_digit_makes_no_summary_key(self):
+        from collector import summaries
+        from collector.incidents import summary_key
+        for fixed in ("1.16.1-8.el8_10", "latest", ""):
+            self.assertIsNone(summary_key(self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z", fixed=fixed)), fixed)
+        two = self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z")
+        two["summary"]["products"] = ["Apache Shiro", "Apache Tomcat"]
+        self.assertIsNone(summary_key(two))  # one product only
+        self.assertIsNone(summary_key(self.summarized("CVE-2026-1", "2026-11-14T01:00:00Z", product="Qt")))  # too short to tell apart
+        self.assertEqual(summaries.fixed_conflict({"fix_keys": ["summary:apache shiro=3.0.2"]}, {"fixed": "3.0.1"}), "")
+
     def test_red_hats_two_packages_with_one_version_string_stay_apart(self):
         from collector.cvelist import record_fix_keys
         keys = record_fix_keys(json.loads((FIXTURES / "cvelist" / "CVE-2026-112323.json").read_bytes()))

@@ -635,6 +635,34 @@ def absorb(target, other):
 # Incident (a release note's worth), so one vendor's batch of fixes takes one row and one Highlight slot.
 GROUP_MIN_CVES = 3
 GROUP_HOURS = 48
+# A Red Hat (also its Hardened Images), Fedora, Amazon, openEuler, Debian, Ubuntu or Alpine package version
+# ("1.16.1-8.el8_10", "1.16.2-7.1.hum1", "1.22.0-2+deb12u3", "10.3_p1-r2"). A digit before "-r": "KobiPBX-FOP3-SEC-r1" is a build.
+DISTRO_PACKAGE = re.compile(r"-\d+(?:\.\d+)*\.(?:el|fc|amzn|oe|hum)\d|[+~-]\d*(?:deb|ubuntu)\d|\d-r\d+\b")
+SUMMARY_KEY = "summary:"  # a key made from a Summary, never stored and never a bound (fixed_conflict reads only "<" keys)
+
+
+def summary_key(incident):
+    """Owner, 11-16: a CVE Incident no record gives a key (Apache Shiro's, before cvelistV5 has its records) is keyed by
+    its Summary's one product and fixed version: "summary:apache shiro=3.0.2". Made at each group_releases from the
+    Summary as it stands, so a changed fixed version changes it and a record's key replaces it. The product is lowercased
+    with its punctuation folded to single spaces and nothing else: an unsure match stays apart. None without one product
+    of three letters or more, or with a fixed version that has no digit or is a distribution's package."""
+    s = incident.get("summary") or {}
+    products, fixed = s.get("products") or [], s.get("fixed")
+    # One CVE, and a Summary written for exactly it: a merge's stranger, or a group's re-written Summary naming the next
+    # release, must not carry the key (review, 11-16).
+    if len(incident.get("cves") or []) != 1 or (incident.get("summary_basis") or {}).get("cves") != incident["cves"] \
+            or incident.get("fix_keys") or not s.get("incident", True) or len(products) != 1:
+        return None
+    product = " ".join(re.sub(r"[^\w]+", " ", str(products[0]).lower()).split())
+    if len(product) < 3 or not isinstance(fixed, str) or not re.search(r"[0-9]", fixed) or DISTRO_PACKAGE.search(fixed):
+        return None
+    return f"{SUMMARY_KEY}{product}={fixed.strip()}"
+
+
+def release_keys(incident):
+    """The keys group_releases ties an Incident by: its records' fix keys, or else its Summary's (summary_key)."""
+    return incident.get("fix_keys") or [k for k in [summary_key(incident)] if k]
 
 
 def release_clusters(members):
@@ -656,10 +684,12 @@ def group_releases(incidents):
     CVEs or more; the earliest seen keeps its id. A group whose burst has passed takes no late joiner: that one starts a
     burst of its own. Each CVE's own description stays in "cve_texts" for the page. Returns the months changed."""
     changed = set()
-    for key in sorted({k for i in incidents for k in i.get("fix_keys", [])}):
+    keys = {i["id"]: release_keys(i) for i in incidents}  # read once: a fold below changes the target's own
+    for key in sorted({k for ks in keys.values() for k in ks}):
         if not re.search(r"[0-9]", key.split("<", 1)[-1]):
             continue  # owner, 11-16: no digit, no version; stored ones ("google:android<=Android kernel") tie nothing
-        for members in release_clusters(sorted((i for i in incidents if key in i.get("fix_keys", [])), key=published_at)):
+        holders = (i for i in incidents if key in i.get("fix_keys", []) or key in keys.get(i["id"], ()))
+        for members in release_clusters(sorted(holders, key=published_at)):
             changed |= fold_release(incidents, members)  # bursts share no member, so one's fold leaves the next whole
     return changed
 
