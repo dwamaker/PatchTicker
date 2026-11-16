@@ -1,0 +1,1282 @@
+{
+ "note": "The three groups of .scratch/checks/step4-plan.md from data.patchticker.com pages/ (2026-11-16), with the step 4 keys added by hand as the collector writes them (section 2): cves in view order, cve_scores, kev_cves, top_cve, summary.exploited_cves. Scores are made up; the order follows from them.",
+ "groups": [
+  {
+   "full": {
+    "id": "CVE-2026-125345",
+    "cves": [
+     "CVE-2026-125350",
+     "CVE-2026-125345",
+     "CVE-2026-125343",
+     "CVE-2026-125344",
+     "CVE-2026-125346",
+     "CVE-2026-125347",
+     "CVE-2026-125348",
+     "CVE-2026-125349",
+     "CVE-2026-125342"
+    ],
+    "first_seen": "2026-11-10T17:30:02Z",
+    "published": "2026-11-10T06:12:24Z",
+    "mentions": [
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125345"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125343"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125344"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125346"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125347"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125348"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125342"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125349"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-125350"
+     },
+     {
+      "kind": "writeup",
+      "url": "https://www.securityweek.com/chrome-update-patches-exploited-xml-zero-day-eighth-this-year/",
+      "title": "Chrome Update Patches Exploited XML Zero-Day, Eighth This Year"
+     },
+     {
+      "kind": "writeup",
+      "url": "https://www.bleepingcomputer.com/news/security/google-patches-eighth-chrome-zero-day-exploited-in-attacks-this-year/",
+      "title": "Google patches eighth Chrome zero-day exploited in attacks this year"
+     },
+     {
+      "kind": "discussion",
+      "url": "https://news.ycombinator.com/item?id=50445667",
+      "title": "Chrome 157 fixes CVE-2026-125350, a use-after-free exploited in the wild",
+      "points": 2
+     },
+     {
+      "kind": "writeup",
+      "url": "https://chromereleases.googleblog.com/2026/11/stable-channel-update-for-desktop_018223192.html"
+     },
+     {
+      "kind": "repo",
+      "url": "https://github.com/Frostmoon39206/CVE-2026-125350-PoC",
+      "title": "Frostmoon39206/CVE-2026-125350-PoC"
+     },
+     {
+      "kind": "curator",
+      "url": "https://news.risky.biz/risky-bulletin-france-blames-iran-for-the-october-supermarket-fridge-hacks/",
+      "title": "Risky Bulletin: France blames Iran for the October supermarket fridge hacks"
+     },
+     {
+      "kind": "repo",
+      "url": "https://github.com/TJT001/CVE-2026-125350-PoC",
+      "title": "TJT001/CVE-2026-125350-PoC"
+     },
+     {
+      "kind": "curator",
+      "url": "https://news.risky.biz/srsly-risky-biz-iranian-hacks-with-russian-characteristics/",
+      "title": "Srsly Risky Biz: Iranian Hacks With Russian Characteristics"
+     },
+     {
+      "kind": "repo",
+      "url": "https://github.com/dexteon/cve-2026-125350-poc",
+      "title": "dexteon/cve-2026-125350-poc"
+     },
+     {
+      "kind": "repo",
+      "url": "https://github.com/al4n4n/CVE-2026-125350",
+      "title": "al4n4n/CVE-2026-125350"
+     }
+    ],
+    "brief": {
+     "text": "Uninitialized resource in WebGL in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to read memory outside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "lead": "https://www.securityweek.com/chrome-update-patches-exploited-xml-zero-day-eighth-this-year/"
+    },
+    "cvss": 9.6,
+    "kev": true,
+    "kev_date": "2026-11-10",
+    "products": [
+     {
+      "id": "google:chrome",
+      "name": "Chrome"
+     }
+    ],
+    "summary": {
+     "ko": {
+      "title": "Chrome 웹 브라우저 여러 구성요소 결함으로 악성 웹페이지 공격 가능",
+      "summary": "Chrome의 WebGL, XML, V8, GPU 등 여러 구성요소에 결함이 있어 악성 웹페이지로 코드가 실행되거나 브라우저 메모리가 엿봐질 수 있습니다. XML 결함 하나는 이미 실제 공격에 쓰이고 있습니다.",
+      "conditions": [],
+      "easy_conditions": [],
+      "mitigation": "Chrome을 157.0.8103.50 이상으로 업데이트하세요. Windows와 macOS는 157.0.8103.50/.51, Linux는 157.0.8103.50입니다.",
+      "easy": "Chrome 브라우저가 악성 웹페이지로 해킹당할 수 있습니다!",
+      "easy_title": "Chrome 브라우저 해킹 위험 (이미 공격 중)",
+      "easy_action": "Chrome을 최신 버전으로 지금 업데이트하세요.",
+      "names": [
+       "Chrome"
+      ],
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": [
+       {
+        "cve": "CVE-2026-125345",
+        "text": "악성 웹페이지로 브라우저 메모리 일부를 엿볼 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125343",
+        "text": "렌더러가 뚫리면 악성 웹페이지로 샌드박스 밖에서 코드를 실행할 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125344",
+        "text": "악성 웹페이지로 샌드박스 안에서 코드를 실행할 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125346",
+        "text": "악성 웹페이지로 샌드박스 안에서 코드를 실행할 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125347",
+        "text": "사용자를 속이면 샌드박스 밖에서 코드를 실행할 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125348",
+        "text": "샌드박스 밖에서 코드를 실행할 가능성이 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125342",
+        "text": "악성 웹페이지로 브라우저 메모리 일부를 엿볼 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125349",
+        "text": "Android 버전에서 렌더러가 뚫리면 샌드박스 밖 메모리를 엿볼 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-125350",
+        "text": "샌드박스 안에서 코드를 실행할 수 있으며 이미 실제 공격에 쓰이고 있습니다."
+       }
+      ]
+     },
+     "en": {
+      "title": "Chrome browser flaws in several components let malicious web pages attack",
+      "summary": "Flaws in several Chrome components, including WebGL, XML, V8 and GPU, let a malicious web page run code or read browser memory. One XML flaw is already used in real attacks.",
+      "conditions": [],
+      "easy_conditions": [],
+      "mitigation": "Update Chrome to 157.0.8103.50 or later. Windows and macOS: 157.0.8103.50/.51, Linux: 157.0.8103.50.",
+      "easy": "Chrome browser can be hacked by a malicious web page!",
+      "easy_title": "Chrome browser hacking risk, already under attack",
+      "easy_action": "Update Chrome to the newest version now.",
+      "names": [
+       "Chrome"
+      ],
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": [
+       {
+        "cve": "CVE-2026-125345",
+        "text": "A malicious web page can read parts of browser memory."
+       },
+       {
+        "cve": "CVE-2026-125343",
+        "text": "After taking over the renderer, a web page can run code outside the sandbox."
+       },
+       {
+        "cve": "CVE-2026-125344",
+        "text": "A malicious web page can run code inside the browser sandbox."
+       },
+       {
+        "cve": "CVE-2026-125346",
+        "text": "A malicious web page can run code inside the browser sandbox."
+       },
+       {
+        "cve": "CVE-2026-125347",
+        "text": "By tricking a user, an attacker can run code outside the sandbox."
+       },
+       {
+        "cve": "CVE-2026-125348",
+        "text": "It may let an attacker run code outside the sandbox."
+       },
+       {
+        "cve": "CVE-2026-125342",
+        "text": "A malicious web page can read parts of browser memory."
+       },
+       {
+        "cve": "CVE-2026-125349",
+        "text": "On Android, after taking over the renderer, an attacker can read memory outside the sandbox."
+       },
+       {
+        "cve": "CVE-2026-125350",
+        "text": "An attacker can run code inside the sandbox, and it is already used in real attacks."
+       }
+      ]
+     },
+     "products": [
+      "Chrome"
+     ],
+     "lead": "https://www.securityweek.com/chrome-update-patches-exploited-xml-zero-day-eighth-this-year/",
+     "fixed": "157.0.8103.50",
+     "command": "",
+     "stopgap": "",
+     "devices": [],
+     "fixes": [],
+     "incident": true,
+     "platforms": [
+      "Windows",
+      "macOS",
+      "Linux",
+      "Android"
+     ],
+     "stopgap_file": "",
+     "titles_ko": [
+      {
+       "url": "https://www.securityweek.com/chrome-update-patches-exploited-xml-zero-day-eighth-this-year/",
+       "title": "Chrome 업데이트, 공격에 쓰인 XML 제로데이 패치 (올해 여덟 번째)"
+      },
+      {
+       "url": "https://www.bleepingcomputer.com/news/security/google-patches-eighth-chrome-zero-day-exploited-in-attacks-this-year/",
+       "title": "구글, 올해 공격에 쓰인 Chrome 제로데이 여덟 번째 패치"
+      }
+     ],
+     "exploited": true,
+     "exploited_source": "https://www.securityweek.com/chrome-update-patches-exploited-xml-zero-day-eighth-this-year/",
+     "poc_public": false,
+     "library": false,
+     "widely_used": false,
+     "at": "2026-11-10T19:40:01Z",
+     "exploited_cves": [
+      "CVE-2026-125350"
+     ]
+    },
+    "cve_texts": {
+     "CVE-2026-125345": "Uninitialized resource in WebGL in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to read memory outside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "CVE-2026-125343": "Buffer overflow in Compositing in Google Chrome prior to 157.0.8103.50 allowed a remote attacker who had compromised the renderer process to execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "CVE-2026-125344": "Type confusion in V8 in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to execute arbitrary code inside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "CVE-2026-125346": "Use after free in XML in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to execute arbitrary code inside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "CVE-2026-125347": "Incorrect authorization in FileSystem in Google Chrome prior to 157.0.8103.50 allowed a remote attacker leveraging social engineering to execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "CVE-2026-125348": "Out of bounds write in GPU in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to potentially execute arbitrary code outside the sandbox via a crafted HTML page. (Chromium security severity: High)",
+     "CVE-2026-125342": "Uninitialized resource in GPU in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to read memory outside the sandbox via a crafted HTML page. (Chromium security severity: Medium)",
+     "CVE-2026-125349": "Uninitialized resource in GPU in Google Chrome on on Android prior to 157.0.8103.50 allowed a remote attacker who had compromised the renderer process to read memory outside the sandbox via a crafted HTML page. (Chromium security severity: Medium)",
+     "CVE-2026-125350": "Use after free in XML in Google Chrome prior to 157.0.8103.50 allowed a remote attacker to execute arbitrary code inside the sandbox via a crafted HTML page. (Chromium security severity: High)"
+    },
+    "cve_links": {
+     "CVE-2026-125345": [],
+     "CVE-2026-125343": [],
+     "CVE-2026-125344": [],
+     "CVE-2026-125346": [],
+     "CVE-2026-125347": [],
+     "CVE-2026-125348": [],
+     "CVE-2026-125342": [],
+     "CVE-2026-125349": [],
+     "CVE-2026-125350": []
+    },
+    "known": "Chrome",
+    "known_rank": 11,
+    "cve_scores": {
+     "CVE-2026-125345": {
+      "cvss": 9.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H"
+     },
+     "CVE-2026-125350": {
+      "cvss": 8.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-125343": {
+      "cvss": 8.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-125344": {
+      "cvss": 7.5,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-125346": {
+      "cvss": 6.5,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-125347": {
+      "cvss": 6.5,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-125348": {
+      "cvss": 5.4,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-125349": {
+      "cvss": 4.3,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     }
+    },
+    "kev_cves": {
+     "CVE-2026-125350": "2026-11-10"
+    },
+    "top_cve": "CVE-2026-125345"
+   },
+   "row": {
+    "id": "CVE-2026-125345",
+    "cves": [
+     "CVE-2026-125350",
+     "CVE-2026-125345",
+     "CVE-2026-125343",
+     "CVE-2026-125344",
+     "CVE-2026-125346",
+     "CVE-2026-125347",
+     "CVE-2026-125348",
+     "CVE-2026-125349",
+     "CVE-2026-125342"
+    ],
+    "top_cve": "CVE-2026-125345",
+    "cvss": 9.6,
+    "kev": true,
+    "kev_date": "2026-11-10",
+    "first_seen": "2026-11-10T17:30:02Z",
+    "published": "2026-11-10T06:12:24Z",
+    "rows": true
+   }
+  },
+  {
+   "full": {
+    "id": "CVE-2026-13672",
+    "cves": [
+     "CVE-2026-76954",
+     "CVE-2026-13672",
+     "CVE-2026-15198",
+     "CVE-2026-85098",
+     "CVE-2026-18792",
+     "CVE-2026-16550",
+     "CVE-2026-19414",
+     "CVE-2026-74857",
+     "CVE-2026-87801",
+     "CVE-2026-74850",
+     "CVE-2026-18596",
+     "CVE-2026-15201",
+     "CVE-2026-77738",
+     "CVE-2026-19048",
+     "CVE-2026-13656",
+     "CVE-2026-81558",
+     "CVE-2026-81584",
+     "CVE-2026-19833",
+     "CVE-2026-81559",
+     "CVE-2026-18633",
+     "CVE-2026-81557",
+     "CVE-2026-75785",
+     "CVE-2026-92379",
+     "CVE-2026-86343",
+     "CVE-2026-124993",
+     "CVE-2026-88266",
+     "CVE-2026-85101"
+    ],
+    "first_seen": "2026-11-12T03:40:01Z",
+    "published": "2026-11-12T03:31:54Z",
+    "mentions": [
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-13672"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-18792"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-74857"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-18596"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-19048"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-81584"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-18633"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-75785"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-86343"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-15198"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-16550"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-87801"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-15201"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-13656"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-19833"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-81557"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-92379"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-124993"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-85098"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-19414"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-74850"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-77738"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-81558"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-81559"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-88266"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-85101"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-76954"
+     },
+     {
+      "kind": "notice",
+      "url": "https://www.boho.or.kr/kr/bbs/view.do?searchCnd=&bbsId=B0000133&searchWrd=&menuNo=205020&pageIndex=1&categoryCode=&nttId=72300",
+      "title": "KISA 보호나라: Synology 제품 보안 업데이트 권고"
+     },
+     {
+      "kind": "repo",
+      "url": "https://github.com/googlesky/CVE-2026-76954",
+      "title": "googlesky/CVE-2026-76954"
+     },
+     {
+      "kind": "repo",
+      "url": "https://github.com/foxcornlab/synology-dsm-scanner",
+      "title": "foxcornlab/synology-dsm-scanner"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_18"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_19"
+     }
+    ],
+    "brief": {
+     "text": "An authorization bypass through user-controlled key vulnerability in the SSOAuth in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write arbitrary files and conduct denial-of-service attacks.",
+     "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_18"
+    },
+    "cvss": 9.8,
+    "products": [
+     {
+      "id": "synology:diskstation_manager_(dsm)",
+      "name": "DiskStation Manager (DSM)"
+     }
+    ],
+    "summary": {
+     "ko": {
+      "title": "Synology DSM SSOAuth 등 여러 기능의 인증 우회·파일 접근 취약점",
+      "summary": "Synology DSM의 여러 기능에서 발견된 취약점으로, 로그인한 사용자나 원격 공격자가 임의 파일을 읽거나 쓰고 서비스를 멈출 수 있습니다. DSM 7.2, 7.3, 7.4의 수정 전 버전이 해당합니다.",
+      "conditions": [
+       "일부는 유효한 DSM 사용자 계정이 필요합니다",
+       "일부는 관리자 권한이 필요합니다",
+       "일부는 침해된 LDAP 또는 Active Directory 서버가 필요합니다"
+      ],
+      "easy_conditions": [
+       "일부는 DSM 로그인 계정이 있어야 합니다",
+       "일부는 관리자 권한이 있어야 합니다",
+       "일부는 털린 회사 계정 서버가 있어야 합니다"
+      ],
+      "mitigation": "DSM 7.4는 7.4.1-90080-1 이상, DSM 7.3은 7.3.2-86009-5 이상, DSM 7.2는 7.2.2-72806-10 또는 7.2.1-69057-13 이상으로 업데이트하세요.",
+      "easy": "시놀로지 NAS 운영체제에서 파일이 뺏기거나 서비스가 멈출 수 있습니다!",
+      "easy_title": "시놀로지 NAS 파일 뚫림 위험",
+      "easy_action": "DSM을 수정된 버전으로 업데이트하세요.",
+      "names": [
+       "DiskStation Manager (DSM)"
+      ],
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": [
+       {
+        "cve": "CVE-2026-13672",
+        "text": "인증된 사용자가 인증 키를 조작해 임의 파일을 읽고 쓰거나 서비스를 멈출 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-18792",
+        "text": "로그인한 사용자가 공유 기능으로 제한된 폴더 밖의 파일을 읽고 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-74857",
+        "text": "로그인한 사용자가 인증 절차의 누락을 이용해 임의 파일을 읽고 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-18596",
+        "text": "유효한 계정을 가진 공격자가 다른 경로로 인증을 우회해 파일을 읽고 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-19048",
+        "text": "로그인한 사용자가 링크를 조작해 임의 파일에 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-81584",
+        "text": "LDAP 또는 Active Directory 서버를 장악한 공격자가 데이터베이스 명령을 조작해 임의 파일을 읽고 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-18633",
+        "text": "인증 없이 원격 공격자가 잘못된 포인터 접근으로 NFS 서비스를 멈출 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-75785",
+        "text": "관리자 권한이 있는 사용자가 VPN 기능의 명령 처리 결함으로 임의 파일을 읽고 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-86343",
+        "text": "관리자 권한이 있는 사용자가 SNMP 처리 결함으로 임의 파일을 읽고 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-15198",
+        "text": "인증 없이 원격 공격자가 WebDAV를 통해 특정 파일을 읽고 일부 서비스를 제한적으로 멈출 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-16550",
+        "text": "로그인한 사용자가 미디어 파서에서 파일 경로를 조작해 임의 파일을 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-87801",
+        "text": "로그인한 사용자가 API에서 민감한 정보를 보내 임의 파일을 읽을 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-15201",
+        "text": "중간자 공격자가 지원 양식 제출 과정에서 임의의 파일을 읽고 특정 파일을 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-13656",
+        "text": "인증된 원격 사용자가 오디오 플레이어의 입력값 처리 오류를 이용해 특정 파일을 읽거나 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-19833",
+        "text": "인증된 원격 사용자가 ACL API의 권한 검사 누락으로 특정 파일을 읽거나 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-81557",
+        "text": "인증된 원격 사용자가 DSMNotify의 입력값 처리 오류를 이용해 특정 파일을 읽거나 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-92379",
+        "text": "인증된 원격 사용자가 알림 API의 입력값 처리 오류를 이용해 특정 파일을 읽거나 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-124993",
+        "text": "원격 공격자가 보안 advisor의 잘못된 권한 설정으로 특정 파일을 읽을 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-85098",
+        "text": "원격 공격자가 synoscgi의 도달 가능한 assertion을 이용해 제한적인 서비스 거부 공격을 할 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-19414",
+        "text": "인증된 원격 사용자가 프로모션 API의 권한 검사 누락으로 특정 파일을 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-74850",
+        "text": "인증된 원격 사용자가 contentextract의 경로 제한 미흡으로 특정 파일을 읽을 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-77738",
+        "text": "인증된 원격 사용자가 Credential API의 서버 측 요청 위조 취약점으로 특정 파일을 읽을 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-81558",
+        "text": "인증된 원격 사용자가 SocketIo API의 권한 검사 누락으로 특정 파일을 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-81559",
+        "text": "인증된 원격 사용자가 TaskScheduler API의 권한 검사 누락으로 특정 파일을 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-88266",
+        "text": "인증된 원격 사용자가 synomount의 외부 제어 설정 문제를 이용해 특정 파일을 쓸 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-85101",
+        "text": "원격 공격자가 rsync의 인증 우회로 특정 파일을 읽고, 임의의 파일을 쓰고, 제한적인 서비스 거부 공격을 할 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-76954",
+        "text": "원격 공격자가 Auth API의 SQL 명령 처리 오류를 이용해 임의의 파일을 읽거나 쓰고 서비스 거부 공격을 할 수 있습니다."
+       }
+      ]
+     },
+     "en": {
+      "title": "Synology DSM SSOAuth and other feature flaws allow authorization bypass and file access",
+      "summary": "Several flaws in different features of Synology DSM let logged-in users or remote attackers read or write arbitrary files and stop services. Versions before the fixed releases in DSM 7.2, 7.3 and 7.4 are affected.",
+      "conditions": [
+       "Some flaws need a valid DSM user account",
+       "Some need administrator rights",
+       "One needs a compromised LDAP or Active Directory server"
+      ],
+      "easy_conditions": [
+       "Some need a DSM login account",
+       "Some need administrator rights",
+       "Some need a hijacked company account server"
+      ],
+      "mitigation": "Update DSM 7.4 to 7.4.1-90080-1 or later, DSM 7.3 to 7.3.2-86009-5 or later, and DSM 7.2 to 7.2.2-72806-10 or 7.2.1-69057-13 or later.",
+      "easy": "Synology NAS software could let attackers steal or stop your files!",
+      "easy_title": "Synology NAS files at risk",
+      "easy_action": "Update DSM to a fixed version.",
+      "names": [
+       "DiskStation Manager (DSM)"
+      ],
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": [
+       {
+        "cve": "CVE-2026-13672",
+        "text": "An authenticated user can manipulate an access key to read or write arbitrary files or stop services."
+       },
+       {
+        "cve": "CVE-2026-18792",
+        "text": "A logged-in user can use the sharing feature to read or write files outside the restricted folder."
+       },
+       {
+        "cve": "CVE-2026-74857",
+        "text": "A logged-in user can exploit a missing authentication step to read or write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-18596",
+        "text": "An attacker with valid credentials can bypass authentication through another path to read or write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-19048",
+        "text": "A logged-in user can manipulate a link to write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-81584",
+        "text": "An attacker controlling a compromised LDAP or Active Directory server can manipulate database commands to read or write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-18633",
+        "text": "A remote attacker can stop the NFS service through an uninitialized pointer access."
+       },
+       {
+        "cve": "CVE-2026-75785",
+        "text": "An administrator-level user can exploit an OS command flaw in the VPN feature to read or write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-86343",
+        "text": "An administrator-level user can exploit a CRLF flaw in SNMP handling to read or write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-15198",
+        "text": "A remote attacker without login can read specific files through WebDAV and limitedly stop some services."
+       },
+       {
+        "cve": "CVE-2026-16550",
+        "text": "A logged-in user can manipulate file paths in the media parser to write arbitrary files."
+       },
+       {
+        "cve": "CVE-2026-87801",
+        "text": "A logged-in user can read arbitrary files because the API sends sensitive information."
+       },
+       {
+        "cve": "CVE-2026-15201",
+        "text": "A man-in-the-middle attacker can read arbitrary files and write specific files while a support form is submitted."
+       },
+       {
+        "cve": "CVE-2026-13656",
+        "text": "A remote authenticated user can read or write specific files by exploiting an input handling flaw in the Audio Player."
+       },
+       {
+        "cve": "CVE-2026-19833",
+        "text": "A remote authenticated user can read or write specific files because the ACL API lacks an authorization check."
+       },
+       {
+        "cve": "CVE-2026-81557",
+        "text": "A remote authenticated user can read or write specific files by exploiting an input handling flaw in DSMNotify."
+       },
+       {
+        "cve": "CVE-2026-92379",
+        "text": "A remote authenticated user can read or write specific files by exploiting an input handling flaw in the Notification API."
+       },
+       {
+        "cve": "CVE-2026-124993",
+        "text": "A remote attacker can read specific files because of incorrect authorization in Security Advisor."
+       },
+       {
+        "cve": "CVE-2026-85098",
+        "text": "A remote attacker can trigger a limited denial-of-service attack through a reachable assertion in synoscgi."
+       },
+       {
+        "cve": "CVE-2026-19414",
+        "text": "A remote authenticated user can write specific files because the Promotion API lacks an authorization check."
+       },
+       {
+        "cve": "CVE-2026-74850",
+        "text": "A remote authenticated user can read specific files because contentextract does not properly restrict pathnames."
+       },
+       {
+        "cve": "CVE-2026-77738",
+        "text": "A remote authenticated user can read specific files through a server-side request forgery flaw in the Credential API."
+       },
+       {
+        "cve": "CVE-2026-81558",
+        "text": "A remote authenticated user can write specific files because the SocketIo API lacks an authorization check."
+       },
+       {
+        "cve": "CVE-2026-81559",
+        "text": "A remote authenticated user can write specific files because the TaskScheduler API lacks an authorization check."
+       },
+       {
+        "cve": "CVE-2026-88266",
+        "text": "A remote authenticated user can write specific files by exploiting externally controlled settings in synomount."
+       },
+       {
+        "cve": "CVE-2026-85101",
+        "text": "A remote attacker can read specific files, write arbitrary files, and launch a limited denial-of-service attack by bypassing authentication in rsync."
+       },
+       {
+        "cve": "CVE-2026-76954",
+        "text": "A remote attacker can read or write arbitrary files and launch a denial-of-service attack by exploiting an SQL command handling flaw in the Auth API."
+       }
+      ]
+     },
+     "products": [
+      "DiskStation Manager (DSM)"
+     ],
+     "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_18",
+     "fixed": "7.4.1-90080-1",
+     "command": "",
+     "stopgap": "",
+     "devices": [],
+     "fixes": [
+      {
+       "for": "Synology DSM 7.4",
+       "version": "7.4.1-90080-1",
+       "devices": []
+      },
+      {
+       "for": "Synology DSM 7.3",
+       "version": "7.3.2-86009-5",
+       "devices": []
+      },
+      {
+       "for": "Synology DSM 7.2",
+       "version": "7.2.2-72806-10",
+       "devices": []
+      }
+     ],
+     "incident": true,
+     "platforms": [],
+     "stopgap_file": "",
+     "titles_ko": [],
+     "exploited": false,
+     "exploited_source": "",
+     "poc_public": false,
+     "library": false,
+     "widely_used": false,
+     "at": "2026-11-15T12:21:29Z"
+    },
+    "cve_texts": {
+     "CVE-2026-13672": "An authorization bypass through user-controlled key vulnerability in the SSOAuth in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-18792": "An improper limitation of a pathname to a restricted directory vulnerability in the Sharing API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-74857": "A missing critical step in authentication vulnerability in the Auth API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-18596": "An authentication bypass using an alternate path or channel vulnerability in the OTP in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote attackers with valid user credentials to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-19048": "An improper link resolution before file access vulnerability in the thumb in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-81584": "An improper neutralization of special elements used in an SQL command vulnerability in the User API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote attackers with control over a compromised LDAP or Active Directory server to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-18633": "An access of uninitialized pointer vulnerability in the nfsd in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote attackers to conduct denial-of-service attacks.",
+     "CVE-2026-75785": "An improper neutralization of special elements used in an OS command vulnerability in the VPN API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users with administrator privileges to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-86343": "An improper neutralization of CRLF sequences vulnerability in the SNMP API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users with administrator privileges to read or write arbitrary files and conduct denial-of-service attacks.",
+     "CVE-2026-15198": "A missing authentication for critical functionality vulnerability in the Webdav API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote attackers to read specific files and conduct limited denial-of-service attacks.",
+     "CVE-2026-16550": "An external control of file name or path vulnerability in the Media Parser in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to write arbitrary files.",
+     "CVE-2026-87801": "An insertion of sensitive information into sent data vulnerability in the API framework in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read arbitrary files.",
+     "CVE-2026-15201": "An improper certificate validation vulnerability in the Support Form in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows man-in-the-middle attackers to read arbitrary files and write specific files during support form submission.",
+     "CVE-2026-13656": "An improper neutralization of input during web page generation vulnerability in the Audio Player in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write specific files.",
+     "CVE-2026-19833": "A missing authorization vulnerability in the ACL API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write specific files.",
+     "CVE-2026-81557": "An improper neutralization of input during web page generation vulnerability in the DSMNotify in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write specific files.",
+     "CVE-2026-92379": "An improper neutralization of input during web page generation vulnerability in the Notification API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read or write specific files.",
+     "CVE-2026-124993": "An incorrect authorization vulnerability in the Security Advisor in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote attackers to read specific files.",
+     "CVE-2026-85098": "A reachable assertion vulnerability in the synoscgi in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote attackers to conduct limited denial-of-service attacks.",
+     "CVE-2026-19414": "A missing authorization vulnerability in the Promotion API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to write specific files.",
+     "CVE-2026-74850": "An improper limitation of a pathname to a restricted directory vulnerability in the contentextract in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read specific files.",
+     "CVE-2026-77738": "A server-side request forgery vulnerability in the Credential API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to read specific files.",
+     "CVE-2026-81558": "A missing authorization vulnerability in the SocketIo API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to write specific files.",
+     "CVE-2026-81559": "A missing authorization vulnerability in the TaskScheduler API in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to write specific files.",
+     "CVE-2026-88266": "An external control of system or configuration setting vulnerability in the synomount in Synology DiskStation Manager (DSM) before 7.3.2-86009-5 and 7.4.1-90080-1 allows remote authenticated users to write specific files.",
+     "CVE-2026-85101": "An authentication bypass using an alternate path or channel vulnerability in the rsync in Synology DiskStation Manager (DSM) before 7.2.1-69057-13, 7.2.2-72806-10, 7.3.2-86009-5, and 7.4.1-90080-1 allows remote attackers to read specific files, write arbitrary files, and conduct limited denial-of-service attacks.",
+     "CVE-2026-76954": "An improper neutralization of special elements used in an SQL command vulnerability in the Auth API in Synology DiskStation Manager (DSM) before 7.2.1-69057-13, 7.2.2-72806-10, 7.3.2-86009-5, and 7.4.1-90080-1 allows remote attackers to read or write arbitrary files and conduct denial-of-service attacks."
+    },
+    "cve_links": {
+     "CVE-2026-13672": [],
+     "CVE-2026-18792": [],
+     "CVE-2026-74857": [],
+     "CVE-2026-18596": [],
+     "CVE-2026-19048": [],
+     "CVE-2026-81584": [],
+     "CVE-2026-18633": [],
+     "CVE-2026-75785": [],
+     "CVE-2026-86343": [],
+     "CVE-2026-15198": [],
+     "CVE-2026-16550": [],
+     "CVE-2026-87801": [],
+     "CVE-2026-15201": [],
+     "CVE-2026-13656": [],
+     "CVE-2026-19833": [],
+     "CVE-2026-81557": [],
+     "CVE-2026-92379": [],
+     "CVE-2026-124993": [],
+     "CVE-2026-85098": [],
+     "CVE-2026-19414": [],
+     "CVE-2026-74850": [],
+     "CVE-2026-77738": [],
+     "CVE-2026-81558": [],
+     "CVE-2026-81559": [],
+     "CVE-2026-88266": [],
+     "CVE-2026-85101": [],
+     "CVE-2026-76954": []
+    },
+    "quick_title": {
+     "ko": {
+      "title": "시놀로지 DSM SSOAuth 키 처리 취약점으로 로그인한 원격 사용자가 파일을 읽고 쓰거나 서비스를 중단시킬 수 있음",
+      "easy_title": "시놀로지 DSM 파일 훔쳐보기·멈춤 위험"
+     },
+     "en": {
+      "title": "Synology DSM SSOAuth key flaw lets logged-in remote users read or write files and disrupt service",
+      "easy_title": "Synology DSM file snooping risk"
+     },
+     "at": "2026-11-12T03:40:01Z"
+    },
+    "known": "Synology DSM",
+    "known_rank": 129,
+    "cve_scores": {
+     "CVE-2026-13672": {
+      "cvss": 8.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-18792": {
+      "cvss": 8.4,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-74857": {
+      "cvss": 8.0,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-18596": {
+      "cvss": 7.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-19048": {
+      "cvss": 7.2,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-81584": {
+      "cvss": 6.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-18633": {
+      "cvss": 6.4,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-75785": {
+      "cvss": 6.0,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-86343": {
+      "cvss": 5.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-15198": {
+      "cvss": 8.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-16550": {
+      "cvss": 8.4,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-87801": {
+      "cvss": 8.0,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-15201": {
+      "cvss": 7.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-13656": {
+      "cvss": 7.2,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-19833": {
+      "cvss": 6.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-81557": {
+      "cvss": 6.4,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-92379": {
+      "cvss": 6.0,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-124993": {
+      "cvss": 5.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-85098": {
+      "cvss": 8.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-19414": {
+      "cvss": 8.4,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-74850": {
+      "cvss": 8.0,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-77738": {
+      "cvss": 7.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-81558": {
+      "cvss": 7.2,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-81559": {
+      "cvss": 6.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-76954": {
+      "cvss": 9.8,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+     }
+    },
+    "kev_cves": {},
+    "top_cve": "CVE-2026-76954"
+   },
+   "row": {
+    "id": "CVE-2026-13672",
+    "cves": [
+     "CVE-2026-76954",
+     "CVE-2026-13672",
+     "CVE-2026-15198",
+     "CVE-2026-85098",
+     "CVE-2026-18792",
+     "CVE-2026-16550",
+     "CVE-2026-19414",
+     "CVE-2026-74857",
+     "CVE-2026-87801",
+     "CVE-2026-74850",
+     "CVE-2026-18596",
+     "CVE-2026-15201",
+     "CVE-2026-77738",
+     "CVE-2026-19048",
+     "CVE-2026-13656",
+     "CVE-2026-81558",
+     "CVE-2026-81584",
+     "CVE-2026-19833",
+     "CVE-2026-81559",
+     "CVE-2026-18633",
+     "CVE-2026-81557",
+     "CVE-2026-75785",
+     "CVE-2026-92379",
+     "CVE-2026-86343",
+     "CVE-2026-124993",
+     "CVE-2026-88266",
+     "CVE-2026-85101"
+    ],
+    "top_cve": "CVE-2026-76954",
+    "cvss": 9.8,
+    "first_seen": "2026-11-12T03:40:01Z",
+    "published": "2026-11-12T03:31:54Z",
+    "rows": true
+   }
+  },
+  {
+   "full": {
+    "id": "CVE-2026-126253",
+    "cves": [
+     "CVE-2026-126253",
+     "CVE-2026-126254",
+     "CVE-2026-126255",
+     "CVE-2026-126256"
+    ],
+    "first_seen": "2026-11-11T21:40:02Z",
+    "published": "2026-11-11T21:31:47Z",
+    "mentions": [
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-126253"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-126254"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-126255"
+     },
+     {
+      "kind": "cve_record",
+      "url": "https://www.cve.org/CVERecord?id=CVE-2026-126256"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://fortiguard.fortinet.com/psirt/FG-IR-26-267"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://fortiguard.fortinet.com/psirt/FG-IR-26-268"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://fortiguard.fortinet.com/psirt/FG-IR-26-269"
+     },
+     {
+      "kind": "advisory",
+      "url": "https://fortiguard.fortinet.com/psirt/FG-IR-26-270"
+     }
+    ],
+    "brief": {
+     "text": "A authentication bypass by primary weakness vulnerability in Fortinet FortiOS 8.0.0 through 8.0.1, FortiOS 7.6.0 through 7.6.7, FortiOS 7.4.0 through 7.4.12, FortiOS 7.2.0 through 7.2.13 may allow an unauthenticated attacker to broadcast LSA via specially crafted request",
+     "lead": "https://fortiguard.fortinet.com/psirt/FG-IR-26-267"
+    },
+    "cvss": 9.6,
+    "products": [
+     {
+      "id": "fortinet:fortios",
+      "name": "Fortios"
+     },
+     {
+      "id": "fortinet:fortipam",
+      "name": "Fortipam"
+     }
+    ],
+    "summary": {
+     "ko": {
+      "title": "FortiOS·FortiPAM 인증 우회·명령 실행 등 결함",
+      "summary": "FortiOS와 FortiPAM에서 인증 우회, 임의 명령 실행 등 네 개의 결함이 발견되었습니다. 인증 없는 공격자가 노릴 수 있는 결함도 포함되어 있습니다.",
+      "conditions": [
+       "설정된 iBGP 이웃 장비"
+      ],
+      "easy_conditions": [
+       "라우팅 설정에서 이웃으로 등록된 장비"
+      ],
+      "mitigation": "FortiOS 8.0은 8.0.2, 7.6은 7.6.8, 7.4는 7.4.13, 7.2는 7.2.14 이상으로 업데이트하세요. FortiOS 7.0(7.0.1~7.0.19)은 advisory가 고친 릴리스로 옮기라고 합니다. FortiPAM은 CVE 기록의 1.9.3, 1.8.5, 1.7.3 이상 버전으로 올리세요. FortiSASE는 제조사가 이미 고쳐서 따로 할 일이 없습니다.",
+      "easy": "포티넷 방화벽 장비가 해킹당하거나 멈출 수 있습니다!",
+      "easy_title": "FortiOS 방화벽 뚫림 위험",
+      "easy_action": "포티넷 장비를 수정된 버전으로 업데이트하세요.",
+      "names": [
+       "Fortinet FortiOS",
+       "Fortinet FortiPAM"
+      ],
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": [
+       {
+        "cve": "CVE-2026-126253",
+        "text": "인증 없는 공격자가 특수하게 만든 요청으로 OSPF 경로 정보를 네트워크에 뿌릴 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-126254",
+        "text": "설정된 iBGP 이웃 장비가 잘못된 값을 보내 연결된 라우터들에 문제를 일으킬 수 있습니다."
+       },
+       {
+        "cve": "CVE-2026-126255",
+        "text": "인증하지 않은 공격자가 특수하게 만든 자격 정보로 로그인 검사를 통과할 수 있습니다. FortiPAM도 해당합니다."
+       },
+       {
+        "cve": "CVE-2026-126256",
+        "text": "원격의 권한 있는 공격자가 조작된 패킷으로 임의 명령을 실행할 수 있습니다."
+       }
+      ]
+     },
+     "en": {
+      "title": "FortiOS and FortiPAM authentication bypass and code execution flaws",
+      "summary": "Four flaws in Fortinet FortiOS and FortiPAM allow authentication bypass, arbitrary command execution and router disruption. Some can be triggered by an unauthenticated attacker.",
+      "conditions": [
+       "A configured iBGP neighbor device"
+      ],
+      "easy_conditions": [
+       "A device registered as a routing neighbor in its settings"
+      ],
+      "mitigation": "Update FortiOS 8.0 to 8.0.2, 7.6 to 7.6.8, 7.4 to 7.4.13 and 7.2 to 7.2.14 or later. For FortiOS 7.0 (7.0.1 through 7.0.19), the advisory says to migrate to a fixed release. For FortiPAM, update to 1.9.3, 1.8.5 or 1.7.3 or later as the CVE record states. FortiSASE was fixed by the vendor; users need do nothing.",
+      "easy": "Fortinet firewall devices can be hacked or knocked offline!",
+      "easy_title": "FortiOS firewall breach risk",
+      "easy_action": "Update your Fortinet device to the fixed version.",
+      "names": [
+       "Fortinet FortiOS",
+       "Fortinet FortiPAM"
+      ],
+      "command_for": "",
+      "stopgap_then": "",
+      "cve_lines": [
+       {
+        "cve": "CVE-2026-126253",
+        "text": "An unauthenticated attacker can flood the network with OSPF routing information using a specially crafted request."
+       },
+       {
+        "cve": "CVE-2026-126254",
+        "text": "A configured iBGP neighbor can send bad values that cause problems for all connected routers."
+       },
+       {
+        "cve": "CVE-2026-126255",
+        "text": "An unauthenticated attacker can pass the login check with specially crafted credentials. FortiPAM is also affected."
+       },
+       {
+        "cve": "CVE-2026-126256",
+        "text": "A remote attacker with privileges can run arbitrary commands using crafted packets."
+       }
+      ]
+     },
+     "products": [
+      "Fortinet FortiOS",
+      "Fortinet FortiPAM"
+     ],
+     "lead": "https://fortiguard.fortinet.com/psirt/FG-IR-26-267",
+     "fixed": "8.0.2",
+     "command": "",
+     "stopgap": "",
+     "devices": [],
+     "fixes": [
+      {
+       "for": "Fortinet FortiOS 8.0",
+       "version": "8.0.2",
+       "devices": []
+      },
+      {
+       "for": "Fortinet FortiOS 7.6",
+       "version": "7.6.8",
+       "devices": []
+      },
+      {
+       "for": "Fortinet FortiOS 7.4",
+       "version": "7.4.13",
+       "devices": []
+      },
+      {
+       "for": "Fortinet FortiOS 7.2",
+       "version": "7.2.14",
+       "devices": []
+      }
+     ],
+     "incident": true,
+     "platforms": [],
+     "stopgap_file": "",
+     "titles_ko": [],
+     "exploited": false,
+     "exploited_source": "",
+     "poc_public": false,
+     "library": false,
+     "widely_used": false,
+     "at": "2026-11-15T12:21:29Z"
+    },
+    "cve_texts": {
+     "CVE-2026-126253": "A authentication bypass by primary weakness vulnerability in Fortinet FortiOS 8.0.0 through 8.0.1, FortiOS 7.6.0 through 7.6.7, FortiOS 7.4.0 through 7.4.12, FortiOS 7.2.0 through 7.2.13 may allow an unauthenticated attacker to broadcast LSA via specially crafted request",
+     "CVE-2026-126254": "A numeric truncation error vulnerability in Fortinet FortiOS 8.0.0 through 8.0.1, FortiOS 7.6.0 through 7.6.7, FortiOS 7.4.0 through 7.4.12, FortiOS 7.2.0 through 7.2.13 may allow a configured ibgp neighbor to send malicious/malformed attributes to all connected routers via a specially crafted request",
+     "CVE-2026-126255": "A path traversal: '../filedir' vulnerability in Fortinet FortiOS 8.0.0 through 8.0.1, FortiOS 7.6.0 through 7.6.7, FortiOS 7.4.0 through 7.4.12, FortiOS 7.2.0 through 7.2.13, FortiPAM 1.6 all versions, FortiPAM 1.5 all versions, FortiPAM 1.4 all versions, FortiPAM 1.3 all versions, FortiPAM 1.2 all versions, FortiPAM 1.1 all versions, FortiPAM 1.0 all versions may allow an unauthenticated attacker to bypass authentication via specially crafted credentials.",
+     "CVE-2026-126256": "A out-of-bounds read vulnerability in Fortinet FortiOS 8.0.0 through 8.0.1, FortiOS 7.6.0 through 7.6.7, FortiOS 7.4 all versions, FortiOS 7.2 all versions, FortiOS 7.0 all versions may allow a remote privileged attacker to execute arbitrary code or command via crafted paquets."
+    },
+    "cve_links": {
+     "CVE-2026-126253": [],
+     "CVE-2026-126254": [],
+     "CVE-2026-126255": [],
+     "CVE-2026-126256": []
+    },
+    "quick_title": {
+     "ko": {
+      "title": "FortiOS·FortiPAM 인증 우회로 네트워크 경로 정보 발송 문제",
+      "easy_title": "FortiOS 방화벽 장비 뚫림 위험"
+     },
+     "en": {
+      "title": "FortiOS and FortiPAM authentication bypass lets attackers send routing broadcasts",
+      "easy_title": "FortiOS firewall device break-in risk"
+     },
+     "at": "2026-11-11T21:40:02Z"
+    },
+    "known": "FortiOS",
+    "known_rank": 109,
+    "cve_scores": {
+     "CVE-2026-126253": {
+      "cvss": 9.6,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-126254": {
+      "cvss": 8.1,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+     },
+     "CVE-2026-126255": {
+      "cvss": 7.2,
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+     }
+    },
+    "kev_cves": {},
+    "top_cve": "CVE-2026-126253"
+   },
+   "row": {
+    "id": "CVE-2026-126253",
+    "cves": [
+     "CVE-2026-126253",
+     "CVE-2026-126254",
+     "CVE-2026-126255",
+     "CVE-2026-126256"
+    ],
+    "top_cve": "CVE-2026-126253",
+    "cvss": 9.6,
+    "first_seen": "2026-11-11T21:40:02Z",
+    "published": "2026-11-11T21:31:47Z",
+    "rows": true
+   }
+  }
+ ]
+}

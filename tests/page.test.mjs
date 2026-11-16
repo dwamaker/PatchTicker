@@ -422,3 +422,49 @@ test('a group page shows each CVE with its one line, the Summary\'s else the rec
   assert.match(html, /<li><a [^>]*>CVE-2026-1002<span[^>]*>[^<]*<\/span><\/a><\/li>/); // no line: the id alone
   assert.match(html, /<details class="more">[\s\S]*CVE-2026-1013<span[^>]*>[^<]*<\/span><\/a><\/strong> Last one<\/li>[\s\S]*<\/details>/); // past the fold too
 });
+
+// Step 4 (H3, N1): the three groups of the plan with the keys the collector adds (tests/fixtures/board/step4-groups.json).
+const STEP4 = JSON.parse(readFileSync(new URL('./fixtures/board/step4-groups.json', import.meta.url), 'utf8')).groups.map((g) => g.full);
+const KEV_LINK = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog';
+const before = (i) => {
+  const { cve_scores, kev_cves, top_cve, ...rest } = i;
+  const { exploited_cves, ...summary } = i.summary;
+  return { ...rest, summary };
+};
+const cveSection = (html) => html.split('id="s-cves"')[1].split('</section>')[0];
+
+test('the score names its CVE in a group and not in a one-CVE Incident', async () => {
+  const [chrome] = STEP4;
+  const ko = await (await page(chrome, 'ko', chrome.id)).text();
+  assert.match(ko, /aria-label="CVSS 9\.6 \(심각\) · CVE-2026-125345의 점수"/);
+  assert.match(ko, /<p class="reason">CVE-2026-125345의 점수: CVSS 9\.6<\/p>/);
+  const en = await (await page(chrome, 'en', chrome.id)).text();
+  assert.match(en, /<p class="reason">Score of CVE-2026-125345: CVSS 9\.6<\/p>/);
+  const one = await (await page({ ...SSHOLE, top_cve: 'CVE-2026-123158', cve_scores: { 'CVE-2026-123158': { cvss: 9.8, vector: 'CVSS:3.1/AV:N' } } })).text();
+  assert.doesNotMatch(one, /의 점수/);
+});
+
+test('only the exploited CVE wears the mark, with the KEV link, and the reason names it', async () => {
+  const [chrome] = STEP4;
+  for (const [lang, word, listed] of [['ko', '악용 발생', 'CISA KEV 등재'], ['en', 'Exploited', 'Listed in CISA KEV']]) {
+    const html = await (await page(chrome, lang, chrome.id)).text();
+    const cves = cveSection(html);
+    assert.equal(cves.match(/class="kev"/g).length, 1, lang);
+    assert.match(cves, new RegExp(`^[^]*?<li><strong><a href="https://www.cve.org/CVERecord[?]id=CVE-2026-125350"[^]*?</strong> <span class="kev">${word}</span> <a href="${KEV_LINK}"[^>]*>CISA KEV<`)); // the Lead first
+    assert.match(html, new RegExp(`<p class="reason">${listed} · 2026-11-10 · CVE-2026-125350</p>`));
+  }
+  // An attack the Summary's source names: its own link beside the CVE.
+  const [, , fortios] = STEP4;
+  const told = { ...fortios, summary: { ...fortios.summary, exploited: true, exploited_source: 'https://example.com/attacks', exploited_cves: ['CVE-2026-126255'] } };
+  const cves = cveSection(await (await page(told, 'en', told.id)).text());
+  assert.match(cves, /CVE-2026-126255<span[^]*?<\/strong> <span class="kev">Exploited<\/span> <a href="https:\/\/example\.com\/attacks"[^>]*>example\.com</);
+});
+
+test('a document without the step 4 keys shows no CVE beside the score and no mark', async () => {
+  for (const doc of STEP4.map(before)) {
+    const html = await (await page(doc, 'ko', doc.id)).text();
+    assert.doesNotMatch(html, /의 점수/, doc.id);
+    assert.doesNotMatch(cveSection(html), /class="kev"/, doc.id);
+    assert.doesNotMatch(html, /<p class="reason">[^<]* · CVE-/, doc.id);
+  }
+});

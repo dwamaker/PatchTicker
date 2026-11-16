@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { cveLines, cveUrl, cvssRating, easyLine, exploitReason, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { cveExploit, cveLines, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
 import { SITE, SLUG, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -119,11 +119,15 @@ const link = (url, text, t) => (http(url) ? `<a href="${esc(url)}"${NEW_TAB}>${e
 // link stays in the HTML for search engines; <details> needs no script.
 const CVE_SHOWN = 10;
 // Each CVE with its one line, as the Board's opened row shows it (cveLines, M3); a CVE with no line yet keeps its id. In
-// stored order: an order by score (step 4) sorts i.cves here.
+// the document's order, which the collector writes Lead CVE first (step 4). An exploited CVE wears 악용 발생 and its source.
 const cveList = (i, lang, t) => {
   const text = new Map(cveLines(i, lang).map((l) => [l.cve, l.text]));
   const cls = text.size ? 'cves lines' : 'cves';
-  const links = i.cves.map((cve) => (text.has(cve) ? `<strong>${link(cveUrl(cve), cve, t)}</strong> ${esc(text.get(cve))}` : link(cveUrl(cve), cve, t)));
+  const mark = (cve) => {
+    const hit = cveExploit(i, cve);
+    return hit ? ` <span class="kev">${esc(t.kevReason)}</span> ${link(hit.url, hit.kind === 'kev' ? t.kevSource : host(hit.url), t)}` : '';
+  };
+  const links = i.cves.map((cve) => (text.has(cve) ? `<strong>${link(cveUrl(cve), cve, t)}</strong>${mark(cve)} ${esc(text.get(cve))}` : link(cveUrl(cve), cve, t) + mark(cve)));
   if (links.length <= CVE_SHOWN + 2) return ul(links, cls); // two more are not worth a fold
   return ul(links.slice(0, CVE_SHOWN), cls)
     + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), cls)}</details>`;
@@ -151,18 +155,23 @@ function banner(i, t) {
   const rating = cvssRating(cvss);
   // Not rated yet, as on the Board (riskCell): the sign is dashed like the empty ring, 점수 대기 under it (critique 13).
   const pending = !isExploited(i) && !rating;
+  // In a group the score names the CVE it belongs to (step 4): in the ring's label and a small line.
+  const top = rating ? scoreCve(i) : null;
   const under = isExploited(i) ? `<small class="why kev">${esc(t.kevReason)}</small>` : pending ? `<small class="why unrated">${esc(t.unratedWhy)}</small>` : '';
   const sign = `<p class="sign"><b class="word">${esc(t.levels[level])}</b>${under ? ` ${under}` : ''}</p>`;
   const ring = rating
-    ? `<span class="gauge sev-${rating}" role="img" aria-label="CVSS ${cvss.toFixed(1)} (${esc(t.rating[rating])})" style="--fill:${(Math.min(cvss, 10) / 10).toFixed(3)}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg><b>${cvss.toFixed(1)}</b></span>`
+    ? `<span class="gauge sev-${rating}" role="img" aria-label="CVSS ${cvss.toFixed(1)} (${esc(t.rating[rating])})${top ? ` · ${esc(t.scoreOf(top))}` : ''}" style="--fill:${(Math.min(cvss, 10) / 10).toFixed(3)}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg><b>${cvss.toFixed(1)}</b></span>`
     : `<span class="gauge unrated" role="img" aria-label="${esc(t.unrated)}">—</span>`;
   const reason = exploitReason(i);
   let why = '';
   if (reason?.kind === 'kev') why = `${esc(t.kevListed)}${reason.date ? ` · ${esc(reason.date)}` : ''}`;
   if (reason?.kind === 'source') why = `${esc(t.attackSource)} ${link(reason.url, host(reason.url), t)}`;
+  const hit = i.cves.length > 1 ? exploitedCves(i) : []; // which CVEs of a group are attacked; older data names none
+  if (why && hit.length) why += ` · ${hit.map(esc).join(', ')}`;
   const poc = !reason && i.summary?.poc_public === true; // red like the Board's .kev line, the one red reason (critique 14)
   if (poc) why = esc(t.poc);
-  return `<div class="banner risk-${level}${pending ? ' unrated' : ''}">${sign}${ring}${why ? `<p class="reason${poc ? ' kev' : ''}">${why}</p>` : ''}</div>`;
+  const named = top ? `<p class="reason">${esc(t.scoreOf(top))}: CVSS ${cvss.toFixed(1)}</p>` : '';
+  return `<div class="banner risk-${level}${pending ? ' unrated' : ''}">${sign}${ring}${named}${why ? `<p class="reason${poc ? ' kev' : ''}">${why}</p>` : ''}</div>`;
 }
 
 // Each tag links to the Board with that one filter (owner, 11-10), by the rule the Board's own tag buttons follow; same tab.

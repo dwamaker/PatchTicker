@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -1168,4 +1168,87 @@ test('a linked Incident is found at its row or its fold, and the page that holds
   assert.deepEqual(linkedPlace(items, 'edge', 100), { index: 99, shown: 100 }); // the last of the first page
   assert.deepEqual(linkedPlace(items, 'm2', 100), { index: 100, shown: 200 }); // a fold member counts at its fold's place
   assert.equal(linkedPlace(items, 'gone', 100), null);
+});
+
+// Step 4 (H3, N1): the three groups of the plan, with the keys the collector adds (tests/fixtures/board/step4-groups.json).
+const STEP4 = JSON.parse(readFileSync(new URL('./fixtures/board/step4-groups.json', import.meta.url), 'utf8')).groups;
+const [chrome, synology, fortios] = STEP4.map((g) => g.full);
+// A document written before step 4: none of the new keys, the same CVEs.
+const before = (i) => {
+  const { cve_scores, kev_cves, top_cve, ...rest } = i;
+  const { exploited_cves, ...summary } = i.summary;
+  return { ...rest, summary };
+};
+
+test('a searched CVE that is not the first of its Incident is named, with its score and exploited state', () => {
+  const line = (i, cve, lang) => cveLines(i, lang).find((l) => l.cve === cve).text;
+  assert.equal(chrome.cves[0], 'CVE-2026-125350'); // the Lead: KEV-listed
+  assert.deepEqual(searchedCve('CVE-2026-125345', chrome, 'ko'),
+    { cve: 'CVE-2026-125345', text: line(chrome, 'CVE-2026-125345', 'ko'), cvss: 9.6, exploited: false }); // 악용 보고 없음
+  assert.equal(searchedCve('chrome cve-2026-125345', chrome, 'en').text, 'A malicious web page can read parts of browser memory.');
+  assert.deepEqual(searchedCve('CVE-2026-13672', synology, 'en'),
+    { cve: 'CVE-2026-13672', text: line(synology, 'CVE-2026-13672', 'en'), cvss: synology.cve_scores['CVE-2026-13672'].cvss, exploited: false });
+  assert.equal(searchedCve('CVE-2026-85101', synology, 'en').cvss, null); // no score yet
+  // The Incident is exploited but its data names no CVE: nothing is said, never a wrong "No attacks reported".
+  assert.equal(searchedCve('CVE-2026-125345', before(chrome), 'ko').exploited, null);
+  assert.equal(searchedCve('CVE-2026-125345', { ...chrome, kev: false, kev_cves: {} }, 'ko').exploited, false); // the Summary names 125350
+  assert.equal(searchedCve('CVE-2026-125350', { ...chrome, cves: [...chrome.cves].reverse() }, 'ko').exploited, true);
+});
+
+test('a searched CVE that leads, or a partial id, names nothing', () => {
+  for (const query of ['', 'chrome', 'CVE-2026-125350', 'CVE-2026-12534', 'CVE-2026-1253455', 'CVE-2026-99999', 'xCVE-2026-125345']) {
+    assert.equal(searchedCve(query, chrome, 'ko'), null, query);
+  }
+  assert.equal(searchedCve('CVE-2026-125345', { ...chrome, cves: ['CVE-2026-125345'] }, 'ko'), null);
+});
+
+test('each CVE says its own score and exploited state; only CVEs the Incident holds are named', () => {
+  assert.deepEqual(exploitedCves(chrome), ['CVE-2026-125350']);
+  assert.deepEqual(cveExploit(chrome, 'CVE-2026-125350'), { kind: 'kev', url: KEV_CATALOG });
+  assert.equal(cveExploit(chrome, 'CVE-2026-125345'), null);
+  assert.deepEqual(exploitedCves(synology), []);
+  const told = { ...fortios, summary: { ...fortios.summary, exploited: true, exploited_source: 'https://example.com/attacks',
+    exploited_cves: ['CVE-2026-126255', 'CVE-2026-1'] } };
+  assert.deepEqual(exploitedCves(told), ['CVE-2026-126255']); // CVE-2026-1 is not this Incident's
+  assert.deepEqual(cveExploit(told, 'CVE-2026-126255'), { kind: 'source', url: 'https://example.com/attacks' });
+  assert.deepEqual(exploitedCves({ ...told, summary: { ...told.summary, exploited_source: '' } }), []); // the claim did not hold
+  assert.equal(cveScore(fortios, 'CVE-2026-126254'), 8.1);
+  assert.equal(cveScore(fortios, 'CVE-2026-126256'), null);
+  assert.equal(scoreCve(chrome), 'CVE-2026-125345');
+  assert.equal(scoreCve(synology), 'CVE-2026-76954');
+  assert.equal(scoreCve({ ...chrome, top_cve: 'CVE-2026-1' }), null);
+  assert.equal(scoreCve({ ...chrome, cves: ['CVE-2026-125345'] }), null); // one CVE needs no name
+});
+
+test('a document without the step 4 keys names no CVE and marks none', () => {
+  for (const i of [chrome, synology, fortios].map(before)) {
+    assert.equal(scoreCve(i), null, i.id);
+    assert.deepEqual(exploitedCves(i), [], i.id);
+    assert.ok(i.cves.every((c) => cveScore(i, c) === null && cveExploit(i, c) === null), i.id);
+  }
+});
+
+test('a row view and its full Incident agree on the top CVE and the row name', () => {
+  for (const { full, row } of STEP4) {
+    assert.equal(scoreCve(row), scoreCve(full), full.id);
+    assert.deepEqual(cveHead(row.cves), cveHead(full.cves), full.id);
+  }
+});
+
+test('a reordered row replaces a held full Incident', () => {
+  // A row view as rows.json writes it: the full Incident's row fields (here the whole of it, marked rows).
+  const full = chrome;
+  const row = { ...full, rows: true };
+  assert.equal(mergeIncidents([full], [row]).incidents[0], full); // nothing the row shows changed
+  const held = before({ ...full, cves: [full.id, ...full.cves.filter((c) => c !== full.id)] }); // arrival order, no top CVE
+  assert.equal(mergeIncidents([held], [row]).incidents[0], row);
+  assert.equal(mergeIncidents([{ ...held, cves: full.cves }], [row]).incidents[0], row); // the top CVE alone arrived
+  assert.equal(mergeIncidents([full], [{ ...row, top_cve: 'CVE-2026-125343' }]).incidents[0].top_cve, 'CVE-2026-125343');
+});
+
+test('the step 4 words say the same in both languages', () => {
+  assert.equal(WORDS.ko.scoreOf('CVE-2026-1'), 'CVE-2026-1의 점수');
+  assert.equal(WORDS.en.scoreOf('CVE-2026-1'), 'Score of CVE-2026-1');
+  assert.equal(WORDS.ko.kevSource, 'CISA KEV');
+  assert.equal(WORDS.en.kevSource, 'CISA KEV');
 });

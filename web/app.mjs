@@ -1,4 +1,4 @@
-import { cveLines, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -55,6 +55,7 @@ const TEXT = {
     original: '원문', lead: { advisory: '공식 공지 읽기', writeup: '분석 글 읽기', cve_record: 'CVE 기록 읽기', discussion: '토론 읽기', curator: '뉴스레터 읽기', notice: '보호나라 공지 읽기', repo: '저장소 보기', other: '원문 읽기' },
     aliasHint: (w, names) => `‘${w}’${ro(w)} 검색해 ${names.join(', ')}도 함께 찾았습니다.`,
     support: '후원',
+    searched: (cve) => `검색한 ${cve}`, notExploited: '악용 보고 없음',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '심각!', high: '경계', notice: '주의',
@@ -103,6 +104,7 @@ const TEXT = {
     original: '', lead: { advisory: 'Read the advisory', writeup: 'Read the write-up', cve_record: 'Read the CVE record', discussion: 'Read the discussion', curator: 'Read the newsletter', notice: 'Read the KISA notice', repo: 'See the repository', other: 'Read the source' },
     aliasHint: (w, names) => `‘${w}’ was also searched as ${names.join(', ')}.`,
     support: 'Support',
+    searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Severe!', high: 'Warning', notice: 'Caution',
@@ -1109,7 +1111,9 @@ function settleRows() {
 // The Easy view: the plain answer, then the affected models when there are too many to list inline.
 function easyPanel(incident) {
   const s = incident.summary;
-  const parts = easyAnswer(s, riskLevel(incident), incident.cves?.[0], firstProduct(incident, lang), isLibrary(incident));
+  // The chatbot hint names the CVE the visitor searched for when it is not the Lead (N1), else the Lead.
+  const cve = searchedCve(filter.query, incident, lang)?.cve || incident.cves?.[0];
+  const parts = easyAnswer(s, riskLevel(incident), cve, firstProduct(incident, lang), isLibrary(incident));
   // "Does this touch me?" comes before "what to do": the Summary's conditions, in its own words, at body weight so the
   // action stays the one heavy line. One condition on the line, several as a list.
   // The everyday-words version when the Summary has one (easy_conditions, after critique 12), else the conditions as written.
@@ -1764,6 +1768,26 @@ function summary(s) {
   return parts;
 }
 
+// Step 4: one CVE's own score (점수 대기 when the collector keeps scores per CVE but has none for it; nothing on older data,
+// whose ring is the only score) and 악용 발생 with its source: the KEV catalogue, else the source reporting the attacks.
+function cveMarks(incident, cve, note = true) {
+  const t = TEXT[lang];
+  const out = [];
+  if (incident.cve_scores) {
+    const score = cveScore(incident, cve);
+    out.push(el('span', 'cve-src', score == null ? t.unratedWhy : `CVSS ${score.toFixed(1)}`));
+  }
+  const hit = cveExploit(incident, cve);
+  if (hit) {
+    const mark = el('span', 'cve-src');
+    const a = anchor(hit.url, hit.kind === 'kev' ? t.kevSource : host(hit.url), note);
+    if (!note) a.setAttribute('aria-label', `${cve} ${t.kevReason}: ${a.textContent}`);
+    mark.append(el('span', 'kev', t.kevReason), ' ', a);
+    out.push(mark);
+  }
+  return out.flatMap((part, n) => (n ? [' · ', part] : [part]));
+}
+
 // One release's CVEs grouped into one Incident (collector: group_releases): the Normal view names what each one does,
 // from the Summary's Korean/English lines, else each CVE record's own description (English) until the Summary comes.
 function cveList(incident) {
@@ -1774,6 +1798,8 @@ function cveList(incident) {
     const id = el('strong');
     id.append(anchor(cveUrl(line.cve), line.cve, false));
     li.append(id, line.text);
+    const marks = cveMarks(incident, line.cve, false);
+    if (marks.length) li.append(' ', ...marks);
     const own = incident.cve_links?.[line.cve] || [];
     if (own.length) {
       const src = el('span', 'cve-src');
@@ -1992,10 +2018,13 @@ function scoreCell(incident) {
   }
   const gauge = el('span', `gauge sev-${rating}`);
   gauge.setAttribute('role', 'img');
-  gauge.setAttribute('aria-label', `CVSS ${incident.cvss}`); // the risk word is the one severity word
+  // In a group the score names the CVE it belongs to (step 4; tooltip and screen readers only, the row has no room).
+  const top = scoreCve(incident);
+  const named = top ? ` · ${t.scoreOf(top)}` : '';
+  gauge.setAttribute('aria-label', `CVSS ${incident.cvss}${named}`); // the risk word is the one severity word
   gauge.style.setProperty('--fill', Math.min(incident.cvss, 10) / 10);
   gauge.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg>';
-  gauge.title = `CVSS ${incident.cvss.toFixed(1)}`;
+  gauge.title = `CVSS ${incident.cvss.toFixed(1)}${named}`;
   gauge.append(el('b', 'num', incident.cvss.toFixed(1)));
   // The ring alone: the risk word is the one severity word, and the reading guide names the ring.
   cell.append(gauge);
@@ -2129,6 +2158,9 @@ function details(incident) {
     const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
     if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
     if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
+    // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
+    const hit = incident.cves.length > 1 ? exploitedCves(incident) : [];
+    if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
     parts.unshift(why);
   }
   // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
@@ -2148,9 +2180,23 @@ function details(incident) {
     head.append(el('span', 'sr-only', t.newTabAll));
     parts.push(foldable(fold, head, ids));
   }
+  // The group's score with the CVE it belongs to (step 4), under the IDs, in both views.
+  const top = scoreCve(incident);
+  if (top) parts.unshift(para('why-line', `CVSS ${incident.cvss.toFixed(1)} · ${top}`));
   // Every Incident with a CVE opens on the same line, as the row header writes it ("CVE-… 외 212건"), so it can be
   // copied (owner, 11-10: the line came and went by count); the full list stays in the fold.
   if (incident.cves.length) parts.unshift(idLine(incident.cves));
+  // N1 (owner, 11-15): the CVE the visitor searched for, when it is not the Lead, gets one line on top of the card: its
+  // own line, score and whether it is attacked. Title and Summary stay the Incident's.
+  const searched = searchedCve(filter.query, incident, lang);
+  if (searched) {
+    const line = para('why-line', `${t.searched(searched.cve)}:`);
+    if (searched.text) line.append(' ', searched.text);
+    const marks = cveMarks(incident, searched.cve);
+    if (searched.exploited === false) marks.push(...(marks.length ? [' · '] : []), t.notExploited);
+    if (marks.length) line.append(' · ', ...marks);
+    parts.unshift(line);
+  }
   const mentions = el('ul', 'mentions');
   const rank = (m) => (MENTION_ORDER.includes(m.kind) ? MENTION_ORDER.indexOf(m.kind) : MENTION_ORDER.length);
   const lastPart = (url) => {
@@ -2172,8 +2218,11 @@ function details(incident) {
   // kind on one site fold into one line, each link named by the last part of its address (GHSA-xxxx).
   const groups = new Map();
   const linkedAbove = incident.cves.length > 2; // a group links each CVE record from its CVE list
+  // Step 4 (owner, 11-15: 347 group links were shown nowhere): an advisory or write-up is left out only when a drawn CVE
+  // line links it; the Easy view draws none.
+  const onLines = new Set(easy ? [] : cveLines(incident, lang).flatMap((l) => (incident.cve_links?.[l.cve] || []).map((x) => x.url)));
   for (const m of [...incident.mentions].sort((a, b) => rank(a) - rank(b))) {
-    if (linkedAbove && (m.kind === 'cve_record' || (incident.cve_links && ['advisory', 'writeup'].includes(m.kind)))) continue; // on each CVE's line
+    if ((linkedAbove && m.kind === 'cve_record') || (['advisory', 'writeup'].includes(m.kind) && onLines.has(m.url))) continue; // on each CVE's line
     const key = `${m.kind} ${host(m.url)}`;
     groups.set(key, [...(groups.get(key) || []), m]);
   }

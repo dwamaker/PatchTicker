@@ -112,7 +112,7 @@ export function matchProducts(products, text, label = (p) => p.name) {
 // details are still right.
 const rowShows = (i) => JSON.stringify([i.summary?.at, i.kev, i.kev_date, i.cvss, i.published, i.mentions?.length,
   Math.max(0, ...(i.mentions || []).map((m) => m.points || 0)), i.summary_error?.final, (i.products || []).map((p) => p.id),
-  i.quick_title?.ko?.title, i.quick_title?.en?.title, i.known, i.known_rank]);
+  i.quick_title?.ko?.title, i.quick_title?.en?.title, i.known, i.known_rank, (i.cves || []).join(), i.top_cve]); // step 4: the Lead CVE names the row
 // week: fresh is the full week (board/recent.json), the truth for row views; one it does not hold left the week or was
 // merged into another Incident, and nothing could ever fill it, so it goes. Full Incidents beyond it (older months) stay.
 export function mergeIncidents(current, fresh, week = false) {
@@ -209,6 +209,38 @@ export const isExploited = (i) => Boolean(i.kev || sourced(i.summary));
 export function exploitReason(i) {
   if (i.kev) return { kind: 'kev', date: i.kev_date || '' };
   return sourced(i.summary) ? { kind: 'source', url: i.summary.exploited_source } : null;
+}
+
+// Per CVE (step 4, the collector's cve_scores, kev_cves and summary.exploited_cves; every key optional, so older documents
+// name no CVE and show as before). The KEV catalogue page: its search box does not read an address parameter (checked
+// 2026-11-16: ?search_api_fulltext= still lists the whole catalogue), so the link is the catalogue itself.
+export const KEV_CATALOG = 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog';
+const kevCves = (i) => (i.kev_cves && typeof i.kev_cves === 'object' ? i.kev_cves : {});
+const summaryCves = (i) => (sourced(i.summary) && Array.isArray(i.summary.exploited_cves) ? i.summary.exploited_cves : []);
+// Why this one CVE is exploited: CISA lists it, else the Summary's source names it as attacked; null otherwise.
+export function cveExploit(i, cve) {
+  if (Object.hasOwn(kevCves(i), cve)) return { kind: 'kev', url: KEV_CATALOG };
+  return summaryCves(i).includes(cve) ? { kind: 'source', url: i.summary.exploited_source } : null;
+}
+// The Incident's exploited CVEs, in its own (view) order; only ids it holds.
+export const exploitedCves = (i) => (i.cves || []).filter((c) => cveExploit(i, c));
+// One CVE's own score, null when the collector has none for it.
+export const cveScore = (i, cve) => (Number.isFinite(i.cve_scores?.[cve]?.cvss) ? i.cve_scores[cve].cvss : null);
+// The CVE the Incident's score (the highest) belongs to, named only in a group: one CVE needs no name.
+export const scoreCve = (i) => ((i.cves?.length || 0) > 1 && i.cves.includes(i.top_cve) && Number.isFinite(i.cvss) ? i.top_cve : null);
+
+// N1 (owner, 11-15): the searched CVE, when the search names one of the Incident's CVEs that does not lead it, with its line
+// text, its own score and whether it is exploited (true, false, or null when the Incident is exploited but its data names
+// no CVE: no "No attacks reported" that could be wrong). The first whole CVE id in the query that the Incident holds.
+const SEARCHED = /^CVE-\d{4}-\d{4,}$/i;
+export function searchedCve(query, i, lang) {
+  const cves = i.cves || [];
+  const cve = query.split(/\s+/).map((w) => w.toUpperCase()).find((w) => SEARCHED.test(w) && cves.includes(w));
+  if (!cve || cve === cves[0]) return null;
+  // Every exploited claim of the Incident (the KEV listing, the Summary's source) names its CVEs.
+  const attributed = (!i.kev || Object.keys(kevCves(i)).length > 0) && (!sourced(i.summary) || summaryCves(i).length > 0);
+  const exploited = cveExploit(i, cve) ? true : attributed ? false : null;
+  return { cve, text: cveLines(i, lang).find((l) => l.cve === cve)?.text || '', cvss: cveScore(i, cve), exploited };
 }
 
 // The Easy view's Risk banner, set by rules: exploited (above) or the CVSS score.
@@ -544,6 +576,7 @@ export const WORDS = {
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '고위험', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
+    scoreOf: (cve) => `${cve}의 점수`, kevSource: 'CISA KEV',
     none: '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
     newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기', tagsMore: (n) => `외 ${n}개`, tagsRest: (n) => `나머지 ${n}개 보기`,
@@ -560,6 +593,7 @@ export const WORDS = {
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'High risk', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
+    scoreOf: (cve) => `Score of ${cve}`, kevSource: 'CISA KEV',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
     newTab: ' (opens in a new tab)', report: 'Report a mistake', tagsMore: (n) => `+${n} more`, tagsRest: (n) => `Show ${n} more`,
