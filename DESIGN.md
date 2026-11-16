@@ -22,12 +22,9 @@ colors:
   scrim: "rgb(0 0 0 / 0.45)"
   line-01: "#0052a4"
   line-02: "#00a84d"
-  line-03: "#00a5de"
-  line-04: "#7f4f9a"
   line-05: "#b0ce18"
-  line-06: "#7340f2"
-  line-07: "#007c88"
   line-08: "#c25bb8"
+  line-09: "#960078"
   line-ink-dark: "#0d0f12"
   line-ink-light: "#ffffff"
   # 쉬운 설명 beckon only (owner, 11-09): never a risk, never a Product line
@@ -212,12 +209,18 @@ for Products only.
   (A separate orange for 7.0+ was dropped on 11-08: in light theme it read as the amber mark, 1.03:1.)
 
 ### Secondary
-- **Line palette** (`line-01` to `line-08`): Product line badges, after the Seoul subway map. Eight hues at least
-  0.13 apart in OKLab, so no two lines look alike at badge size (a test checks it). Operating systems are not
+- **Line palette** (`line-01`, `line-02`, `line-05`, `line-08`, `line-09`): Product line badges, after the Seoul subway
+  map. Five hues at least 0.13 apart in OKLab, so no two lines look alike at badge size (a test checks it): blue
+  #0052a4 (white text 7.66:1), green #00a84d (dark 6.13:1), lime #b0ce18 (dark 10.68:1), pink #c25bb8 (dark 5.01:1),
+  plum #960078 (white 8.18:1); the fills are the same in both themes. No line is a group colour or within 0.13 of one,
+  in either theme (owner, 11-16: Product pills were taking the release group's teal and the fold's violet; a test reads
+  `--patch-edge` and `--fold-edge` from index.html): line-03 sky, line-04 purple, line-06 violet and line-07 teal left
+  the palette and plum joined. Operating systems are not
   lines: they get an outline badge (Secondary Ink text, Control Edge inset ring). Light
   hues carry `line-ink-dark` text, deep hues carry `line-ink-light`. The source is `LINES` in
   `web/board.mjs`, which assigns each Product a colour by an FNV-1a hash of its Product id ("openbsd:openssh"; a device model by its
-  name), mixed before the remainder so Products spread over the eight lines. Every line also sits 0.13+ from Clear Green
+  name), mixed before the remainder so Products spread over the lines. WordPress alone is pinned, to pink (line-08) for
+  every key that names it (owner, 11-16), so it is one colour everywhere. Every line also sits 0.13+ from Clear Green
   in both themes (a test reads `--ok` from index.html): critique 13 found mint #77c4a3 0.05 from the dark `--ok`, so
   line-06 became violet #7340f2 (white text), line-07 teal darkened to #007c88 (white 4.95:1, was 4.58), and `--ok`
   moved to #1f6f1f / #68c8a8.
@@ -239,10 +242,14 @@ for Products only.
 - **Hint Ink** (`hint-ink`): placeholders and field icons.
 - **Hairline** (`hairline`): the line between rows and around the top bar and footer.
 - **Rail** (`rail`): the top rule of the list, Highlight frame borders, label dividers.
-- **Control Edge** (`control-edge`): borders of buttons, fields and the view switch; the ring around a row's chevron.
+- **Control Edge** (`control-edge`): borders of buttons, fields and the view switch.
+- **Chevron Ring** (`chev-ring`, `--chev-ring`): the ring around a row's chevron, #737c86 by day and #737b84 by night (owner,
+  11-16: Control Edge was 2.8:1 on the day group ground). On the page, group, panel and hover grounds 3.53 to 4.24:1 by
+  day and 3.60 to 4.30:1 by night, so 3:1+ everywhere (WCAG 1.4.11) and still quieter than Secondary Ink (6:1+).
 - **Patch Teal** (`patch-edge`, `--patch-edge`) and **Fold Violet** (`fold-edge`, `--fold-edge`): the colours of the two
-  kinds of group (owner, 11-16): a release group (함께 패치) is teal, line-07's hue (#007c88 by day, #3fc1cc by night); a
-  vendor fold (묶음) violet, line-06's hue (#7340f2 by day, #a98bff by night). Each colours its kind's tag (outline and
+  kinds of group (owner, 11-16): a release group (함께 공개) is teal (#007c88 by day, #3fc1cc by night); a
+  vendor fold (묶음) violet (#7340f2 by day, #a98bff by night). Both were Product lines once (line-07, line-06); since
+  11-16 no Product line is either, or within 0.13 of either. Each colours its kind's tag (outline and
   word) and its frame's 3px left band; the fold's 1px frame and its members' guide line take 45% of it. As tag text on
   Kiosk Panel: teal 4.95:1 / 7.91:1, violet 5.61:1 / 6.37:1 (day / night); as a band on the group ground 4.13:1 /
   7.15:1 and 4.68:1 / 5.76:1, on the page higher. Apart in both themes under simulated protan, deutan and tritan vision
@@ -287,7 +294,7 @@ the page language sits under it in Description size, cut after two lines. With m
 "외 N건". The Easy view leads with the Summary's plain headline over its one plain sentence (the opened panel starts with the CVE IDs) (Sign Ink,
 500, never cut); without a Summary, and for an Incident with no CVE yet, the title leads and the CVE
 line goes under it. On 주의 rows a headline ending in "위험" ends in "문제" instead ("risk" → "issue"), so only
-경계 and 심각! rows speak of danger; the page swaps the word by the rule-based level, the Summary is unchanged.
+경계 and 긴급! rows speak of danger; the page swaps the word by the rule-based level, the Summary is unchanged.
 
 **The Tabular Rule.** CVE IDs, counts, dates and times use tabular numerals so columns of
 numbers do not shimmer.
@@ -336,8 +343,9 @@ and full pills for line badges and the view switch (999px). Command code uses 6p
 "원문" marker 4px. Borders are 1px throughout; the only thicker edge is the 3px risk-coloured left
 edge of a Highlight frame and the 3px band of a group's frame, in its kind's colour. The risk sign is a 1.5px ring around the word
 (dashed while no score), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring
-(1.75rem, Control Edge; Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a
-control without moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it.
+(1.75rem, Chevron Ring; Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a
+control without moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it, and the chevron 0.5rem in from the row's edge, so the
+ring stays inside the row and a group's frame at 320px too.
 
 ## Components
 
@@ -435,7 +443,7 @@ Restrained outlined buttons for theme, language and copying a command.
   14px/700 under the sign, where 악용 발생 would sit, and an empty dashed ring stands in the ring's place (also on
   phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
-- In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 심각!) in
+- In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 긴급!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
   15px/800. Rings are never filled (user, 11-09). 악용 발생 sits centred under the ring (beside it on phones), and a
   row with no CVSS shows its dash centred where a score ring would be.
@@ -584,9 +592,11 @@ Restrained outlined buttons for theme, language and copying a command.
   twice (1.2s each), until the visitor has tried that view once (`vr-easy-tried`); never with reduced motion.
 - **악용 발생 (critique 10, b.2):** the reason a row sits at the top is set at 14px/800, no longer the row's smallest text.
 - **Two kinds of 묶음 kept apart (owner, 11-09):** a vendor fold is "묶음" and the list button says "회사 묶음 풀기 /
-  회사별로 묶기"; a release group (CVEs fixed by one update) is one Incident tagged "함께 패치", which that button never
-  splits. Since 11-16 (owner: "함께패치와 묶음이 구분이 안감 애초에 색이") each kind also has its own colour on its tag
-  and its frame's band: 함께 패치 Patch Teal, 묶음 Fold Violet. The "↑ 새 사건 N건" pill now scrolls to the first new row and focuses it.
+  회사별로 묶기"; a release group (CVEs of one product disclosed together) is one Incident tagged "함께 공개" / "Disclosed
+  together", which that button never splits. The tag said "함께 패치" / "One fix" until 11-16, when the owner made it one
+  label for every release group ("함께 공개로 통일"): many are grouped by the same last affected version, with nothing
+  fixed yet. Since 11-16 (owner: "함께패치와 묶음이 구분이 안감 애초에 색이") each kind also has its own colour on its tag
+  and its frame's band: 함께 공개 Patch Teal, 묶음 Fold Violet. The "↑ 새 사건 N건" pill now scrolls to the first new row and focuses it.
 - **Hardening 2 (critique 10, 11-09):** an Easy row without a Summary says "쉬운 설명 준비 중" only while one is coming;
   a Summary that failed for good says "원문만 있음", and with no quick title and no Product the source's own line is
   the title instead of a blank "새 보안 문제". 모두 펼치기 carries no pressed state beside its swapped label; 회사 묶음
@@ -600,7 +610,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Layout pass (critique 10, 11-09):** the filter panel on 1024px and wider puts risk, attacks and OS side by side and
   CVSS, CVE and the dates on one line; a checked risk chip is a ring in its level's colour on a faint tint, never a
   filled block. The dark group ground is #1c2531 (a clear step from the opened-row panel). The guide shows the "묶음"
-  and "함께 패치" tags as the Board draws them. From 125% text the fields use their short placeholders.
+  and "함께 공개" tags as the Board draws them. From 125% text the fields use their short placeholders.
 - **Back undoes a filter; one Incident has an address (owner, 11-09):** every filter change the visitor makes (panel,
   chips, picks, sort, clear buttons) is a step in the browser's history, so Back and Forward walk through them with
   the Board's motion; typing in search rewrites the current step. Each opened Incident ends with "이 사건 링크 복사",
@@ -719,7 +729,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Do** keep every interactive target at least 44 px.
 - **Do** theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link
   underline offset (3px).
-- **Do** keep Normal view calm and let the Easy view carry the louder voice (levels 심각! / 경계 / 주의, "!" only at 심각, a plain
+- **Do** keep Normal view calm and let the Easy view carry the louder voice (levels 긴급! / 경계 / 주의, "!" only at 긴급, a plain
   headline, one plain sentence that may end in "!", one action line at 17px/800).
 - **Do** check both themes for WCAG 2.2 AA contrast after any colour change.
 - **Do** write a device or Product badge with its vendor in front.

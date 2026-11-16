@@ -1,0 +1,208 @@
+"""The owner's decisions of 11-16 night: five more reply checks, the attacked CVE named in a group, and the number check's
+line names that kept Summaries old for three tries (.scratch/checks/still-old-2026-11-16.md)."""
+
+import contextlib
+import io
+import json
+import unittest
+
+from collector import cve_lines, numbers, summaries, summary_input
+from test_cve_lines import MANY, MAX, line, lines_row, saved
+from test_summaries import SSHOLE_SUMMARY, FakeClaude
+
+TEXT = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+
+
+def with_fields(lang, **fields):
+    return SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | fields}
+
+
+class LineNameNumberTest(unittest.TestCase):
+    """C: a release line named by its major, several lines before one line word, and ".x" before a Korean particle are
+    line names, as "the 1.19 line" already was (Wasmtime CVE-2026-121439, Frappe -126316, GitLab -13721, ActiveMQ -108949)."""
+    KNOWN = numbers.numbers("48.0.7 49.0.4 36.0.19 12.3.11 12.4.2 6.3.0 5.19.0 13.0.2 16.20.1 15.64.6")
+
+    def stripped(self, text, fixed=()):
+        return numbers.numbers(numbers.without_line_names(text, set(fixed), self.KNOWN))
+
+    def test_a_line_named_by_its_major_beside_a_line_word_is_a_name(self):
+        self.assertEqual(self.stripped("48 계열은 48.0.7, 49 계열은 49.0.4 이상으로 업데이트하세요."), {"48.0.7", "49.0.4"})
+        self.assertEqual(self.stripped("Update to 48.0.7 on the 48 line."), {"48.0.7"})
+        self.assertEqual(self.stripped("Frappe HRMS 16 라인은 16.20.1 이상으로 업데이트하세요."), {"16.20.1"})
+
+    def test_lines_listed_before_one_line_word_are_names(self):
+        self.assertEqual(self.stripped("12.3 및 12.4 계열의 수정 버전은 확인되지 않았습니다."), set())
+        self.assertEqual(self.stripped("A fixed version for the 12.3 and 12.4 lines is not confirmed."), set())
+        self.assertEqual(self.stripped("12.3~12.4 라인은 옮기세요."), set())
+
+    def test_x_before_a_korean_particle_is_a_line(self):
+        self.assertEqual(self.stripped("6.3.x와 5.19.x 계열은 업데이트하세요."), set())
+        self.assertEqual(self.stripped("13.x 계열로 옮기세요."), set())
+
+    def test_a_number_that_is_no_line_is_still_checked(self):
+        self.assertEqual(self.stripped("Update to 48."), {"48"})  # a target, not a line
+        self.assertEqual(self.stripped("48 계열은 업데이트하세요.") , set())  # an input version starts with 48.
+        self.assertEqual(self.stripped("77 계열은 업데이트하세요."), {"77"})  # no input version on that line
+        self.assertEqual(self.stripped("결함 4건도 고칩니다."), {"4"})  # a count stays a number
+
+    def test_a_fixes_line_the_input_names_passes(self):
+        # Adobe "After Effects 25.x" moved to 27.0; B. Braun "SpaceCom 011L line" with version 011L000096.
+        text = TEXT + "\nAffected: After Effects 25.6.6 and earlier, fixed in 27.0; SpaceCom fixed in 011L000096."
+        for fixes in ([{"for": "Adobe After Effects 25.x", "version": "27.0", "devices": []}],
+                      [{"for": "B. Braun SpaceCom 011L line", "version": "011L000096", "devices": []}]):
+            with self.subTest(fixes[0]["for"]):
+                reply = SSHOLE_SUMMARY | {"fixes": fixes}
+                summaries.parse(FakeClaude.message(reply), text, [SSHOLE_SUMMARY["lead"]])
+        with self.assertRaises(summaries.Rejected):  # a line no input version names
+            summaries.parse(FakeClaude.message(SSHOLE_SUMMARY | {"fixes": [{"for": "Foo 77", "version": "10.6p2", "devices": []}]}),
+                            text, [SSHOLE_SUMMARY["lead"]])
+
+
+class InformalLinesTest(unittest.TestCase):
+    """A1: a Korean per-CVE line in 해요 style beside the 합니다 Summary (CVE-2026-102868: 90 of 907 lines)."""
+
+    def test_a_line_in_haeyo_style_is_sent_back(self):
+        lines = [{"cve": "CVE-2026-1", "text": "원격에서 코드를 실행할 수 있어요."}, {"cve": "CVE-2026-2", "text": "범위 변경도 있어요"}]
+        for bad in lines:
+            with self.subTest(bad["text"]):
+                reply = with_fields("ko", cve_lines=[bad])
+                self.assertEqual(summaries.informal_lines(reply), f"{summaries.INFORMAL} (CVE-2026-{bad['cve'][-1]})")
+        for good in ("원격에서 코드를 실행할 수 있습니다.", "서비스가 멈춥니다.", "관리자 권한 필요", "정보 노출"):
+            self.assertEqual(summaries.informal_lines(with_fields("ko", cve_lines=[{"cve": "CVE-2026-1", "text": good}])), "", good)
+
+    def test_a_batch_line_in_haeyo_style_is_dropped_and_asked_again(self):
+        row = lines_row()
+        cves, log = saved(row, line(MANY[MAX], "파일을 읽을 수 있어요.", "Files can be read."),
+                          line(MANY[MAX + 1], "파일을 읽을 수 있습니다.", "Files can be read."))
+        self.assertEqual(cves, [MANY[MAX + 1]])
+        self.assertIn(summaries.INFORMAL, log)
+
+    def test_the_lines_prompt_names_the_style(self):
+        self.assertIn("합니다", cve_lines.LINES_INSTRUCTIONS)
+
+
+class BoundCheckTest(unittest.TestCase):
+    """A2: "if you run X or older, check that you run a version newer than X" (CVE-2026-126541, -126991, -124552)."""
+
+    def test_a_check_conditioned_on_running_the_bound_is_sent_back(self):
+        for lang, mitigation in (("ko", "수정 버전을 밝힌 출처가 아직 없습니다. 29.7.1 이하 버전을 쓰신다면 29.7.1보다 새 버전을 쓰는지 확인하세요."),
+                                 ("ko", "2.670 이하 Webmin을 쓰고 있다면 실행 중인 버전이 2.670보다 새 버전인지 확인하세요."),
+                                 ("en", "If you run 3.1.4 or older, check that you run a newer version and read the advisory."),
+                                 ("en", "If you run Webmin through 2.670, check that it is newer than 2.670.")):
+            with self.subTest(mitigation):
+                self.assertEqual(summaries.bound_check(with_fields(lang, mitigation=mitigation)), f"{summaries.BOUND_CHECK} ({lang})")
+
+    def test_the_plain_instruction_passes(self):
+        for lang, mitigation in (("ko", "수정 버전을 밝힌 출처가 아직 없습니다. 1.9.0보다 새 버전을 쓰는지 확인하고 제조사 권고문을 읽으세요."),
+                                 ("en", "No source names a fixed version yet. Check that you run a version newer than 1.9.0."),
+                                 ("en", "If you run 7.2, update to 7.2.14 or later."),
+                                 # live, 11-16: a wait, an upgrade, an instruction to use a newer one, a fact then the check
+                                 ("ko", "0.116.1 이하를 쓰고 있다면 새 버전이 나올 때까지 기다리고 제작사 공지를 확인하세요."),
+                                 ("ko", "2.999.18 이하 버전을 쓰고 있다면 그보다 새 버전으로 올리고 제조사 공지를 확인하세요."),
+                                 ("ko", "9.1.1 이하 버전을 쓰고 있다면 그보다 새 버전을 쓰고 제조사 권고를 확인하세요."),
+                                 ("ko", "1.0.0 이하 버전이면 취약하므로, 설치된 버전이 1.0.0보다 새로운지 확인하고 제조사 공지를 읽으세요.")):
+            self.assertEqual(summaries.bound_check(with_fields(lang, mitigation=mitigation)), "", mitigation)
+
+    def test_the_prompt_asks_for_one_instruction(self):
+        self.assertIn('with no "if you run" before it', summaries.INSTRUCTIONS)
+
+
+class NoActionTest(unittest.TestCase):
+    """A3: an Easy action that is no action (CVE-2026-123695, -88799, -125074)."""
+
+    def test_a_statement_alone_is_sent_back(self):
+        for lang, action in (("ko", "아직 고친 버전이 없습니다."), ("en", "There is no fix yet."), ("ko", "이 프로그램을 쓰는지 확인하세요."),
+                             ("en", "Check whether you use this app."), ("en", "Check whether you use this plugin. There is no fix yet."),
+                             ("en", "No source names a fixed version yet.")):
+            with self.subTest(action):
+                self.assertEqual(summaries.no_action(with_fields(lang, easy_action=action)), f"{summaries.NO_ACTION} ({lang})")
+
+    def test_a_statement_with_an_action_passes(self):
+        for lang, action in (("ko", "아직 고친 버전이 없습니다. 고친 버전이 나오면 바로 업데이트하세요."),
+                             ("en", "There is no fix yet. Remove the plugin."), ("en", "Update the app now."),
+                             ("ko", "관리 화면을 인터넷에 열어 두지 마세요.")):
+            self.assertEqual(summaries.no_action(with_fields(lang, easy_action=action)), "", action)
+
+    def test_the_prompts_fallback_is_an_action(self):
+        self.assertIn("There is no fix yet. Update as soon as a fixed version is out.", summaries.INSTRUCTIONS)
+        reply = SSHOLE_SUMMARY | {"fixed": "",
+                                  "ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "수정 버전은 아직 없습니다.", "easy_action": "아직 고친 버전이 없습니다. 고친 버전이 나오면 바로 업데이트하세요."},
+                                  "en": SSHOLE_SUMMARY["en"] | {"mitigation": "There is no fix yet.", "easy_action": "There is no fix yet. Update as soon as a fixed version is out."}}
+        self.assertEqual(summaries.no_action(reply), "")
+        self.assertEqual(summaries.easy_action_mismatch(reply), [])  # the example passes the wait and no-fix rules
+
+
+class EmptyWithFixTest(unittest.TestCase):
+    """A4: an empty mitigation or Easy action beside a fixed version (CVE-2026-67175)."""
+
+    def test_empty_fields_beside_a_fixed_version_are_sent_back(self):
+        for field in ("mitigation", "easy_action"):
+            reply = SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {field: ""} for lang in ("ko", "en")}
+            self.assertEqual(summaries.empty_with_fix(reply), f"{summaries.EMPTY_WITH_FIX} ({field})", field)
+        self.assertEqual(summaries.empty_with_fix(SSHOLE_SUMMARY), "")
+        no_fix = SSHOLE_SUMMARY | {"fixed": "", "fixes": [], **{l: SSHOLE_SUMMARY[l] | {"easy_action": ""} for l in ("ko", "en")}}
+        self.assertEqual(summaries.empty_with_fix(no_fix), "")
+        not_incident = SSHOLE_SUMMARY | {"incident": False, **{l: SSHOLE_SUMMARY[l] | {"mitigation": ""} for l in ("ko", "en")}}
+        self.assertEqual(summaries.empty_with_fix(not_incident), "")
+
+
+class HangulInEnglishTest(unittest.TestCase):
+    """A5: Korean text in an English field (CVE-2026-126391: all seven en easy_conditions)."""
+
+    def test_korean_in_an_english_field_is_sent_back(self):
+        reply = with_fields("en", easy_conditions=["관리 화면을 인터넷에 열어 둔 경우"])
+        self.assertEqual(summaries.hangul_in_english(reply, TEXT), f"{summaries.HANGUL_IN_EN} (en easy_conditions)")
+        self.assertTrue(summaries.hangul_in_english(with_fields("en", summary="A flaw 폭발합니다."), TEXT))
+
+    def test_a_korean_name_the_input_writes_passes(self):
+        reply = with_fields("en", summary="The 한컴오피스 viewer can run code.")
+        self.assertEqual(summaries.hangul_in_english(reply, TEXT + "\nProducts: 한컴오피스"), "")
+        self.assertTrue(summaries.hangul_in_english(reply, TEXT))
+
+
+class AttackedCveTest(unittest.TestCase):
+    """B: a group whose input marks a CVE as attacked (CISA KEV) names it beside the claim (Chrome CVE-2026-125345)."""
+    GROUP = ("Incident: CVE-2026-125345, CVE-2026-125350\nLead CVE: CVE-2026-125345\n"
+             "Exploited in the wild (CISA KEV): yes (CVE-2026-125350)\n") + TEXT
+
+    def summary(self, ko, en):
+        return with_fields("ko", summary=ko) | {"en": SSHOLE_SUMMARY["en"] | {"summary": en}}
+
+    def test_a_claim_without_the_attacked_id_is_sent_back(self):
+        for ko, en in (("샌드박스 밖 코드 실행 결함이 있습니다. 그중 XML 결함 하나는 이미 공격에 쓰이고 있습니다.", "One XML flaw is already used in attacks (CVE-2026-125350)."),
+                       ("코드 실행 결함이 있습니다. CVE-2026-125350은 이미 공격에 쓰이고 있습니다.", "CVE-2026-125345 is already exploited.")):
+            with self.subTest(ko):
+                self.assertTrue(summaries.attacked_unnamed(self.summary(ko, en), self.GROUP).startswith(summaries.ATTACKED_UNNAMED))
+
+    def test_the_claim_beside_its_id_passes(self):
+        ok = self.summary("코드 실행 결함이 있습니다. 그중 XML 결함(CVE-2026-125350)은 이미 공격에 쓰이고 있습니다.",
+                          "One XML flaw, CVE-2026-125350, is already exploited in the wild.")
+        self.assertEqual(summaries.attacked_unnamed(ok, self.GROUP), "")
+        # no claim, no KEV list, or one CVE: nothing to name
+        self.assertEqual(summaries.attacked_unnamed(self.summary("코드 실행 결함이 있습니다.", "A flaw lets code run."), self.GROUP), "")
+        self.assertEqual(summaries.attacked_unnamed(self.summary("이미 공격에 쓰이고 있습니다.", "It is exploited."),
+                                                    self.GROUP.replace("yes (CVE-2026-125350)", "no")), "")
+
+    def test_the_group_prompt_asks_for_it(self):
+        self.assertIn("names that CVE id beside the claim", summaries.GROUP_INSTRUCTIONS)
+
+
+class WiredTest(unittest.TestCase):
+    """Each new reason costs a retry through save_reply, with its own sentence in the retry note."""
+
+    def test_each_reason_has_a_retry_sentence(self):
+        for reason in (summaries.INFORMAL, summaries.BOUND_CHECK, summaries.NO_ACTION, summaries.EMPTY_WITH_FIX,
+                       summaries.HANGUL_IN_EN, summaries.ATTACKED_UNNAMED):
+            note = summaries.retry({"summary_error": {"tries": 1, "reason": f"{reason} (ko)"}}, TEXT)["note"]
+            self.assertNotIn("never shorten or round one", note, reason)
+            self.assertGreater(len(note), len(f"Your previous reply for this Incident was rejected: {reason} (ko).") + 20, reason)
+
+    def test_a_reply_with_a_new_problem_is_a_failed_try(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        summaries.save_reply(incident, FakeClaude.message(with_fields("en", easy_action="There is no fix yet.")), TEXT,
+                             {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-08T12:00:00Z")
+        self.assertIn(summaries.NO_ACTION, incident["summary_error"]["reason"])
+
+
+if __name__ == "__main__":
+    unittest.main()

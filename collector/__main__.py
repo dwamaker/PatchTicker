@@ -22,7 +22,7 @@ from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, r
 REQUIRED = ("VR_COLLECTOR_ID", "VR_CONTACT")
 R2 = ("VR_R2_ENDPOINT", "VR_R2_BUCKET", "VR_R2_ACCESS_KEY_ID", "VR_R2_SECRET_ACCESS_KEY")
 OPTIONAL = ("VR_STORE_DIR", "VR_BACKUP_DB", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY",
-            "VR_DISCORD_WEBHOOK", "VR_INDEXNOW_KEY", "VR_DISTRO_TABLE") + R2
+            "VR_DISCORD_WEBHOOK", "VR_INDEXNOW_KEY", "VR_DISTRO_TABLE", "VR_SUMMARY_REVIEW") + R2
 
 
 def load_settings(path):
@@ -140,6 +140,8 @@ def cycle_main(path):
         ping=indexnow.make_pinger(settings.get("VR_INDEXNOW_KEY"), make_http_post(agent)),
         # VR_DISTRO_TABLE=1 starts the Distribution table's lookups (step 10); unset, the cycle makes none.
         distro_table=settings.get("VR_DISTRO_TABLE") == "1",
+        # Every Summary is reviewed before it is stored (owner 11-16); VR_SUMMARY_REVIEW=0 turns it off without a deploy.
+        review=settings.get("VR_SUMMARY_REVIEW", "1") != "0",
     )
 
 
@@ -148,6 +150,10 @@ SMOKE_TOKENS = 100  # a reply cut here still passes: the request was accepted, w
 SMOKE_TEXT = "A made-up flaw in Widget 1.0 lets a visitor read any file."
 SMOKE_INCIDENT = {"id": "CVE-2026-0001", "cves": ["CVE-2026-0001"], "products": [{"name": "Widget"}],
                   "brief": {"text": SMOKE_TEXT, "lead": ""}, "cve_texts": {"CVE-2026-0001": SMOKE_TEXT}}
+SMOKE_SUMMARY = {"fixed": "1.1", "fixes": [], "products": ["Widget"], "exploited": False, "stopgap": "",
+                 **{lang: {"title": title, "summary": SMOKE_TEXT, "conditions": [], "easy_conditions": [], "mitigation": "",
+                           "easy": "", "easy_title": "", "easy_action": "", "command_for": "", "stopgap_then": "", "cve_lines": []}
+                    for lang, title in (("ko", "Widget 파일 읽기 결함"), ("en", "Widget file read flaw"))}}
 
 
 def smoke(claude):
@@ -162,6 +168,8 @@ def smoke(claude):
             f"Incident: CVE-2026-0001, CVE-2026-0002\nLead CVE: CVE-2026-0001\nProducts: Widget\n{SMOKE_TEXT}"),
         "quick titles": summaries.title_params([SMOKE_INCIDENT]),
         "cve lines": cve_lines.lines_params(cve_lines.lines_input(SMOKE_INCIDENT, SMOKE_INCIDENT["cves"])),
+        # The review of every Summary (owner 11-16): its own schema and instructions, built as the cycle builds it.
+        "review": summaries.review_params(SMOKE_SUMMARY, SMOKE_INCIDENT),
     }
     code = 0
     for name, params in shapes.items():

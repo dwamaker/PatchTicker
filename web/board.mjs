@@ -720,15 +720,22 @@ export const uniqueNames = (names) => {
 // Eight lines at least 0.13 apart in OKLab (11 before, but blue/navy, sky/periwinkle, teal/dark green and green/olive
 // read as the same line at badge size). Operating systems are not lines: they get an outline badge.
 // critique 13: mint (#77c4a3) was 0.05 from the dark Clear Green, so it became violet; teal darkened for white text (4.95).
+// Owner, 11-16: a pill is never the release group's teal nor the fold's violet (--patch-edge, --fold-edge), nor reads as
+// one: violet, teal, sky (0.096 from the night teal) and purple (0.144 from the violet, seen as violet) left the palette;
+// plum (#960078, 0.17+ from every line, group colour, Clear Green and risk colour) joined. Five lines.
 export const LINES = [
-  { bg: '#0052a4', ink: '#ffffff' }, { bg: '#00a84d', ink: '#0d0f12' }, { bg: '#00a5de', ink: '#0d0f12' },
-  { bg: '#7f4f9a', ink: '#ffffff' }, { bg: '#b0ce18', ink: '#0d0f12' }, { bg: '#7340f2', ink: '#ffffff' },
-  { bg: '#007c88', ink: '#ffffff' }, { bg: '#c25bb8', ink: '#0d0f12' },
+  { bg: '#0052a4', ink: '#ffffff' }, { bg: '#00a84d', ink: '#0d0f12' }, { bg: '#b0ce18', ink: '#0d0f12' },
+  { bg: '#c25bb8', ink: '#0d0f12' }, { bg: '#960078', ink: '#ffffff' },
 ];
 
 // A Product's line from its language-free key (the Product id, "openbsd:openssh"), so it is the same on every visit,
 // row and language. FNV-1a, then a final mix: plain FNV-1a mod 8 put six of ten real Products on one line (critique 4).
+// WordPress keeps the pink line whatever key names it (owner, 11-16): hashed, its keys landed on two colours. Keyed by the
+// id's vendor, or the name of a name-only Product; the value is the line's index in LINES.
+const OWN_LINES = Object.assign(Object.create(null), { wordpress: 3 });
 export function productLine(key) {
+  const own = OWN_LINES[String(key).toLowerCase().replace(/^name:/, '').split(':')[0]];
+  if (own !== undefined) return LINES[own];
   let h = 0x811c9dc5;
   for (const ch of key) h = Math.imul(h ^ ch.codePointAt(0), 0x01000193);
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);

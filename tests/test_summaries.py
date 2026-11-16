@@ -412,9 +412,15 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertEqual(summary["ko"]["easy_action"], SSHOLE_SUMMARY["ko"]["easy_action"])
 
     def test_a_reply_from_before_easy_action_still_passes_with_it_empty(self):
+        # Since 11-16 night an empty Easy action beside a fixed version costs a retry (owner); a reply from before the
+        # field (no batch of then can still arrive) is kept on the last try, with the Easy action empty as before.
         old = SSHOLE_SUMMARY | {lang: {k: v for k, v in SSHOLE_SUMMARY[lang].items() if k != "easy_action"} for lang in ("ko", "en")}
-        self.merged_sshole(FakeClaude(old))
-        self.assertEqual(board(self.store)[HN_STORY]["summary"]["en"]["easy_action"], "")
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}],
+                    "summary_error": {"tries": summaries.MAX_TRIES - 1, "reason": "earlier"}}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        summaries.save_reply(incident, FakeClaude.message(old), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                             "2026-11-08T12:00:00Z")
+        self.assertEqual(incident["summary"]["en"]["easy_action"], "")
 
     def test_a_cve_id_the_model_puts_in_a_title_is_taken_out(self):
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"title": SSHOLE_SUMMARY["ko"]["title"] + " (CVE-2026-123158)"},
@@ -1292,6 +1298,43 @@ class LanguageGapsTest(unittest.TestCase):
         for text in ("리소스가 없으면 서비스가 멈춥니다.", "오픈소스에 수정 버전이 나와 있습니다.", "소스 코드에 수정 버전이 없습니다.",
                      "소스 파일에 명시된 경로입니다.", "Git 소스에서 빌드한 설치도 해당합니다.", "멀티벤더 장비가 해당합니다.",
                      "고정된 암호 키가 들어 있습니다.", "버전을 고정해 두세요."):
+            with self.subTest(text):
+                self.assertEqual(self.gaps(ko={"easy": text}), "")
+
+    def test_a_release_line_written_as_jul_is_a_gap(self):
+        # Owner, 11-16 (Git CVE-2026-113408): "release line" put word for word as "줄" ("2.50 줄은 2.50.2"); write 계열.
+        for ko, en in (("Git 2.50 줄은 2.50.2 이상으로 업데이트하세요.", "Update Git 2.50 to 2.50.2 or later."),
+                       ("2.56.0 줄의 Git이 해당합니다.", "Git 2.56.0 is affected."),
+                       ("8.0.0줄은 수정 버전이 없습니다.", "The 8.0.0 line has no fix."),
+                       ("최신 버전(2026 R2 줄 등)으로 업데이트하세요.", "Update to the newest version."),
+                       ("해당 버전 줄의 수정 버전으로 업데이트하세요.", "Update to your line's fixed version.")):
+            with self.subTest(ko):
+                self.assertEqual(self.gaps(ko={"easy": ko}, en={"easy": en}), "Korean wording: 줄 (write 계열)")
+
+    def test_a_release_line_written_as_lain_is_a_gap(self):
+        # Owner, 11-16 ("계열로 통일"): 라인 for a release line, as 줄.
+        for ko, en in (("5.4 라인은 5.4.56, 6.4 라인은 6.4.50 이상으로 업데이트하세요.", "Update 5.4 to 5.4.56 and 6.4 to 6.4.50."),
+                       ("20.x 라인을 쓰면 업데이트하세요.", "Update on 20.x."),
+                       ("해당 라인의 수정 버전으로 업데이트하세요.", "Update to your line's fixed version."),
+                       ("FortiOS 여러 라인이 해당합니다.", "Several FortiOS lines are affected."),
+                       ("수정 버전이 있는 라인으로 옮기세요.", "Move to a line that has a fix."),
+                       ("Ulmo 라인은 업데이트하세요.", "Update Ulmo."),
+                       ("라인별 수정 버전을 확인하세요.", "Check each line's fix.")):
+            with self.subTest(ko):
+                self.assertEqual(self.gaps(ko={"easy": ko}, en={"easy": en}), "Korean wording: 라인 (write 계열)")
+
+    def test_other_uses_of_lain_pass(self):
+        for text in ("온라인에서 누구나 볼 수 있습니다.", "보안 가이드라인을 따르세요.", "CI 파이프라인이 멈춥니다.", "새 라인업이 나왔습니다.",
+                     "리눅스 커널(메인라인)이 해당합니다.", "리퀘스트 타임라인을 엿볼 수 있습니다.", "사용 중인 카메라인지 확인하세요.",
+                     "Cloudflare 기본 라인 기능에 권한 검사가 빠져 있습니다.", "다른 도메인의 DNS 라인 설정을 볼 수 있습니다.",
+                     "비밀번호를 오프라인에서 풀 수 있습니다.", "LINE 메신저가 해당합니다."):
+            with self.subTest(text):
+                self.assertEqual(self.gaps(ko={"easy": text}), "")
+
+    def test_lines_of_text_and_the_verb_jul_pass(self):
+        for text in ("명령 한 줄로 업데이트하세요.", "CVE별 줄에 적힌 내용입니다.", "피해를 줄일 수 있습니다.", "로그 줄을 꾸밀 수 있습니다.",
+                     "여러 줄을 한 번에 넣을 수 있습니다.", "명령줄에 비밀번호가 남습니다.", "설정에 줄바꿈을 넣을 수 있습니다.",
+                     "공격자에게 영향을 줄 수 있습니다.", "10 줄짜리 파일입니다.", "첫 줄이 잘립니다.", "작업 스케줄러가 멈춥니다."):
             with self.subTest(text):
                 self.assertEqual(self.gaps(ko={"easy": text}), "")
 

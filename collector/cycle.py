@@ -57,7 +57,8 @@ def highlights(views, since):
 
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False):
+              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False,
+              review=False):
     """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None.
     ping: indexnow.make_pinger's function, or None. distro_table: look up the Distribution table (step 10); off by
     default, as its pauses and requests would reach every test cycle."""
@@ -163,7 +164,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         # "paused" (a budget error; the page shows a notice) or "stopped" (any other API error), as the last cycle left it.
         was = (store.read("status.json") or {}).get("summaries")
         try:
-            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused")
+            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused", review=review)
         except anthropic.APIError as err:
             # Briefs still go out; the next cycle asks again (in full after "stopped", with a probe after "paused").
             print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
@@ -315,23 +316,26 @@ def prune(incidents, since):
     return {month_of(i["first_seen"]) for i in old}
 
 
-def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe):
+def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False):
     """Collect ended batches, summarize every Highlight candidate at once, title every row still without a Summary,
     batch the rest's Summaries. Lets API errors
     through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
-    instead of building a full one that would likely fail."""
+    instead of building a full one that would likely fail. review (VR_SUMMARY_REVIEW, owner 11-16): every Summary that
+    passes the rule checks is reviewed before it is stored: at once on the instant path, in a review batch sent here for
+    a batch reply (it waits in review_pending, shown as it was before, and is not asked again meanwhile)."""
     for pending in list(batches):
-        touched = summaries.collect_batch(pending, incidents, claude, stamp)
+        touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review)
         if touched is not None:
             batches.remove(pending)
             changed.update(month_of(i["first_seen"]) for i in touched)
     waiting = {r["incident"] for b in batches for r in b["requests"].values() if "lines" not in r}
     # A candidate (위험 and up, KEV, buzz, curator) never waits for a batch it is already in (user, 2026-11-09).
-    due = [i for i in incidents if summaries.needs_summary(i) and (i["id"] not in waiting or summaries.is_candidate(i, now))]
+    due = [i for i in incidents if summaries.needs_summary(i) and not i.get("review_pending")
+           and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
     same_as = lambda incident: same_event.same_as_candidates(incident, incidents, now)  # applied by run_cycle (apply_same_as)
     for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
-        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident))
+        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review)
         changed.add(month_of(incident["first_seen"]))
     since = stamp_ago(now, days=summaries.BATCH_DAYS)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
@@ -356,6 +360,15 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     if lines:
         batches.append(lines)
         changed.update(month_of(i["first_seen"]) for i in incidents if i["id"] in {r["incident"] for r in lines["requests"].values()})
+    # The second round: every Summary waiting for its review and in no pending batch (one too large to review is stored
+    # here, unreviewed). Switched off, a Summary left waiting is stored as it is.
+    waiting_review = [i for i in incidents if i.get("review_pending")]
+    if not review:
+        summaries.release_reviews(incidents, batches)
+    reviews = review and not probe and summaries.submit_reviews(incidents, batches, claude)
+    if reviews:
+        batches.append(reviews)
+    changed.update(month_of(i["first_seen"]) for i in waiting_review if "review_pending" not in i)  # stored here
 
 
 def write_pages(store, incidents, known, now, stamp):

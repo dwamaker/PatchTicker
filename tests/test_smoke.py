@@ -10,12 +10,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from collector import cve_lines, summaries
+from collector import cve_lines, review, summaries
 from collector.__main__ import smoke, smoke_main
 from test_batch_summaries import api_error
 from test_summaries import FakeClaude
 
-SHAPES = ["summary", "group summary", "quick titles", "cve lines"]
+SHAPES = ["summary", "group summary", "quick titles", "cve lines", "review"]
 
 
 def run(fn, *args):
@@ -26,19 +26,20 @@ def run(fn, *args):
 
 class SmokeTest(unittest.TestCase):
     def test_every_shape_is_sent_once_with_the_cycles_own_instructions_and_schema(self):
-        claude = FakeClaude("{}", "{}", "{}", "{}")
+        claude = FakeClaude("{}", "{}", "{}", "{}", "{}")
         code, out = run(smoke, claude)
         self.assertEqual(code, 0)
         self.assertEqual(out.splitlines(), [f"smoke: {s} ok" for s in SHAPES])
         self.assertEqual([p["system"][0]["text"] for p in claude.sent],
-                         [summaries.INSTRUCTIONS, summaries.INSTRUCTIONS, summaries.TITLE_INSTRUCTIONS, cve_lines.LINES_INSTRUCTIONS])
+                         [summaries.INSTRUCTIONS, summaries.INSTRUCTIONS, summaries.TITLE_INSTRUCTIONS, cve_lines.LINES_INSTRUCTIONS,
+                          review.INSTRUCTIONS])
         self.assertEqual(claude.sent[1]["system"][1]["text"], summaries.GROUP_INSTRUCTIONS)
         self.assertEqual([p["output_config"]["format"]["schema"] for p in claude.sent],
-                         [summaries.SCHEMA, summaries.SCHEMA, summaries.TITLE_SCHEMA, cve_lines.LINES_SCHEMA])
+                         [summaries.SCHEMA, summaries.SCHEMA, summaries.TITLE_SCHEMA, cve_lines.LINES_SCHEMA, review.SCHEMA])
         self.assertTrue(all(p["max_tokens"] <= 200 for p in claude.sent))
 
     def test_a_rejected_shape_is_named_with_the_errors_type_and_message_and_exits_1(self):
-        claude = FakeClaude("{}", "{}")
+        claude = FakeClaude("{}", "{}", "{}")
         accept = claude.create
 
         def create(**params):
@@ -52,11 +53,11 @@ class SmokeTest(unittest.TestCase):
         self.assertTrue(failed.startswith("smoke: summary FAILED: APIStatusError: The compiled grammar is too large x"))
         self.assertEqual(len(failed.split(": ", 3)[3]), 200)  # the message, cut
         self.assertTrue(group.startswith("smoke: group summary FAILED"))
-        self.assertEqual(rest, ["smoke: quick titles ok", "smoke: cve lines ok"])  # the others still checked
+        self.assertEqual(rest, ["smoke: quick titles ok", "smoke: cve lines ok", "smoke: review ok"])  # the others still checked
 
     def test_main_uses_the_settings_key_and_never_touches_the_store(self):
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ), \
-                mock.patch("anthropic.Anthropic", return_value=FakeClaude("{}", "{}", "{}", "{}")) as client:
+                mock.patch("anthropic.Anthropic", return_value=FakeClaude("{}", "{}", "{}", "{}", "{}")) as client:
             os.environ.pop("ANTHROPIC_API_KEY", None)
             env = Path(folder, ".env")
             store = Path(folder, "store")

@@ -41,15 +41,20 @@ SENTENCE_END = re.compile(r"(?<=[.!?;])\s+|\n")
 TARGET_BEFORE = re.compile(r"\bto\s+(?:version\s+)?v?$", re.I)
 TARGET_AFTER = re.compile(rf"\s*(?:으?로|이상|이후|\+|or (?:later|higher|newer|above)|and (?:later|above)|(?:{'|'.join(SCALES)})\b)", re.I)
 # A line named as a line, with no fix beside it ("A fixed version for the Vault Enterprise 1.20 line is not confirmed").
-LINE_WORD = re.compile(r"\s*(?:line|branch|series|계열|라인|브랜치|버전대)|\.x\b", re.I)
+LINE_WORD = re.compile(r"(?:\.x)?\s*(?:line|branch|series|계열|라인|브랜치|버전대)|\.x(?![A-Za-z0-9])", re.I)  # not \b: "6.3.x와"
+WORDED = re.compile(r"line|branch|series|계열|라인|브랜치|버전대", re.I)
+# A line word after one or more listed lines ("12.3 및 12.4 계열", "12.0 to 12.3 lines", "6.3.x와 5.19.x 계열").
+LINE_AFTER = re.compile(rf"(?:(?:\.x)?\s*(?:,|및|와|과|~|–|and|to|through|or|또는)\s*v?\d+(?:\.\d+)*)*(?:{LINE_WORD.pattern})", re.I)
 
 
 def without_line_names(text, fixed, known):
     """text without the product lines a sentence names beside a version of that line ("the 26.1 line to 26.1.11",
     "10.2.7 for 10.2", "the 1.19 line needs 1.19.26"): a dotted prefix of one of the reply's fixed versions (fixed),
     where the same sentence names an input version (known) that starts with it, or a prefix of an input version followed
-    by a line word ("the 1.20 line", "1.20 계열", "1.20.x"). Both are numbers() tokens. A prefix as the version to install
-    ("update to 1.19", "1.19 or later") stays, so the number check still rejects it."""
+    by a line word ("the 1.20 line", "1.20 계열", "1.20.x"), also a major alone ("the 48 line", "16 라인" beside 48.0.7,
+    16.20.1) and each of several lines before one line word ("12.3 및 12.4 계열", 11-16 night: these kept Wasmtime,
+    Frappe HRMS and GitLab Summaries old for three tries). Both are numbers() tokens. A prefix as the version to install
+    ("update to 1.19", "1.19 or later") or a count ("4건") stays, so the number check still rejects it."""
     def line(token, versions):
         return any(v.startswith(f"{token}.") for v in versions)
 
@@ -58,8 +63,12 @@ def without_line_names(text, fixed, known):
 
         def name(m):
             t = m[0].lower()
+            after = LINE_AFTER.match(sentence, m.end())
+            # A line word names a line; a bare ".x" ("Update 26.1.x to 26.1.11") also needs the reply's own fix on it.
+            if after and line(t, known) and (WORDED.search(after[0]) or line(t, fixed)):
+                return True
             return ("." in t and not TARGET_BEFORE.search(sentence[:m.start()]) and not TARGET_AFTER.match(sentence, m.end())
-                    and (line(t, fixed) and line(t, here) or line(t, known) and LINE_WORD.match(sentence, m.end())))
+                    and line(t, fixed) and line(t, here))
         return NUMBER_RE.sub(lambda m: " " if name(m) else m[0], sentence)
     return "\n".join(map(strip, SENTENCE_END.split(text)))
 

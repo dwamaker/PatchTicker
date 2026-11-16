@@ -379,6 +379,7 @@ def summary_failures(incidents, since):
 # Reasons that end in a string the model wrote as it liked (summaries.parse, summaries.stray_script), which may copy a
 # source page.
 FREE_TEXT_REASONS = ("lead is not an input URL", "cve_lines names a CVE not in the input", "text in another script")
+REVIEW_REASON = "the review found"  # review.REASON (review.py imports nothing of incidents; a test keeps the two equal)
 
 
 def plain_reason(reason):
@@ -386,7 +387,8 @@ def plain_reason(reason):
     characters (summaries.failed); the rest quote model output: number tokens (NUMBER_RE), a version (VERSION_RE), API
     error text. A reason quoting free model text, or holding a character that is not printable, keeps only its own words
     before ": "; the whole reason stays on the Incident in its month file."""
-    if reason.startswith(FREE_TEXT_REASONS) or not reason.isprintable():
+    # The review's reason quotes the Summary and may follow other soft problems ("…; the review found: …"), 11-16.
+    if reason.startswith(FREE_TEXT_REASONS) or REVIEW_REASON in reason or not reason.isprintable():
         head = reason.split(": ", 1)[0]
         return head if head.isprintable() else ""
     return reason

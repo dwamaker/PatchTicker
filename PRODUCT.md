@@ -62,7 +62,7 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
 
 - Name: Patch Ticker in public (owner, 2026-11-09); vuln-radar stays the repository and code name. The R2 bucket and Pages project keep the internal name patchradar.
 - Voice: the normal view is calm, precise, polite Korean (존댓말). The Easy view is loud and lively
-  ("심각!" for the top level only, then 경계 and 주의; "어서 업데이트하세요!") but stays polite, and never overstates beyond the sources.
+  ("긴급!" for the top level only, then 경계 and 주의; "어서 업데이트하세요!") but stays polite, and never overstates beyond the sources.
 
 ## Evidence on Hand
 

@@ -48,11 +48,12 @@
       --panel-2: light-dark(#eceef1, #1f2328);
       --group: light-dark(#e6ebf1, #1c2531);
       /* the two kinds of group, each in its own colour on its tag and its frame's band (owner, 11-16): a release group
-         (함께 패치, one Incident) teal, line-07 by day; a vendor fold (묶음, several Incidents) violet, line-06 by day.
+         (함께 공개, one Incident) teal; a vendor fold (묶음, several Incidents) violet. Neither is a Product line (LINES).
          Apart in both themes and under protan, deutan and tritan vision; never a risk colour, never the Highlights' blue.
          Text 4.9:1+ on the tag's panel, band 4.1:1+ on the group ground and the page. */
       --patch-edge: light-dark(#007c88, #3fc1cc);
       --fold-edge: light-dark(#7340f2, #a98bff);
+      --chev-ring: light-dark(#737c86, #737b84); /* a row chevron's ring: 3.5:1+ on the page, group, panel and hover grounds in both themes (WCAG 1.4.11), quieter than Secondary Ink (owner, 11-16) */
       --rainbow: #ff4d4d, #ffa02e, light-dark(#d9a400, #ffe03a), #4cd964, #3ab7ff, #7a6cff, #ff5ad8, #ff4d4d; /* the 쉬운 설명 beckon only (DESIGN.md beckon-*) */ /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
       --ink: light-dark(#16191d, #ececec);
       --ink-2: light-dark(#4f5862, #a8afb7);
@@ -446,7 +447,7 @@
     .row[aria-expanded="true"] > .chev { transform: none; }
     .row > .chev::before { content: ""; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
     .row[aria-expanded="true"] > .chev::before { transform: rotate(45deg) translate(-2px, -2px); }
-    .row > .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--edge); border-radius: 50%; transition: border-color 120ms ease-out; }
+    .row > .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--chev-ring); border-radius: 50%; transition: border-color 120ms ease-out; }
     @media (hover: hover) { .row:hover > .chev::after { border-color: var(--ink-2); } }
     .row:focus-visible > .chev::after { border-color: var(--focus); }
 
@@ -465,7 +466,7 @@
     .list .row[aria-expanded="true"], .list .details { background: var(--panel); }
     /* an opened vendor fold: its row, members and closing line share the panel ground; members keep the list's columns */
     .list li.grouped, .list li.vendor-fold { background: var(--group); }
-    /* a row that stands for several Incidents or CVEs (함께 패치, 묶음) is framed like a Highlight, its left band in
+    /* a row that stands for several Incidents or CVEs (함께 공개, 묶음) is framed like a Highlight, its left band in
        its kind's colour (--patch-edge, --fold-edge), so two groups that touch read as two (owner, 11-16); an opened fold's frame holds the fold row,
        its members and the closing line and closes below them. Paddings take back the band, so columns stay aligned. */
     .list li.grouped, .list li.vendor-fold { margin: 0.375rem 0; border: 1px solid var(--rule-2); border-left: 3px solid var(--patch-edge); border-radius: var(--r-frame); overflow: hidden; }
@@ -648,7 +649,8 @@
       /* the chevron rides with the date: the date reserves its width (margin-right) and the chevron, pulled back
          into that space, takes no room of its own, so the two wrap together and the chevron never sits alone */
       .row > .c-date { order: 3; flex: none; margin-left: auto; margin-right: 2rem; }
-      .row > .chev { order: 4; flex: none; margin-left: -1.75rem; } /* the ring (1.75rem) clears the date */
+      /* the ring (1.75rem) clears the date, and its right side stays inside the row and a group's frame (0.5rem in) */
+      .row > .chev { order: 4; flex: none; margin-left: -1.75rem; margin-right: 0.5rem; }
       .list :is(li.grouped, li.vendor-fold) > .row-h > .row { padding-left: calc(0.5rem - 3px); padding-right: calc(0.5rem - 1px); }
       .list li.grouped > .details { padding-left: calc(0.75rem - 3px); }
       .vendor-fold .fold-members { margin-left: 0.75rem; }

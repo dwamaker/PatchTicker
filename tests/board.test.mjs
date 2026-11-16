@@ -578,7 +578,7 @@ test('a Product keeps its line colour, and Products spread over the lines', () =
     'atlassian:confluence', 'gitlab:gitlab', 'jenkins:jenkins', 'apache:tomcat', 'nginx:nginx', 'php:php', 'nodejs:node.js',
     'oracle:java', 'vmware:esxi', 'zyxel:firmware'];
   const per = LINES.map((line) => ids.filter((id) => productLine(id) === line).length);
-  assert.ok(Math.max(...per) <= ids.length / 4, `lines hold ${per}`);
+  assert.ok(Math.max(...per) <= (2 * ids.length) / LINES.length, `lines hold ${per}`); // at most twice a fair share
 });
 
 test('a Product\'s line follows its id, so Korean and English pages colour it the same', () => {
@@ -622,6 +622,21 @@ test('no two line colours are near twins', () => {
       const [x, y] = [oklab(a.bg), oklab(b.bg)];
       const gap = Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
       assert.ok(gap >= 0.13, `${a.bg} and ${b.bg} are ${gap.toFixed(3)} apart`);
+    }
+  }
+});
+
+// Owner, 11-16: a Product pill is never the release group's teal nor the fold's violet, nor reads as either (the same
+// 0.13 as two lines), in either theme. The group colours are read from web/index.html, where they live.
+test('no line colour is a group colour or a near twin of one, in either theme', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const groups = ['--patch-edge', '--fold-edge'].flatMap((name) => new RegExp(`${name}: light-dark\\((#[0-9a-f]{6}), (#[0-9a-f]{6})\\)`).exec(html).slice(1));
+  assert.equal(groups.length, 4);
+  for (const { bg } of LINES) {
+    for (const g of groups) {
+      const [x, y] = [oklab(bg), oklab(g)];
+      const gap = Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+      assert.ok(gap >= 0.13, `${bg} is ${gap.toFixed(3)} from the group colour ${g}`);
     }
   }
 });
@@ -1420,4 +1435,15 @@ test('the fold\'s day is the date the row shows: the visitor\'s calendar day', (
   const d = new Date(at);
   assert.equal(localDay(at), `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
   assert.equal(foldByVendor([amd(1, at), amd(2, at), amd(3, at)], 3)[0].fold, `amd ${localDay(at)}`); // the default
+});
+
+// Owner, 11-16: hashed, WordPress's keys landed on the release group's teal (the fold row's badge) and the fold's violet
+// (the core Product): every WordPress key takes line-08, a Product colour neither group uses.
+test('every WordPress key takes its own line, not a group colour, and other Products keep theirs', () => {
+  const pink = LINES.find((l) => l.bg === '#c25bb8');
+  for (const key of ['wordpress', 'WordPress', 'wordpress:wordpress', 'name:wordpress']) assert.equal(productLine(key), pink, key);
+  assert.equal(productLine('openbsd:openssh'), productLine('openbsd:openssh')); // stable
+  assert.notEqual(productLine('name:wordpress plugin'), undefined);
+  assert.equal(productLine('constructor'), productLine('constructor')); // no prototype key reaches the pinned table
+  assert.ok(LINES.includes(productLine('constructor')));
 });
