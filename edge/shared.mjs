@@ -1,6 +1,6 @@
 // What every Pages Function uses (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision): the site
 // address, escaping, the store read that fails closed, the edge cache, and what to do (the page and the feed alike).
-import { easyAction, easyLine, firstProduct, isShellCommand, riskLevel, usableFixes, WORDS } from '../web/board.mjs';
+import { easyAction, easyLine, firstProduct, fixTable, FIXES_SHOWN, isShellCommand, riskLevel, usableFixes, WORDS } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
 export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
@@ -85,7 +85,17 @@ export function whatToDo(i, lang) {
   const action = easyAction(sum);
   const out = [p(s.mitigation)];
   const fixes = usableFixes(sum);
-  if (fixes.length > 1) out.push(p(t.fixesIntro), ul(fixes.map((f) => `<strong>${escapeXml(f.for)}</strong> ${escapeXml(t.orNewer(f.version))}`)));
+  const table = fixTable(sum);
+  // Four or more lines (owner, 11-16): an aligned list, five rows in view; a details after it shows the rest by CSS alone
+  // (edge/page.mjs: no script but the times' runs here). Fewer: the pairs as before.
+  if (table) {
+    const rest = (n) => (n >= FIXES_SHOWN ? ' class="rest"' : '');
+    out.push(`<div class="fix-table"><p class="fix-head">${escapeXml(t.fixesTitle)}</p><dl class="fix-list">${table.rows
+      .map((f, n) => `<dt${rest(n)}>${escapeXml(f.for)}</dt><dd${rest(n)}>${escapeXml(t.orNewer(f.version))}</dd>`).join('')}</dl>${
+      // The label follows the state by CSS (edge/page.mjs), as the Board's button does by script: "12 more", then "Show less".
+      table.more ? `<details class="more fix-more"><summary><span class="closed">${escapeXml(t.fixesMore(table.more))}</span>`
+        + `<span class="opened">${escapeXml(t.foldLess)}</span></summary></details>` : ''}</div>`);
+  } else if (fixes.length > 1) out.push(p(t.fixesIntro), ul(fixes.map((f) => `<strong>${escapeXml(f.for)}</strong> ${escapeXml(t.orNewer(f.version))}`)));
   else if (action.kind === 'version' && !s.mitigation) out.push(p(t.version(action.fixed, product)));
   if (action.kind === 'command') {
     const cmd = String(action.command);

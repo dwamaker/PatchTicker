@@ -109,6 +109,14 @@ code{font-family:var(--mono);font-size:.875rem}
 .cves,time,#s-todo~ul li{font-variant-numeric:tabular-nums}
 .cve-src{white-space:nowrap;font-size:.8125rem;font-variant-numeric:tabular-nums}
 .credits{color:var(--ink-2);font-size:.875rem}
+.fix-head{margin:.75rem 0 0;font-weight:700}
+.fix-list{display:grid;grid-template-columns:fit-content(20rem) auto;justify-content:start;column-gap:1.25rem;row-gap:.25rem;margin:.375rem 0 0}
+.fix-list dt{min-width:0;overflow-wrap:anywhere}
+.fix-list dd{margin:0;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fix-list:has(+ .fix-more:not([open])) > .rest{display:none}
+.fix-more[open] .closed,.fix-more:not([open]) .opened{display:none}
+.more.fix-more summary{padding-block:.6875rem}
+@media (max-width:22.5rem){.fix-list{grid-template-columns:minmax(0,1fr)}.fix-list dd{padding-left:.75rem;white-space:normal;overflow-wrap:anywhere}.fix-list dt:not(:first-child){margin-top:.25rem}}
 @media (pointer:coarse){:is(.sources,.cves,.others,.credits) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
 .more summary{width:fit-content;padding:.375rem 0;color:var(--focus);font-weight:600;cursor:pointer;text-underline-offset:3px}
 @media (pointer:coarse){.more summary{padding-block:.75rem}}

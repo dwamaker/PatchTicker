@@ -613,6 +613,15 @@
     .details .fixes { margin: 0.375rem 0 0; padding-left: 1.25rem; }
     .details .fixes li { padding: 0.125rem 0; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
     .fixes .ver { white-space: nowrap; }
+    /* four or more fixed lines (owner, 11-16): one grid, product left and version right, versions aligned in tabular
+       numerals, the version right after the longest name (the name column hugs it, up to 20rem, then wraps); at 360px and under the version drops under its name */
+    .details .fix-head { margin-top: 0.75rem; font-size: calc(0.9375rem * var(--ts)); font-weight: 700; }
+    .fix-list { display: grid; grid-template-columns: fit-content(20rem) auto; justify-content: start; column-gap: var(--gap); row-gap: 0.25rem; max-width: 46rem; margin: 0.375rem 0 0; font-size: calc(0.9375rem * var(--ts)); line-height: 1.5; }
+    .fix-list dt { min-width: 0; overflow-wrap: anywhere; }
+    .fix-list dd { margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .fix-list:not(.all) > .rest { display: none; }
+    .details .fix-more { margin-top: 0.125rem; }
+    @media (max-width: 22.5rem) { .fix-list { grid-template-columns: minmax(0, 1fr); } .fix-list dd { padding-left: 0.75rem; white-space: normal; overflow-wrap: anywhere; } .fix-list dt:not(:first-child) { margin-top: 0.25rem; } }
     .models li { overflow-wrap: anywhere; break-inside: avoid; }
     .models { margin-top: 0.375rem; }
     .models ul.lines { columns: auto; padding-left: 0; list-style: none; }

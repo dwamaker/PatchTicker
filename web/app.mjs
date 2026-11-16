@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -57,7 +57,7 @@ const TEXT = {
     support: '후원',
     searched: (cve) => `검색한 ${cve}`, notExploited: '악용 보고 없음',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
-    mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.', foldLess: '접기', linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
+    mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
     copy: '복사', copied: '복사됨', share: '이 사건 링크 복사',
     tagsOnly: '이 제품의 사건만 보기', tagOnly: (name) => `${name} 사건만 보기`,
@@ -106,7 +106,7 @@ const TEXT = {
     support: 'Support',
     searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
-    mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.', foldLess: 'Show less', linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
+    mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
     copy: 'Copy', copied: 'Copied', share: 'Copy link to this Incident',
     tagsOnly: 'Show only Incidents of', tagOnly: (name) => `Show only ${name} Incidents`,
@@ -1124,7 +1124,7 @@ function easyPanel(incident) {
   const s = incident.summary;
   // The chatbot hint names the CVE the visitor searched for when it is not the Lead (N1), else the Lead.
   const cve = searchedCve(filter.query, incident, lang)?.cve || incident.cves?.[0];
-  const parts = easyAnswer(s, riskLevel(incident), cve, firstProduct(incident, lang), isLibrary(incident));
+  const parts = easyAnswer(s, riskLevel(incident), cve, firstProduct(incident, lang), isLibrary(incident), `easy:${incident.id}`);
   // "Does this touch me?" comes before "what to do": the Summary's conditions, in its own words, at body weight so the
   // action stays the one heavy line. One condition on the line, several as a list.
   // The everyday-words version when the Summary has one (easy_conditions, after critique 12), else the conditions as written.
@@ -1952,14 +1952,17 @@ function settingLine(text, file = '', cls = 'action') {
 
 // product: the row's first Product, so an update line says what to update ("OpenEMR 8.3.0 이상으로"; critique 13).
 // library: a part built into other programs (isLibrary), whose version the reader cannot see on any screen.
-function easyAnswer(s, level, cve = '', product = '', library = false) {
+// key: the row's id in its view, so a shown fixed-version list stays shown through a redraw (fixList).
+function easyAnswer(s, level, cve = '', product = '', library = false, key = '') {
   const t = TEXT[lang];
   const action = easyAction(s);
   const parts = []; // the plain sentence is already the row's second line
   // Product lines with their own fixed versions (SonicWall Gen7 7.3.4-7013, Gen8 8.2.3-8015): one line each, and the
-  // long model list folded away under them.
+  // long model list folded away under them. From four lines on, the aligned list (owner, 11-16).
   const fixes = usableFixes(s);
-  if (fixes.length > 1) {
+  const table = fixTable(s);
+  if (table) parts.push(para('action', t.fixesIntro), ...fixList(table, key));
+  else if (fixes.length > 1) {
     const list = el('ul', 'fixes');
     for (const f of fixes) {
       const li = el('li', '');
@@ -2207,6 +2210,9 @@ function details(incident) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
   const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang], incident.cves);
+  // Owner, 11-16: four or more fixed lines, under the Mitigation as an aligned list (the Easy view draws its own, above).
+  const fixTab = !easy && incident.summary ? fixTable(incident.summary) : null;
+  if (fixTab) parts.push(...fixList(fixTab, `normal:${incident.id}`, t.fixesTitle));
   // M1 (owner, 11-15): under the Mitigation, the Board filtered to the row's first Product when it had other Incidents
   // in the last 30 days; same tab, as the address is this page's own filter.
   ensureOthers();
@@ -2393,6 +2399,38 @@ function tagLine(incident) {
 }
 
 let rowCount = 0;
+
+// Owner, 11-16: the Summary's fixed versions from four lines on, one dt/dd pair per line in one grid, so the versions line
+// up; rows past FIXES_SHOWN wait behind a real button, whose state is kept by row and view (key) through every redraw.
+const openFixLists = new Set();
+function fixList(table, key, head = '') {
+  const t = TEXT[lang];
+  const list = Object.assign(el('dl', 'fix-list'), { id: `fixes-${++rowCount}` });
+  table.rows.forEach((f, n) => {
+    const cls = n >= FIXES_SHOWN ? 'rest' : '';
+    list.append(el('dt', cls, f.for), el('dd', cls, t.orNewer(f.version)));
+  });
+  const out = [...(head ? [para('fix-head', head)] : []), list];
+  if (table.more) {
+    const button = Object.assign(el('button', 'tag-toggle'), { type: 'button' });
+    button.setAttribute('aria-controls', list.id);
+    const sync = () => {
+      const shown = openFixLists.has(key);
+      list.classList.toggle('all', shown);
+      button.setAttribute('aria-expanded', String(shown));
+      button.textContent = shown ? t.foldLess : t.fixesMore(table.more);
+    };
+    button.addEventListener('click', () => {
+      if (!openFixLists.delete(key)) openFixLists.add(key);
+      sync();
+    });
+    sync();
+    const line = el('p', 'fix-more');
+    line.append(button);
+    out.push(line);
+  }
+  return out;
+}
 
 // A vendor's bulk push as one line ("IBM 보안 공지 25건 · 최고 9.9"); opened, its rows follow it as ordinary rows.
 const openFolds = new Set();

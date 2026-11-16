@@ -187,12 +187,97 @@ class AttackedCveTest(unittest.TestCase):
         self.assertIn("names that CVE id beside the claim", summaries.GROUP_INSTRUCTIONS)
 
 
+class ManyVersionsTest(unittest.TestCase):
+    """Owner, 11-16 late: four or more fixed lines go to `fixes` (the page lists them); the mitigation and the Easy
+    action do not list them (CVE-2026-102868: seventeen pairs in a 742-character paragraph)."""
+    FIXES = [{"for": f"Widget {n}", "version": f"{n}.0.{n}", "devices": []} for n in (1, 2, 3, 4)]
+
+    def reply(self, ko, en, fixes=FIXES, fixed="1.0.1", field="mitigation"):
+        return SSHOLE_SUMMARY | {"fixed": fixed, "fixes": fixes, "ko": SSHOLE_SUMMARY["ko"] | {field: ko},
+                                 "en": SSHOLE_SUMMARY["en"] | {field: en}}
+
+    def test_the_prompt_says_four_or_more_go_to_fixes(self):
+        self.assertIn("when four or more lines or products have their own fixed version", summaries.INSTRUCTIONS)
+        self.assertIn("never four or more versions", summaries.INSTRUCTIONS)
+
+    def test_four_fixed_versions_listed_are_sent_back(self):
+        listed = self.reply("Widget 1은 1.0.1, 2는 2.0.2, 3은 3.0.3, 4는 4.0.4 이상으로 업데이트하세요.",
+                            "Update Widget 1 to 1.0.1, 2 to 2.0.2, 3 to 3.0.3 and 4 to 4.0.4 or later.")
+        self.assertEqual(summaries.many_versions(listed), f"{summaries.MANY_VERSIONS} (ko mitigation)")
+        action = self.reply("1.0.1, 2.0.2, 3.0.3, 4.0.4로 업데이트하세요.", "Update to 1.0.1, 2.0.2, 3.0.3 or 4.0.4.", field="easy_action")
+        self.assertEqual(summaries.many_versions(action), f"{summaries.MANY_VERSIONS} (ko easy_action)")
+
+    def test_four_targets_with_fewer_fixes_are_sent_back(self):
+        # CVE-2026-63282: seven versions in the sentence, fixes empty; the page shows fixes only.
+        reply = self.reply("1.0.1, 2.0.2, 3.0.3, 4.0.4 이상으로 업데이트하세요.", "Update to 1.0.1, 2.0.2, 3.0.3 or 4.0.4 or later.",
+                           fixes=[], fixed="1.0.1")
+        self.assertEqual(summaries.many_versions(reply), f"{summaries.MANY_VERSIONS} (ko mitigation)")
+        to_only = self.reply("확인하세요.", "Update to 1.0.1, 2.0.2, 3.0.3 and 4.0.4.", fixes=[], fixed="1.0.1")
+        self.assertEqual(summaries.many_versions(to_only), f"{summaries.MANY_VERSIONS} (en mitigation)")
+
+    def test_three_versions_bounds_and_the_short_sentence_pass(self):
+        self.assertEqual(summaries.many_versions(self.reply("1.0.1, 2.0.2, 3.0.3 이상으로 업데이트하세요.",
+                                                            "Update to 1.0.1, 2.0.2 or 3.0.3 or later.")), "")
+        short = self.reply("쓰는 제품이나 계열의 수정 버전으로 업데이트하세요. Widget 5는 수정 버전이 없습니다.",
+                           "Update your product or line to its fixed version. Widget 5 has no fix.")
+        self.assertEqual(summaries.many_versions(short), "")
+        # Line names are no versions to install (CVE-2026-120431: "10.86 계열은 10.86.51" names three, not six).
+        lines = self.reply("10.86 계열은 10.86.51, 11.02 계열은 11.02.29, 11.15 계열은 11.15.07 이상으로 업데이트하세요.",
+                           "Update the 10.86 line to 10.86.51, 11.02 to 11.02.29 and 11.15 to 11.15.07 or later.",
+                           fixes=[{"for": "x", "version": v, "devices": []} for v in ("10.86.51", "11.02.29", "11.15.07")],
+                           fixed="10.86.51")
+        self.assertEqual(summaries.many_versions(lines), "")
+        bounds = self.reply("1.0.0 이상 1.0.1 미만, 2.0.0 이상 2.0.2 미만이 해당합니다. 1.0.1로 업데이트하세요.",
+                            "1.0.0 up to 1.0.1 and 2.0.0 up to 2.0.2 are affected. Update to 1.0.1.", fixes=[])
+        self.assertEqual(summaries.many_versions(bounds), "")
+        # live, 11-16: affected bounds and "newer than" thresholds listed with no fixes are no fixed lines
+        for ko, en in (("6.11.0 이상 6.22.0 미만은 6.22.0으로, 7.0.0 이상 7.8.0 미만은 7.8.0으로 업데이트하세요.", "Update."),
+                       ("4.33.10M, 4.34.8M, 4.35.6M, 4.36.2F 이하가 영향 범위이므로 새 버전인지 확인하세요.", "Check."),
+                       ("13.0.31, 12.11.84, 11.11.218, 10.12.345, 9.80.148보다 낮은 버전이 해당합니다.", "Check."),
+                       ("설치된 Moodle이 수정 기준(4.5.15, 5.0.11, 5.1.8, 5.2.4)보다 새 버전인지 확인하세요.", "Check."),
+                       ("4.35.0F부터 4.35.6M, 4.36.0F부터 4.36.2F, 4.37.0F가 해당합니다.", "Check."),
+                       ("12.10.0.1, 12.9.0.3, 12.8.0.5 이상 버전으로 업데이트하세요. 12.11.0.0 이상도 해당 버전이 아닙니다.", "Update."),
+                       ("확인하세요.", "Hinemos 7.0.0 to 7.0.4, 7.1.0 to 7.1.2 and 7.2.0 users should apply the patch."),
+                       ("확인하세요.", "Update wasmtime-wasi 48.0.0 or later and before 48.0.8 to 48.0.8, 49.0.0 or later and before "
+                                     "49.0.5 to 49.0.5, and 50.0.0 or later and before 50.0.1 to 50.0.1.")):
+            with self.subTest(ko):
+                self.assertEqual(summaries.many_versions(self.reply(ko, en, fixes=[], fixed="")), "")
+
+
+class FieldNameTest(unittest.TestCase):
+    """Owner, 11-16 late: a reply sent the reader to a field by its name (CVE-2026-122116 "계열별 수정 버전은 fixes에서
+    확인하세요.", CVE-2026-99284 "각 계열의 수정 버전은 fixes 항목을 보세요."); the page shows a list under the mitigation."""
+
+    def test_the_prompt_names_the_list_never_the_field(self):
+        self.assertIn("아래 목록에서 쓰는 제품의 수정 버전을 확인하세요.", summaries.INSTRUCTIONS)
+        self.assertIn("never writes a field name", summaries.INSTRUCTIONS)
+
+    def test_a_field_name_in_korean_text_is_sent_back(self):
+        for text in ("계열별 수정 버전은 fixes에서 확인하세요.", "각 계열의 수정 버전은 fixes 항목을 보세요.", "cve_lines를 참고하세요."):
+            with self.subTest(text):
+                self.assertEqual(summaries.field_names(with_fields("ko", mitigation=text)), f"{summaries.FIELD_NAME} (ko mitigation)")
+
+    def test_a_field_named_in_english_is_sent_back_and_the_word_passes(self):
+        for text in ("See fixes for each line's version.", "Each line's fixed version is in the fixes list.",
+                     "Check the fixes field for your line.", "The versions are listed in fixes.", "See cve_lines for each flaw."):
+            with self.subTest(text):
+                self.assertEqual(summaries.field_names(with_fields("en", mitigation=text)), f"{summaries.FIELD_NAME} (en mitigation)")
+        # live, 11-16: a file name, a page path, a field written in English, the ordinary "fixed"
+        for text in (".library-ms 파일을 여는 것", "@@check-modifier-conditions 페이지에서 확인하세요.", "Using an older Intel library"):
+            with self.subTest(text):
+                self.assertEqual(summaries.field_names(with_fields("ko", mitigation=text)), "", text)
+        for text in ("The update fixes three flaws.", "Install the fixes below.", "Find your product's fixed version in the list below.",
+                     "Fixed in 10.6p2; the summary of the advisory lists the conditions.", "It signs tokens with the fixed key 'k'."):
+            with self.subTest(text):
+                self.assertEqual(summaries.field_names(with_fields("en", mitigation=text)), "", text)
+
+
 class WiredTest(unittest.TestCase):
     """Each new reason costs a retry through save_reply, with its own sentence in the retry note."""
 
     def test_each_reason_has_a_retry_sentence(self):
         for reason in (summaries.INFORMAL, summaries.BOUND_CHECK, summaries.NO_ACTION, summaries.EMPTY_WITH_FIX,
-                       summaries.HANGUL_IN_EN, summaries.ATTACKED_UNNAMED):
+                       summaries.HANGUL_IN_EN, summaries.ATTACKED_UNNAMED, summaries.MANY_VERSIONS):
             note = summaries.retry({"summary_error": {"tries": 1, "reason": f"{reason} (ko)"}}, TEXT)["note"]
             self.assertNotIn("never shorten or round one", note, reason)
             self.assertGreater(len(note), len(f"Your previous reply for this Incident was rejected: {reason} (ko).") + 20, reason)

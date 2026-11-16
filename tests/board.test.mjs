@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable } from '../web/board.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -1446,4 +1446,21 @@ test('every WordPress key takes its own line, not a group colour, and other Prod
   assert.notEqual(productLine('name:wordpress plugin'), undefined);
   assert.equal(productLine('constructor'), productLine('constructor')); // no prototype key reaches the pinned table
   assert.ok(LINES.includes(productLine('constructor')));
+});
+
+// Owner, 11-16: from four product lines on, the fixed versions show as an aligned list, five rows in view and the rest
+// behind one disclosure; with two or three the pairs stay as they were (no table).
+const fixRows = (n) => ({ fixes: Array.from({ length: n }, (_, k) => ({ for: `Windows ${10 + k}`, version: `10.0.${k}` })) });
+test('the fixed-version list starts at four usable lines and shows five of them', () => {
+  assert.equal(fixTable(fixRows(3)), null);
+  assert.equal(fixTable({}), null);
+  assert.deepEqual([fixTable(fixRows(4)).rows.length, fixTable(fixRows(4)).more], [4, 0]);
+  assert.deepEqual([fixTable(fixRows(5)).rows.length, fixTable(fixRows(5)).more], [5, 0]);
+  assert.deepEqual([fixTable(fixRows(17)).rows.length, fixTable(fixRows(17)).more], [17, 12]);
+  const mixed = { fixes: [...fixRows(3).fixes, { for: 'Office', version: '' }, null, { for: 'Excel', version: '16.0' }] };
+  assert.deepEqual(fixTable(mixed).rows.map((f) => f.for), ['Windows 10', 'Windows 11', 'Windows 12', 'Excel']); // the given order
+  assert.equal(WORDS.ko.fixesTitle, '제품별 수정 버전');
+  assert.equal(WORDS.en.fixesTitle, 'Fixed version by product');
+  assert.equal(WORDS.ko.fixesMore(12), '12줄 더 보기');
+  assert.equal(WORDS.en.fixesMore(12), '12 more');
 });

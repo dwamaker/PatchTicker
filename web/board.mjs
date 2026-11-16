@@ -628,6 +628,7 @@ export const WORDS = {
     command: '이 명령으로 업데이트하세요:', commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, devices: '이 기기들을 지금 업데이트하세요!',
     version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
     fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
+    fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, foldLess: '접기',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '악용 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
@@ -648,6 +649,7 @@ export const WORDS = {
     command: 'Run this to update:', commandFor: (w) => `${w}, run this to update:`, devices: 'Update these devices now!',
     version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
     fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
+    fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, foldLess: 'Show less',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Exploited', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
@@ -670,6 +672,14 @@ export const cveUrl = (cve) => `https://www.cve.org/CVERecord?id=${encodeURIComp
 // The Summary's per-line fixes a reader can act on: a product line and its version, both given.
 export const usableFixes = (s) => (Array.isArray(s.fixes) ? s.fixes : [])
   .filter((f) => typeof f?.for === 'string' && typeof f?.version === 'string' && f.for && f.version);
+// Owner, 11-16: from four product lines on, the fixed versions are an aligned list ("제품별 수정 버전") in the order the
+// Summary gives, FIXES_SHOWN rows in view and the rest (`more`) behind one disclosure; with fewer, null (the pairs stay
+// as they were).
+export const FIXES_SHOWN = 5;
+export const fixTable = (s) => {
+  const rows = usableFixes(s || {});
+  return rows.length >= 4 ? { rows, more: Math.max(0, rows.length - FIXES_SHOWN) } : null;
+};
 
 // 틀린 내용 알리기: a new issue in the public repository with the Incident filled in (ticket 09); link is where the visitor
 // saw it (the Board's #i= address or its Incident page). Korean then English in both languages, so anyone can follow it (owner).

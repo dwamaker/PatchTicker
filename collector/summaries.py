@@ -19,7 +19,7 @@ from collector.cve_lines import save_lines
 from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
-from collector.numbers import NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
+from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
 from collector.summary_input import CVE_LINES_ONLY, is_hn, summary_input, trusted
 
@@ -108,11 +108,11 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
 - summary: at most two sentences. What the problem is and who is affected. Plain words, no hype. When a source withholds the names of the affected companies ("two automakers, which we'll call Automaker #1 and #2"), say they were not named; never guess them from other names on the page (a list of earlier targets is not this one).
 - conditions: the preconditions for being exposed, one short phrase each (for example a libc, a build option, a setting that must be on). A CVE record's configurations names the settings that must be present. Empty list when the text names none. When the Incident lists more than one CVE, a condition that holds for only some of them opens with those CVE IDs, copied exactly from the Incident line, then a colon ("CVE-2026-76954: 관리 화면이 인터넷에 열려 있음", "CVE-2026-76954, CVE-2026-76955: iBGP neighbor configured"); a condition that holds for every CVE has no ID. When the input has a "Per-CVE lines only for:" line, name only CVEs it lists. Never write one condition that joins what different CVEs need.
 - easy_conditions: the same conditions for the easy reader: as many as in conditions, in the same order, each one rewritten in everyday words with the same ban on technical terms as easy ("관리 화면을 인터넷에 열어 둔 경우", "If the admin page is reachable from the internet"), keeping the same CVE IDs at the start of the same entries. Empty list when conditions is empty.
-- mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory, as one instruction with no "if you run" before it. Never name a version the sources do not. When a source says a whole product line is affected ("7.0 all versions") and names no fixed version on it, tell that line's users to move to a line that has one, never to look for a version newer than a bound. When several lines are affected and only some have a fixed version, give each of those its version and say the others have none confirmed ("7.2 계열의 수정 버전은 확인되지 않았습니다.", "A fixed version for the 7.2 line is not confirmed."), or what a source tells them to do; never send them to another line's version. When a source says the service must be restarted or the device rebooted after the update, say so right after the update ("업데이트한 뒤 sshd를 다시 시작하세요.", "Then restart sshd."). The mitigation is read on its own: it names the versions and lines itself even when fixes lists them, and never points at another field or part of the page ("the range above", "listed below", "아래 목록"). When a source says this flaw has no fix (no patch available, no fixed release, no solution reported yet, the product no longer maintained), that wins over the upper-bound advice and holds even when nothing else can be done: begin with exactly one of these sentences, word for word: "수정 버전은 아직 없습니다." / "There is no fix yet.", or for a product no longer maintained "더 이상 지원되지 않아 수정 버전이 없습니다." / "It is no longer maintained, so no fixed version exists." (never both, and no "아직" or "yet" then), then tell the reader to do what a source says instead (a workaround, a migration, replacing the device) as an instruction ("지원되는 기기로 교체하세요.", "Replace it with a supported device."), never as a report of the advice, and never an update to a version or build no source names. When only some product lines have no fix, give the others' fixed versions first, then name the lines with no fix and what a source says they should do (such as moving to a fixed line). A source that only names no fixed version does not say there is none. Leave out advice written for the product's developers (how to change its code). When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Never empty when incident is true: when no source names a fixed version or anything else a reader can do, say exactly that ("수정 버전을 밝힌 출처가 아직 없습니다.", "No source names a fixed version yet.") and, when the affected versions are known, to check whether the product runs one of them; no advice of your own. Empty string only when incident is false.
+- mitigation: what a reader can do now: the fixed version to update to and, when a source gives one, the stopgap until then. When no source names a fixed version but the affected versions have an upper bound ("7.3.3-7015 and older"), say to check that the product runs a version newer than that bound and to read the vendor's advisory, as one instruction with no "if you run" before it. Never name a version the sources do not. When a source says a whole product line is affected ("7.0 all versions") and names no fixed version on it, tell that line's users to move to a line that has one, never to look for a version newer than a bound. When several lines are affected and only some have a fixed version, give each of those its version and say the others have none confirmed ("7.2 계열의 수정 버전은 확인되지 않았습니다.", "A fixed version for the 7.2 line is not confirmed."), or what a source tells them to do; never send them to another line's version. When a source says the service must be restarted or the device rebooted after the update, say so right after the update ("업데이트한 뒤 sshd를 다시 시작하세요.", "Then restart sshd."). The mitigation is read on its own: it names the versions and lines itself even when fixes lists them, up to three; when four or more lines or products have their own fixed version, it names none of those versions but tells readers to update their own product or line to its fixed version, keeps everything that is not a version pair (a line with no fix, a stopgap, a restart, a deadline), and fixes holds every pair; the page lists those pairs right below the mitigation, the one place it may point at ("아래 목록에서 쓰는 제품의 수정 버전을 확인하세요.", "Find your product's fixed version in the list below."), and it never writes a field name. It never points at another field or part of the page ("the range above", "listed below", "아래 목록"). When a source says this flaw has no fix (no patch available, no fixed release, no solution reported yet, the product no longer maintained), that wins over the upper-bound advice and holds even when nothing else can be done: begin with exactly one of these sentences, word for word: "수정 버전은 아직 없습니다." / "There is no fix yet.", or for a product no longer maintained "더 이상 지원되지 않아 수정 버전이 없습니다." / "It is no longer maintained, so no fixed version exists." (never both, and no "아직" or "yet" then), then tell the reader to do what a source says instead (a workaround, a migration, replacing the device) as an instruction ("지원되는 기기로 교체하세요.", "Replace it with a supported device."), never as a report of the advice, and never an update to a version or build no source names. When only some product lines have no fix, give the others' fixed versions first, then name the lines with no fix and what a source says they should do (such as moving to a fixed line). A source that only names no fixed version does not say there is none. Leave out advice written for the product's developers (how to change its code). When a source says the vendor already fixed it on its own servers (an online service, a company's login servers) so users have nothing to install or change, say exactly that ("The two companies fixed it within about two hours; owners need do nothing."). Never empty when incident is true: when no source names a fixed version or anything else a reader can do, say exactly that ("수정 버전을 밝힌 출처가 아직 없습니다.", "No source names a fixed version yet.") and, when the affected versions are known, to check whether the product runs one of them; no advice of your own. Empty string only when incident is false.
 - easy: one very short sentence (at most 12 words) for someone who has never heard of the product: what the product is in everyday words when its name alone would not tell them ("회사 VPN 장비", "웹사이트 관리 도구", "파이썬으로 만든 프로그램"), and what an attacker could do, plainly ("공유기 관리 화면에 비밀번호 없이 누구나 들어올 수 있습니다!"). It may end with "!" but never claims more than the sources say. No versions, no CVE ID, and no technical terms: never words such as OAuth, SAML, MFA, WSDL, CGI, FIPS, SQL, API, hash, root, RCE, SSRF, injection, buffer, protocol; say what they mean instead In Korean the same goes for 코드 실행, 원격 코드 실행, 임의 코드, 권한 상승, 인증 우회, 서비스 거부, 주입, 역직렬화, 버퍼 오버플로, 경로 조작, 세션, 토큰, 자격 증명, 취약점 악용: use short everyday words instead: 해킹, 뺏김, 털림, 엿봄, 멈춤 ("PC를 해킹당할 수 있습니다!", "계정을 뺏길 수 있습니다!", "대화가 털릴 수 있습니다!").
 - When the flaw needs a condition (a system such as musl, a build, a setting that must be on, a feature in use), easy and easy_title keep it; never widen it to every user of the product, and never narrow it either: when the sources name a kind with examples ("musl-based Linux such as Alpine or OpenWrt"), name every example (the kind itself is often a technical term), never one example alone, or a reader who runs another one thinks they are safe ("Alpine·OpenWrt SSH 서버 아무 비밀번호 통과", "SSH on Alpine or OpenWrt accepts any long password"; never "Alpine SSH 서버 …" alone).
 - easy_title: a headline of at most 5 words for the same reader, ending in the plain danger ("Windows 그림판 해킹 위험", "SonicWall VPN 장비 뚫림 위험"): it must name the product as its users call it, first, with what it is when that is unclear, then the danger in everyday words ("OpenSSH 원격 접속 서버 장악 위험", "Brotli 압축 부품 서버 멈춤 위험", "Brotli flaw stalls web servers"; never "서버 멈춤 위험" alone). No versions, no CVE ID, and the same ban on technical terms.
-- easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전으로 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Tell the reader to wait for a new version only when fixed and fixes are both empty. Never a path, a setting name, a command or a version range; the page shows any command itself. It may name the fixed version to update to, as mitigation does, in both languages ("ash_ai를 1.5.1 이상으로 업데이트하세요.", "Update ash_ai to 1.5.1 or later."), never a version that fixed, fixes and mitigation do not name. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). When mitigation says there is no fix, never say to update: give its workaround, migration or replacement, else "아직 고친 버전이 없습니다. 고친 버전이 나오면 바로 업데이트하세요." / "There is no fix yet. Update as soon as a fixed version is out." Empty string when mitigation is empty.
+- easy_action: one short sentence (at most 15 words) for the same reader saying what to do now, from what mitigation says, in the same everyday words and with the same ban on technical terms ("관리 화면을 인터넷에 열어 두지 마세요.", "새 버전으로 바로 업데이트하세요.", "Update the app, and turn off password logins until then."). Tell the reader to wait for a new version only when fixed and fixes are both empty. Never a path, a setting name, a command or a version range; the page shows any command itself. It may name the fixed version to update to, as mitigation does, in both languages ("ash_ai를 1.5.1 이상으로 업데이트하세요.", "Update ash_ai to 1.5.1 or later."), never four or more versions and never a version that fixed, fixes and mitigation do not name. When mitigation says the vendor already fixed it, say so plainly ("이미 고쳐져서 따로 할 일은 없습니다."). When mitigation says there is no fix, never say to update: give its workaround, migration or replacement, else "아직 고친 버전이 없습니다. 고친 버전이 나오면 바로 업데이트하세요." / "There is no fix yet. Update as soon as a fixed version is out." Empty string when mitigation is empty.
 - command_for: when "command" is not empty, the system it is for as a short phrase the page shows before it ("Alpine 리눅스라면", "On Alpine Linux"; "Debian·Ubuntu라면", "On Debian or Ubuntu"), from what a source says or the package tool itself (apk is Alpine's, apt Debian's and Ubuntu's, dnf Fedora's and RHEL's). Empty string when command is empty or nothing tells.
 - cve_lines: when the Incident lists more than one CVE (one vendor release fixing several), one entry per CVE in the
   input's order, only for the CVEs a "Per-CVE lines only for:" line names when the input has one: "cve" copied exactly, "text" one short line on what that CVE lets an attacker do, in the same plain
@@ -408,6 +408,90 @@ def attacked_unnamed(summary, text):
         for sentence in re.split(r"(?<=[.!?])\s+", summary[lang]["summary"]):
             if CLAIM_RE.search(sentence) and not listed & {c.upper() for c in re.findall(r"CVE-\d{4}-\d{4,}", sentence, re.I)}:
                 return f"{ATTACKED_UNNAMED} ({lang}): {', '.join(sorted(listed))}"
+    return ""
+
+
+MANY_VERSIONS = "the mitigation lists four or more fixed versions"
+# What a version is in a sentence, read from the words after a list of them ("A, B, C 이상으로" / "or later": versions to
+# install; "미만", "이하", "부터", "보다 낮은", "newer than", "up to": bounds of what is affected or thresholds to compare with).
+LIST_SEP = re.compile(r"^[A-Za-z]{0,3}(?:-[\w.]+)?\)?\s*(?:,|/|·|또는|or|and|및|와|과|, or|, and)?\s*\(?v?$", re.I)
+TARGET_WORDS = re.compile(r"[A-Za-z]{0,3}(?:-[\w.]+)?\)?\s*(?:이상(?!\s*\S*\s*(?:미만|이하|까지))(?![도은는]\s*해당)|으?로|이후|\+"
+                          r"|(?:or|and) (?:later|above|higher)(?!\s+and\s+(?:before|below|up to)))", re.I)
+BOUND_WORDS = re.compile(r"[A-Za-z]{0,3}(?:-[\w.]+)?\)?\s*(?:미만|이하|부터|까지|~|–|-\s?\d|보다|up to\b|through\b|to\s+v?\d|(?:and|or) "
+                         r"(?:earlier|older|below|lower)|(?:or|and) (?:later|above|higher)\s+and\s+(?:before|below|up to)"
+                         r"|이상\s*\S*\s*(?:미만|이하|까지)|이상[도은는]\s*해당)", re.I)
+BEFORE_TARGET = re.compile(r"(?<![\d.]\s)(?<![\d.])\bto\s+(?:version\s+)?v?$", re.I)
+BEFORE_BOUND = re.compile(r"(?:\bfrom|\bthrough|\bbefore|\bup to|\bprior to|\bbelow|\bthan|~|–)\s*v?$", re.I)
+
+
+def version_roles(text):
+    """{version: "target" | "bound" | None} for the dotted versions of a sentence, line names left out ("10.86 계열",
+    "the 6.1 line", a prefix of another version named). A list takes the role its last item's next words give, or its
+    first item's previous word ("Update to A, B or C")."""
+    found = [m for m in NUMBER_RE.finditer(text) if "." in m[0] and not LINE_AFTER.match(text, m.end())]
+    groups = []
+    for m in found:
+        if groups and LIST_SEP.match(text[groups[-1][-1].end():m.start()]):
+            groups[-1].append(m)
+        else:
+            groups.append([m])
+    roles = {}
+    for group in groups:
+        after, before = text[group[-1].end():], text[:group[0].start()]
+        role = ("bound" if BOUND_WORDS.match(after) or BEFORE_BOUND.search(before)
+                else "target" if TARGET_WORDS.match(after) or BEFORE_TARGET.search(before) else None)
+        for m in group:
+            t = m[0].lower()
+            roles[t] = "target" if roles.get(t) == "target" else role or roles.get(t)
+    return {t: r for t, r in roles.items() if not any(o.startswith(f"{t}.") for o in roles)}
+
+
+def many_versions(summary):
+    """Four or more fixed versions listed in a mitigation or an Easy action, which fixes carries for the page to list
+    (owner 11-16: CVE-2026-102868 named seventeen pairs in one paragraph): four versions fixed and fixes hold, named as no
+    bound; or four versions to install while fixes holds fewer (CVE-2026-63282: seven "X 이상", fixes empty). The reason,
+    or ""."""
+    held = {t for t in numbers("\n".join([summary["fixed"], *(str(f.get("version", "")) for f in summary["fixes"]
+                                                              if isinstance(f, dict))])) if "." in t}
+    for field in ("mitigation", "easy_action"):
+        for lang in ("ko", "en"):
+            roles = {}
+            for sentence in re.split(r"(?<=[.!?])\s+", summary[lang][field]):
+                for t, r in version_roles(sentence).items():
+                    roles[t] = "target" if "target" in (r, roles.get(t)) else r or roles.get(t)
+            named = {t for t, r in roles.items() if r != "bound"} & held
+            targets = {t for t, r in roles.items() if r == "target"}
+            if len(named) >= 4 or len(targets) >= 4 and len(summary["fixes"]) < len(targets):
+                return f"{MANY_VERSIONS} ({lang} {field})"
+    return ""
+
+
+FIELD_NAME = "a field name in the text"
+# The reply's own field names, from the schema (top level and each language's), never a hand list.
+FIELD_NAMES = sorted({*SCHEMA["properties"], *SCHEMA["properties"]["ko"]["properties"]} - {"ko", "en"}, key=len, reverse=True)
+FIELD_WORD = rf"`?(?:{'|'.join(map(re.escape, FIELD_NAMES))})`?"
+# Korean text: any field name as an ASCII word. English text: a name with "_" anywhere, or a plain word used as a name
+# ("see fixes", "in fixes", "the fixes list"), never the ordinary word ("the update fixes three flaws", "the fixes below").
+# Not inside a file or page name (".library-ms", "@@check-modifier-conditions"), and not "the fixed key".
+FIELD_IN = {"ko": re.compile(rf"(?<![A-Za-z_.@/-]){FIELD_WORD}(?![A-Za-z_-])"),
+            "en": re.compile(rf"(?<![A-Za-z_])`?(?:{'|'.join(map(re.escape, (n for n in FIELD_NAMES if '_' in n)))})`?(?![A-Za-z_])"
+                             rf"|\b(?:see|check|under|refer to|listed in|shown in|given in|is in|are in)\s+(?:the\s+)?{FIELD_WORD}"
+                             rf"(?:\s+(?:field|list|entry|entries|item|items|section))?(?=\s*(?:[.,;:)]|$|\bfor\b))"
+                             rf"|\bthe\s+{FIELD_WORD}\s+(?:field|list|entry|entries|item|items|section)\b", re.I)}
+
+
+def field_names(summary):
+    """A reply's field name in the text a reader sees (owner 11-16: "계열별 수정 버전은 fixes에서 확인하세요.", CVE-2026-122116
+    and -99284 in the trial of the four-or-more rule). The reason, or ""."""
+    for lang in ("ko", "en"):
+        for field, value in summary[lang].items():
+            if field in ("names", "command_for"):
+                continue  # product names and the system a command is for are written as their makers write them
+            values = [value] if isinstance(value, str) else [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
+            values += [line.get("text") or "" for line in value if isinstance(line, dict)] if isinstance(value, list) else []
+            # A Korean value with no Hangul is English text: a language fault, not this one (CVE-2026-44627).
+            if any(FIELD_IN[lang].search(v) for v in values if lang == "en" or HANGUL.search(v)):
+                return f"{FIELD_NAME} ({lang} {field})"
     return ""
 
 
@@ -746,7 +830,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
         easy_jargon(summary) and f"{JARGON}: {easy_jargon(summary)}", missing_stopgap_step(summary),
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
-        informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary),
+        informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
         hangul_in_english(summary, text), attacked_unnamed(summary, text)) if p)
     draft = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due, "words": words}
     last = incident.get("summary_error", {}).get("tries", 0) + 1 >= MAX_TRIES
@@ -904,6 +988,12 @@ RETRY_SENTENCES = [
     (NO_FIX_RELEASE, " When fixed and fixes are empty and there is no fix, say by kind what other flaws the group holds,"
                      " never that a release or an update fixes them."),
     (review.REASON, review.RETRY_SENTENCE),
+    (FIELD_NAME, " Never write a field name in the text a reader sees: with four or more fixed versions, point at the"
+                 " list below the mitigation (\"아래 목록에서 쓰는 제품의 수정 버전을 확인하세요.\", \"Find your product's fixed"
+                 " version in the list below.\") or say nothing of where."),
+    (MANY_VERSIONS, " When four or more lines or products have their own fixed version, put every pair in fixes and let"
+                    " mitigation and easy_action tell readers to update their own product or line to its fixed version,"
+                    " naming none of those versions; keep a line with no fix, a stopgap, a restart or a deadline."),
     (INFORMAL, " Write every Korean per-CVE line in the 합니다 style of the rest, never 해요."),
     (BOUND_CHECK, " When only the bound is known, say once to check that the product runs a version newer than it, with no"
                   " \"if you run\" before it."),

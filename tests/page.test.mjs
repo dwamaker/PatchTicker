@@ -562,3 +562,23 @@ test('a page without the table keys is unchanged, and an unknown state is plain 
   const todo = todoOf(await res.text());
   assert.match(todo, /<li><strong>RHEL 9<\/strong> openssh · &lt;b&gt;under_review&lt;\/b&gt;<\/li><\/ul><\/details>/); // no link, no credits
 });
+
+// Owner, 11-16: four or more fixed lines show on the page as an aligned list under the Mitigation, five in view.
+const withFixes = (n) => ({ ...SSHOLE, summary: { ...SSHOLE.summary, command: '', stopgap: '',
+  fixes: Array.from({ length: n }, (_, k) => ({ for: `Windows Server 20${10 + k}`, version: `10.0.${k}.1` })) } });
+test('four or more fixed lines are an aligned list, five in view and the rest behind one disclosure', async () => {
+  const ko = await (await page(withFixes(17), 'ko')).text();
+  const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));
+  assert.match(todo, /<div class="fix-table"><p class="fix-head">제품별 수정 버전<\/p><dl class="fix-list"><dt>Windows Server 2010<\/dt><dd>10\.0\.0\.1 이상<\/dd>/);
+  assert.equal((todo.match(/<dt>/g) || []).length, 5);
+  assert.equal((todo.match(/<dt class="rest">/g) || []).length, 12);
+  // The label follows the state by CSS: "12줄 더 보기" closed, "접기" open.
+  assert.match(todo, /<\/dl><details class="more fix-more"><summary><span class="closed">12줄 더 보기<\/span><span class="opened">접기<\/span><\/summary><\/details><\/div>/);
+  assert.doesNotMatch(todo, /내 제품에 맞는 버전/); // one list, not two
+  const en = await (await page(withFixes(5), 'en')).text();
+  assert.match(en, /<p class="fix-head">Fixed version by product<\/p>/);
+  assert.match(en, /<dd>10\.0\.4\.1 or later<\/dd><\/dl><\/div>/); // five: all shown, no disclosure
+  const three = await (await page(withFixes(3), 'ko')).text();
+  assert.doesNotMatch(three, /class="fix-list"/);
+  assert.match(three, /<p>내 제품에 맞는 버전 이상으로 업데이트하세요:<\/p><ul><li><strong>Windows Server 2010<\/strong>/); // as before
+});
