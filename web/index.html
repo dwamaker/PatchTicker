@@ -47,6 +47,12 @@
       --panel: light-dark(#ffffff, #191c20);
       --panel-2: light-dark(#eceef1, #1f2328);
       --group: light-dark(#e6ebf1, #1c2531);
+      /* the two kinds of group, each in its own colour on its tag and its frame's band (owner, 11-16): a release group
+         (함께 패치, one Incident) teal, line-07 by day; a vendor fold (묶음, several Incidents) violet, line-06 by day.
+         Apart in both themes and under protan, deutan and tritan vision; never a risk colour, never the Highlights' blue.
+         Text 4.9:1+ on the tag's panel, band 4.1:1+ on the group ground and the page. */
+      --patch-edge: light-dark(#007c88, #3fc1cc);
+      --fold-edge: light-dark(#7340f2, #a98bff);
       --rainbow: #ff4d4d, #ffa02e, light-dark(#d9a400, #ffe03a), #4cd964, #3ab7ff, #7a6cff, #ff5ad8, #ff4d4d; /* the 쉬운 설명 beckon only (DESIGN.md beckon-*) */ /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
       --ink: light-dark(#16191d, #ececec);
       --ink-2: light-dark(#4f5862, #a8afb7);
@@ -434,6 +440,15 @@
     .c-date { grid-area: when; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.35; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { grid-area: chev; width: 0.5rem; height: 0.5rem; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
     [aria-expanded="true"] .chev { transform: rotate(45deg) translate(-2px, -2px); }
+    /* a row's chevron sits in a thin ring, the risk sign's 1.5px stroke, so it reads as a control (owner, 11-16): the
+       arrow turns inside a still ring drawn around its 0.5rem box, so the row's columns do not move */
+    .row > .chev { position: relative; justify-self: center; border: 0; transform: none; }
+    .row[aria-expanded="true"] > .chev { transform: none; }
+    .row > .chev::before { content: ""; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .row[aria-expanded="true"] > .chev::before { transform: rotate(45deg) translate(-2px, -2px); }
+    .row > .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--edge); border-radius: 50%; transition: border-color 120ms ease-out; }
+    @media (hover: hover) { .row:hover > .chev::after { border-color: var(--ink-2); } }
+    .row:focus-visible > .chev::after { border-color: var(--focus); }
 
     /* 주요 사건: stacked alerts, each framed and edged in its Risk colour, details inside the frame */
     .stack { display: grid; gap: 0.5rem; }
@@ -450,7 +465,16 @@
     .list .row[aria-expanded="true"], .list .details { background: var(--panel); }
     /* an opened vendor fold: its row, members and closing line share the panel ground; members keep the list's columns */
     .list li.grouped, .list li.vendor-fold { background: var(--group); }
-    .vendor-fold.open { border-bottom-color: var(--rule-2); }
+    /* a row that stands for several Incidents or CVEs (함께 패치, 묶음) is framed like a Highlight, its left band in
+       its kind's colour (--patch-edge, --fold-edge), so two groups that touch read as two (owner, 11-16); an opened fold's frame holds the fold row,
+       its members and the closing line and closes below them. Paddings take back the band, so columns stay aligned. */
+    .list li.grouped, .list li.vendor-fold { margin: 0.375rem 0; border: 1px solid var(--rule-2); border-left: 3px solid var(--patch-edge); border-radius: var(--r-frame); overflow: hidden; }
+    .list li.vendor-fold { border-color: color-mix(in srgb, var(--fold-edge) 45%, var(--rule-2)); border-left-color: var(--fold-edge); } /* the fold's whole frame in its colour */
+    .list :is(li.grouped, li.vendor-fold) > .row-h > .row { padding-left: calc(0.75rem - 3px); padding-right: calc(0.75rem - 1px); }
+    .list :is(li.grouped, li.vendor-fold) > .row-h > .row:focus-visible { outline-offset: -3px; } /* the frame clips: the ring inside */
+    .list li.grouped > .details { padding-left: calc(0.75rem - 3px + var(--pre) + var(--gap)); }
+    /* opened, a fold's members stand indented inside it, as a nested list does (owner, 11-16) */
+    .vendor-fold .fold-members { margin-left: 2rem; border-left: 1px solid color-mix(in srgb, var(--fold-edge) 45%, var(--rule-2)); }
     .list .vendor-fold > .row-h > .row[aria-expanded="true"] { background: none; } /* the whole open group keeps one ground */
     /* a row that arrived while the page was open: a blue edge (the interface colour, never a risk colour) and a faint
        tint, held four seconds after it is on screen, then faded */
@@ -533,6 +557,8 @@
     .tag-more { display: inline-flex; align-items: center; min-height: 1.625rem; color: var(--ink-2); font-size: calc(0.78125rem * var(--ts)); white-space: nowrap; } /* 외 N개 on a closed row: a quiet count, not a control */
     .share-url { display: block; width: 100%; max-width: 32rem; min-height: var(--tap); margin-top: 0.5rem; padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-size: calc(var(--fs-meta) * var(--ts)); }
     .grp { display: inline-flex; align-items: center; min-height: 1.625rem; padding: 0.1875rem 0.5rem; border: 1px solid var(--ink-2); border-radius: 4px; background: var(--panel); color: var(--ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 700; line-height: 1.2; white-space: nowrap; }
+    .grp-patch { border-color: var(--patch-edge); color: var(--patch-edge); }
+    .grp-fold { border-color: var(--fold-edge); color: var(--fold-edge); }
     .fold-members { margin: 0; padding: 0; list-style: none; }
     .fold-members > li { border-top: 1px solid var(--rule); }
     .fold-end { display: flex; align-items: center; padding: 0.625rem 0.75rem 0.75rem calc(0.75rem + var(--pre) + var(--gap)); border-top: 1px solid var(--rule); }
@@ -621,8 +647,11 @@
       .row > .c-score { order: 2; }
       /* the chevron rides with the date: the date reserves its width (margin-right) and the chevron, pulled back
          into that space, takes no room of its own, so the two wrap together and the chevron never sits alone */
-      .row > .c-date { order: 3; flex: none; margin-left: auto; margin-right: 1.125rem; }
-      .row > .chev { order: 4; flex: none; margin-left: -1.125rem; }
+      .row > .c-date { order: 3; flex: none; margin-left: auto; margin-right: 2rem; }
+      .row > .chev { order: 4; flex: none; margin-left: -1.75rem; } /* the ring (1.75rem) clears the date */
+      .list :is(li.grouped, li.vendor-fold) > .row-h > .row { padding-left: calc(0.5rem - 3px); padding-right: calc(0.5rem - 1px); }
+      .list li.grouped > .details { padding-left: calc(0.75rem - 3px); }
+      .vendor-fold .fold-members { margin-left: 0.75rem; }
       .row > .c-title { order: 5; flex: 1 1 100%; }
       .row > .c-tags { order: 6; flex: 1 1 100%; }
       .c-score { gap: 0.375rem; }
@@ -668,7 +697,7 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .models summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row > .chev::before, .models summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest } from '../web/board.mjs';
 
 const incident = (id, first_seen) => ({ id, cves: [id], first_seen, mentions: [{ kind: 'cve_record', url: '' }], brief: { text: id, lead: '' } });
 
@@ -1001,7 +1001,8 @@ test('a row view of board/rows.json draws, filters, folds and pins as its full I
     assert.deepEqual(shape(foldByVendor(b.list)), shape(foldByVendor(a.list)));
   }
   // CVE-2026-9003's row view has no text that says "theme for WordPress": the collector's answer keeps it in the fold.
-  assert.deepEqual(shape(foldByVendor(filterBoard(rows, [], '', now).list)).find(Array.isArray), ['wordpress 2026-11-08', ['CVE-2026-9003', 'CVE-2026-9002', 'CVE-2026-9001']]);
+  // Opened, the 9.8 member leads (owner, 11-16), then Score pending, then 참고.
+  assert.deepEqual(shape(foldByVendor(filterBoard(rows, [], '', now).list)).find(Array.isArray), ['wordpress 2026-11-08', ['CVE-2026-9001', 'CVE-2026-9003', 'CVE-2026-9002']]);
 });
 
 test('a row view replaces a held full Incident only when what its row shows changed; full Incidents replace as before', () => {
@@ -1352,4 +1353,39 @@ test('a document without rows has no table, and an unknown or broken row never b
     { label: 'RHEL 7', package: 7, state: 'constructor' }, null], distro_credits: [{ name: 'Red Hat Security Data', url: 5 }, 'x'] }, 'en');
   assert.deepEqual(odd.lines.map((l) => [l.label, l.package, l.state]), [['RHEL 9', 'openssh', 'under_review'], ['RHEL 8', 'openssh', 'fixed'], ['RHEL 7', '', 'constructor']]);
   assert.deepEqual(odd.credits, [{ name: 'Red Hat Security Data', url: '', licence: '', licenceUrl: '' }]);
+});
+
+// Owner, 11-16: the fold row promises its gravest member's sign and the highest ring ("9.8을 맨 위로"), so opened, the
+// gravest member leads, ranked as the 위험도순 sort ranks; the fold keeps its place and the newest date.
+const wpAt = (id, cvss, published, extra = {}) => ({ id, cves: [id], first_seen: '2026-11-16T09:00:00Z', published, cvss, mentions: [],
+  brief: { text: `The ${id} plugin for WordPress is vulnerable` }, ...extra });
+const WP = [wpAt('p65', 6.5, '2026-11-16T08:00:00Z'), wpAt('p71a', 7.1, '2026-11-16T07:00:00Z'), wpAt('p71b', 7.1, '2026-11-16T06:00:00Z'),
+  wpAt('p50', 5.0, '2026-11-16T05:00:00Z'), wpAt('p98', 9.8, '2026-11-16T04:00:00Z'), wpAt('pnone', null, '2026-11-16T03:00:00Z')];
+
+test('inside a fold the gravest member leads and equal members keep the visitor\'s order', () => {
+  const [fold] = foldByVendor(WP, 5);
+  assert.deepEqual(fold.incidents.map((i) => i.id), ['p98', 'p71a', 'p71b', 'pnone', 'p65', 'p50']); // score pending above 참고
+  // Another order in (as a CVSS sort would give): equal members keep it, not newest first.
+  const [byScore] = foldByVendor([WP[4], WP[2], WP[1], WP[0], WP[3], WP[5]], 5);
+  assert.deepEqual(byScore.incidents.map((i) => i.id), ['p98', 'p71b', 'p71a', 'pnone', 'p65', 'p50']);
+  // An exploited member is 긴급 as a 9.8 is: one rank, so the visitor's order decides between them.
+  const kev = wpAt('pkev', 9.1, '2026-11-16T02:00:00Z', { kev: true });
+  assert.deepEqual(foldByVendor([...WP, kev], 5)[0].incidents.slice(0, 2).map((i) => i.id), ['p98', 'pkev']); // both 긴급: visitor's order
+  const ranked = [...WP, kev].sort(orderBy('risk'));
+  assert.deepEqual(foldByVendor(ranked, 5)[0].incidents.map((i) => i.id), ranked.map((i) => i.id)); // the risk sort's own order stands
+});
+
+test('the fold stays at its first row\'s place', () => {
+  const other = { id: 'o', cves: ['o'], first_seen: '2026-11-16T09:00:00Z', published: '2026-11-16T07:30:00Z', cvss: 9.9, mentions: [],
+    products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }], brief: { text: 'OpenSSH' } };
+  const items = foldByVendor([WP[0], other, ...WP.slice(1)], 5);
+  assert.deepEqual(items.map((x) => x.fold || x.id), [`wordpress 2026-11-16`, 'o']);
+  assert.equal(linkedPlace(items, 'p98', 100).index, 0); // a member is still found
+});
+
+test('the fold row still shows the newest member\'s date', () => {
+  const [fold] = foldByVendor(WP, 5);
+  assert.equal(fold.incidents[0].id, 'p98');
+  assert.equal(foldNewest(fold).id, 'p65');
+  assert.equal(foldNewest({ incidents: [wpAt('a', 1, undefined, { first_seen: '2026-11-16T10:00:00Z' }), WP[0]] }).id, 'a'); // first seen stands in
 });

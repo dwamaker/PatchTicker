@@ -11,6 +11,8 @@ colors:
   hairline: "light-dark(#dde1e5, #2a2f35)"
   rail: "light-dark(#c4c9cf, #3a4048)"
   control-edge: "light-dark(#858e97, #6b737c)"
+  patch-edge: "light-dark(#007c88, #3fc1cc)"
+  fold-edge: "light-dark(#7340f2, #a98bff)"
   emergency-red: "light-dark(#c4231c, #ff6b62)"
   caution-amber: "light-dark(#8a6100, #f5b400)"
   caution-amber-mark: "light-dark(#a87700, #f5b400)"
@@ -237,7 +239,15 @@ for Products only.
 - **Hint Ink** (`hint-ink`): placeholders and field icons.
 - **Hairline** (`hairline`): the line between rows and around the top bar and footer.
 - **Rail** (`rail`): the top rule of the list, Highlight frame borders, label dividers.
-- **Control Edge** (`control-edge`): borders of buttons, fields and the view switch.
+- **Control Edge** (`control-edge`): borders of buttons, fields and the view switch; the ring around a row's chevron.
+- **Patch Teal** (`patch-edge`, `--patch-edge`) and **Fold Violet** (`fold-edge`, `--fold-edge`): the colours of the two
+  kinds of group (owner, 11-16): a release group (함께 패치) is teal, line-07's hue (#007c88 by day, #3fc1cc by night); a
+  vendor fold (묶음) violet, line-06's hue (#7340f2 by day, #a98bff by night). Each colours its kind's tag (outline and
+  word) and its frame's 3px left band; the fold's 1px frame and its members' guide line take 45% of it. As tag text on
+  Kiosk Panel: teal 4.95:1 / 7.91:1, violet 5.61:1 / 6.37:1 (day / night); as a band on the group ground 4.13:1 /
+  7.15:1 and 4.68:1 / 5.76:1, on the page higher. Apart in both themes under simulated protan, deutan and tritan vision
+  (CIELAB distance 31+). Never a risk colour; the Highlights' blue stays theirs. The words stay, so colour is never the
+  only signal; a tag is an outlined square, never a Product's filled pill.
 
 ### Named Rules
 **The Two Alphabets Rule.** Risk and severity speak only in red, amber and slate (Clear Green is a third,
@@ -324,8 +334,10 @@ details stay flat. The phone filter sheet is set apart by the Scrim (`--scrim`, 
 Three radii: gently rounded controls (8px), slightly softer frames for fields and Highlights (10px),
 and full pills for line badges and the view switch (999px). Command code uses 6px, the small
 "원문" marker 4px. Borders are 1px throughout; the only thicker edge is the 3px risk-coloured left
-edge of a Highlight frame. The risk sign is a 1.5px ring around the word (dashed while no score), the chevron a 1.5px stroked
-corner that turns when a row opens.
+edge of a Highlight frame and the 3px band of a group's frame, in its kind's colour. The risk sign is a 1.5px ring around the word
+(dashed while no score), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring
+(1.75rem, Control Edge; Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a
+control without moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it.
 
 ## Components
 
@@ -477,15 +489,23 @@ Restrained outlined buttons for theme, language and copying a command.
   pseudo-vendor since critique 14) on one publish day show as one ordinary row
   (gravest member's risk sign, highest CVSS ring, "IBM 보안 공지 25건 묶음" over the first product names, the vendor as
   its badge, the newest date) that opens its members in place; never with a search or a picked Product. A "묶음 풀기 /
-  묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). No look of its own (user, 11-09).
-  Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item on the panel
-  ground, members in their own labelled list with the list's columns, a stronger edge below; opening announces the
-  count, closing from the bottom brings the fold row back into view.
+  묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). Its look is the group frame
+  below (owner, 11-16; it had none of its own since 11-09).
+  Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item and one frame,
+  members in their own labelled list, indented as a nested list (2rem with a Rail guide line; 0.75rem on a phone) so
+  they cannot be taken for rows of the main list, their columns aligned with each other; opening announces the
+  count, closing from the bottom brings the fold row back into view. Its members run gravest first, ranked as the
+  위험도순 sort ranks, members of one level keeping the visitor's order, so the sign and ring the fold row promises lead
+  its list (owner, 11-16); the fold keeps its place and its newest date.
 - **Group ground and tag (11-09, owner: groups were hard to find):** a row that stands for several Incidents (a release
   group of three or more CVEs, or a vendor fold) sits on `--group` (#e6ebf1 / #1a2028, a cool step off the page,
   distinct from the opened-row white) and leads its badge cell with a "묶음" tag: square corners, ink outline, so it
   never reads as a Product (filled pill) or an OS (outlined pill). An opened fold keeps that ground for its row and
   members; its closing "IBM 묶음 접기" is an outlined house button. In 주요 사건 frames only the tag shows.
+  Since 11-16 (owner: two groups that touched read as one) each such row is framed like a Highlight: Rail border,
+  `--r-frame` corners, a 3px band on the left in its kind's colour (Patch Teal, Fold Violet), 0.375rem clear of its neighbours. An opened fold's frame runs
+  the whole height (fold row, members, closing line) and closes below them, so the next row or group starts clear. Row
+  and detail paddings take back the band, so the frame's columns stay on the list's.
 - **Live updates (11-09, owner):** the page reads `status.json` every 30 seconds, live like a ticker, and at once when the tab or window comes back (owner, later 11-09: no conditions); the server should cache `status.json` for 30 s or less;
   only a new update time fetches the week again. New Incidents take their place in the visitor's sort and filter.
   Near the top of the page they come in with the Board's motion; further down, the rows on screen stay put (the scroll
@@ -564,7 +584,8 @@ Restrained outlined buttons for theme, language and copying a command.
 - **악용 발생 (critique 10, b.2):** the reason a row sits at the top is set at 14px/800, no longer the row's smallest text.
 - **Two kinds of 묶음 kept apart (owner, 11-09):** a vendor fold is "묶음" and the list button says "회사 묶음 풀기 /
   회사별로 묶기"; a release group (CVEs fixed by one update) is one Incident tagged "함께 패치", which that button never
-  splits. The "↑ 새 사건 N건" pill now scrolls to the first new row and focuses it.
+  splits. Since 11-16 (owner: "함께패치와 묶음이 구분이 안감 애초에 색이") each kind also has its own colour on its tag
+  and its frame's band: 함께 패치 Patch Teal, 묶음 Fold Violet. The "↑ 새 사건 N건" pill now scrolls to the first new row and focuses it.
 - **Hardening 2 (critique 10, 11-09):** an Easy row without a Summary says "쉬운 설명 준비 중" only while one is coming;
   a Summary that failed for good says "원문만 있음", and with no quick title and no Product the source's own line is
   the title instead of a blank "새 보안 문제". 모두 펼치기 carries no pressed state beside its swapped label; 회사 묶음

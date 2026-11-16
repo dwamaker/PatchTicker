@@ -300,8 +300,9 @@ export function easyAction(s) {
 const newest = (a, b) => (publishedAt(a) < publishedAt(b) ? 1 : publishedAt(a) > publishedAt(b) ? -1 : 0);
 // No score yet (and not exploited) is not "scored low" (critique 13): it sorts above the scored 참고 rows, below 위험.
 const cvssKey = (i) => (i.cvss == null ? 6.95 : i.cvss); // between 7.0 (위험) and 6.9: scores have one decimal
+// The 위험도순 rank (Score pending above the lowest level): the risk sort's key, and a vendor fold's member order.
+const riskRank = (i) => RISKS.indexOf(riskChoice(i));
 export function orderBy(sort) {
-  const riskRank = (i) => RISKS.indexOf(riskChoice(i));
   return { __proto__: null, risk: (a, b) => riskRank(a) - riskRank(b) || newest(a, b),
     cvss: (a, b) => cvssKey(b) - cvssKey(a) || newest(a, b) }[sort] || newest;
 }
@@ -796,5 +797,10 @@ export function foldByVendor(rows, min = VENDOR_FOLD_MIN) {
     }
     folds.get(k).incidents.push(i);
   }
+  // Owner, 11-16: the fold row shows its gravest member's sign and highest ring, so opened, the gravest member leads, by the
+  // 위험도순 rank alone: sort is stable, so members of one rank keep the visitor's order (newest first, or the chosen sort).
+  for (const fold of folds.values()) fold.incidents.sort((a, b) => riskRank(a) - riskRank(b));
   return out;
 }
+// The fold row's date (DESIGN.md "Vendor fold": the newest date), whatever order its members stand in.
+export const foldNewest = (fold) => fold.incidents.reduce((a, b) => (publishedAt(b) > publishedAt(a) ? b : a));

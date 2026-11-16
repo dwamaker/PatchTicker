@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -2162,9 +2162,10 @@ const osBadge = (name, last = true) => {
 const isGroup = (incident) => (incident.cves?.length || 0) > 2;
 // Its tag leads the badge cell: a square-cornered outline in ink, so it never reads as a Product (filled pill) or an
 // OS (outlined pill).
-const groupTag = () => el('span', 'grp', TEXT[lang].groupTag);
+// Each kind of group has its own colour, on its tag and its frame's band (owner, 11-16): CSS .grp-fold and .grp-patch.
+const groupTag = () => el('span', 'grp grp-fold', TEXT[lang].groupTag);
 // A release group is one Incident (CVEs fixed by one update), not a fold: its own word, so 묶음 풀기 leaves it alone without contradiction.
-const patchTag = () => el('span', 'grp', TEXT[lang].patchTag);
+const patchTag = () => el('span', 'grp grp-patch', TEXT[lang].patchTag);
 
 function tagsCell(incident) {
   const cell = el('span', 'c-tags');
@@ -2407,7 +2408,7 @@ function foldRows(group) {
   const members = group.incidents;
   const gravest = [...members].sort((a, b) => RISKS.indexOf(riskLevel(a)) - RISKS.indexOf(riskLevel(b)))[0];
   const top = [...members].sort((a, b) => (b.cvss || 0) - (a.cvss || 0))[0];
-  const newest = [...members].sort((a, b) => publishedAt(b).localeCompare(publishedAt(a)))[0];
+  const newest = foldNewest(group);
   const li = el('li', opened ? 'vendor-fold open' : 'vendor-fold');
   li.dataset.ids = members.map((i) => i.id).join(' ');
   if (members.some((i) => fresh.has(i.id))) li.classList.add('fresh');
