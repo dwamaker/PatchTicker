@@ -6,10 +6,11 @@ from decimal import Decimal
 NUMBER_RE = re.compile(r"\d+(?:\.\d+)*(?:[a-z]+\d+)?", re.IGNORECASE)
 # Number words that scale the number before them, so Korean "1억 3,300만" and "$133 million" are one value.
 SCALES = {"천": 3, "만": 4, "억": 8, "조": 12, "thousand": 3, "million": 6, "billion": 9, "trillion": 12, "M": 6, "bn": 9}
-# Korean pieces add up ("1억 3300만", "7천715"); bare digits count only right after a unit.
-KO_AMOUNT_RE = re.compile(r"\d+(?:\.\d+)?\s?[천만억조]+(?:\s?\d+(?:\.\d+)?\s?[천만억조]+)*(?:\d+(?![\d.]))?")
+# Korean pieces add up ("1억 3300만", "7천715"); bare digits count only right after a unit. Never from inside a
+# version: "4.3.2만" is "only 4.3.2", not 4. and 3.2만 (11-16: Zephyr rejected for "4.32000").
+KO_AMOUNT_RE = re.compile(r"(?<![\d.])\d+(?:\.\d+)?\s?[천만억조]+(?:\s?\d+(?:\.\d+)?\s?[천만억조]+)*(?:\d+(?![\d.]))?")
 KO_PIECE_RE = re.compile(r"(\d+(?:\.\d+)?)\s?([천만억조]*)")
-EN_AMOUNT_RE = re.compile(r"(\d+(?:\.\d+)?)\s?(thousand|million|billion|trillion|M|bn)\b")
+EN_AMOUNT_RE = re.compile(r"(?<![\d.])(\d+(?:\.\d+)?)\s?(thousand|million|billion|trillion|M|bn)\b")
 
 
 # An English month name is its number, so "October 23" and "10월 23일" agree (owner, 2026-11-10: NIKKE's gist was

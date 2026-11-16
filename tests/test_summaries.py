@@ -694,6 +694,13 @@ class ConditionsPerCveTest(unittest.TestCase):
         self.assertEqual(self.parsed([f"{self.A}: no login", "CVE-2026-999999: kept as written"], one),
                          [f"{self.A}: no login", "CVE-2026-999999: kept as written"])
 
+    def test_a_groups_mitigation_covers_the_whole_group_and_is_never_empty(self):
+        # Owner, 11-16: Microsoft's 908-CVE update told only Outlook users what to do; a SourceCodester group said nothing.
+        self.assertIn("mitigation, fixed and fixes are the whole group's, never only the Lead CVE's product", summaries.INSTRUCTIONS)
+        self.assertIn("mitigation says to install that update on every affected product", summaries.INSTRUCTIONS)
+        self.assertIn("Never empty when incident is true", summaries.INSTRUCTIONS)
+        self.assertNotIn("Empty string when no source says anything a reader can act on", summaries.INSTRUCTIONS)
+
     def test_the_prompt_asks_for_the_ids_only_in_a_group(self):
         self.assertIn("a condition that holds for every CVE has no ID", summaries.INSTRUCTIONS)
         self.assertIn("keeping the same CVE IDs at the start of the same entries", summaries.INSTRUCTIONS)

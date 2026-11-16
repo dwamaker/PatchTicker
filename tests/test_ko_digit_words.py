@@ -24,6 +24,13 @@ class KoreanDigitWordTest(unittest.TestCase):
         self.assertEqual(numbers.ko_numbers("제30자리"), {"30"})
         self.assertEqual(numbers.numbers("제3자"), {"3"})  # English text and numbers() itself are untouched
 
+    def test_a_version_before_man_meaning_only_stays_the_version(self):
+        # 11-16: Zephyr's "4.3.2만" ("only 4.3.2") was read as 4. and 3.2만 = "4.32000" and the Summary rejected.
+        self.assertEqual(numbers.ko_numbers("GOEP 빌드는 4.3.2만 고칩니다."), {"4.3.2"})
+        self.assertEqual(numbers.ko_numbers("4.3.2 만"), {"4.3.2"})
+        self.assertEqual(numbers.ko_numbers("회원 580만 명, 1.5만 건"), {"5800000", "15000"})  # amounts stay amounts
+        self.assertEqual(numbers.numbers("version 2.1.5 million"), {"2.1.5"})
+
     def test_third_parties_pass_the_summary_check(self):
         item = incident([{"kind": "writeup", "url": POSTER}])
         reply = spam_reply("Widget로 제3자에게 스팸 문자를 보낼 수 있습니다.", "Widget can spam arbitrary third parties.")
