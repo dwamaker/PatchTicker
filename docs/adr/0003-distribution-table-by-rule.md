@@ -21,10 +21,13 @@ are missing, and it tells "decided not to fix" (its `ignored`) apart from "not f
 they are. Ubuntu Pro builds, and Ubuntu's cloud, OEM and board kernel flavours, are left out (owner, 2026-11-16). Each
 line links the distribution's own page for the CVE, and a credit line names the sources and their licences.
 
-A CVE is asked once a day for 7 days from its first ask; one that got a line is followed 30 days more, until every
-line is fixed or not affected (owner, 2026-11-15). A cycle looks up at most 15 CVEs, which bounds its time (about a
-minute) and the pages it rewrites. Incidents posted before step 10 are asked by the same rule at the budget's pace,
-after new CVEs and re-checks, while they are under 30 days old.
+A CVE that Debian's or Alpine's daily file knows is asked once a day for 7 days from its first ask; one that got a
+line is followed 30 days more, until every line is fixed or not affected (owner, 2026-11-15). A CVE neither file knows
+is not asked at all; it becomes due, by the same rule, from the day the index comes to know it (owner, 2026-11-16: on
+the first live cycles about 88% of new CVEs were unknown to both files, mostly web apps, and the newest of them took
+every slot; 40 of them asked in Ubuntu, Red Hat, SUSE and Arch found no line). A cycle looks up at most 15 CVEs, which
+bounds its time (about a minute) and the pages it rewrites. Order: known CVEs new, their follow-ups, then known CVEs of
+Incidents posted before step 10 (under 30 days old).
 
 ## Consequences
 
@@ -36,7 +39,10 @@ after new CVEs and re-checks, while they are under 30 days old.
   that arrives later gets their lines on the next day's ask; the other four answer at once.
 - `distros/state.json` keeps, for every CVE held, the day it was first seen and the days it was asked: about 2 to 4 MB
   at 90 days, rewritten each cycle that asks.
-- Lines that wait for a fix keep a CVE followed for the full 30 days (Debian's open, Red Hat's "Will not fix",
-  Ubuntu's won't-fix), so re-checks can outgrow the budget; they then slip a day, and older Incidents wait longest.
+- The budget is 2,160 lookups a day. At about 480 new CVEs a day, the known ones (about 56) cost about 390 lookups
+  a day for their first week and at most about 1,700 more if every one keeps a line waiting for 30 days (Debian's
+  open, Red Hat's "Will not fix", Ubuntu's won't-fix never settle): the owner's rule fits.
+- Given up: a package that only Red Hat, SUSE, Ubuntu or Arch carries, and neither Debian nor Alpine, gets no table
+  (measured 0 of 40 such CVEs with any line, 2026-11-16).
 - Canonical's data is CC BY-SA 4.0, Red Hat's and SUSE's CC BY 4.0: the page states each source's licence.
 - Source formats can change; a source that answers something unexpected fails alone and keeps the lines it gave before.

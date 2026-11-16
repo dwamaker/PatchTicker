@@ -62,38 +62,42 @@ class DistroCycleTest(unittest.TestCase):
         self.assertEqual(index["day"], "2026-11-16")
         self.assertIn("trixie", {row[0] for row in index["Debian"]["CVE-2024-6387"]})
 
-    def test_with_no_index_debian_and_alpine_fail_and_keep_their_lines(self):
+    def test_with_no_debian_index_a_cve_alpine_knows_is_asked_and_keeps_its_debian_lines(self):
         old = {"distro": "Debian", "release": "trixie", "label": "Debian 13 (trixie)", "package": "openssh",
                "state": "fixed", "version": "1:9.7p1-7", "url": "https://security-tracker.debian.org/tracker/CVE-2024-6387"}
         incidents = [incident(["CVE-2024-6387"]) | {"distro_lines": {"CVE-2024-6387": [old]}}]
-        no_daily = Counting({u: f for u, f in ALL.items() if u not in DAILY})
-        run(self.store, incidents, get=no_daily)
+        no_debian = Counting({u: f for u, f in ALL.items() if u != distros.DEBIAN_JSON})
+        run(self.store, incidents, get=no_debian)
         lines = incidents[0]["distro_lines"]["CVE-2024-6387"]
         self.assertIn(old, lines)
-        self.assertNotIn("Alpine", {line["distro"] for line in lines})
-        self.assertIn("Arch Linux", {line["distro"] for line in lines})
+        self.assertTrue({"Alpine", "Arch Linux"} <= {line["distro"] for line in lines})
 
     def test_a_cycle_asks_at_most_distro_per_cycle_cves_new_ones_first_then_re_checks_then_older_incidents(self):
         cves = [f"CVE-2026-{n}" for n in range(10000, 10000 + cycle.DISTRO_PER_CYCLE + 5)]
         backfill = incident(["CVE-2026-20000"], days_ago=20)
         incidents = [incident([c]) for c in cves] + [backfill]
-        _, get = run(self.store, incidents)
+        listed = {c: {"releases": {"trixie": {"status": "open"}}} for c in cves + ["CVE-2026-20000"]}
+        many = ALL | {distros.DEBIAN_JSON: json.dumps({"pkg": listed}).encode()}  # Debian lists them all
+        _, get = run(self.store, incidents, get=Counting(many))
         self.assertEqual(len(asked(self.store)), cycle.DISTRO_PER_CYCLE)
         self.assertNotIn("CVE-2026-20000", asked(self.store))
         self.assertEqual(len({u for u in get.urls if "archlinux" in u}), cycle.DISTRO_PER_CYCLE)
-        run(self.store, incidents, NOW + timedelta(minutes=10))
+        run(self.store, incidents, NOW + timedelta(minutes=10), Counting(many))
         self.assertIn("CVE-2026-20000", asked(self.store))  # the backlog's turn once new CVEs are asked
 
     def test_a_new_cve_that_folds_into_an_older_incident_is_new_by_its_own_day(self):
+        listed = {c: {"releases": {"trixie": {"status": "open"}}} for c in ("CVE-2026-30000", "CVE-2026-30001")}
+        many = Counting(ALL | {distros.DEBIAN_JSON: json.dumps({"pkg": listed}).encode()})
         old = incident(["CVE-2026-30000"], days_ago=35)
-        run(self.store, [old])
+        run(self.store, [old], get=many)
         self.assertEqual(asked(self.store), set())  # posted before step 10 and past the backfill window
         old["cves"].append("CVE-2026-30001")
-        run(self.store, [old], NOW + timedelta(minutes=10))
+        run(self.store, [old], NOW + timedelta(days=1), many)  # the next day's index covers it
         self.assertEqual(asked(self.store), {"CVE-2026-30001"})
 
     def test_a_cve_is_asked_once_a_day_for_7_days_then_only_while_a_line_waits_up_to_37(self):
-        quiet, waiting = incident(["CVE-2026-102435"]), incident(["CVE-2026-123158"])  # Debian: not fixed yet
+        # Both known to the index; 6387's lines all settle (fixed or not affected), 123158's Debian lines wait.
+        quiet, waiting = incident(["CVE-2024-6387"]), incident(["CVE-2026-123158"])
         run(self.store, [quiet, waiting])
 
         def asked_on(day):
@@ -103,10 +107,33 @@ class DistroCycleTest(unittest.TestCase):
             return {c for c in after if after[c].get("asked") != (state.get(c) or {}).get("asked")}
 
         self.assertEqual(asked_on(0), set())  # asked today already
-        self.assertEqual(asked_on(1), {"CVE-2026-102435", "CVE-2026-123158"})
+        self.assertEqual(asked_on(1), {"CVE-2024-6387", "CVE-2026-123158"})
         self.assertEqual(asked_on(7), {"CVE-2026-123158"})
         self.assertEqual(asked_on(36), {"CVE-2026-123158"})
         self.assertEqual(asked_on(37), set())
+
+    def test_a_cve_the_index_knows_is_asked_before_any_it_does_not(self):
+        unknown = [incident([f"CVE-2026-{n}"]) for n in range(40000, 40000 + cycle.DISTRO_PER_CYCLE)]
+        known = incident(["CVE-2026-123158"], days_ago=3)  # older than every unknown one
+        run(self.store, unknown + [known])
+        self.assertEqual(asked(self.store), {"CVE-2026-123158"})
+
+    def test_a_cve_the_index_does_not_know_is_never_asked(self):
+        plugin = incident(["CVE-2026-102435"])
+        for day in (0, 1, 2):
+            _, get = run(self.store, [plugin], NOW + timedelta(days=day))
+            self.assertNotIn("https://security.archlinux.org/CVE-2026-102435.json", get.urls)
+        self.assertEqual(asked(self.store), set())
+
+    def test_one_the_index_starts_knowing_becomes_due(self):
+        empty = ALL | {distros.DEBIAN_JSON: b"{}"} | {u: b'{"packages": [], "distroversion": "v3.24", "reponame": "main"}'
+                                                       for u in distros.ALPINE_SECDB}
+        sshole = incident(["CVE-2026-123158"])
+        run(self.store, [sshole], get=Counting(empty))
+        self.assertEqual(asked(self.store), set())
+        _, get = run(self.store, [sshole], NOW + timedelta(days=1))
+        self.assertIn("https://security.archlinux.org/CVE-2026-123158.json", get.urls)
+        self.assertEqual(self.store.read("distros/state.json")["CVE-2026-123158"]["first"], "2026-11-16")  # 7 days from now
 
     def test_a_lookup_that_finds_nothing_new_leaves_the_incident_as_it_was(self):
         incidents = [incident(["CVE-2024-6387"])]
@@ -176,7 +203,7 @@ class WholeCycleTest(unittest.TestCase):
         cycle.run_cycle(store, recorded(), at("2026-11-07T13:30:00"), "test-box", sleep=lambda s: None, distro_table=True)
         self.assertEqual(store.read("status.json")["updated"], "2026-11-07T13:30:00Z")
         state = store.read("distros/state.json")
-        self.assertTrue(state and all("asked" in entry for entry in state.values()))
+        self.assertTrue(state and all(entry == {"seen": "2026-11-07"} for entry in state.values()))  # no index: none asked
         self.assertTrue(all("distro_lines" not in i for i in store.read("months/2026-11.json")["incidents"]))
 
 

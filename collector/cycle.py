@@ -20,8 +20,10 @@ RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older mont
 DISTRO_PER_CYCLE = 15
 DISTRO_PAUSE = 1  # seconds between two CVEs' lookups: no distribution's server sees a burst
 # Owner, 2026-11-15: a CVE is asked once a day for 7 days; one that got a line is followed 30 days more, until every
-# line is fixed or not affected. A never-asked CVE of an Incident first seen in the last 30 days is asked too: that is
-# how Incidents posted before step 10 get their table, at the budget's pace after new CVEs and re-checks.
+# line is fixed or not affected. That rule holds for CVEs the day's Debian or Alpine index knows; a CVE neither knows
+# is not asked (owner, 2026-11-16: the newest unknown CVEs, mostly web apps, took every slot, and 40 of them asked in
+# the four other sources found no line) until the index comes to know it. Never-asked CVEs seen in the last 30 days
+# are how Incidents posted before step 10 get their table.
 DISTRO_FIRST_DAYS, DISTRO_FOLLOW_DAYS, DISTRO_BACKFILL_DAYS = 7, 37, 30
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
 # Highlights as filterBoard picks them (HIGHLIGHTS, HIGHLIGHTS_MAX and pickHighlights in web/board.mjs).
@@ -246,7 +248,9 @@ def refresh_distros(store, incidents, http_get, now, sleep):
     distros/index.json holds the day's Debian and Alpine answers for the CVEs held (rebuilt on the day's first cycle; a
     distribution whose files fail keeps the last). The state holds, for every CVE held, the day it was first seen and
     the first and last day it was asked: a new CVE that folds into an older Incident is new by its own day. The first
-    run seeds each CVE's day from its Incident's first_seen, so Incidents posted before step 10 are backfill. An Incident
+    run seeds each CVE's day from its Incident's first_seen, so Incidents posted before step 10 are backfill. Only CVEs
+    the index knows are asked: new, then follow-ups, then backfill; one it comes to know later is new or backfill by
+    its own seen day. An Incident
     holds only its lines ("distro_lines", {cve: lines}), changed only when a line changes, so a lookup that finds
     nothing new rewrites no page. A distribution that fails keeps the lines it gave before."""
     today = now.strftime("%Y-%m-%d")
@@ -260,16 +264,20 @@ def refresh_distros(store, incidents, http_get, now, sleep):
     for cve, incident in held.items():
         state.setdefault(cve, {"seen": today if stored is not None else incident["first_seen"][:10]})
     age = lambda day: (date.fromisoformat(today) - date.fromisoformat(day)).days  # noqa: E731
+    knows = {cve for d in distros.BULK for cve, rows in (index.get(d) or {}).items() if rows}
     new, follow, backfill = {}, {}, {}
     for cve, entry in state.items():
         lines = (held[cve].get("distro_lines") or {}).get(cve)
         if "asked" not in entry:
+            if cve not in knows:
+                continue
             if age(entry["seen"]) < DISTRO_FIRST_DAYS:
                 new[cve] = entry["seen"]
             elif age(entry["seen"]) < DISTRO_BACKFILL_DAYS:
                 backfill[cve] = entry["seen"]
-        elif entry["asked"] < today and (age(entry["first"]) < DISTRO_FIRST_DAYS or lines and not distros.settled(lines)
-                                         and age(entry["first"]) < DISTRO_FOLLOW_DAYS):
+        elif entry["asked"] < today and (cve in knows or lines) and (
+                age(entry["first"]) < DISTRO_FIRST_DAYS
+                or lines and not distros.settled(lines) and age(entry["first"]) < DISTRO_FOLLOW_DAYS):
             follow[cve] = entry["asked"]
     due = (sorted(new, key=new.get, reverse=True) + sorted(follow, key=follow.get)
            + sorted(backfill, key=backfill.get, reverse=True))[:DISTRO_PER_CYCLE]
