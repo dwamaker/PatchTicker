@@ -56,7 +56,6 @@ const TEXT = {
     original: '원문', lead: { advisory: '공식 공지 읽기', writeup: '분석 글 읽기', cve_record: 'CVE 기록 읽기', discussion: '토론 읽기', curator: '뉴스레터 읽기', notice: '보호나라 공지 읽기', repo: '저장소 보기', other: '원문 읽기' },
     aliasHint: (w, names) => `‘${w}’${ro(w)} 검색해 ${names.join(', ')}도 함께 찾았습니다.`,
     aliasTextHint: (w, names) => `제품 이름이 ${names.join(', ')}인 사건은 없어 본문에서 찾았습니다.`,
-    support: '후원',
     searched: (cve) => `검색한 ${cve}`, notExploited: '공격 보고 없음',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
@@ -110,7 +109,6 @@ const TEXT = {
     original: '', lead: { advisory: 'Read the advisory', writeup: 'Read the write-up', cve_record: 'Read the CVE record', discussion: 'Read the discussion', curator: 'Read the newsletter', notice: 'Read the KISA notice', repo: 'See the repository', other: 'Read the source' },
     aliasHint: (w, names) => `‘${w}’ was also searched as ${names.join(', ')}.`,
     aliasTextHint: (w, names) => `No product is named ${names.join(', ')}, so the text was searched for it.`,
-    support: 'Support',
     searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
@@ -164,7 +162,6 @@ const TEXT = {
     original: '原文', lead: { advisory: '勧告を読む', writeup: '解説記事を読む', cve_record: 'CVE レコードを読む', discussion: '議論を読む', curator: 'ニュースレターを読む', notice: 'KISA の告知を読む', repo: 'リポジトリを見る', other: '原文を読む' },
     aliasHint: (w, names) => `「${w}」で ${names.join('、')} もあわせて検索しました。`,
     aliasTextHint: (w, names) => `製品名が ${names.join('、')} のインシデントはないため、本文から探しました。`,
-    support: '支援',
     searched: (cve) => `検索した ${cve}`, notExploited: '攻撃の報告なし',
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
     mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
@@ -1560,7 +1557,7 @@ function update(change, animate = true) {
 
 // While the phone sheet covers the Board, everything else is inert (no taps, no reading) until it closes.
 function sheetInert(on) {
-  for (const node of document.querySelectorAll('header.top, footer, #jump, main > *:not(#filters):not(#announce)')) node.inert = on;
+  for (const node of document.querySelectorAll('header.top, .support, footer, #jump, main > *:not(#filters):not(#announce)')) node.inert = on;
 }
 
 // The panel remembers who opened it and where the page stood (critique 13: closing it threw the reader to the top and

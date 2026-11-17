@@ -314,9 +314,8 @@ the buttons right; where that does not fit (larger text) it breaks into two line
 switch, as the grid did at 600 px (owner, 11-17);
 under 600 px the name, the switch and a settings button share one line (GitHub and RSS leave the line; RSS moves into
 the settings panel). The product picker and search sit on one
-line (picker up to 24rem), stacking under 768 px. The footer holds the data notices; its last row is the 후원 button
-(Buy Me a Coffee), at the right edge of the column at every width, styled as before in the header (owner, 2026-11-18:
-it left the header, and the footer's GitHub · RSS line was dropped).
+line (picker up to 24rem), stacking under 768 px. Above the footer's line sits the Support banner (see Components); the footer holds
+the data notices only (owner, 2026-11-18: 후원 left the header, and the footer's GitHub · RSS line was dropped).
 
 A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
 badges (up to 15rem), published date over time (5.5rem), chevron. Column gap is 1.25rem. Opened details align with the
@@ -370,9 +369,17 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Hover / Focus:** Recessed Panel fill and Sign Ink text on hover; a 2px Wayfinding Blue ring at
   2px offset on keyboard focus.
 
+### Support banner (owner, 2026-11-18)
+- The README's Buy Me a Coffee block, centred just above the footer's line inside the column: one italic sentence in
+  Secondary Ink at Label size (static three-language markup, so it paints right before the script), and under it the
+  badge, drawn by the page itself (no third-party image: `img-src 'self'`): Buy Me a Coffee yellow `#ffdd00`, the cup
+  icon and "BUY ME A COFFEE" in black, 13px bold upper case, 0.1em tracking, 4px corners, 44 px high.
+- The yellow is the one colour outside the palette, kept so the badge reads as the service's own mark, the same in both
+  themes; black on it is 15.6:1. It does not follow the text size (it is a mark, and stays clear of the jump column).
+
 ### RSS menu (owner, 11-17)
-- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub, styled as 후원 (now
-  in the footer) is: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px it shows
+- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub, styled as
+  the old 후원 button was: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px it shows
   its icon alone in a 44 px circle, the word kept as its name for screen readers. Under 600 px the header line
   is full, so the button sits in the settings panel after the language button, outlined like its neighbours, and opens
   the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link,
