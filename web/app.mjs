@@ -1,5 +1,5 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, collectionFacts } from './board.mjs';
-import { feedPath, productFeed } from './board.mjs';
+import { feedPath, productFeed, LANGS, withJapanese } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -143,6 +143,59 @@ const TEXT = {
       filter: 'Pick the Products you run or narrow with filters. Your choices stay in the address, so a bookmark brings them back.',
       note: 'Summaries are written by AI from the sources. Check the source links before you act.',
     },
+  },  // Japanese (owner, 11-17): the interface only; Summaries come in English (board.mjs withJapanese), so the guide says so.
+  ja: {
+    ...WORDS.ja,
+    brand: 'Patch Ticker', loading: '読み込み中…',
+    notListed: (text) => `製品リストにない名前なので、キーワードとして検索しました: ${text}`, variants: (n) => `似た名前の${n}件もあわせて表示しています。`, manyProducts: (n) => `該当する製品が${n}件あります。リストから1つ選んでください。`,
+    loadDetail: (msg) => `詳細: ${msg}`, olderDone: (n) => (n ? `以前のインシデントをすべて読み込みました（${n}件追加）。` : '以前のインシデントはこれ以上ありません。すでにすべて一覧にあります。'),
+    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
+    status: (updated, shown, total) => `最終更新 ${updated} · ` + (shown === total ? `${total}件` : `全${total}件中${shown}件`),
+    products: '使っている製品', productsHint: '製品名を入力して検索', productsHintShort: '製品名', picked: '選んだ製品', fpApplied: '適用中のフィルター', remove: (name) => `${name}を外す`,
+    repo: 'GitHub リポジトリ', search: '検索', clearSearch: '検索をクリア', noticeClose: 'お知らせを閉じる', noticeSince: 'Patch Ticker は2026年11月9日から収集しています。それ以前に公開された脆弱性は一覧にない場合があります。', noticeKeep: 'パッチが出てもインシデントは消えず、90日間残ります。', searchHint: 'キーワード、CVE 番号、バージョン', searchHintShort: 'キーワード、CVE 番号', all: '新しい順', sortLabel: '並び順', expandAll: 'すべて開く', collapseAll: 'すべて閉じる', unfold: 'まとめを解除', refold: 'まとめて表示', groupTag: 'まとめ', patchTag: '同時公開', prefs: '表示設定', toTop: '先頭へ', toBottom: '末尾へ', stepUp: '1画面上へ', stepDown: '1画面下へ', stepGroup: '1画面ずつ移動', newAbove: (n) => `新着 ${n}件`, newAdded: (n) => `新しいインシデントが${n}件追加されました。`, toNew: '最初の新着インシデントへ移動', foldEnd: (v) => `${v} のまとめを閉じる`, foldOpened: (v, n, wp) => `${v} のまとめを開きました（${wp ? 'プラグイン' : '勧告'} ${n}件）。`, theme: 'ダークテーマ',
+    pin: '注目のインシデント', pinOne: '注目のインシデント', noCve: 'CVE 番号なし', moreCves: (n) => ` ほか${n}件`, firstSeen: '公開時刻が不明なため、このボードが最初に確認した時刻です', firstSeenAt: (t) => `初確認 ${t}`, kevReasonEasy: '攻撃されています', easyWhen: '次の場合にだけ該当します:', someFlaws: '一部の脆弱性のみ', foldClosed: (v) => `${v} のまとめを閉じました。`, kevEasy: '今まさに実際の攻撃に使われています！', pocEasy: '攻撃コードが公開されました！', originalEn: '原文（英語）',
+    caution: '設定を誤るとサービスが止まったり、接続できなくなったりすることがあります。変更する前に下の原文リンクを確認してください。',
+    noneForPicks: (names) => `選んだ製品（${names}）に該当するインシデントは、今ボードにありません。`, noneForQuery: (q) => `「${q}」に一致するインシデントはありません。`, noneForBoth: (names, q) => `選んだ製品（${names}）のうち「${q}」に一致するインシデントはありません。`, restore: (label, n) => `${label} · ${n}件を表示`, stale: '更新が止まっています。収集が止まり、最近のインシデントが抜けている可能性があります。', staleShort: '更新停止中', scopeWeek: 'このボードに過去7日間に載ったインシデントから検索しました。', scopeMonths: '読み込んだ以前のインシデントも含めて検索しました。', searchOlder: '以前のインシデントからも検索',
+    linkNotFound: 'このリンクのインシデントが見つかりませんでした。保存期間の90日を過ぎたか、ほかのインシデントに統合された可能性があります。',
+    clearWeek: '過去7日間に公開されたインシデントはありません', clearMonths: '以前のインシデントまで見ても、公開されたインシデントはありません', clearNote: '選んだ製品はアドレスに保存されます。ブックマークしておけば次回もすぐ確認できます。',
+    noIncidents: 'まだ公開されたインシデントはありません。', loadOlder: '以前のインシデントを読み込む', showMore: (n) => `もっと見る（残り${n}件）`, moreDone: (n, rest) => `${n}件を追加で読み込みました。${rest ? ` 残り${rest}件` : ''}`, clearSearch: '検索をクリア', clearAll: 'フィルターをすべてクリア',
+    original: '原文', lead: { advisory: '勧告を読む', writeup: '解説記事を読む', cve_record: 'CVE レコードを読む', discussion: '議論を読む', curator: 'ニュースレターを読む', notice: 'KISA の告知を読む', repo: 'リポジトリを見る', other: '原文を読む' },
+    aliasHint: (w, names) => `「${w}」で ${names.join('、')} もあわせて検索しました。`,
+    support: '支援',
+    searched: (cve) => `検索した ${cve}`, notExploited: '攻撃の報告なし',
+    preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
+    mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
+    normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
+    copy: 'コピー', copied: 'コピーしました', share: 'このインシデントのリンクをコピー',
+    feeds: 'RSS フィード', feedsHead: 'RSS で受け取る', feedMain: 'メインフィード', feedMainNote: '警戒以上、実際の攻撃、CVE 未採番のインシデント',
+    feedAll: 'ボード全体', feedAllNote: '参考を含むすべてのインシデント', feedMine: '自分の製品', feedPick: '製品を選ぶ',
+    feedNone: '上の「使っている製品」で製品を選ぶと、その製品のインシデントだけが届くアドレスがここに表示されます。',
+    feedMore: (n) => ` ほか${n}件`, feedLeft: (n) => `1つのアドレスに入る製品は30件までです。残りの${n}件は含まれていません。`,
+    tagsOnly: 'この製品のインシデントだけを表示', tagOnly: (name) => `${name} のインシデントだけを表示`,
+    paused: 'AI 要約を一時停止しています。新しいインシデントは要約なしで、原文のタイトルとリンクだけが表示されます。',
+    versionHelp: (cve) => (cve ? `お使いのバージョンは、たいていそのプログラムの設定や「バージョン情報」画面に表示されます。わからなければ AI チャットボットに ${cve} について聞いてみてください。` : 'お使いのバージョンは、たいていそのプログラムの設定や「バージョン情報」画面に表示されます。'),
+    libraryHelp: 'アプリに組み込まれた部品なので、自分で確認するのは難しいです。使っているプログラムを更新するか、サーバー管理者やホスティング会社に問い合わせてください。',
+    newTabAll: '（下のリンクはすべて新しいタブで開きます）', noneEasy: '修正版の知らせはまだありません。下の原文リンクで最新情報を確認してください。', orNewer: (v) => `${v} 以降`, models: (n) => `該当モデルを表示 (${n})`,
+    guideBtn: '見方',
+    guide: {
+      title: 'このボードの見方', close: '閉じる',
+      primer: { highest: '実際の攻撃・9点以上', high: '7点以上', notice: '7点未満', unrated: 'スコア待ち', ring: 'CVSS スコア（10点満点）', more: '見方を詳しく', dismiss: '案内を閉じる' },
+      risk: { highest: '実際の攻撃に使われている（「攻撃発生」）か、CVSS スコアが10点中9点以上', high: 'CVSS スコアが10点中7点以上', notice: 'CVSS スコアが10点中7点未満。' },
+      unrated: 'スコア待ち: CVSS スコアがまだないインシデントです。実際の攻撃がなければ参考の表示を点線で描き、危険度フィルターでは別に選べ、危険度順と CVSS の高い順では、スコアのある参考のインシデントより上に置きます。',
+      ring: 'CVSS スコア: 脆弱性の深刻さを10点満点で評価する国際的な基準です。リングはスコアの分だけ満ち、色もスコアに従います。実際の攻撃に使われると、スコアに関係なく最上位になります。スコアがまだなければ、点線のリングに — と表示されます。',
+      tags: '色付きのバッジは影響を受ける製品や機器で、製品ごとに常に同じ色です。枠線のバッジは、その製品が動く OS です。',
+      date: '最初に公開された日時（お使いのタイムゾーン）。原文に時刻がない場合は「初確認」とともに、このボードが最初に確認した時刻を表示します。',
+      pin: '「警戒」や「緊急」のインシデント（実際の攻撃があるか、CVSS スコア7点以上）のうち、過去7日以内に公開された重要な4件を、異なる会社から選び、多くの人が使う製品から順に上に固定します。「注目のインシデントをもっと見る」を押すと、残りがその下に続きます。注目のインシデントは下の一覧の本来の位置にもあり、左側の危険度の色の帯で示されます。',
+      group: '1つの製品の複数の CVE が同時に公開されたまとめです。同じバージョンで修正されたか、まだ修正されていなくても同じバージョンまで影響を受ける CVE です。リングはそのうち最も高いスコアで、開くと CVE ごとに1行ずつ表示されます。',
+      brief: 'まだ要約前のため、原文をそのまま表示しているインシデントです。英語の場合があります。',
+      open: '行を押すと、要約、該当する条件、対処法、原文リンクが開きます。キーボードでは ↑ ↓ キーで行の間を移動できます。',
+      fold: (n) => `1つの会社が同じ日に出した${n}件以上の勧告と、同じ日の WordPress プラグイン${n}件以上は、「まとめ」1行に集めます。押すとその場で開き、一覧の見出しの横の「まとめを解除」ですべて解除できます。「同時公開」の行は同時に公開された1つのインシデントの CVE なので、解除されません。`,
+      prep: 'やさしい説明は少し遅れて作成されます。それまでは、やさしいタイトルだけを先に表示します。',
+      easy: '上で切り替えると、何が危険で、今何をすべきかをやさしい言葉で表示します。',
+      filterWord: '製品 · フィルター',
+      filter: '使っている製品を選ぶか、フィルターで絞り込めます。選んだ条件はアドレスに残るので、ブックマークで再び開けます。',
+      note: '要約は AI が原文を読んで作成します。日本語のページでは要約を英語で表示します。対応する前に原文リンクを確認してください。',
+    },
   },
 };
 let lang = loadLang();
@@ -171,7 +224,8 @@ function setDefaultView(view) {
 function loadLang() {
   const saved = stored(SAVED_LANG); // storage blocked: the browser's language below
   if (Object.hasOwn(TEXT, saved ?? '')) return saved; // `in` would take "constructor" as a language
-  return (navigator.language || '').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+  const browser = (navigator.language || '').toLowerCase().slice(0, 2);
+  return LANGS.includes(browser) ? browser : 'en';
 }
 
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
@@ -240,7 +294,7 @@ const getJson = async (name) => {
   try {
     const read = (early || fetch(DATA_URL + name, { cache: 'no-cache', signal: ctl.signal })).then((res) => {
       if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
-      return res.json();
+      return res.text().then((text) => JSON.parse(text, withJapanese)); // a Japanese page reads the English Summary
     });
     // An early request carries index.html's signal, not this one: the limit and the abort on return reach it by a race.
     return await (early ? Promise.race([read, new Promise((_, no) => ctl.signal.addEventListener('abort', () => no(new Error(`${name}: no answer`))))]) : read);
@@ -777,7 +831,7 @@ function pageText() {
   showTextSize();
   paintBar(); // at the start and after each theme switch
   document.title = t.title;
-  $('rss').href = lang === 'en' ? '/en/feed.xml' : '/feed.xml';
+  $('rss').href = feedPath(lang);
   for (const node of document.querySelectorAll('[data-t]')) {
     node.textContent = t[node.dataset.t];
     node.hidden = !node.textContent; // the Korean NVD line has no English twin
@@ -786,10 +840,10 @@ function pageText() {
   for (const node of document.querySelectorAll('[data-t-aria]')) node.setAttribute('aria-label', t[node.dataset.tAria]);
   // The jump group's icons alone are ambiguous: each button also says its name on hover.
   for (const node of document.querySelectorAll('#jump button')) node.title = node.getAttribute('aria-label');
-  // Full name on wide screens, a short code on phones (the header must fit 375px); screen readers get the full name.
-  $('lang').replaceChildren(el('span', 'full', t.other), el('span', 'short', t.otherShort));
-  $('lang').setAttribute('aria-label', t.other);
-  $('lang').lang = lang === 'ko' ? 'en' : 'ko';
+  // The language menu's button names the page's language (full on wide screens, a short code on phones: the header must
+  // fit 375px); screen readers hear what it opens. Each entry is in its own language and marks the current one.
+  $('lang').setAttribute('aria-label', `${t.langMenu}: ${t.langName}`);
+  for (const item of document.querySelectorAll('#langs [data-lang]')) item.setAttribute('aria-current', item.dataset.lang === lang);
   for (const view of ['normal', 'easy']) $(`view-${view}`).setAttribute('aria-pressed', defaultView === view);
   placePill();
   $('theme').setAttribute('aria-pressed', theme() === 'dark');
@@ -1577,15 +1631,24 @@ $('product-pick').addEventListener('change', (event) => {
   }
 });
 $('product-pick').addEventListener('input', () => { $('pick-hint').textContent = ''; });
-$('lang').addEventListener('click', () => crossFade(() => {
-  lang = lang === 'ko' ? 'en' : 'ko';
+// The language menu (owner, 11-17: a dropdown now that there are three): a popover like the RSS menu below; where the
+// browser has no popovers the button steps to the next language instead.
+const langsOpen = () => canPop && $('langs').matches(':popover-open');
+const setLang = (next) => crossFade(() => {
+  lang = next;
   store(SAVED_LANG, lang);
   clearTimeout(announcing);
   $('announce').textContent = ''; // nothing said in the old language stays (critique 14: 글자 크기 100% on the English page)
   refreshProducts();
   render();
   if (!$('filters').hidden) filterPanel(); // an open panel speaks the new language (an unapplied choice there resets)
-}));
+});
+$('langs').addEventListener('click', (event) => {
+  const item = event.target.closest('[data-lang]');
+  if (!item) return;
+  $('langs').hidePopover();
+  if (item.dataset.lang !== lang) setLang(item.dataset.lang);
+});
 $('view-normal').addEventListener('click', () => setDefaultView('normal'));
 $('view-easy').addEventListener('click', () => setDefaultView('easy'));
 $('theme').addEventListener('click', toggleTheme);
@@ -1692,10 +1755,10 @@ function setPrefs(open) {
 $('prefs-btn').addEventListener('click', () => setPrefs(!$('prefs').classList.contains('open')));
 document.addEventListener('pointerdown', (event) => {
   if ($('prefs').classList.contains('open') && !$('prefs').contains(event.target) && !$('prefs-btn').contains(event.target)
-    && !$('feeds').contains(event.target)) setPrefs(false); // the RSS menu opened from the panel keeps it
+    && !$('feeds').contains(event.target) && !$('langs').contains(event.target)) setPrefs(false); // a menu opened from the panel keeps it
 });
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && $('prefs').classList.contains('open') && !feedsOpen()) { // Escape closes the RSS menu alone
+  if (event.key === 'Escape' && $('prefs').classList.contains('open') && !feedsOpen() && !langsOpen()) { // Escape closes an open menu alone
     setPrefs(false);
     $('prefs-btn').focus();
   }
@@ -1728,24 +1791,25 @@ function feedRows() {
   $('feed-left').hidden = !feed.left;
   $('feed-left').textContent = feed.left ? t.feedLeft(feed.left) : '';
 }
-if (canPop) {
-  const menu = $('feeds');
+// A header menu's popover (the RSS menu, the language menu) and the buttons that open it.
+function popMenu(menu, buttons) {
+  const isOpen = () => menu.matches(':popover-open');
   // Invoker commands are newer than popovers: without them the buttons toggle the menu here.
   if (!('commandForElement' in HTMLButtonElement.prototype)) {
-    for (const button of feedButtons) {
+    for (const button of buttons) {
       button.addEventListener('click', (event) => {
         event.preventDefault();
-        if (feedsOpen()) menu.hidePopover();
+        if (isOpen()) menu.hidePopover();
         else menu.showPopover({ source: button });
       });
     }
   }
   menu.addEventListener('toggle', (event) => {
     const opening = event.newState === 'open';
-    for (const button of feedButtons) button.setAttribute('aria-expanded', opening);
+    for (const button of buttons) button.setAttribute('aria-expanded', opening);
     // Without anchor positioning: under the visible button, kept inside the screen, above it when there is no room below.
     if (!opening || CSS.supports('position-area: block-end')) return;
-    const box = feedButtons.find((b) => b.getClientRects().length).getBoundingClientRect();
+    const box = buttons.find((b) => b.getClientRects().length).getBoundingClientRect();
     const left = Math.max(8, Math.min(box.left, innerWidth - menu.offsetWidth - 8));
     const below = box.bottom + 4 + menu.offsetHeight <= innerHeight || box.top - 4 - menu.offsetHeight < 0;
     menu.style.left = `${left}px`;
@@ -1753,8 +1817,14 @@ if (canPop) {
   });
   // Tab past the last entry leaves the menu: it closes, so focus never stays behind it.
   document.addEventListener('focusin', (event) => {
-    if (feedsOpen() && !menu.contains(event.target) && !feedButtons.includes(event.target)) menu.hidePopover();
+    if (isOpen() && !menu.contains(event.target) && !buttons.includes(event.target)) menu.hidePopover();
   });
+}
+if (canPop) popMenu($('langs'), [$('lang')]);
+else $('lang').addEventListener('click', () => setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]));
+if (canPop) {
+  const menu = $('feeds');
+  popMenu(menu, feedButtons);
   menu.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-copy]');
     if (!button) return;

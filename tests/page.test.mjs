@@ -61,13 +61,13 @@ test('a long CVE list shows its first IDs and folds the rest (owner, 11-10: IBM 
   const cves = Array.from({ length: 25 }, (_, n) => `CVE-2026-${10001 + n}`);
   for (const [lang, more] of [['ko', 'CVE 15건 더 보기'], ['en', '15 more CVE IDs']]) {
     const html = await (await page({ ...SSHOLE, id: cves[0], cves }, lang, cves[0])).text();
-    const [open, folded] = html.split('<details');
+    const [open, folded] = html.split('</header>')[1].split('<details');
     assert.equal((open.match(/CVERecord\?id=CVE-2026-1\d{4}"/g) || []).length, 10);
     assert.match(folded, new RegExp(`<summary>${more}</summary>`));
     for (const cve of cves.slice(10)) assert.match(folded, new RegExp(`CVERecord\\?id=${cve}"`)); // still in the HTML
   }
   const few = await (await page(SSHOLE)).text();
-  assert.doesNotMatch(few, /<details/);
+  assert.doesNotMatch(few.split('</header>')[1], /<details/); // the header's language menu is one
 });
 
 test('a CVE record the CVE list already links is not listed again under Sources', async () => {
@@ -114,7 +114,7 @@ test('the page shows what the Board panel shows, with the Board rules', async ()
   assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 19:00 KST<\/time>/); // published, Korean time
   assert.match(html, /<time datetime="2026-11-06T00:46:00.000Z">/); // first seen
   assert.match(html, /href="\/#i=CVE-2026-123158"/); // open on the Board
-  assert.match(html, /href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en" aria-label="English"><span class="full">English</);
+  assert.match(html, /href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en">English</);
   assert.match(html, /href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*"/);
   assert.match(html, /NVD API/);
   assert.match(html, /The MITRE Corporation/);
@@ -144,7 +144,7 @@ test('source links open in a new tab and say so, as on the Board; the Board and 
   assert.match(html, /<a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158" target="_blank" rel="noopener noreferrer">CVE-2026-123158</);
   assert.match(html, /<a href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*" target="_blank" rel="noopener noreferrer"><svg [^>]*aria-hidden="true">[\s\S]*?<\/svg>틀린 내용 알리기</);
   assert.match(html, /<a href="\/#i=CVE-2026-123158">/);
-  assert.match(html, /<a class="lang" href="\/en\/i\/CVE-2026-123158" hreflang="en"/);
+  assert.match(html, /<a href="\/en\/i\/CVE-2026-123158" hreflang="en"/);
   assert.match(await (await page(SSHOLE, 'en')).text(), /<span class="sr-only"> \(opens in a new tab\)<\/span>/);
 });
 
@@ -192,7 +192,8 @@ test('the English page is the English Summary, canonical to itself', async () =>
   assert.match(html, />Urgent</);
   assert.match(html, /Listed in CISA KEV/);
   assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 10:00 UTC<\/time>/);
-  assert.match(html.split('</header>')[0], /<a class="lang" href="\/i\/CVE-2026-123158" hreflang="ko" lang="ko" aria-label="한국어"><span class="full">한국어<\/span><span class="short">한<\/span><\/a>/);
+  assert.match(html.split('</header>')[0], /<summary class="lang" aria-label="Language: English">[\s\S]*?<span class="full">English<\/span><span class="short">EN<\/span><\/summary>/);
+  assert.match(html.split('</header>')[0], /<a href="\/i\/CVE-2026-123158" hreflang="ko" lang="ko">한국어<\/a>/);
 });
 
 test('where scripts run, the times show in the visitor zone, by the one script the page policy allows by its hash', async () => {
@@ -216,10 +217,25 @@ test('the header carries the logo home and the language switch; the links row ho
   const html = await (await page(SSHOLE)).text();
   const header = html.split('</header>')[0].split('<header>')[1];
   assert.match(header, /<a class="brand" href="\/"><svg viewBox="0 0 64 56" aria-hidden="true">[\s\S]*?<\/svg>Patch Ticker<\/a>/);
-  assert.match(header, /<a class="lang" href="\/en\/i\/CVE-2026-123158" hreflang="en" lang="en" aria-label="English"><span class="full">English<\/span><span class="short">EN<\/span><\/a>/);
+  // The language menu (owner, 11-17): a details naming the page's language, its list linking this page in every language.
+  assert.match(header, /<details class="langs"><summary class="lang" aria-label="언어: 한국어">[\s\S]*?<span class="full">한국어<\/span><span class="short">한<\/span><\/summary>/);
+  assert.deepEqual(header.split('<ul>')[1].match(/<a [^>]*>[^<]*/g), ['<a href="/i/CVE-2026-123158" hreflang="ko" lang="ko" aria-current="page">한국어',
+    '<a href="/en/i/CVE-2026-123158" hreflang="en" lang="en">English', '<a href="/ja/i/CVE-2026-123158" hreflang="ja" lang="ja">日本語']);
   const links = html.split('<nav class="links"')[1].split('</nav>')[0];
   assert.deepEqual(links.match(/<a href="[^"]*/g).map((a) => a.slice(9).split('?')[0]), ['/#i=CVE-2026-123158', 'https://github.com/dwamaker/PatchTicker/issues/new']);
   assert.doesNotMatch(links, /hreflang/); // the language switch moved up
+});
+
+test('the Japanese page is the interface in Japanese with the English Summary, canonical to itself', async () => {
+  const html = await (await page(SSHOLE, 'ja')).text();
+  assert.match(html, /<html lang="ja">/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/patchticker.com\/ja\/i\/CVE-2026-123158">/);
+  assert.match(html, /<meta property="og:locale" content="ja_JP">/);
+  assert.match(html, /<h1>OpenSSH sshd authentication bypass \(sshole\)<\/h1>/); // the English Summary
+  assert.match(html, />緊急</);
+  assert.match(html, /CISA KEV 掲載/);
+  assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 19:00 JST<\/time>/);
+  assert.match(html, /<span class="full">日本語<\/span>/);
 });
 
 test('a note (404) keeps the logo header but has no language switch', async () => {

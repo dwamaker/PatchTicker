@@ -12,7 +12,9 @@ const LINK = ['</.well-known/api-catalog>; rel="api-catalog"', '</llms.txt>; rel
   '</feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (Korean)"',
   '</en/feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (English)"',
   '</feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (Korean)"',
-  '</en/feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (English)"'].join(', ');
+  '</en/feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (English)"',
+  '</ja/feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (Japanese)"',
+  '</ja/feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (Japanese)"'].join(', ');
 const LINKS_KEY = '/__home-links'; // the edge cache entry for the list; never a real path
 
 export async function homeLinks(doc) {

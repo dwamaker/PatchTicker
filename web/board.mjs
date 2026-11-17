@@ -320,7 +320,7 @@ export const withinPageDays = (stamp, now) => Date.parse(stamp) >= now - PAGE_DA
 // to the clipboard at once (Safari drops the click's permission across an await); undefined means not ready yet.
 export function shareLink(i, pageSlug, lang, board, now = Date.now()) {
   const hasPage = pageSlug && i.summary && onBoard(i) && withinPageDays(i.first_seen, now);
-  return hasPage ? new URL(`${lang === 'en' ? '/en' : ''}/i/${pageSlug}`, board).href : `${board}#i=${encodeURIComponent(i.id)}`;
+  return hasPage ? new URL(`${langPrefix(lang)}/i/${pageSlug}`, board).href : `${board}#i=${encodeURIComponent(i.id)}`;
 }
 
 // The Easy view's one action: update these devices, run the source's command, or update to the fixed version.
@@ -659,11 +659,22 @@ export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[
 // Mentions are listed by kind in this order (the Lead order), on the Board and the Incident page alike.
 export const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
 
+// The site's languages, in the order the language menu lists them. Korean lives at the root, the others under /<lang>/.
+// Japanese (owner, 11-17) is the interface only: the collector writes Summaries in Korean and English, so a Japanese page
+// shows the English Summary (withJapanese).
+export const LANGS = ['ko', 'en', 'ja'];
+export const langPrefix = (lang) => (lang === 'ko' ? '' : `/${lang}`);
+// A JSON.parse reviver for every document the Board and the edge read: an object with Korean and English twins and no
+// Japanese one (a Summary, its quick title, a product's names, a CVE line) gets the English as its Japanese, so each
+// reader's `x[lang]` finds text on a Japanese page without a language step of its own.
+export const withJapanese = (_, v) => (v && typeof v === 'object' && !Array.isArray(v) && 'ko' in v && 'en' in v && !('ja' in v) ? { ...v, ja: v.en } : v);
+
 // The words the Board (web/app.mjs), the Incident page and the RSS feed share, written once so they never drift apart.
-// `nvd` is the Korean line beside the NVD notice; the required English sentence is static, so English has none.
+// `nvd` is the line beside the NVD notice in the page's language; the required English sentence is static, so English has none.
+// `langName` and `langShort` name the language itself, in itself, for the language menu.
 export const WORDS = {
   ko: {
-    title: 'Patch Ticker · 실시간 보안 취약점 현황판', other: 'English', otherShort: 'EN',
+    title: 'Patch Ticker · 실시간 보안 취약점 현황판', langName: '한국어', langShort: '한', langMenu: '언어',
     command: '이 명령으로 업데이트하세요:', commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, devices: '이 기기들을 지금 업데이트하세요!',
     version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
     fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
@@ -684,7 +695,7 @@ export const WORDS = {
     cveNote: 'CVE 정보는 MITRE의 CVE 이용 약관에 따라 사용합니다. 아래는 약관이 요구하는 저작권 표시와 라이선스 원문입니다.',
   },
   en: {
-    title: 'Patch Ticker · live vulnerability tracker', other: '한국어', otherShort: '한',
+    title: 'Patch Ticker · live vulnerability tracker', langName: 'English', langShort: 'EN', langMenu: 'Language',
     command: 'Run this to update:', commandFor: (w) => `${w}, run this to update:`, devices: 'Update these devices now!',
     version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
     fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
@@ -703,6 +714,27 @@ export const WORDS = {
     nvd: '',
     kevNote: 'The Attacked sign comes from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     cveNote: 'CVE data is used under the CVE Terms of Use from MITRE; its required copyright notice and license follow.',
+  },
+  ja: {
+    title: 'Patch Ticker · リアルタイム脆弱性ボード', langName: '日本語', langShort: '日', langMenu: '言語',
+    command: 'このコマンドで更新してください:', commandFor: (w) => `${w}、このコマンドで更新してください:`, devices: 'これらの機器を今すぐ更新してください！',
+    version: (v, p) => `${p ? `${p} を` : ''}${v} 以降に更新してください。`, fixedIn: (v) => `バージョン ${v} で修正されました。`,
+    fixesIntro: 'お使いの製品に合ったバージョン以降に更新してください:', stopgap: 'すぐに更新できない場合:',
+    fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, foldLess: '閉じる',
+    setting: '設定ファイルにこの行を追加してください:', settingIn: (f) => `設定ファイル ${f} にこの行を追加してください:`,
+    levels: { highest: '緊急', high: '警戒', pending: 'スコア待ち', notice: '参考' }, kevReason: '攻撃発生', kevListed: 'CISA KEV 掲載', attackSource: '攻撃の報告:', poc: '攻撃コード公開済み',
+    unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', conditions: '該当する条件', published: '初出',
+    publicDate: '公開日', productOthers: (n) => `この製品の過去30日間のほかのインシデント ${n}件`,
+    distroTable: (n) => `ディストリビューション別パッケージ (${n})`, distroSources: '出典:',
+    distroStates: { fixed: (v) => `${v} で修正済み`, not_affected: '影響なし', not_fixed: '未修正', wont_fix: '修正予定なし' },
+    scoreOf: (cve) => `${cve} のスコア`, kevSource: 'CISA KEV',
+    none: '修正バージョンはまだ確認できていません。下の原文リンクを確認してください。',
+    mentionKinds: { advisory: 'セキュリティ勧告', writeup: '解説記事', cve_record: 'CVE レコード', discussion: '議論', curator: 'ニュースレター', notice: 'KISA 告知', repo: 'リポジトリ' },
+    newTab: '（新しいタブで開きます）', report: '誤りを報告', tagsMore: (n) => `ほか${n}件`, tagsRest: (n) => `残り${n}件を表示`,
+    refNote: 'このボードは参考情報です。対応する前に各インシデントの原文を確認してください。保存するのは過去90日のインシデントのみです。',
+    nvd: 'このサービスは NVD API のデータを使用していますが、NVD による保証や認証は受けていません。',
+    kevNote: '攻撃発生の表示は、CISA の既知の悪用された脆弱性（KEV）カタログ、または実際の攻撃を報じた原文に基づきます。',
+    cveNote: 'CVE 情報は MITRE の CVE 利用規約に従って使用しています。以下は規約が求める著作権表示とライセンスの原文です。',
   },
 };
 
@@ -918,7 +950,7 @@ export const collectionFacts = (since, now, words) => (sinceStillTrue(since, now
 // Two names with one productKey ask for the same thing and are sent once; past FEED_NAMES the first ones go, the rest
 // are counted in left so the menu can say so.
 export const FEED_NAMES = 30;
-export const feedPath = (lang, kind = 'main') => `${lang === 'en' ? '/en' : ''}/${kind === 'all' ? 'feed/all.xml' : 'feed.xml'}`;
+export const feedPath = (lang, kind = 'main') => `${langPrefix(lang)}/${kind === 'all' ? 'feed/all.xml' : 'feed.xml'}`;
 export function productFeed(names, lang) {
   const keys = new Set();
   const unique = names.map((n) => String(n).replace(/,/g, ' ').replace(/\s+/g, ' ').trim())

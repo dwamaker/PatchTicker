@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { withJapanese } from '../web/board.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n'); // the HTML parser reads CRLF as LF
 const html = read('web/index.html');
@@ -41,9 +42,9 @@ test("the inline script starts the first load's four files, and getJson takes ea
   const calls = [];
   const limits = {};
   let ms; // getJson's time limit, set just before its fetch
-  const fetch = (url, { signal }) => { limits[url] = signal.ms ?? ms; const n = calls.push(url); return Promise.resolve({ ok: true, json: () => ({ url, n }) }); };
+  const fetch = (url, { signal }) => { limits[url] = signal.ms ?? ms; const n = calls.push(url); return Promise.resolve({ ok: true, text: async () => JSON.stringify({ url, n }) }); };
   const added = [];
-  const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch, AbortSignal: { timeout: (t) => ({ ms: t }) }, AbortController,
+  const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch, AbortSignal: { timeout: (t) => ({ ms: t }) }, AbortController, withJapanese,
     setTimeout: (f, t) => { ms = t; }, clearTimeout() {}, navigator: { language: 'ko-KR' },
     document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) } } } });
   ctx.window = ctx;
@@ -90,10 +91,10 @@ async function liveChecks(extra = {}) {
   const asked = [];
   const listen = (type, f) => { on[type] = f; };
   const fetch = (url, { signal }) => new Promise((yes, no) => {
-    asked.push(Object.assign(signal, { url, answer: (value) => yes({ ok: true, json: () => value }) }));
+    asked.push(Object.assign(signal, { url, answer: (value) => yes({ ok: true, text: async () => JSON.stringify(value) }) }));
     signal.addEventListener('abort', () => no(signal.reason));
   });
-  const ctx = vm.createContext({ fetch, AbortController, setTimeout: (f, ms) => setTimeout(f, ms).unref(), clearTimeout, setInterval() {}, navigator: { onLine: true },
+  const ctx = vm.createContext({ fetch, AbortController, withJapanese, setTimeout: (f, ms) => setTimeout(f, ms).unref(), clearTimeout, setInterval() {}, navigator: { onLine: true },
     window: {}, document: { hidden: false, addEventListener: listen }, addEventListener: listen, ...extra });
   vm.runInContext(`const DATA_URL = 'data/'; let updated = 'u', loadError = null, fullWeek = null;
     ${app.match(/const SLOW_MS[\s\S]*?\n\};/)[0]} ${app.match(/const CHECK_MS[\s\S]*?addEventListener\('online', back\);/)[0]}`, ctx);
@@ -174,7 +175,7 @@ test('a connection back while the tab is still hidden aborts nothing; the return
 });
 
 test("an early first-load answer whose body never arrives is asked again on return, outside index.html's own limit (N4)", async () => {
-  const stalled = Promise.resolve({ ok: true, json: () => new Promise(() => {}) });
+  const stalled = Promise.resolve({ ok: true, text: () => new Promise(() => {}) });
   const { asked, hide, show, run } = await liveChecks({ window: { vrEarly: { 'data/board/rows.json': stalled } } });
   const rows = run("getJson('board/rows.json')");
   hide();

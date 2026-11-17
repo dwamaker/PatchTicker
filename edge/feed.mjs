@@ -1,7 +1,7 @@
 // The RSS feeds (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
 // collector's board/feed.json from R2 and renders RSS 2.0 per request. Titles, Summaries and links come from the web
 // and a model: every text is escaped, and the only outside link is the Lead mention's, when it is http(s).
-import { easyLine, riskLevel, rowTags, slug, WORDS } from '../web/board.mjs';
+import { easyLine, langPrefix, riskLevel, rowTags, slug, WORDS } from '../web/board.mjs';
 import { down, error, LEVELS, lookUp, MAX_DOCS, readQuery } from './check.mjs';
 import { SITE, escapeXml, failClosed, host, http, readJson, titleOf, unavailable, whatToDo } from './shared.mjs';
 
@@ -14,6 +14,9 @@ const TEXT = {
   en: { title: WORDS.en.title, about: 'New security Incidents: Elevated and up, attacked, or without a CVE yet', act: 'What to do', feed: '/en/feed.xml', page: '/en/i/',
     aboutProducts: 'Security Incidents of the products you named, matched as the Patch Ticker product check matches', unmatched: 'Names not found:',
     fixed: 'Fixed in', cves: (n) => `${n} CVE${n === 1 ? '' : 's'}`, more: (n) => ` and ${n} more` },
+  ja: { title: WORDS.ja.title, about: '警戒以上、攻撃発生、CVE 未採番の新しいセキュリティインシデント（要約は英語）', act: '対処法', feed: '/ja/feed.xml', page: '/ja/i/',
+    aboutProducts: '指定した製品のセキュリティインシデント（Patch Ticker の製品チェックと同じ基準で照合）', unmatched: '見つからなかった名前:',
+    fixed: '修正バージョン', cves: (n) => `CVE ${n}件`, more: (n) => ` ほか${n}件` },
 };
 
 const rfc822 = (stamp) => new Date(stamp).toUTCString();
@@ -75,7 +78,7 @@ const RSS_HEADERS = { 'content-type': 'application/rss+xml; charset=utf-8', 'cac
 // A check document's address is the site's own page or Board row; anything else (it never should be) becomes the row.
 function itemLink(e, lang) {
   const url = typeof e.url === 'string' && e.url.startsWith(`${SITE}/`) ? e.url : `${SITE}/#i=${encodeURIComponent(String(e.id))}`;
-  return lang === 'en' ? url.replace(`${SITE}/i/`, `${SITE}/en/i/`) : url;
+  return lang === 'ko' ? url : url.replace(`${SITE}/i/`, `${SITE}${langPrefix(lang)}/i/`);
 }
 // guid: the item's GUID, the link itself unless given (the whole-Board feed gives the page address).
 function productItem(e, names, lang, guid = '') {
@@ -87,7 +90,7 @@ function productItem(e, names, lang, guid = '') {
     e.fixed ? `${t.fixed}: ${e.fixed}` : '',
     count ? `${t.cves(count)}: ${cves.join(', ')}${count > cves.length ? t.more(count - cves.length) : ''}` : ''];
   const link = escapeXml(itemLink(e, lang));
-  return ['<item>', `<title>${escapeXml(e[`title_${lang}`] || e.id)}</title>`, `<link>${link}</link>`, `<guid isPermaLink="false">${guid || link}</guid>`,
+  return ['<item>', `<title>${escapeXml(e[`title_${lang}`] || e.title_en || e.id)}</title>`, `<link>${link}</link>`, `<guid isPermaLink="false">${guid || link}</guid>`,
     `<pubDate>${rfc822(e.published || e.first_seen)}</pubDate>`, categories(names, w.levels[e.level] || w.levels.notice),
     `<description>${escapeXml(lines.filter(Boolean).map((l) => `<p>${escapeXml(l)}</p>`).join(''))}</description>`, '</item>'].join('');
 }
@@ -147,6 +150,7 @@ const ALL_DOC = 'board/feed-all.json';
 const ALL = {
   ko: { title: 'Patch Ticker · 현황판 전체', about: '현황판의 모든 새 보안 사건, 참고 수준까지 (요약 없이 가볍게)', feed: '/feed/all.xml' },
   en: { title: 'Patch Ticker · The whole Board', about: 'Every new security Incident on the Board, notice level included, as light items', feed: '/en/feed/all.xml' },
+  ja: { title: 'Patch Ticker · ボード全体', about: 'ボードのすべての新しいセキュリティインシデント、参考レベルまで（要約なしの軽い項目）', feed: '/ja/feed/all.xml' },
 };
 export const allFeedResponse = (bucket, lang) => failClosed(async () => {
   const doc = await readJson(bucket, ALL_DOC);

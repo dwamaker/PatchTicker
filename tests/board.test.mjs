@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -1146,9 +1146,10 @@ test('a mistake report for an Incident without a CVE names it by its page slug, 
   assert.match(url.searchParams.get('body'), /^사건 \/ Incident: https:\/\/www\.bleepingcomputer\.com\/news\/security\/nikke\/$/m); // the body keeps the full id
 });
 
-test('the shared words hold the same keys in both languages, each a non-empty text or a function', () => {
+test('the shared words hold the same keys in every language, each a non-empty text or a function', () => {
   const keys = (o, at = '') => Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? keys(v, at + k + '.') : [at + k])).sort();
   assert.deepEqual(keys(WORDS.ko), keys(WORDS.en));
+  assert.deepEqual(keys(WORDS.ko), keys(WORDS.ja));
   const filled = (o, lang, at = '') => Object.entries(o).forEach(([k, v]) => {
     if (typeof v === 'object') return filled(v, lang, at + k + '.');
     if (lang === 'en' && at + k === 'nvd') return assert.equal(v, ''); // the required English NVD sentence is static in the page
@@ -1156,6 +1157,7 @@ test('the shared words hold the same keys in both languages, each a non-empty te
   });
   filled(WORDS.ko, 'ko');
   filled(WORDS.en, 'en');
+  filled(WORDS.ja, 'ja');
   // The Board's 대처법 line and the Incident page say the same sentence when no fix is known.
   assert.equal(WORDS.ko.none, '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.');
   assert.equal(WORDS.en.none, 'We have not confirmed a fixed version yet. Check the source links below.');
@@ -1700,4 +1702,19 @@ test('the products feed address: no names is no address; a comma, a repeat and t
   assert.equal(feed.left, 4);
   assert.equal(readQuery(new URL(feed.href, 'https://patchticker.com').searchParams).names.length, FEED_NAMES); // not a 400
   assert.equal(FEED_NAMES, Number(/^const MAX_NAMES = (\d+);/m.exec(readFileSync(new URL('../edge/check.mjs', import.meta.url), 'utf8'))[1]));
+});
+
+test('a Japanese reader gets the English twin of every Korean and English pair, and the Japanese addresses', async () => {
+  const doc = JSON.parse(JSON.stringify({ incidents: [{ id: 'CVE-2026-1', summary: { ko: { title: '가' }, en: { title: 'A' }, products: ['X'] },
+    quick_title: { ko: { title: '나' }, en: { title: 'B' } } }], products: [{ id: 'x:y', ko: '와이', en: 'Y' }], list: ['ko', 'en'] }), withJapanese);
+  const [i] = doc.incidents;
+  assert.equal(titleOf(i, 'ja'), 'A');
+  assert.equal(i.quick_title.ja.title, 'B');
+  assert.equal(doc.products[0].ja, 'Y');
+  assert.deepEqual(doc.list, ['ko', 'en']); // arrays stay as they are
+  assert.deepEqual(JSON.parse('{"ko":1,"en":2,"ja":3}', withJapanese), { ko: 1, en: 2, ja: 3 }); // a Japanese twin of its own stays
+  assert.equal(feedPath('ja'), '/ja/feed.xml');
+  assert.equal(feedPath('ja', 'all'), '/ja/feed/all.xml');
+  assert.equal(langPrefix('ko'), '');
+  assert.deepEqual(LANGS, ['ko', 'en', 'ja']);
 });

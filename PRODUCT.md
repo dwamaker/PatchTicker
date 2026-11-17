@@ -41,7 +41,7 @@ minutes from official sources (cvelistV5, NVD, CISA KEV, oss-security, HN, curat
   no public server (ADR 0002).
 - One row per Incident, not per CVE (ADR 0001). Vocabulary in `CONTEXT.md`.
 - Board is a bulletin-board list (risk, CVE, title, target tags, date); rows expand in place; one
-  Normal|Easy switch at the top; language toggle.
+  Normal|Easy switch at the top; language menu (한국어, English, 日本語; Japanese shows the English Summary).
 - Risk banner set by rules: exploited (a CISA KEV listing, or a Summary whose sources report attacks; user, 2026-11-08)
   or CVSS 9.0+ is the top level, 7.0+ the next, else notice. The model only reports what sources say, never the level.
   Evidence required (owner, 2026-11-09): a Summary counts as exploited only with the input source that states attacks in

@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -17,7 +17,7 @@ const MITRE = 'CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Cor
 const TEXT = {
   ko: {
     ...WORDS.ko,
-    path: '/i/', productPath: '/p/', locale: 'ko_KR', otherLang: 'en',
+    path: '/i/', productPath: '/p/', locale: 'ko_KR',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     productPages: '제품별 사건', summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     firstSeen: '처음 확인', zone: ' KST',
@@ -27,13 +27,24 @@ const TEXT = {
   },
   en: {
     ...WORDS.en,
-    path: '/en/i/', productPath: '/en/p/', locale: 'en_US', otherLang: 'ko',
+    path: '/en/i/', productPath: '/en/p/', locale: 'en_US',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     productPages: 'Incidents by product', summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
     firstSeen: 'First seen', zone: ' UTC',
     board: 'Open on the Board', cveRecord: 'See the CVE record', tagLink: (name) => `See ${name} Incidents on the Board`,
     expired: 'This Incident page has expired: pages are kept for 90 days.', missing: 'There is no Incident page at this address.',
     down: 'Incident pages cannot be loaded right now. Please try again shortly.', home: 'Go to the Board',
+  },
+  // Japanese (owner, 11-17): the interface only; the Summary is the English one (board.mjs withJapanese).
+  ja: {
+    ...WORDS.ja,
+    path: '/ja/i/', productPath: '/ja/p/', locale: 'ja_JP',
+    rating: { critical: '緊急', high: '重要', medium: '警告', low: '注意', none: 'なし' },
+    productPages: '製品別のインシデント', summary: '要約', todo: '対処法', products: '対象の製品と OS', cves: 'CVE 番号', moreCves: (n) => `CVE をあと${n}件表示`, mentions: '原文リンク', times: '日時', links: 'このインシデントをもっと見る',
+    firstSeen: '初確認', zone: ' JST',
+    board: 'ボードで見る', cveRecord: 'CVE レコードを見る', tagLink: (name) => `ボードで ${name} のインシデントを見る`,
+    expired: '保存期間の90日を過ぎたため、このインシデントのページはもうありません。', missing: 'このアドレスにはインシデントのページがありません。',
+    down: '現在インシデントのページを読み込めません。しばらくしてからもう一度お試しください。', home: 'ボードへ戻る',
   },
 };
 
@@ -58,6 +69,15 @@ header .wrap{min-height:4rem;display:flex;align-items:center;justify-content:spa
 .links a:active,.lang:active{transform:scale(.96)}
 @media (prefers-reduced-motion:reduce){.links a:active,.lang:active{transform:none}}
 .lang .short{display:none}
+.langs{position:relative}
+.langs summary{cursor:pointer;list-style:none}
+.langs summary::-webkit-details-marker{display:none}
+.langs summary svg{flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4}
+.langs[open] summary{background:var(--panel-2)}
+.langs ul{position:absolute;right:0;top:calc(100% + .25rem);z-index:5;min-width:9rem;margin:0;padding:.375rem;list-style:none;border:1px solid var(--rule-2);border-radius:10px;background:var(--panel);box-shadow:0 12px 28px -12px var(--shadow)}
+.langs ul a{display:flex;align-items:center;min-height:44px;padding:0 .75rem;border-radius:8px;color:var(--ink);font-size:.875rem;text-decoration:none}
+@media (hover:hover){.langs ul a:hover{background:var(--panel-2)}}
+.langs ul a[aria-current]{font-weight:700}
 main{padding-block:2.5rem 2rem}
 @media (max-width:599px){.lang .full{display:none}.lang .short{display:inline}main{padding-top:1.75rem}}
 h1{margin:0 0 1rem;font:700 1.5rem/1.3 var(--sans);letter-spacing:-0.02em;text-wrap:balance}
@@ -145,12 +165,12 @@ const cveList = (i, lang, t) => {
 const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
-// Without script, Korean pages say Korean time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in
+// Without script, Korean and Japanese pages say their time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in
 // UTC, so the browser below reads the same one even from a stamp without a zone.
 export function when(stamp, lang) {
   const at = Date.parse(stamp);
   if (Number.isNaN(at)) return esc(stamp);
-  const d = new Date(at + (lang === 'ko' ? 9 * 60 * 60 * 1000 : 0)).toISOString();
+  const d = new Date(at + (lang === 'en' ? 0 : 9 * 60 * 60 * 1000)).toISOString();
   return `<time datetime="${new Date(at).toISOString()}">${d.slice(0, 10)} ${d.slice(11, 16)}${TEXT[lang].zone}</time>`;
 }
 // The browser then shows each time in the visitor's zone, as the Board does, named like "GMT+9"; a browser without
@@ -255,7 +275,20 @@ function mentions(i, lang, t) {
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
 
-// other: the language switch for the header; the short notes have none. Also the product page's shell (edge/product.mjs).
+// The header's language menu (owner, 11-17: a dropdown), without script: a details whose list links this document in
+// every language, each named in itself. path(l): this document's address in language l.
+export function langMenu(lang, path) {
+  const t = TEXT[lang];
+  const globe = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25"/><path d="M1.75 8h12.5M8 1.75c-3.2 3.4-3.2 9.1 0 12.5M8 1.75c3.2 3.4 3.2 9.1 0 12.5"/></svg>';
+  const items = LANGS.map((l) => `<li><a href="${esc(path(l))}" hreflang="${l}" lang="${l}"${l === lang ? ' aria-current="page"' : ''}>${esc(WORDS[l].langName)}</a></li>`);
+  return `<details class="langs"><summary class="lang" aria-label="${esc(`${t.langMenu}: ${t.langName}`)}">${globe}`
+    + `<span class="full">${esc(t.langName)}</span><span class="short">${esc(t.langShort)}</span></summary><ul>${items.join('')}</ul></details>`;
+}
+// Each language's address of one document, for hreflang: Korean is also the x-default.
+export const alternates = (url) => [...LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${url(l)}">`),
+  `<link rel="alternate" hreflang="x-default" href="${url('ko')}">`];
+
+// other: the language menu for the header; the short notes have none. Also the product page's shell (edge/product.mjs).
 export function document(lang, head, main, other = '') {
   const t = TEXT[lang];
   return `<!doctype html>
@@ -293,14 +326,11 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
   const plain = s.easy ? easyLine(s.easy, level) : '';
   const description = plain || String(s.summary || '').split(/(?<=[.!?])\s/)[0] || i.brief?.text || title;
   const self = pageUrl(lang, slug);
-  const ko = pageUrl('ko', slug);
   const head = [`<title>${esc(title)} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(description)}">`,
     ...(searchWorthy(i) ? [] : ['<meta name="robots" content="noindex">']),
     `<link rel="canonical" href="${self}">`,
-    `<link rel="alternate" hreflang="ko" href="${ko}">`,
-    `<link rel="alternate" hreflang="en" href="${pageUrl('en', slug)}">`,
-    `<link rel="alternate" hreflang="x-default" href="${ko}">`,
+    ...alternates((l) => pageUrl(l, slug)),
     '<meta property="og:type" content="article">',
     '<meta property="og:site_name" content="Patch Ticker">',
     `<meta property="og:url" content="${self}">`,
@@ -310,7 +340,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     '<meta property="og:image:width" content="1200">',
     '<meta property="og:image:height" content="630">',
     `<meta property="og:locale" content="${t.locale}">`,
-    `<meta property="og:locale:alternate" content="${TEXT[t.otherLang].locale}">`,
+    ...LANGS.filter((l) => l !== lang).map((l) => `<meta property="og:locale:alternate" content="${TEXT[l].locale}">`),
     '<meta name="twitter:card" content="summary_large_image">',
     jsonLd({ '@context': 'https://schema.org', '@type': 'Article', headline: title, description,
       datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
@@ -333,9 +363,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     '</article>',
     `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
       + `<a href="${esc(reportUrl(i, lang, self, slug))}"${NEW_TAB}>${REPORT_ICON}${esc(t.report)}</a></nav>`].join('\n');
-  const other = `<a class="lang" href="${TEXT[t.otherLang].path}${slug}" hreflang="${t.otherLang}" lang="${t.otherLang}" aria-label="${esc(t.other)}">`
-    + `<span class="full">${esc(t.other)}</span><span class="short">${esc(t.otherShort)}</span></a>`;
-  return document(lang, head, main, other);
+  return document(lang, head, main, langMenu(lang, (l) => `${TEXT[l].path}${slug}`));
 }
 
 // Edge cache times: a page, a move and an expired page change at most once a cycle; a missing page may appear sooner.
