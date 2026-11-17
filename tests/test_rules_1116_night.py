@@ -607,6 +607,23 @@ class ShownProductNameTest(unittest.TestCase):
         self.assertEqual({s["name:paint"] for s in ko}, {"Windows 그림판"})
         self.assertEqual({s["os:windows"] for s in ko}, {"Windows"})
 
+    def test_the_label_and_the_first_record_follow_the_records_order_not_the_display_order(self):
+        # 11-17, CVE-2026-102868: since 0c8e589 the view listed the longest name first, and the Office/Windows group was
+        # labelled Windows; the Patch Tuesday story (Outlook) and the group then held two of the four pins.
+        from collector.incidents import board_view, named, rows_view
+        records = [{"id": "microsoft:365_apps", "name": "365 Apps"},
+                   {"id": "microsoft:windows_server_2025", "name": "Windows Server 2025"},
+                   {"id": "microsoft:windows_server_2025_server_core_installation", "name": "Windows Server 2025 (Server Core installation)"}]
+        row = self.row(1, ["365 Apps", "Windows Server 2025", "Windows Server 2025 (Server Core installation)"], records)
+        for view in (board_view(named([row])[0]), rows_view(named([row])[0])):
+            self.assertEqual(view["known"], "Microsoft Office")
+            self.assertEqual(view["products"][0]["id"], "microsoft:365_apps")  # the page's vendor fold and pin key read it
+        # Only the nested Windows names are reordered, behind the first record; with no nested names nothing moves.
+        self.assertEqual([p["id"] for p in named([row])[0]["products"]],
+                         ["microsoft:365_apps", "microsoft:windows_server_2025_server_core_installation", "microsoft:windows_server_2025"])
+        plain = self.row(2, ["Zebra Tool", "Alpha Suite Enterprise"], [{"id": "z:zebra", "name": "Zebra Tool"}, {"id": "a:alpha", "name": "Alpha Suite Enterprise"}])
+        self.assertEqual([p["id"] for p in named([plain])[0]["products"]], ["z:zebra", "a:alpha"])
+
     def test_the_views_carry_the_chosen_names_and_the_store_keeps_the_summary(self):
         from collector.incidents import board_view, named, rows_view
         rows = [self.row(1, ["TELLUS", "TELLUS Lite"], self.TELLUS),

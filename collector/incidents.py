@@ -348,10 +348,22 @@ def named(incidents):
     """The Incidents as the views show them: each Product with its chosen name (chosen_names), the stored ones untouched.
     The Summary's products and both languages' names are rewritten by position (so web/board.mjs productsOf, the pages,
     feeds and /api/check read the chosen names without a change of their own), a record Product no Summary name stands
-    for takes its chosen English name, and the record Products are listed longest name first, so productsOf's first
-    match is the longest, as product_slots picks."""
+    for takes its chosen English name. The record Products keep the record's order (the page's vendor fold and pin key
+    read the first, a Brief-only row shows them in it) unless productsOf's first match would then give a Summary name
+    to another Product than product_slots picks: then the rest, or failing that all, go longest name first (11-17)."""
     chosen = chosen_names(incidents)
     return [with_names(i, chosen) for i in incidents]
+
+
+def first_match_ids(records, products):
+    """web/board.mjs productsOf's id for each Summary product: the first listed Product whose name, as shown so far, the
+    Summary's name contains."""
+    found, ids = {p["id"]: p["name"] for p in records}, []
+    for name in products:
+        key = next((pid for pid, n in found.items() if n.lower() in name.lower()), None) or f"name:{product_key(name)}"
+        found[key] = name
+        ids.append(key)
+    return ids
 
 
 def with_names(incident, chosen):
@@ -359,16 +371,25 @@ def with_names(incident, chosen):
     products, records = summary.get("products") or [], incident.get("products") or []
     if not products and not records:
         return incident
-    view = dict(incident)
+    # record_order: known_label's order, the record's own (11-17: the Office group was labelled Windows by a longer name);
+    # no view writes it (PAGE_FIELDS, ROW_FIELDS).
+    view = dict(incident) | {"record_order": [p["id"] for p in records]}
     ids = product_slots(incident, "en")[1]
-    view["products"] = sorted(({**p, "name": chosen.get((p["id"], "en"), p["name"])} if p["id"] not in ids else p for p in records),
-                              key=lambda p: -len(p["name"]))
+    order = [{**p, "name": chosen.get((p["id"], "en"), p["name"])} if p["id"] not in ids else p for p in records]
     if products:
         en = [chosen.get((ids[k], "en"), name) for k, name in enumerate(products)]
         # A Korean name shows as such; a Latin one would show the product name anyway (shown_name).
         ko = [n if HANGUL.search(n := chosen.get((ids[k], "ko")) or "") else en[k] for k in range(len(products))]
         view["summary"] = summary | {"products": en} | {lang: (summary.get(lang) or {}) | {"names": names}
                                                           for lang, names in (("ko", ko), ("en", en))}
+        longest = lambda ps: sorted(ps, key=lambda p: -len(p["name"]))  # noqa: E731
+        for candidate in (order, order[:1] + longest(order[1:]), longest(order)):
+            if first_match_ids(candidate, en) == ids:
+                order = candidate
+                break
+        else:
+            order = longest(order)
+    view["products"] = order
     return view
 
 
@@ -421,6 +442,8 @@ def known_label(incident):
     "Google Chrome" is "Chrome"); equal only, so "PHP" is not "phpMyAdmin". Operating-system tags never count. On no
     list, a Summary that calls the product widely used names its first Product. None otherwise."""
     products = [p for p in products_of(incident, "en") if not p["id"].startswith("os:")]
+    order = {pid: n for n, pid in enumerate(incident.get("record_order") or [])}  # a view's: the record's own order
+    products.sort(key=lambda p: order.get(p["id"], len(order)))
     for p in products:
         label = known_product(p)
         if label:
