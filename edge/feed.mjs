@@ -8,7 +8,7 @@ import { SITE, escapeXml, failClosed, host, http, readJson, titleOf, unavailable
 const FEED_DOC = 'board/feed.json';
 
 const TEXT = {
-  ko: { title: WORDS.ko.title, about: '위험 이상, 공격 발생, CVE 없는 새 보안 사건', act: '대처법', feed: '/feed.xml', page: '/i/',
+  ko: { title: WORDS.ko.title, about: '새 보안 사건: 위험 이상 사건과 CVE 번호 전 속보', act: '대처법', feed: '/feed.xml', page: '/i/',
     aboutProducts: '고른 제품의 보안 사건 (Patch Ticker 제품 확인과 같은 기준)', unmatched: '찾지 못한 이름:', fixed: '고친 버전',
     cves: (n) => `CVE ${n}건`, more: (n) => ` 외 ${n}건` },
   en: { title: WORDS.en.title, about: 'New security Incidents: Elevated and up, attacked, or without a CVE yet', act: 'What to do', feed: '/en/feed.xml', page: '/en/i/',

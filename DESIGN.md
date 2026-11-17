@@ -396,7 +396,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Menu:** a popover (Kiosk Panel, Rail border, 10px radius, the panel shadow), up to 23rem and never wider than the
   screen less 2rem, anchored under its button (flipping sideways or upward when it would leave the screen; placed by
   script where anchor positioning is missing). A small bold heading in Secondary Ink (RSS로 받아 보기 / Follow by RSS),
-  then three entries split by Hairlines: 주요 피드 (위험 이상, 실제 공격, 아직 CVE 없는 사건), 현황판 전체 (참고까지 모든
+  then three entries split by Hairlines: 주요 피드 (위험 이상 사건과 CVE 번호 전 속보), 현황판 전체 (참고까지 모든
   사건), 내 제품. Each entry is its name as a Wayfinding Blue link with a Meta-size note under it, an outlined 복사 button
   at the right, and the full address under both in Hint Ink mono (up to three lines). Every link is the feed in the
   page's language (/en/ on the English page, /ja/ on the Japanese one).
