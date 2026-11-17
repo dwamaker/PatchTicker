@@ -99,7 +99,7 @@ test('a group whose only Mentions are its CVE records keeps the Lead record unde
 test('the page shows what the Board panel shows, with the Board rules', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, />긴급</); // riskLevel: KEV
-  assert.match(html, /악용 발생/);
+  assert.match(html, /공격 발생/);
   assert.match(html, /CISA KEV 등재 · 2026-11-07/); // exploitReason
   assert.match(html, /9\.8/);
   assert.match(html, /musl 기반에서만 해당합니다\./);
@@ -130,7 +130,7 @@ test('no score and no exploit: the sign is dashed and says the score is pending,
   assert.match(await (await page(unrated, 'en', 'CVE-2026-55555')).text(), /<small class="why unrated">Score pending<\/small>/);
   const exploited = await (await page({ ...SSHOLE, cvss: undefined })).text();
   assert.doesNotMatch(exploited, /class="why unrated"|class="banner[^"]*unrated/); // the ring alone still says "CVSS 점수 대기"
-  assert.match(exploited, /<small class="why kev">악용 발생<\/small>/);
+  assert.match(exploited, /<small class="why kev">공격 발생<\/small>/);
 });
 
 test('public exploit code is the one red reason line (critique 14)', async () => {
@@ -449,7 +449,7 @@ test('the score names its CVE in a group and not in a one-CVE Incident', async (
 
 test('only the exploited CVE wears the mark, with the KEV link, and the reason names it', async () => {
   const [chrome] = STEP4;
-  for (const [lang, word, listed] of [['ko', '악용 발생', 'CISA KEV 등재'], ['en', 'Exploited', 'Listed in CISA KEV']]) {
+  for (const [lang, word, listed] of [['ko', '공격 발생', 'CISA KEV 등재'], ['en', 'Attacked', 'Listed in CISA KEV']]) {
     const html = await (await page(chrome, lang, chrome.id)).text();
     const cves = cveSection(html);
     assert.equal(cves.match(/class="kev"/g).length, 1, lang);
@@ -460,7 +460,7 @@ test('only the exploited CVE wears the mark, with the KEV link, and the reason n
   const [, , fortios] = STEP4;
   const told = { ...fortios, summary: { ...fortios.summary, exploited: true, exploited_source: 'https://example.com/attacks', exploited_cves: ['CVE-2026-126255'] } };
   const cves = cveSection(await (await page(told, 'en', told.id)).text());
-  assert.match(cves, /CVE-2026-126255<span[^]*?<\/strong> <span class="kev">Exploited<\/span> <a href="https:\/\/example\.com\/attacks"[^>]*>example\.com</);
+  assert.match(cves, /CVE-2026-126255<span[^]*?<\/strong> <span class="kev">Attacked<\/span> <a href="https:\/\/example\.com\/attacks"[^>]*>example\.com</);
 });
 
 test('a document without the step 4 keys shows no CVE beside the score and no mark', async () => {

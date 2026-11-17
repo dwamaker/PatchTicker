@@ -7,8 +7,8 @@ import { SITE, escapeXml, failClosed, host, http, readJson, titleOf, unavailable
 const FEED_DOC = 'board/feed.json';
 
 const TEXT = {
-  ko: { title: WORDS.ko.title, about: '위험 이상, 실제 악용, CVE 없는 새 보안 사건', act: '대처법', feed: '/feed.xml', page: '/i/' },
-  en: { title: WORDS.en.title, about: 'New security Incidents: Elevated and up, exploited, or without a CVE yet', act: 'What to do', feed: '/en/feed.xml', page: '/en/i/' },
+  ko: { title: WORDS.ko.title, about: '위험 이상, 공격 발생, CVE 없는 새 보안 사건', act: '대처법', feed: '/feed.xml', page: '/i/' },
+  en: { title: WORDS.en.title, about: 'New security Incidents: Elevated and up, attacked, or without a CVE yet', act: 'What to do', feed: '/en/feed.xml', page: '/en/i/' },
 };
 
 const rfc822 = (stamp) => new Date(stamp).toUTCString();

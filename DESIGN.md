@@ -400,7 +400,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Style:** a 44 px ring, 3.5px stroke on a Rail track, turned so the arc starts at the top and fills
   clockwise to score/10 with round ends. The score sits inside with one decimal (Meta, 700, Sign Ink);
   nothing sits beside it (the risk word is the one severity word, the reading guide names the ring, and a
-  "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "악용 발생" in red (a CISA KEV listing, or a Summary reporting attacks)
+  "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "공격 발생" / "Attacked" in red (a CISA KEV listing, or a Summary reporting attacks)
   under the risk word, and the opened Normal panel does not repeat it.
 - **Colour:** by CVSS rating: Emergency Red 9.0+, Caution Amber 7.0+, Notice Slate
   below. Unrated shows an empty dashed ring with a dash in Hint Ink ("CVSS 점수 대기" as its tooltip and label). Shown in both views.
@@ -412,7 +412,7 @@ Restrained outlined buttons for theme, language and copying a command.
   post), in the visitor's time zone as `YYYY-MM-DD` over `HH:MM`; how long ago sits in the tooltip.
   The list orders by it.
 - **Details:** both views end with the Lead link and every Mention, so links a CVE record gains later
-  appear in either view. Every panel starts flush, whichever line leads. An 악용 발생 panel starts with its reason
+  appear in either view. Every panel starts flush, whichever line leads. An 공격 발생 panel starts with its reason
   (Easy: under the CVE IDs and the red "지금 실제 공격에 쓰이고 있어요!"), the KEV day kept whole on one line; in Easy the
   red line and its reason are one group and "이럴 때만 해당돼요" starts the next, 0.5rem below (critique 14 polish).
 - **State:** Recessed Panel on hover; an opened row and its details take Kiosk Panel; `aria-expanded`
@@ -450,12 +450,12 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Risk sign (bolder after critique 6; both views since 11-09)
 - **Not rated yet (critique 12):** an Incident with no CVSS that is not exploited keeps the last level (참고 / 주의) but
   draws its sign dashed and says "점수 대기" (both views; ring label "CVSS 점수 대기"; English "Score pending") at
-  14px/700 under the sign, where 악용 발생 would sit, and an empty dashed ring stands in the ring's place (also on
+  14px/700 under the sign, where 공격 발생 would sit, and an empty dashed ring stands in the ring's place (also on
   phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
 - In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 긴급!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
-  15px/800. Rings are never filled (user, 11-09). 악용 발생 sits centred under the ring (beside it on phones), and a
+  15px/800. Rings are never filled (user, 11-09). 공격 발생 sits centred under the ring (beside it on phones), and a
   row with no CVSS shows its dash centred where a score ring would be.
 
 ### Easy view panel
@@ -557,7 +557,7 @@ Restrained outlined buttons for theme, language and copying a command.
   stays in the first viewport.
 - **Phones and larger text (critique 9, 11-09):** a phone row's first line flows: risk sign, CVSS ring, date and
   chevron share it while they fit, and the date drops to its own line at the right when they do not (320px, 가+,
-  a sign with 악용 발생); nothing overlaps at any step. The CVSS ring and its number grow with 가+ (`--ts`). Under 600px
+  a sign with 공격 발생); nothing overlaps at any step. The CVSS ring and its number grow with 가+ (`--ts`). Under 600px
   the bar is two lines: 주요 사건 with 모두 펼치기, then 필터 and 정렬.
 - **Hardening (critique 9, 11-09):** the Product picker matches what is typed regardless of case: a whole name wins,
   one partial match is picked, several keep the text and say "맞는 제품이 N개입니다" under the fields, none searches as
@@ -600,7 +600,7 @@ Restrained outlined buttons for theme, language and copying a command.
   language open under it (Escape or a tap elsewhere closes). At 375px the first Highlight moved from 490px to 430px.
 - **쉬운 설명 beckons (owner, 11-09):** as the Board arrives in 기본, a light blue band sweeps across the 쉬운 설명 button
   twice (1.2s each), until the visitor has tried that view once (`vr-easy-tried`); never with reduced motion.
-- **악용 발생 (critique 10, b.2):** the reason a row sits at the top is set at 14px/800, no longer the row's smallest text.
+- **공격 발생 (critique 10, b.2):** the reason a row sits at the top is set at 14px/800, no longer the row's smallest text.
 - **Two kinds of 묶음 kept apart (owner, 11-09):** a vendor fold is "묶음" and the list button says "회사 묶음 풀기 /
   회사별로 묶기"; a release group (CVEs of one product disclosed together) is one Incident tagged "함께 공개" / "Disclosed
   together", which that button never splits. The tag said "함께 패치" / "One fix" until 11-16, when the owner made it one
@@ -685,7 +685,7 @@ Restrained outlined buttons for theme, language and copying a command.
     line under the title, not a tag. The Lead link says what it is: "공식 공지 읽기 · github.com".
   - Per-CVE 공지/분석 links on touch screens are 44px tall, with no negative margins.
 - **Critique 14 (clarify, owner 11-09):**
-  - 악용 발생 needs evidence: a KEV listing, or a Summary's `exploited` with the input URL that reports the attacks
+  - 공격 발생 needs evidence: a KEV listing, or a Summary's `exploited` with the input URL that reports the attacks
     (`exploited_source`). The opened panel starts with the reason, Secondary Ink 14px/600: "CISA KEV 등재 · 2026-11-06"
     (the day when the collector has it) or "공격 보고: <host>" linked. Easy's "지금 실제 공격에 쓰이고 있어요!" sits above it.
   - Public exploit code alone (`poc_public`) gets no sign or tag: one red line (`--high`, 700) in the summary text,

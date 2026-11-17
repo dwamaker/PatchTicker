@@ -11,7 +11,7 @@ import anthropic
 from collector import (checks, curators, cve_lines, cvelist, discord, distros, github, hn, kev, kisa, model, news, nvd, osssec,
                        same_event, summaries, summary_input)
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
-                                 on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
+                                 named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
@@ -189,12 +189,15 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         store.write(f"months/{m}.json", {"month": m, "incidents": [i for i in incidents if month_of(i["first_seen"]) == m]})
     if distro_state is not None:  # after the lines it records are stored: a cycle cut short before here asks again
         store.write("distros/state.json", distro_state)
+    # Everything the reader sees shows each Product by one name (owner, 11-17): the views below are written from these
+    # copies; the months above keep the Summaries as stored.
+    shown_incidents = reader_named(incidents)
     # The page's slim files: changed months, any month not written yet, and the last week every cycle.
     for m in (changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}) & kept:
-        store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in incidents if month_of(i["first_seen"]) == m]})
+        store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in shown_incidents if month_of(i["first_seen"]) == m]})
     recent_since = stamp_ago(now, days=RECENT_DAYS)
     # status rides along so the page opens on this file alone (a failed status.json drew an error Board for Googlebot).
-    week = [i for i in incidents if i["first_seen"] >= recent_since]
+    week = [i for i in shown_incidents if i["first_seen"] >= recent_since]
     store.write("board/recent.json", {"since": recent_since, "status": status, "incidents": [board_view(i) for i in week]})
     # The Board draws first from row views (owner, 11-10: 9 MB of details held a phone's first row back about a second) and
     # fetches recent.json only to open a row or search. The newest and the week's Highlights (filterBoard) stay whole.
@@ -204,25 +207,25 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     whole = {i["id"] for i in shown[:WHOLE_NEWEST] + highlights(views.values(), recent_since)}
     store.write("board/rows.json", {"since": recent_since, "status": status,
                                     "incidents": [board_view(i) if i["id"] in whole else views[i["id"]] for i in week]})
-    newest = sorted((i for i in incidents if search_worthy(i)), key=published_at, reverse=True)
+    newest = sorted((i for i in shown_incidents if search_worthy(i)), key=published_at, reverse=True)
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)
     had_page = store.read("page_hashes.json") or {}  # the page set as the last cycle left it
-    pages = write_pages(store, incidents, had_page, now, stamp)
+    pages = write_pages(store, shown_incidents, had_page, now, stamp)
     write_moves(store, incidents, had_page, now, stamp)
     # The Incident sitemap's document: {slug: {first_seen, changed}} of every search-worthy page (edge/sitemap.mjs).
     sitemap = {"pages": {slug: {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in incidents
                          if (slug := page_slug(i["id"])) in pages and search_worthy(i)}}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
-    write_checks(store, incidents, now)
+    write_checks(store, shown_incidents, now)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
-    store.write("board/products.json", {"since": picker_since, "products": product_list(incidents, picker_since)})
+    store.write("board/products.json", {"since": picker_since, "products": product_list(shown_incidents, picker_since)})
     # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
     # rewrite thousands of them (owner, 11-16).
     others_since = stamp_ago(now, days=OTHERS_DAYS)
-    store.write("board/others.json", {"since": others_since, "counts": product_counts(incidents, others_since)})
+    store.write("board/others.json", {"since": others_since, "counts": product_counts(shown_incidents, others_since)})
     store.write("unknown_vendors.json", unknown_vendors(incidents, picker_since))
     # Summaries given up for good, for a person or an agent to fix by hand (docs/agents/summary-failures.md).
     failures = summary_failures(incidents, stamp_ago(now, days=summaries.BATCH_DAYS))

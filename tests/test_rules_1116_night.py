@@ -515,6 +515,109 @@ class SameAsProductNameTest(unittest.TestCase):
         self.assertEqual(self.decide("Plex Web App", "Plex Media Server"), "no shared Product")
 
 
+class ShownProductNameTest(unittest.TestCase):
+    """11-17, owner's screenshot (TELLUS / TELLUS Lite against FUJI ELECTRIC TELLUS / FUJI ELECTRIC TELLUS Lite, "계속
+    나오긴 하네"): one Product id shows one name in each language, chosen over the Board's Incidents, and every view shows it.
+    The stored Summary is untouched."""
+    TELLUS = [{"id": "fuji:tellus", "name": "TELLUS"}, {"id": "fuji:tellus_lite", "name": "TELLUS Lite"}]
+
+    def row(self, n, products, records=(), first_seen=None, ko=None, en=None, platforms=()):
+        summary = {"products": list(products), "platforms": list(platforms), "incident": True,
+                   "ko": {"names": list(products if ko is None else ko)}, "en": {"names": list(products if en is None else en)}}
+        return {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "first_seen": first_seen or f"2026-11-{n:02d}T00:00:00Z",
+                "products": [dict(p) for p in records], "summary": summary, "brief": {"text": "A flaw", "lead": ""}, "mentions": []}
+
+    def shown(self, rows, lang="en"):
+        from collector.incidents import named, products_of
+        return [{p["id"]: p["name"] for p in products_of(i, lang)} for i in named(rows)]
+
+    def test_a_longer_record_name_is_matched_before_a_shorter_one_it_contains(self):
+        from collector.incidents import products_of
+        row = self.row(1, ["TELLUS", "TELLUS Lite"], self.TELLUS)
+        self.assertEqual({p["id"]: p["name"] for p in products_of(row, "en")}, {"fuji:tellus": "TELLUS", "fuji:tellus_lite": "TELLUS Lite"})
+
+    def test_every_row_shows_one_name_per_id(self):
+        rows = [self.row(1, ["TELLUS", "TELLUS Lite"], self.TELLUS),
+                self.row(2, ["FUJI ELECTRIC TELLUS", "FUJI ELECTRIC TELLUS Lite"], self.TELLUS)]
+        first, second = self.shown(rows)
+        self.assertEqual(first, second)
+
+    def test_the_vendor_led_and_bare_names_are_one_group_the_most_used_spelling_wins(self):
+        records = [{"id": "jetbrains:youtrack", "name": "Youtrack"}]
+        rows = [self.row(n, [name], records) for n, name in enumerate(["YouTrack", "JetBrains YouTrack", "YouTrack"], 1)]
+        self.assertEqual({s["jetbrains:youtrack"] for s in self.shown(rows)}, {"YouTrack"})
+
+    def test_a_spelling_that_is_not_all_lower_case_wins_inside_the_group(self):
+        rows = [self.row(n, ["nocodb"]) for n in range(1, 5)] + [self.row(9, ["NocoDB"])]
+        self.assertEqual({s["name:nocodb"] for s in self.shown(rows)}, {"NocoDB"})
+
+    def test_the_group_most_rows_use_wins_ties_go_to_the_earliest_incident(self):
+        records = [{"id": "redhat:enterprise_linux_10", "name": "Enterprise Linux 10"}]
+        rows = [self.row(n, [name], records) for n, name in enumerate(
+            ["Red Hat Enterprise Linux 10", "Red Hat Enterprise Linux 10.2 Extended Update Support", "Red Hat Enterprise Linux 10"], 1)]
+        self.assertEqual({s["redhat:enterprise_linux_10"] for s in self.shown(rows)}, {"Red Hat Enterprise Linux 10"})
+        records = [{"id": "acme:gizmo", "name": "Gizmo"}]
+        tie = [self.row(2, ["Gizmo Pro Edition"], records), self.row(1, ["Gizmo"], records)]
+        self.assertEqual({s["acme:gizmo"] for s in self.shown(tie)}, {"Gizmo"})  # one row each: the earlier Incident's group
+
+    def test_the_record_products_own_name_wins_over_that_name_plus_further_words(self):
+        # Parent's decision, 11-17: one id, one name; a sub-product row then shows the product's name.
+        grav = [{"id": "getgrav:grav", "name": "Grav"}]
+        rows = [self.row(1, ["Grav Lightbox Gallery"], grav), self.row(2, ["grav"], grav)]
+        self.assertEqual({s["getgrav:grav"] for s in self.shown(rows)}, {"grav"})
+        rancher = [{"id": "suse:rancher", "name": "Rancher"}]  # no row writes the bare name: the record's own name stands
+        rows = [self.row(1, ["SUSE Rancher Webhook"], rancher), self.row(2, ["SUSE Rancher Fleet"], rancher)]
+        self.assertEqual({s["suse:rancher"] for s in self.shown(rows)}, {"Rancher"})
+        nocobase = [{"id": "nocobase:nocobase", "name": "nocobase"}]  # the vendor word is the product: compare whole names
+        rows = [self.row(1, ["NocoBase plugin-ai"], nocobase), self.row(2, ["nocobase"], nocobase)]
+        self.assertEqual({s["nocobase:nocobase"] for s in self.shown(rows)}, {"nocobase"})
+        mi250 = [{"id": "amd:amd_instinct_mi250", "name": "AMD Instinct MI250"}]  # MI250X is no further word
+        rows = [self.row(1, ["AMD Instinct MI250"], mi250), self.row(2, ["AMD Instinct MI250X"], mi250)]
+        self.assertEqual({s["amd:amd_instinct_mi250"] for s in self.shown(rows)}, {"AMD Instinct MI250"})
+
+    def test_words_only_in_front_of_the_record_name_are_its_vendor_spelling_not_a_sub_product(self):
+        # Live month, 11-17: read as a sub-product, "Thales SafeNet ..." lost to the record's machine casing "Safenet ...".
+        thales = [{"id": "thalesgroup:safenet_authentication_client_service", "name": "Safenet Authentication Client Service"}]
+        rows = [self.row(1, ["Thales SafeNet Authentication Client Service"], thales),
+                self.row(2, ["Safenet Authentication Client Service"], [dict(thales[0])] + [{"id": "x:y", "name": "Other"}])]
+        rows[1]["summary"] = rows[1]["summary"] | {"products": ["Other"], "ko": {"names": ["Other"]}, "en": {"names": ["Other"]}}
+        self.assertEqual({s["thalesgroup:safenet_authentication_client_service"] for s in self.shown(rows)},
+                         {"Thales SafeNet Authentication Client Service"})
+
+    def test_a_spelling_a_summary_wrote_comes_before_one_derived_from_the_record_id(self):
+        openshift = [{"id": "redhat:openshift", "name": "Openshift"}]
+        record_only = [self.row(n, ["Red Hat Satellite"], openshift + [{"id": "redhat:satellite", "name": "Satellite"}]) for n in (1, 2, 3)]
+        rows = record_only + [self.row(4, ["Red Hat OpenShift"], openshift)]
+        self.assertEqual({s["redhat:openshift"] for s in self.shown(rows)}, {"Red Hat OpenShift"})
+        self.assertEqual({s["redhat:openshift"] for s in self.shown(record_only)}, {"Openshift"})  # none written: the record's
+        # Live month: 8 Summaries copied "Openshift" from the input's Products line; the machine spelling stays behind.
+        copied = [self.row(n, ["Openshift"], openshift) for n in range(5, 13)]
+        self.assertEqual({s["redhat:openshift"] for s in self.shown(rows + copied)}, {"Red Hat OpenShift"})
+
+    def test_a_misaligned_names_list_never_puts_one_products_name_under_another_id(self):
+        records = [{"id": "redhat:enterprise_linux_10", "name": "Enterprise Linux 10"}]
+        row = self.row(1, ["GStreamer", "Red Hat Enterprise Linux 10"], records, en=["Red Hat Enterprise Linux 10"], ko=["GStreamer"])
+        for lang in ("en", "ko"):
+            shown = self.shown([row], lang)[0]
+            self.assertEqual((shown["redhat:enterprise_linux_10"], shown["name:gstreamer"]), ("Red Hat Enterprise Linux 10", "GStreamer"))
+
+    def test_a_korean_name_stays_korean_and_platforms_are_untouched(self):
+        rows = [self.row(1, ["Microsoft Paint"], ko=["Windows 그림판"], platforms=["Windows"]), self.row(2, ["Microsoft Paint"], platforms=["Windows"])]
+        ko = self.shown(rows, "ko")
+        self.assertEqual({s["name:paint"] for s in ko}, {"Windows 그림판"})
+        self.assertEqual({s["os:windows"] for s in ko}, {"Windows"})
+
+    def test_the_views_carry_the_chosen_names_and_the_store_keeps_the_summary(self):
+        from collector.incidents import board_view, named, rows_view
+        rows = [self.row(1, ["TELLUS", "TELLUS Lite"], self.TELLUS),
+                self.row(2, ["FUJI ELECTRIC TELLUS", "FUJI ELECTRIC TELLUS Lite"], self.TELLUS)]
+        stored = json.dumps(rows, sort_keys=True)
+        views = [board_view(i) for i in named(rows)] + [rows_view(i) for i in named(rows)]
+        self.assertEqual(len({json.dumps(v["summary"]["products"]) for v in views}), 1)
+        self.assertEqual(len({json.dumps(v["summary"]["en"]["names"]) for v in views}), 1)
+        self.assertEqual(json.dumps(rows, sort_keys=True), stored)
+
+
 class KevWindowTest(unittest.TestCase):
     """Owner, 11-17: only an Incident published in the last seven days can be a Highlight; a KEV listing this week no
     longer brings an older one in, so rows carry no kev_last (11-16's field for that rule) any more."""

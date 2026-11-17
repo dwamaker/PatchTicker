@@ -119,8 +119,10 @@ The second way to read the Board, chosen with one Normal|Easy switch at the top:
 _Avoid_: simple mode, ELI5, beginner view
 
 **Risk banner** (위험 배너):
-The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model. Exploited
-(악용 발생) means a CISA KEV listing or a Summary whose sources report attacks (2026-11-08), naming the source that says
+The big label at the top of the Easy view, set by rules from exploitation and severity, not by the model. Attacked
+(공격 발생; the data's `exploited`; shown as 악용 발생 / Exploited until 2026-11-17, renamed by the owner as a supply-chain
+attack that delivered malware carries it too, with no flaw exploited) means a CISA KEV listing or a Summary whose sources
+report attacks (2026-11-08), naming the source that says
 so (2026-11-09; public exploit code alone is not exploited): the model reports what the sources say; the rule sets the level.
 The Summary must itself say that attacks were seen; a source of any kind counts then, the product's own advisory or CVE
 record included, and never when it only describes the flaw (owner, 2026-11-16: bird-lg-go's own advisory reported none).

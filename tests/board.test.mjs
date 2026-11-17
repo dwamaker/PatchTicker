@@ -1602,3 +1602,12 @@ test('a tier-1 row of the same vendor in another category takes a pin; one of th
   assert.equal(pinKey(android), 'google|Operating systems');
   assert.equal(pinKey(tierRow('NOL', 'google')), 'google'); // on no list: the vendor alone
 });
+
+// Owner, 11-17: the state's word is 공격 발생 / Attacked, as a supply-chain attack that delivered malware carries it too
+// (no flaw was exploited there); the KEV reason line keeps its own words. The field stays `exploited`.
+test('the attacked state reads 공격 발생 / Attacked; the KEV line keeps its words', () => {
+  assert.deepEqual([WORDS.ko.kevReason, WORDS.en.kevReason], ['공격 발생', 'Attacked']);
+  assert.deepEqual([WORDS.ko.kevListed, WORDS.en.kevListed], ['CISA KEV 등재', 'Listed in CISA KEV']);
+  assert.match(WORDS.ko.kevNote, /^공격 발생 표시는/);
+  assert.match(WORDS.en.kevNote, /^The Attacked sign/);
+});

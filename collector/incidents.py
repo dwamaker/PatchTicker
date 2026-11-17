@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
-from collector import distros
+from collector import distros, nvd
 
 STAMP = "%Y-%m-%dT%H:%M:%SZ"  # ISO-8601 UTC, so string order is time order
 
@@ -252,20 +252,123 @@ def page_slug(incident_id):
     return "u-" + hashlib.sha256(incident_id.encode("utf-8")).hexdigest()[:12]
 
 
-def products_of(incident, lang):
-    """A port of productsOf in web/board.mjs (tests/fixtures/board/products-case.json keeps the two in step)."""
+HANGUL = re.compile(r"[가-힣]")
+
+
+def shown_name(summary, lang, k):
+    """shownName in web/board.mjs: the k-th Summary product's name in this language, a Latin one that differs from the
+    product name being the model shortening it. The localized name is read by position only when names is as long as
+    products (11-17: a misaligned list showed the RHEL 10 id as "GStreamer"); named() aligns every view's lists."""
+    products = summary.get("products") or []
+    names = (summary.get(lang) or {}).get("names") or []
+    local = names[k] if len(names) == len(products) and isinstance(names[k], str) else ""
+    product = products[k]
+    return product if local and product and not HANGUL.search(local) and local != product else local or product
+
+
+def product_slots(incident, lang):
+    """products_of's work: ({id: Product}, the id of each Summary product by position)."""
     found = {p["id"]: p for p in incident.get("products") or []}
+    own = {pid: p["name"].lower() for pid, p in found.items()}  # matched by their own names, not the ones shown
     summary = incident.get("summary") or {}
-    local = (summary.get(lang) or {}).get("names") or []
+    ids = []
     for k, name in enumerate(summary.get("products") or []):
-        shown = (local[k] if k < len(local) else "") or name
-        same = next((p for p in found.values() if p["name"].lower() in name.lower()), None)
-        key = same["id"] if same else f"name:{product_key(name)}"
-        found[key] = {**(same or {"id": key}), "name": shown}
+        # The longest name it contains (11-17: "TELLUS Lite" is tellus_lite, not tellus); a view lists its record
+        # Products longest first (named), so the first match in web/board.mjs is the same one.
+        key = max((pid for pid, n in own.items() if n in name.lower()), key=lambda pid: len(own[pid]), default=None)
+        key = key or f"name:{product_key(name)}"
+        own.setdefault(key, name.lower())
+        found[key] = {**found.get(key, {"id": key}), "name": shown_name(summary, lang, k)}
+        ids.append(key)
     for os_name in summary.get("platforms") or []:
         found.pop(f"name:{os_name.lower()}", None)  # "Android" as a product and as a platform is one entry
         found[f"os:{os_name.lower()}"] = {"id": f"os:{os_name.lower()}", "name": os_name}
-    return list(found.values())
+    return found, ids
+
+
+def products_of(incident, lang):
+    """A port of productsOf in web/board.mjs (tests/fixtures/board/products-case.json keeps the two in step)."""
+    return list(product_slots(incident, lang)[0].values())
+
+
+def name_form(pid, name):
+    """Names of one Product that differ only by case or a leading vendor word ("JetBrains YouTrack", "youtrack")."""
+    low = " ".join(name.lower().split())
+    vendor = next((v for v in vendor_words(pid) if low.startswith(v) and len(low) > len(v)), "")
+    return low[len(vendor):]
+
+
+def chosen_names(incidents):
+    """{(Product id, lang): the one name every view shows for it} (owner's rule, 11-17), over the Board's Incidents: the
+    name_form group most rows use (a tie: the group of the earliest first seen, then the longer name), and in it a
+    spelling a Summary wrote before one taken from the record, then not all lower case, then the most used, then the
+    longer. The record Product's own name beats that name plus further words, whatever the counts ("Grav" over "Grav
+    Lightbox Gallery"; the parent session's decision, 11-17), and stands even when no row writes it alone. Operating
+    systems are left out."""
+    seen, record = {}, {}
+    for i in incidents:
+        if on_board(i):
+            for lang in ("ko", "en"):
+                found, written = product_slots(i, lang)
+                for pid, p in found.items():
+                    if not pid.startswith("os:"):
+                        seen.setdefault((pid, lang), []).append((p["name"], i["first_seen"], pid in written))
+            for p in i.get("products") or []:
+                record.setdefault(p["id"], Counter())[p["name"]] += 1
+    chosen = {}
+    for (pid, lang), rows in seen.items():
+        groups = {}
+        for row in rows:
+            groups.setdefault(name_form(pid, row[0]), []).append(row)
+        own = record[pid].most_common(1)[0][0] if pid in record else None
+        base, mine = own and name_form(pid, own), own and " ".join(own.lower().split())
+        # Whole names, not forms: name_form strips the id's vendor word, which can be the product ("nocobase:nocobase").
+        plain = lambda g: " ".join(g[0][0].lower().split())  # noqa: E731
+        longer = [f for f, g in groups.items() if own and f != base and plain(g) != mine
+                  and re.search(rf"(?:^|\s){re.escape(mine)}(?:\s|$)", plain(g))]
+        if longer:
+            groups.setdefault(base, [(own, "~", False)])  # "~" sorts after every stamp: no row is this early
+            for f in longer:
+                # Words only in front are a vendor the vendor lists lack ("Thales SafeNet ..."): its spelling, same group.
+                # Words after (or both) are a sub-product: dropped.
+                rows_of = groups.pop(f)
+                if plain(rows_of).endswith(f" {mine}"):
+                    groups[base] += rows_of
+        group = min(groups.values(), key=lambda g: (-len(g), min(r[1] for r in g), -max(len(r[0]) for r in g)))
+        # The record's machine name (nvd.display_name of the id) counts as derived even where a Summary copied it from the
+        # input's Products line (8 of the live month's "Openshift" rows did).
+        machine = nvd.display_name(pid.split(":", 1)[1]) if ":" in pid and not pid.startswith("name:") else None
+        count, wrote = Counter(r[0] for r in group), {r[0] for r in group if r[2] and r[0] != machine}
+        chosen[(pid, lang)] = min(count, key=lambda n: (n not in wrote, n == n.lower(), -count[n], -len(n), n))
+    return chosen
+
+
+def named(incidents):
+    """The Incidents as the views show them: each Product with its chosen name (chosen_names), the stored ones untouched.
+    The Summary's products and both languages' names are rewritten by position (so web/board.mjs productsOf, the pages,
+    feeds and /api/check read the chosen names without a change of their own), a record Product no Summary name stands
+    for takes its chosen English name, and the record Products are listed longest name first, so productsOf's first
+    match is the longest, as product_slots picks."""
+    chosen = chosen_names(incidents)
+    return [with_names(i, chosen) for i in incidents]
+
+
+def with_names(incident, chosen):
+    summary = incident.get("summary") or {}
+    products, records = summary.get("products") or [], incident.get("products") or []
+    if not products and not records:
+        return incident
+    view = dict(incident)
+    ids = product_slots(incident, "en")[1]
+    view["products"] = sorted(({**p, "name": chosen.get((p["id"], "en"), p["name"])} if p["id"] not in ids else p for p in records),
+                              key=lambda p: -len(p["name"]))
+    if products:
+        en = [chosen.get((ids[k], "en"), name) for k, name in enumerate(products)]
+        # A Korean name shows as such; a Latin one would show the product name anyway (shown_name).
+        ko = [n if HANGUL.search(n := chosen.get((ids[k], "ko")) or "") else en[k] for k in range(len(products))]
+        view["summary"] = summary | {"products": en} | {lang: (summary.get(lang) or {}) | {"names": names}
+                                                          for lang, names in (("ko", ko), ("en", en))}
+    return view
 
 
 def product_list(incidents, since):

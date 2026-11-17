@@ -57,11 +57,11 @@ Rules set the level, never the AI.
 
 | Sign | Rule |
 | --- | --- |
-| **Urgent** | Exploited (CISA KEV, or a source reporting attacks) or CVSS 9.0+ |
+| **Urgent** | Attacked (CISA KEV, or a source reporting attacks) or CVSS 9.0+ |
 | **Elevated** | CVSS 7.0+ |
 | **Notice** | Everything else |
 
-"Exploited" always shows its evidence. Published exploit code alone is flagged as "Exploit code is public".
+"Attacked" always shows its evidence. Published exploit code alone is flagged as "Exploit code is public".
 
 ## Data sources
 
