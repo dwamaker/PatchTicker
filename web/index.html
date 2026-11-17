@@ -127,6 +127,8 @@
     #support { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 1rem; border-radius: 4px; background: #ffdd00; color: #000; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; }
     #support svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     @media (hover: hover) { #support:hover { background: #ffe74d; } }
+    /* phones (owner, 11-18): the footer's line moves above the banner, so it reads line, banner, notices; 1.25rem each side */
+    @media (max-width: 599px) { .support { padding-top: 1.25rem; border-top: 1px solid var(--rule); } .support ~ footer { margin-top: 0; border-top: 0; } }
     @media (max-width: 599px) { #repo, #feeds-btn { display: none; } } /* phones: the header line is full */
     /* RSS (owner, 11-17): a button beside GitHub opens a small menu of the feeds; on phones the same menu opens
        from the settings panel (#feeds-btn-phone), since the header line is full. A popover: the browser opens it from the

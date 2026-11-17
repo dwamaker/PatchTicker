@@ -376,6 +376,8 @@ Restrained outlined buttons for theme, language and copying a command.
   icon and "BUY ME A COFFEE" in black, 13px bold upper case, 0.1em tracking, 4px corners, 44 px high.
 - The yellow is the one colour outside the palette, kept so the badge reads as the service's own mark, the same in both
   themes; black on it is 15.6:1. It does not follow the text size (it is a mark, and stays clear of the jump column).
+- Under 600 px the footer's line moves above the banner (owner, 2026-11-18), so a phone reads the line, the banner, then
+  the notices, 1.25rem apart; one element, ordered by CSS alone.
 
 ### RSS menu (owner, 11-17)
 - **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub, styled as
