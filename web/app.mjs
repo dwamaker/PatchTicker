@@ -55,6 +55,7 @@ const TEXT = {
     noIncidents: '아직 게시된 사건이 없습니다.', loadOlder: '이전 사건 불러오기', showMore: (n) => `더 보기 (${n}건 남음)`, moreDone: (n, rest) => `${n}건을 더 불러왔습니다.${rest ? ` ${rest}건 남음` : ''}`, clearSearch: '검색 지우기', clearAll: '필터 모두 지우기',
     original: '원문', lead: { advisory: '공식 공지 읽기', writeup: '분석 글 읽기', cve_record: 'CVE 기록 읽기', discussion: '토론 읽기', curator: '뉴스레터 읽기', notice: '보호나라 공지 읽기', repo: '저장소 보기', other: '원문 읽기' },
     aliasHint: (w, names) => `‘${w}’${ro(w)} 검색해 ${names.join(', ')}도 함께 찾았습니다.`,
+    aliasTextHint: (w, names) => `제품 이름이 ${names.join(', ')}인 사건은 없어 본문에서 찾았습니다.`,
     support: '후원',
     searched: (cve) => `검색한 ${cve}`, notExploited: '공격 보고 없음',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
@@ -108,6 +109,7 @@ const TEXT = {
     noIncidents: 'No Incidents have been posted yet.', loadOlder: 'Load older Incidents', showMore: (n) => `Show more (${n} left)`, moreDone: (n, rest) => `Loaded ${n} more.${rest ? ` ${rest} left` : ''}`, clearSearch: 'Clear search', clearAll: 'Clear all filters',
     original: '', lead: { advisory: 'Read the advisory', writeup: 'Read the write-up', cve_record: 'Read the CVE record', discussion: 'Read the discussion', curator: 'Read the newsletter', notice: 'Read the KISA notice', repo: 'See the repository', other: 'Read the source' },
     aliasHint: (w, names) => `‘${w}’ was also searched as ${names.join(', ')}.`,
+    aliasTextHint: (w, names) => `No product is named ${names.join(', ')}, so the text was searched for it.`,
     support: 'Support',
     searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
@@ -161,6 +163,7 @@ const TEXT = {
     noIncidents: 'まだ公開されたインシデントはありません。', loadOlder: '以前のインシデントを読み込む', showMore: (n) => `もっと見る（残り${n}件）`, moreDone: (n, rest) => `${n}件を追加で読み込みました。${rest ? ` 残り${rest}件` : ''}`, clearSearch: '検索をクリア', clearAll: 'フィルターをすべてクリア',
     original: '原文', lead: { advisory: '勧告を読む', writeup: '解説記事を読む', cve_record: 'CVE レコードを読む', discussion: '議論を読む', curator: 'ニュースレターを読む', notice: 'KISA の告知を読む', repo: 'リポジトリを見る', other: '原文を読む' },
     aliasHint: (w, names) => `「${w}」で ${names.join('、')} もあわせて検索しました。`,
+    aliasTextHint: (w, names) => `製品名が ${names.join('、')} のインシデントはないため、本文から探しました。`,
     support: '支援',
     searched: (cve) => `検索した ${cve}`, notExploited: '攻撃の報告なし',
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
@@ -1115,7 +1118,7 @@ let highlightedNow = new Set(); // every Highlight, pinned or behind 주요 사�
 // What render() draws, in its order: the pinned Highlights, then the list items (rows and vendor folds); openLinked counts
 // a linked row's place in the same items, so the two never disagree.
 function boardLists() {
-  const { highlights: chosen, list, variants } = filtered();
+  const { highlights: chosen, list, variants, inText } = filtered();
   // The pins go to four different vendors and show by importance, whatever the visitor's sort (owner, 11-16; pinOrder);
   // 주요 사건 더 보기 appends the rest below them, a pinned vendor's other rows first, then by importance too.
   const { pins, rest: extra } = pinOrder(chosen);
@@ -1128,20 +1131,20 @@ function boardLists() {
   // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
   // A Highlight never folds (owner, 11-17): it stands at its own place, banded, and its fold counts the rest.
   const folded = filter.picks.length || applied() ? rest : foldByVendor(rest, undefined, undefined, (i) => highlightedNow.has(i));
-  return { list, variants, extra, highlights, pinned, rest, folded, items: folding ? folded : rest };
+  return { list, variants, inText, extra, highlights, pinned, rest, folded, items: folding ? folded : rest };
 }
 
 function render() {
   pageText();
   feedRows();
   if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
-  const { list, variants, extra, highlights, pinned, rest, folded, items } = boardLists();
+  const { list, variants, inText, extra, highlights, pinned, rest, folded, items } = boardLists();
   shownList = list;
   $('search-clear').hidden = !$('search').value; // the field is also filled from the address and Back
   showStatus();
   guide();
   // A Korean word searched as English names too says so under the field (critique 13), so a hit on "macOS" for 맥 is not a puzzle.
-  const hint = aliasesUsed(applied()).map(({ word, names }) => TEXT[lang].aliasHint(word, names)).join(' ');
+  const hint = aliasesUsed(applied()).map(({ word, names }) => TEXT[lang][inText ? 'aliasTextHint' : 'aliasHint'](word, names)).join(' ');
   if ($('alias-hint').textContent !== hint) $('alias-hint').textContent = hint; // unchanged: not said again (role=status)
   $('skip').hidden = !highlights.length;
   announce(list.length, filterToQuery({ ...filter, query: applied(), sort: 'new' })); // a new sort says 정렬 itself

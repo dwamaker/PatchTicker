@@ -454,7 +454,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   const products = picks.filter((p) => !p.startsWith('os:'));
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const variant = new Set(); // shown only through a variant of a picked name ("비슷한 이름 N건도 함께")
-  const shown = incidents.filter((i) => {
+  const keep = (i, inText) => {
     const own = picks.length ? productsOf(i) : [];
     if (oses.length && !own.some((p) => oses.includes(p.id))) return false;
     if (products.length && !own.some((p) => products.includes(p.id))) {
@@ -476,8 +476,12 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
     const titles = (i.mentions || []).filter((m) => m.kind !== 'curator').map((m) => m.title || '');
     const text = [i.brief.text, ...summaryText(i.summary), ...i.cves, names, ...titles].join('\n').toLowerCase();
     const free = (w) => (NOT_INSIDE[w] ? text.replace(NOT_INSIDE[w], ' ') : text).includes(w);
-    return words.every((w) => free(w) || (SEARCH_ALIASES[w] || []).some((x) => hasWord(names, x)));
-  });
+    return words.every((w) => free(w) || (SEARCH_ALIASES[w] || []).some((x) => hasWord(inText ? text : names, x)));
+  };
+  let shown = incidents.filter((i) => keep(i, false));
+  // Owner, 11-17: 오라클 found nothing while "oracle" found 8, as no Product is named Oracle. Only when nothing is found,
+  // an alias name may stand as a whole word anywhere in the text too, and the page says so (inText).
+  const inText = !shown.length && words.some((w) => SEARCH_ALIASES[w]) && (shown = incidents.filter((i) => keep(i, true))).length > 0;
   const list = shown.sort(orderBy(sort));
   const since = new Date(now - 7 * DAY_MS).toISOString(); // seven days: also in collector/summaries.py (is_candidate)
   // Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in; Cisco
@@ -486,7 +490,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice' && !oldEvent(i, now))
     .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
   const highlights = pickHighlights(candidates);
-  return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
+  return { highlights, list, variants: list.filter((i) => variant.has(i)).length, inText };
 }
 
 // CVSS v3 qualitative rating, as a key the page words per language; null while NVD has not rated it.

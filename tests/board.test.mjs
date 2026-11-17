@@ -807,6 +807,24 @@ test('the alias hint names each Korean word used and what it was also searched a
   assert.deepEqual(aliasesUsed('openssh'), []);
 });
 
+// Owner, 11-17: "oracle" found 8 and 오라클 found 0, as no Product was named Oracle.
+test('a Korean alias with no Product of that name finds its English name as a whole word in the text', () => {
+  const at = (id, extra) => ({ ...incident(id, '2026-11-08T00:00:00Z'), ...extra });
+  const summary = (text) => ({ products: [], platforms: [], devices: [],
+    ...Object.fromEntries(['ko', 'en'].map((l) => [l, { title: '', summary: text, conditions: [], mitigation: '' }])) });
+  const db = at('CVE-2026-61', { summary: summary('A plugin leaks rows from an Oracle database') });
+  const inside = at('CVE-2026-62', { brief: { text: 'OracleDB connector and padding oracles', lead: '' } });
+  const product = at('CVE-2026-63', { products: [{ id: 'oracle:weblogic_server', name: 'Oracle WebLogic Server' }] });
+  const run = (list) => filterBoard(list, [], '오라클', NOW);
+  const fallback = run([db, inside]);
+  assert.deepEqual(fallback.list.map((i) => i.id), [db.id]); // "OracleDB" and "oracles" are not the word Oracle
+  assert.equal(fallback.inText, true);
+  const named = run([db, inside, product]);
+  assert.deepEqual(named.list.map((i) => i.id), [product.id]);
+  assert.equal(named.inText, false);
+  assert.equal(run([inside]).inText, false); // still nothing: the usual no-result state
+});
+
 // critique 13: 43% of rows have no score yet; sorting them last read as "lowest risk".
 test('rows with no score yet sort above scored 참고 rows, below 위험, by risk and by CVSS', () => {
   const at = (n, cvss, extra = {}) => ({ ...incident(`CVE-2026-${n}`, `2026-11-0${n}T00:00:00Z`), cvss, ...extra });
