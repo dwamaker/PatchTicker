@@ -483,7 +483,7 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   // Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in; Cisco
   // BroadWorks, published 08-19, stood among them). Also collector/cycle.py (highlights).
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
-  const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice')
+  const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice' && !oldEvent(i, now))
     .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
   const highlights = pickHighlights(candidates);
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length };
@@ -880,3 +880,26 @@ export const foldNewest = (fold) => fold.incidents.reduce((a, b) => (publishedAt
 // row, less 13% so the line the reader was on stays in view; never less than a line's 40px.
 export const STEP_SHARE = 0.87;
 export const stepDistance = (viewHeight, frozen) => Math.max(40, Math.round((viewHeight - frozen) * STEP_SHARE));
+
+// Owner, 11-17 ("오래된 만큼 주요 사건엔 올라오지 못하게": an attack of October 29 reported on November 14 stood among them): an old
+// event is no Highlight, though it stays on the Board with its level and flag. A CVE Incident whose CVE ids are all two
+// or more years before now's year (CVE-2024-... in 2026), or a Summary whose event_date (the day the reported attack or
+// incident happened, from the review) is more than 14 days before now. No date: not old. Also collector/cycle.py.
+export function oldEvent(i, now = Date.now()) {
+  const years = (i.cves || []).map((c) => /^CVE-(\d{4})-/i.exec(String(c))?.[1]).filter(Boolean).map(Number);
+  if (years.length && Math.max(...years) <= new Date(now).getUTCFullYear() - 2) return true;
+  const day = i.summary?.event_date;
+  return typeof day === 'string' && day !== '' && day < new Date(now - 14 * DAY_MS).toISOString().slice(0, 10);
+}
+
+// The collection notice (owner, 11-17: a visitor asked why an October CVE is missing). Collection began on the day in
+// index.html's <html data-collected-since>, the one place the date lives; the sentence that says so holds while the store
+// is younger than its KEEP_DAYS (the head script there hides the notice by the same cut-off). An Incident is never removed
+// because a patch shipped; the store keeps it KEEP_DAYS.
+export const KEEP_DAYS = 90;
+export const sinceStillTrue = (since, now) => {
+  const start = Date.parse(`${since}T00:00:00Z`);
+  return Number.isFinite(start) && now < start + KEEP_DAYS * DAY_MS;
+};
+// What an empty search says about what the Board holds: both sentences while the first is true, then the retention alone.
+export const collectionFacts = (since, now, words) => (sinceStillTrue(since, now) ? `${words.since} ${words.keep}` : words.keep);

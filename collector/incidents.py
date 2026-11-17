@@ -123,7 +123,8 @@ def known_field(incident):
 
 
 ROW_FIELDS = ("id", "cves", "first_seen", "published", "cvss", "kev", "kev_date", "products")
-ROW_SUMMARY = ("exploited", "exploited_source", "platforms", "products", "library", "devices", "incident", "poc_public", "at")
+ROW_SUMMARY = ("exploited", "exploited_source", "platforms", "products", "library", "devices", "incident", "poc_public", "at",
+               "event_date")
 
 
 def rows_view(incident):

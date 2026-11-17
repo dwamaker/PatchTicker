@@ -970,6 +970,7 @@ def finish_review(incident, draft, reply):
     none, or an unreadable review reply, stores the Summary. Its attacks_happened answer, when asked, goes with the draft
     to keep(): it is no finding."""
     incident.pop("review_pending", None)
+    draft = draft | {"event_date": review.event_date(reply)}  # owner 11-17: an old event is no Highlight
     if draft["summary"].get("exploited_unconfirmed"):
         draft = draft | {"verdict": review.attacks_happened(reply)}
     why = review.reason(review.findings_of(reply, draft["summary"]))
@@ -1026,12 +1027,15 @@ def settle_attacks(summary, verdict):
         summary.pop("exploited_cves", None)
 
 
-def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None):
+def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None, event_date=""):
     """Store a checked Summary. The last try keeps it, but never an Easy action that contradicts it: the Easy view then
     shows the mitigation. words: the runs of other letters only the request's input had, kept so the stored Summary
     passes stray_script() in needs_summary(), which has no input. verdict: the review's attacks_happened, None when no
-    review answered it."""
+    review answered it. event_date: the review's day of the reported attack or incident (YYYY-MM-DD), stored with the
+    Summary it was read from; cycle.highlights keeps an event more than 14 days old out of the Highlights."""
     settle_attacks(summary, verdict)
+    if event_date:
+        summary["event_date"] = event_date
     if words:
         incident["script_words"] = sorted(set(incident.get("script_words", [])) | set(words))
     for lang in easy_action_mismatch(summary):

@@ -35,6 +35,7 @@ How summaries.py hooks it in (for the session that owns summaries.py; this modul
 
 import json
 import re
+from datetime import datetime
 
 from collector.model import EFFORT, MAX_TOKENS, MODEL, reply_json
 
@@ -61,10 +62,13 @@ SCHEMA = {
             "severity": {"type": "string", "enum": list(SEVERITIES)},
         },
         "required": ["field", "lang", "quote", "against", "problem", "severity"],
-        "additionalProperties": False}}},
-    "required": ["findings"],
+        "additionalProperties": False}},
+        # Owner, 11-17: an old event is no Highlight; the main Summary schema has no room for a field (11-11).
+        "event_date": {"type": "string"}},
+    "required": ["findings", "event_date"],
     "additionalProperties": False,
 }
+EVENT_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 # Owner, 11-17 ("패턴이 못 알아보면 검토 요청이 판정"): when summaries.ATTACK_SEEN and DELIVERED miss the wording of an
 # exploited flag, the review is asked this too, with the schema below; its answer keeps or drops the flag
@@ -84,6 +88,8 @@ You cannot see the sources, so never judge whether a fact is true in the world. 
 2. Korean and English state different facts: a different attacker, condition, number, version, range or limit, or one says the opposite of the other ("인터넷 없이" for "without logging in", "3개 이상" for "more than two", 관리자 for "any logged-in user"). One language leaving out a minor detail the other has is not a finding; a missing condition or limit that changes who is at risk is.
 3. A group (two or more CVE ids). Its title, summary and Easy fields are meant to describe its gravest flaw and leave each CVE's own limits to conditions, so it is NOT a finding that they name the gravest flaw's attacker or reach (anyone, without logging in, remotely, by opening a page) while other CVEs need more (a login, a role, a setting, local access). Report a group's text when it narrows: it gives one CVE's limit, version range, role, setting or kind of attack as if it held for all, so readers of the other CVEs think they are safe ("13.0 and later" from one CVE's condition; "devices that use BGP" when other CVEs need RIPv2; "logged-in users" when one CVE's line says outsiders; a mitigation saying 5.1 is safe when one CVE's condition names 5.1 as affected; an Easy action "if you share the device" from one CVE's condition); a stopgap, setting or fallback ("until then turn off X", "if you cannot update, run CRuby 3.2") that the entry ties to some CVEs reads as protecting from all; the title or summary names a lesser flaw while a per-CVE line shows a graver one (code or command execution, a login or access check bypassed, a password reset by anyone, an upload that runs code) that neither mentions; the summary says "the same release also fixes" when the language-free fields name no fixed version and mitigation says there is no fix or no source names one.
 4. Text in the wrong language where the reader cannot read it: an English field written in Korean, or a Korean field (other than names, commands and product names) written in English.
+
+Also give event_date: when the entry reports an attack, a breach or a malicious release that already happened, the day it happened or began as the entry states it, written YYYY-MM-DD ("on October 29" in an entry about 2026 is 2026-10-29); empty when the entry states no such day, when it gives only a month or a year, and when it reports only a flaw, a fix or a disclosure. Never the day a story, advisory or record was published.
 
 Never report: wording, style, tone, awkward or unidiomatic Korean, jargon, length, repetition, missing detail, a field left empty, translation choices that keep the fact, or anything you would need the sources to judge. When unsure, leave it out. Most entries are clean: an empty list is the usual answer.
 
@@ -117,6 +123,20 @@ def params(summary, incident, ttl=None, ask_attacks=False):
         "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": ATTACKS_SCHEMA if ask_attacks else SCHEMA}},
         "messages": [{"role": "user", "content": entry_text(summary, incident) + (f"\n\n{ATTACKS_QUESTION}" if ask_attacks else "")}],
     }
+
+
+def event_date(reply):
+    """The reviewer's event_date when it is a real YYYY-MM-DD day, else "" (unknown: the Incident stays a candidate)."""
+    if reply.stop_reason != "end_turn":
+        return ""
+    try:
+        day = reply_json(reply).get("event_date")
+        if isinstance(day, str) and EVENT_DATE.fullmatch(day.strip()):
+            datetime.strptime(day.strip(), "%Y-%m-%d")
+            return day.strip()
+    except (StopIteration, ValueError, AttributeError, TypeError):
+        pass
+    return ""
 
 
 def attacks_happened(reply):

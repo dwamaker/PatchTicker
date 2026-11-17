@@ -618,6 +618,63 @@ class ShownProductNameTest(unittest.TestCase):
         self.assertEqual(json.dumps(rows, sort_keys=True), stored)
 
 
+class OldEventTest(unittest.TestCase):
+    """Owner, 11-17 ("오래된 만큼 주요 사건엔 올라오지 못하게"): Cursor (attack 10-29, published 11-14) and Huatian OA8000
+    (CVE-2024-58406, attacks seen in 2024) stood among the Highlights. An old event stays on the Board with its level and
+    flag but is no Highlight candidate: all its CVEs two or more years before now's year, or an event_date (from the
+    review) more than 14 days back."""
+    NOW = "2026-11-17T12:00:00Z"
+    SINCE = "2026-11-10T12:00:00Z"
+    NEWS = "https://www.bleepingcomputer.com/news/security/old-or-new/"
+
+    def cve(self, cve, **more):
+        return {"id": cve, "cves": [cve], "first_seen": "2026-11-15T00:00:00Z", "published": "2026-11-15T00:00:00Z", "cvss": 9.8,
+                "mentions": [{"kind": "cve_record"}]} | more
+
+    def news(self, event_date=None):
+        summary = {"incident": True, "exploited": True, "exploited_source": self.NEWS} | ({"event_date": event_date} if event_date else {})
+        return {"id": self.NEWS, "cves": [], "first_seen": "2026-11-15T00:00:00Z", "published": "2026-11-15T00:00:00Z",
+                "mentions": [{"kind": "writeup"}], "summary": summary}
+
+    def picked(self, row):
+        from collector import cycle
+        return [v["id"] for v in cycle.highlights([row], self.SINCE, self.NOW)] == [row["id"]]
+
+    def test_a_cve_two_years_old_published_this_week_is_no_candidate(self):
+        self.assertFalse(self.picked(self.cve("CVE-2024-58406", kev=True)))
+        self.assertTrue(self.picked(self.cve("CVE-2025-1000")))
+        self.assertTrue(self.picked(self.cve("CVE-2026-1", cves=["CVE-2024-1", "CVE-2026-1"])))  # one new CVE keeps it
+
+    def test_an_event_more_than_fourteen_days_back_is_no_candidate(self):
+        self.assertFalse(self.picked(self.news("2026-10-29")))  # 19 days: Cursor's attack
+        self.assertTrue(self.picked(self.news("2026-11-14")))  # 3 days
+        self.assertTrue(self.picked(self.news()))  # no date: allowed, as before
+
+    def test_a_kev_incident_of_this_year_with_no_date_is_a_candidate(self):
+        self.assertTrue(self.picked(self.cve("CVE-2026-2", kev=True)))
+
+    def test_the_highlights_match_the_page_on_the_shared_old_events_case(self):
+        from pathlib import Path
+        from collector import cycle
+        case = json.loads((Path(__file__).parent / "fixtures" / "board" / "highlights-case.json").read_text(encoding="utf-8"))
+        since = "2026-11-04T00:00:00Z"  # seven days before case["now"]
+        got = [v["id"] for v in cycle.highlights(case["old_events"]["incidents"], since, case["now"])]
+        self.assertEqual(got, case["old_events"]["expected"])
+
+    def test_the_review_gives_the_event_date_and_the_row_view_carries_it(self):
+        from collector.incidents import rows_view
+        self.assertIn("event_date", review.SCHEMA["properties"])
+        self.assertIn("event_date", review.SCHEMA["required"])
+        self.assertIn("event_date", review.ATTACKS_SCHEMA["required"])
+        for answer, stored in (("2026-10-29", "2026-10-29"), ("", None), ("October 29", None), ("2026-02-30", None)):
+            with self.subTest(answer):
+                item = ReviewedAttackTest().save(ReviewedAttackTest.SEEN, FakeClaude({"findings": [], "event_date": answer}))
+                self.assertEqual(item["summary"].get("event_date"), stored)
+        item["summary"]["event_date"] = "2026-10-29"
+        view = rows_view(item | {"first_seen": "2026-11-15T00:00:00Z", "brief": {"text": "x", "lead": ""}})
+        self.assertEqual(view["summary"]["event_date"], "2026-10-29")
+
+
 class KevWindowTest(unittest.TestCase):
     """Owner, 11-17: only an Incident published in the last seven days can be a Highlight; a KEV listing this week no
     longer brings an older one in, so rows carry no kev_last (11-16's field for that rule) any more."""

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts } from '../web/board.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -480,10 +480,11 @@ test('Highlights count the seven days from when the news was published, not when
 });
 
 test('Product picks and search narrow the Highlights too', () => {
-  // All four score the same, so they rank newest first: CVE-2024-6387 (1 day old) to CVE-2026-120839 (4 days).
+  // All four score the same, so they rank newest first: CVE-2024-6387 (1 day old) to CVE-2026-120839 (4 days). Since 11-17
+  // CVE-2024-6387 is an old event (a 2024 CVE in 2026) and stays out of the Highlights, though it stays on the Board.
   const recent = board.map((i, n) => ({ ...i, first_seen: daysAgo(n + 1), cvss: 9 }));
-  assert.deepEqual(ids(filterBoard(recent, [], '', NOW).highlights), ['CVE-2024-6387', 'CVE-2026-1001', 'CVE-2026-120984', 'CVE-2026-120839']);
-  assert.deepEqual(ids(filterBoard(recent, [openssh.id], '', NOW).highlights), ['CVE-2024-6387', 'CVE-2026-1001']);
+  assert.deepEqual(ids(filterBoard(recent, [], '', NOW).highlights), ['CVE-2026-1001', 'CVE-2026-120984', 'CVE-2026-120839']);
+  assert.deepEqual(ids(filterBoard(recent, [openssh.id], '', NOW).highlights), ['CVE-2026-1001']);
   assert.deepEqual(ids(filterBoard(recent, [], 'keycloak', NOW).highlights), ['CVE-2026-120984']);
   assert.deepEqual(ids(filterBoard(recent, [keycloak.id], 'race', NOW).highlights), []);
 });
@@ -546,6 +547,8 @@ test('Highlights take every exploited row, then one well-known 최고 row per pr
   // Owner, 11-17: a KEV listing this week does not bring an older Incident in; an exploited row's label is not lifted
   // again (11-16; collector side too).
   assert.deepEqual(ids(filterBoard(kase.kev_week.incidents, [], '', now).highlights), kase.kev_week.expected);
+  // Owner, 11-17: an old event is no Highlight (all CVEs two or more years old, or an event date over 14 days back).
+  assert.deepEqual(ids(filterBoard(kase.old_events.incidents, [], '', now).highlights), kase.old_events.expected);
 });
 
 test('a well-known row is one at 최고 that is not exploited; an exploited one counts once, as exploited', () => {
@@ -1619,4 +1622,27 @@ test('one screen is 87% of the height below the frozen row, never less than one 
   assert.equal(stepDistance(900, 120), 679); // the frozen row is not part of the screen
   assert.equal(stepDistance(812, 64), 651);
   assert.equal(stepDistance(100, 120), 40); // a frozen row taller than the window: still a step
+});
+
+test('an old event leaves the Highlights but stays on the Board', () => {
+  const now = Date.parse('2026-11-17T05:00:00Z');
+  const huatian = { id: 'CVE-2024-58406', cves: ['CVE-2024-58406'], first_seen: '2026-11-13T00:00:00Z', cvss: 7.5, kev: true, mentions: [], brief: { text: '' } };
+  const { highlights, list } = filterBoard([huatian], [], '', now);
+  assert.deepEqual([highlights.length, list.length], [0, 1]);
+  assert.equal(oldEvent({ cves: ['CVE-2025-1'] }, now), false);
+  assert.equal(oldEvent({ cves: ['CVE-2024-1', 'CVE-2026-2'] }, now), false); // one recent CVE keeps it
+  assert.equal(oldEvent({ cves: [], summary: { event_date: '2026-11-02' } }, now), true); // 15 days back
+  assert.equal(oldEvent({ cves: [], summary: { event_date: '2026-11-03' } }, now), false); // 14 days back
+  assert.equal(oldEvent({ cves: ['A'] }, now), false); // not a CVE id: no year
+});
+
+// Owner, 11-17 ("우리가 공지를 해야할거 같은데"): the Board says since when it collects, and that a patch removes nothing.
+test('the collection sentence holds for the store\'s 90 days from the start; the retention sentence always', () => {
+  assert.equal(sinceStillTrue('2026-11-09', Date.parse('2026-11-17T00:00:00Z')), true);
+  assert.equal(sinceStillTrue('2026-11-09', Date.parse('2027-02-06T23:59:59Z')), true);
+  assert.equal(sinceStillTrue('2026-11-09', Date.parse('2027-02-07T00:00:00Z')), false);
+  assert.equal(sinceStillTrue('', Date.parse('2026-11-17T00:00:00Z')), false);
+  const words = { since: 'Collected since 9 November 2026.', keep: 'Stays 90 days.' };
+  assert.equal(collectionFacts('2026-11-09', Date.parse('2026-11-17T00:00:00Z'), words), 'Collected since 9 November 2026. Stays 90 days.');
+  assert.equal(collectionFacts('2026-11-09', Date.parse('2027-03-01T00:00:00Z'), words), 'Stays 90 days.');
 });

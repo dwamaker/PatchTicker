@@ -371,7 +371,8 @@ Restrained outlined buttons for theme, language and copying a command.
   serves the list, and the list heading names it. 주요 사건 is chosen and shown in its own order whatever the list's: tier
   of reach first (1, 2, then exploited rows on tier 3 or no list, then 3, then the rest; owner, 2026-11-17), exploited
   then by importance inside each, its four pins of four different vendor-and-category pairs (owner, 2026-11-16, 2026-11-17; until then the pins
-  followed the visitor's order).
+  followed the visitor's order). An old event (its CVEs all two or more years old, or an event date over 14 days
+  back) is never a Highlight, though its row stays (owner, 2026-11-17).
 - **Panel:** opens under that line in Kiosk Panel with a Rail border: 게시일 시작/끝, 최소 CVSS, CVE, then chip rows
   for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS, then 정렬. Nothing changes until 필터 적용;
   필터 초기화 clears the panel only (Products picked at the top and the search stay). Everything lives in the hash.
@@ -596,6 +597,12 @@ Restrained outlined buttons for theme, language and copying a command.
   shadow appear once the page has scrolled.
 - **Jump buttons (owner, 11-09):** 맨 위로 and 맨 아래로 sit at the bottom right (44px circles, Panel on Edge), each shown
   only when there is more than 60% of a screen to go that way.
+- **What the Board holds (owner, 11-17: "우리가 공지를 해야할거 같은데"):** a slim note under the header, outside `<main>` (a
+  content blocker once hid a block put first in it): Recessed Panel on a Rail edge, Secondary Ink at small size, a 32px
+  close (44px on touch). It says collection began on 9 November 2026 and that a patch removes no Incident, kept 90 days.
+  Its text is in the markup in both languages and the head script hides it before the first paint when closed (stored
+  by the start date) or once the store is 90 days old (2027-02-07), so it never shifts the page. The start date lives
+  once, on `<html data-collected-since>`. A search that finds nothing says the same facts.
 - **One screen up and down (owner, 11-17: "스크롤 말고 눌러서 이동"; "작은 사각형 2개로 하자, 알약형 말고"):** between them, two
   small squares (32px, the 8px control radius, Panel on Edge with the circles' shadow; on touch a 44px target around the
   same 32px square), centred on the circles' axis with the group's gap, so the two kinds read apart: 한 화면 위로 / 한 화면 아래로

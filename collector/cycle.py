@@ -4,7 +4,7 @@ import hashlib
 import json
 import sys
 import time
-from datetime import date
+from datetime import date, timedelta
 
 import anthropic
 
@@ -37,15 +37,33 @@ PAGE_DAYS = 90
 MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 
 
-def highlights(views, since):
+OLD_CVE_YEARS = 2  # all CVE ids this many years before now's year: an old event (owner, 11-17)
+OLD_EVENT_DAYS = 14  # an event_date further back than this: an old event
+
+
+def old_event(view, now):
+    """An Incident that stays on the Board but is no Highlight candidate (owner, 11-17: "오래된 만큼 주요 사건엔 올라오지
+    못하게"; Cursor's attack of 10-29 published 11-14, Huatian's CVE-2024-58406 seen attacked in 2024): every CVE id
+    OLD_CVE_YEARS or more years before now's year, or the Summary's event_date (the review's day of the reported attack
+    or incident) more than OLD_EVENT_DAYS before now's day. No date counts as new. oldEvent in web/board.mjs follows."""
+    years = [int(c[4:8]) for c in view.get("cves") or [] if c[4:8].isdigit()]  # "CVE-2024-58406"
+    if years and max(years) <= int(now[:4]) - OLD_CVE_YEARS:
+        return True
+    day = (view.get("summary") or {}).get("event_date") or ""
+    return bool(day) and day < (date.fromisoformat(now[:10]) - timedelta(days=OLD_EVENT_DAYS)).isoformat()
+
+
+def highlights(views, since, now=None):
     """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs;
     tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above published
     since `since`, by score and newest first among equals, every exploited one (owner, 11-10), then the best-scored
     well-known one of each label not held by an exploited row (owner, 11-11, 11-16), tier 1 before 2 before 3 by score
     inside a tier (known_tier of collector/well_known.json; a label on no list, or a row without a tier, as 3; owner,
     11-17), then the rest; HIGHLIGHTS..HIGHLIGHTS_MAX in all."""
-    # Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in).
-    top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice"),
+    # Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in), and
+    # no old event (old_event; now defaults to the window's end).
+    now = now or (date.fromisoformat(since[:10]) + timedelta(days=RECENT_DAYS)).isoformat() + since[10:]
+    top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice" and not old_event(v, now)),
                  key=lambda v: (highlight_score(v), published_at(v)), reverse=True)
     # A label an exploited Highlight holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
     known, labels = [], {v["known"] for v in top if is_exploited(v) and v.get("known")}
@@ -204,7 +222,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # The Highlight window is seven days by publish time (filterBoard), the same cut as recent_since.
     shown = sorted((i for i in week if on_board(i)), key=published_at, reverse=True)
     views = {i["id"]: rows_view(i) for i in week}  # what the page reads, `known` included
-    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + highlights(views.values(), recent_since)}
+    whole = {i["id"] for i in shown[:WHOLE_NEWEST] + highlights(views.values(), recent_since, stamp)}
     store.write("board/rows.json", {"since": recent_since, "status": status,
                                     "incidents": [board_view(i) if i["id"] in whole else views[i["id"]] for i in week]})
     newest = sorted((i for i in shown_incidents if search_worthy(i)), key=published_at, reverse=True)

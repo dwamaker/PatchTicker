@@ -71,7 +71,10 @@ each, exploited first, then by importance. The pins are the first four of that o
 the others below them in the same order; the four keep their place (2026-11-09); the rest stay in the list below. The list is the whole Board in the visitor's
 order: every Highlight, pinned or not, also stands at its own place there, edged in its Risk colour like its pinned frame
 (owner, 2026-11-16), never inside a vendor fold: the fold holds and counts the rest, or unfolds below its minimum (owner,
-2026-11-17).
+2026-11-17). An old event is no Highlight, though it stays on the Board with its level and flag: a CVE Incident whose CVEs
+are all two or more years older than this year, or one whose Summary dates the reported attack or incident (`event_date`)
+more than 14 days back (owner, 2026-11-17: "오래된 만큼 주요 사건엔 올라오지 못하게", after an October 29 attack reported on
+November 14 stood among them).
 _Avoid_: featured, top, hot, pinned item
 
 **Published time** (게시 시각):

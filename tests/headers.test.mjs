@@ -44,10 +44,13 @@ test("the inline script starts the first load's four files, and getJson takes ea
   const fetch = (url, { signal }) => { limits[url] = signal.ms ?? ms; const n = calls.push(url); return Promise.resolve({ ok: true, json: () => ({ url, n }) }); };
   const added = [];
   const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch, AbortSignal: { timeout: (t) => ({ ms: t }) }, AbortController,
-    setTimeout: (f, t) => { ms = t; }, clearTimeout() {}, document: { documentElement: { classList: { add: (c) => added.push(c) } } } });
+    setTimeout: (f, t) => { ms = t; }, clearTimeout() {}, navigator: { language: 'ko-KR' },
+    document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) } } } });
   ctx.window = ctx;
   vm.runInContext(html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1], ctx);
-  assert.deepEqual(added, ['js']); // hides the no-script about text before the first paint
+  // hides the no-script about text before the first paint; the collection notice goes past its 90 days (cn-off)
+  assert.deepEqual(added.filter((c) => c !== 'cn-off'), ['js']);
+  assert.equal(ctx.document.documentElement.lang, 'ko'); // the notice paints in the visitor's language
   assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['data/board/products.json', 'data/board/rows.json', 'data/index.json', 'data/status.json']);
   const app = read('web/app.mjs');
   const getJson = vm.runInContext(`const DATA_URL = 'data/'; ${app.match(/const SLOW_MS[\s\S]*?\n\};/)[0]} getJson`, ctx);
