@@ -1557,7 +1557,7 @@ function update(change, animate = true) {
 
 // While the phone sheet covers the Board, everything else is inert (no taps, no reading) until it closes.
 function sheetInert(on) {
-  for (const node of document.querySelectorAll('header.top, .support, footer, #jump, main > *:not(#filters):not(#announce)')) node.inert = on;
+  for (const node of document.querySelectorAll('header.top, footer, #jump, main > *:not(#filters):not(#announce)')) node.inert = on;
 }
 
 // The panel remembers who opened it and where the page stood (critique 13: closing it threw the reader to the top and
