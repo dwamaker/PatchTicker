@@ -94,7 +94,7 @@ export async function productResponse(bucket, lang, slug) {
   const home = `<a href="/">${esc(t.home)}</a>`;
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
-    const doc = await readJson(bucket, `check/p/${slug}.json`);
+    const doc = await readJson(bucket, `check/p/${slug}.json`, lang);
     if (!doc || !Array.isArray(doc.incidents) || !doc.incidents.length) return note(lang, 404, t.missing, [home]);
     return new Response(productHtml(doc, lang, slug), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300', 'content-security-policy': PAGE_CSP },

@@ -1,5 +1,5 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, collectionFacts } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, withJapanese } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -280,6 +280,9 @@ function toggleTheme() {
 // a few bytes; the rest are MBs on a slow phone), and one under way while the tab was away is aborted when it comes back.
 const SLOW_MS = 2 * 60 * 1000;
 const underWay = new Set(); // each request's controller, while it lasts
+// Documents parsed without the Japanese twins and maybe not yet in the Board's state (a Promise.all still waiting on a
+// sibling): setLang gives them the twins with the state. Emptied a task after the last request ends, so never a leak.
+const plainDocs = new Set();
 let away = document.hidden; // hidden, or the connection dropped: what is under way meanwhile is asked again on return
 const getJson = async (name) => {
   // index.html's inline script asked for the first load's files already: take each response once (main drops the rest).
@@ -294,7 +297,12 @@ const getJson = async (name) => {
   try {
     const read = (early || fetch(DATA_URL + name, { cache: 'no-cache', signal: ctl.signal })).then((res) => {
       if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
-      return res.text().then((text) => JSON.parse(text, withJapanese)); // a Japanese page reads the English Summary
+      return res.text().then((text) => {
+        if (lang === 'ja') return JSON.parse(text, withJapanese); // a Japanese page reads the English Summary
+        const doc = JSON.parse(text); // the reviver costs ~5x the parse: only a Japanese page pays it
+        plainDocs.add(doc);
+        return doc;
+      });
     });
     // An early request carries index.html's signal, not this one: the limit and the abort on return reach it by a race.
     return await (early ? Promise.race([read, new Promise((_, no) => ctl.signal.addEventListener('abort', () => no(new Error(`${name}: no answer`))))]) : read);
@@ -304,6 +312,8 @@ const getJson = async (name) => {
   } finally {
     clearTimeout(limit);
     underWay.delete(ctl);
+    // a task later: every caller has stored its documents by then, and a .catch(() => getJson(...)) has started its own
+    if (!underWay.size) setTimeout(() => underWay.size || plainDocs.clear());
   }
 };
 
@@ -1647,6 +1657,8 @@ $('product-pick').addEventListener('input', () => { $('pick-hint').textContent =
 // browser has no popovers the button steps to the next language instead.
 const langsOpen = () => canPop && $('langs').matches(':popover-open');
 const setLang = (next) => crossFade(() => {
+  // Turning Japanese: what was parsed in Korean or English gains the twins once (products is redrawn below)
+  if (next === 'ja' && lang !== 'ja') for (const doc of [incidents, seenProducts, productCounts, ...plainDocs]) giveJapanese(doc);
   lang = next;
   store(SAVED_LANG, lang);
   clearTimeout(announcing);

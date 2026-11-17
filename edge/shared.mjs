@@ -22,11 +22,11 @@ export async function checkSlug(id) {
   return [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// bucket: the R2 binding (anything with get(key) -> { text() } or null). A missing document is null. Every reader gets
-// the English twin as Japanese (board.mjs withJapanese), as the Board does.
-export async function readJson(bucket, key) {
+// bucket: the R2 binding (anything with get(key) -> { text() } or null). A missing document is null. lang 'ja' gets
+// the English twin as Japanese (board.mjs withJapanese); any other parses plain, the reviver costs ~5x the parse.
+export async function readJson(bucket, key, lang) {
   const obj = await bucket.get(key);
-  return obj && JSON.parse(await obj.text(), withJapanese);
+  return obj && JSON.parse(await obj.text(), lang === 'ja' ? withJapanese : undefined);
 }
 
 // Fail closed: a store that cannot be read, or a document the renderer cannot use, answers down() (a 503 note with a

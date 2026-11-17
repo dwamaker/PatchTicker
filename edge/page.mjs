@@ -389,14 +389,14 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     : [home]);
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
-    const doc = await readJson(bucket, `pages/${slug}.json`);
+    const doc = await readJson(bucket, `pages/${slug}.json`, lang);
     if (!doc) return note(lang, 404, t.missing, [home]);
     if (doc.moved_to) {
       // An absorbed Incident (ticket 04): its address moves to the survivor's page while both are within PAGE_DAYS,
       // and to the survivor's row on the Board while the survivor has no page yet (owner, 11-10).
       if (!withinPageDays(doc.moved, now)) return expired(null);
       if (typeof doc.moved_to_id !== 'string' || !doc.moved_to_id) throw new Error(`pages/${slug}.json: no survivor`);
-      const target = SLUG.test(doc.moved_to) ? await readJson(bucket, `pages/${doc.moved_to}.json`) : null;
+      const target = SLUG.test(doc.moved_to) ? await readJson(bucket, `pages/${doc.moved_to}.json`, lang) : null;
       if (target?.first_seen && !withinPageDays(target.first_seen, now)) return expired(target);
       if (!target?.summary || target.moved_to || !onBoard(target)) return redirect(302, `${SITE}/#i=${encodeURIComponent(doc.moved_to_id)}`);
       return redirect(301, pageUrl(lang, doc.moved_to));
@@ -404,7 +404,7 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     if (!withinPageDays(doc.first_seen, now)) return expired(doc);
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
-    const others = await readJson(bucket, 'board/others.json').catch(() => null);
+    const others = await readJson(bucket, 'board/others.json', lang).catch(() => null);
     return new Response(pageHtml(doc, lang, slug, others, await productPageList(doc, lang)), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP },
     });

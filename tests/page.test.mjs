@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { slug } from '../web/board.mjs';
 import { pageResponse } from '../edge/page.mjs';
-import { cached } from '../edge/shared.mjs';
+import { cached, readJson } from '../edge/shared.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');
 const reads = [];
@@ -613,4 +613,11 @@ test('an Incident page states its headline, description, dates, language and add
   const en = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(await (await page(SSHOLE, 'en')).text())[1]);
   assert.equal(en.inLanguage, 'en');
   assert.equal(en.url, 'https://patchticker.com/en/i/CVE-2026-123158');
+});
+
+test('readJson gives the Japanese twins only to a Japanese reader: Korean, English and no language parse plain', async () => {
+  const bucket = { get: async () => ({ text: async () => '{"summary":{"ko":{"title":"가"},"en":{"title":"A"}}}' }) };
+  for (const lang of ['ko', 'en', undefined]) assert.equal('ja' in (await readJson(bucket, 'k', lang)).summary, false);
+  assert.equal((await readJson(bucket, 'k', 'ja')).summary.ja.title, 'A');
+  assert.equal(await readJson({ get: async () => null }, 'k', 'ja'), null);
 });

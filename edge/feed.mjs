@@ -110,7 +110,7 @@ export async function productFeedResponse(bucket, request, lang, now = Date.now(
       const least = LEVELS.indexOf(query.min);
       const matches = lookUp(index, query.names);
       const slugs = [...new Set(matches.flatMap((m) => m?.slugs || []))].slice(0, MAX_DOCS);
-      const docs = (await Promise.all(slugs.map((s) => readJson(bucket, `check/p/${s}.json`)))).filter(Boolean);
+      const docs = (await Promise.all(slugs.map((s) => readJson(bucket, `check/p/${s}.json`, lang)))).filter(Boolean);
       const items = new Map(); // id -> { entry, names }
       for (const doc of docs) {
         for (const e of doc.incidents || []) {
@@ -153,7 +153,7 @@ const ALL = {
   ja: { title: 'Patch Ticker · ボード全体', about: 'ボードのすべての新しいセキュリティインシデント、参考レベルまで（要約なしの軽い項目）', feed: '/ja/feed/all.xml' },
 };
 export const allFeedResponse = (bucket, lang) => failClosed(async () => {
-  const doc = await readJson(bucket, ALL_DOC);
+  const doc = await readJson(bucket, ALL_DOC, lang);
   if (!doc || !Array.isArray(doc.incidents)) throw new Error(`${ALL_DOC} missing`);
   const entries = doc.incidents.filter((e) => e && typeof e.id === 'string');
   const items = await Promise.all(entries.map(async (e) => productItem(e, Array.isArray(e.tags?.[lang]) ? e.tags[lang].map(String) : [], lang,
@@ -174,7 +174,7 @@ export const allFeedResponse = (bucket, lang) => failClosed(async () => {
 
 // bucket: the R2 binding (anything with get(key) -> { text() } or null).
 export const feedResponse = (bucket, lang) => failClosed(async () => {
-  const doc = await readJson(bucket, FEED_DOC);
+  const doc = await readJson(bucket, FEED_DOC, lang);
   if (!doc) throw new Error(`${FEED_DOC} missing`);
   return new Response(await feedXml(doc, lang), {
     headers: { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=300' },

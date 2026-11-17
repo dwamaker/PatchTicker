@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -1717,6 +1717,16 @@ test('a Japanese reader gets the English twin of every Korean and English pair, 
   assert.equal(feedPath('ja', 'all'), '/ja/feed/all.xml');
   assert.equal(langPrefix('ko'), '');
   assert.deepEqual(LANGS, ['ko', 'en', 'ja']);
+});
+
+test('a Board that turns Japanese after a plain parse gets the same twins in place as the reviver gives', () => {
+  const text = JSON.stringify({ incidents: [{ id: 'CVE-2026-1', summary: { ko: { title: '가', cves: [{ ko: '다', en: 'C' }] }, en: { title: 'A' } },
+    quick_title: { ko: { title: '나' }, en: { title: 'B' } } }], products: [{ id: 'x:y', ko: '와이', en: 'Y' }], own: { ko: 1, en: 2, ja: 3 }, list: ['ko', 'en'] });
+  const doc = JSON.parse(text);
+  assert.equal(giveJapanese(doc), doc); // in place: the Board's state keeps its references
+  assert.deepEqual(doc, JSON.parse(text, withJapanese));
+  assert.equal(titleOf(doc.incidents[0], 'ja'), 'A');
+  assert.equal(giveJapanese(null), null);
 });
 
 test('statusCounts: today from local midnight, the week from the file\'s since, Board Incidents only', () => {

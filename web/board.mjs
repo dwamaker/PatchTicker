@@ -673,10 +673,17 @@ export const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion',
 // shows the English Summary (withJapanese).
 export const LANGS = ['ko', 'en', 'ja'];
 export const langPrefix = (lang) => (lang === 'ko' ? '' : `/${lang}`);
-// A JSON.parse reviver for every document the Board and the edge read: an object with Korean and English twins and no
-// Japanese one (a Summary, its quick title, a product's names, a CVE line) gets the English as its Japanese, so each
-// reader's `x[lang]` finds text on a Japanese page without a language step of its own.
+// A JSON.parse reviver for the documents a Japanese page reads (the Board and the edge use it only then: it makes a parse
+// ~5x slower): an object with Korean and English twins and no Japanese one (a Summary, its quick title, a product's
+// names, a CVE line) gets the English as its Japanese, so each reader's `x[lang]` finds text without a language step.
 export const withJapanese = (_, v) => (v && typeof v === 'object' && !Array.isArray(v) && 'ko' in v && 'en' in v && !('ja' in v) ? { ...v, ja: v.en } : v);
+// The same twins given in place to a document parsed without the reviver: a Board that turns Japanese after loading.
+export function giveJapanese(v) {
+  if (!v || typeof v !== 'object') return v;
+  for (const k in v) giveJapanese(v[k]);
+  if (!Array.isArray(v) && 'ko' in v && 'en' in v && !('ja' in v)) v.ja = v.en;
+  return v;
+}
 
 // The words the Board (web/app.mjs), the Incident page and the RSS feed share, written once so they never drift apart.
 // `nvd` is the line beside the NVD notice in the page's language; the required English sentence is static, so English has none.
