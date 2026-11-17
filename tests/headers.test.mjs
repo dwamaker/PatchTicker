@@ -48,8 +48,9 @@ test("the inline script starts the first load's four files, and getJson takes ea
     document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) } } } });
   ctx.window = ctx;
   vm.runInContext(html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1], ctx);
-  // hides the no-script about text before the first paint; the collection notice goes past its 90 days (cn-off)
-  assert.deepEqual(added.filter((c) => c !== 'cn-off'), ['js']);
+  // hides the no-script about text before the first paint; the collection notice goes past its 90 days (cn-off); with
+  // no storage the first-visit line is not drawn (pr-off), as app.mjs's primerOpen = !stored(SAVED_GUIDE, true)
+  assert.deepEqual(added.filter((c) => c !== 'cn-off'), ['js', 'pr-off']);
   assert.equal(ctx.document.documentElement.lang, 'ko'); // the notice paints in the visitor's language
   assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['data/board/products.json', 'data/board/rows.json', 'data/index.json', 'data/status.json']);
   const app = read('web/app.mjs');
@@ -64,6 +65,20 @@ test("the inline script starts the first load's four files, and getJson takes ea
   assert.match(app.match(/async function main\(\)[\s\S]*?await first;/)[0], /getJson\('board\/products\.json'\)[\s\S]*window\.vrEarly = null;/);
   // The Board draws from the row views; without rows.json (rollout, a failed fetch) the full week, as before (owner, 11-10).
   assert.match(app.match(/async function main\(\)[\s\S]*?await first;/)[0], /getJson\('board\/rows\.json'\)\.catch\(\(\) => getJson\('board\/recent\.json'\)\)/);
+});
+
+test("the inline script draws the first-visit line from the first paint only while the guide is unseen (CLS, 11-17)", async () => {
+  const vm = await import('node:vm');
+  const early = html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1];
+  const classes = (saved) => {
+    const added = [];
+    vm.runInContext(early, vm.createContext({ location: { hostname: 'localhost' }, fetch: () => Promise.resolve(), navigator: { language: 'ko-KR' },
+      localStorage: { getItem: (k) => saved[k] ?? null },
+      document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) }, style: { setProperty() {} } } } }));
+    return added;
+  };
+  assert.ok(!classes({}).includes('pr-off')); // a first visit: app.mjs will show it, so the page paints it
+  assert.ok(classes({ 'vr-guide': 'seen' }).includes('pr-off'));
 });
 
 // The Board's requests and live checks (web/app.mjs, from getJson to the online listener) in node:vm. asked holds each

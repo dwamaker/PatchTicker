@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Patch Ticker · 실시간 보안 취약점 현황판</title>
-  <link rel="alternate" type="application/rss+xml" hreflang="ko" title="Patch Ticker (한국어)" href="/feed.xml">
-  <link rel="alternate" type="application/rss+xml" hreflang="en" title="Patch Ticker (English)" href="/en/feed.xml">
+  <link rel="alternate" type="application/rss+xml" title="Patch Ticker (한국어)" href="/feed.xml">
+  <link rel="alternate" type="application/rss+xml" title="Patch Ticker (English)" href="/en/feed.xml">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <meta name="description" content="새로 나온 보안 취약점과 패치를 10분마다 모아, 내가 쓰는 제품 기준으로 보여 주는 실시간 현황판. New security vulnerabilities and patches, by the products you run.">
   <link rel="canonical" href="https://patchticker.com/">
@@ -38,6 +38,8 @@
     try { if (localStorage.getItem('vr-note') === since) document.documentElement.classList.add('cn-off');
       const saved = localStorage.getItem('vr-lang'); if (saved === 'ko' || saved === 'en') early = saved; } catch {}
     document.documentElement.lang = early; // so the notice paints in the visitor's language
+    // the first-visit line (app.mjs primer) is in the page from the first paint; seen, or no storage to remember it: not drawn
+    try { if (localStorage.getItem('vr-guide') !== null) document.documentElement.classList.add('pr-off'); } catch { document.documentElement.classList.add('pr-off'); }
     try { const t = localStorage.getItem('vr-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     const s = Number(localStorage.getItem('vr-text-pct')); if ([87.5, 112.5, 125, 150].includes(s)) document.documentElement.style.setProperty('--ts', s / 100); } catch {}
     // The first load's four files start loading now, while app.mjs and board.mjs still download: app.mjs takes each
@@ -207,7 +209,8 @@
     .cn-off .cn-wrap { display: none; }
     .collect-note { display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.375rem 0.375rem 0.875rem; border: 1px solid var(--rule-2); border-radius: var(--r-ctl); background: var(--panel-2); color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.5; }
     .collect-note p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-    :root:not([lang="en"]) .collect-note [lang="en"], :root[lang="en"] .collect-note [lang="ko"] { display: none; }
+    /* text the page paints before app.mjs runs is in both languages; the head script's lang picks one (CLS, 11-17) */
+    :root:not([lang="en"]) :is(.collect-note, [data-t], #status, #primer) [lang="en"], :root[lang="en"] :is(.collect-note, [data-t], #status, #primer) [lang="ko"] { display: none; }
     .collect-note .cn-close { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--r-ctl); background: none; color: var(--ink-2); cursor: pointer; }
     .collect-note .cn-close svg { width: 14px; height: 14px; }
     @media (hover: hover) { .collect-note .cn-close:hover { background: var(--panel); color: var(--ink); } }
@@ -339,7 +342,7 @@
     /* status line: last update and count on the left, the 읽는 법 disclosure on the right */
     .statusline > #status { flex: 1 1 auto; min-width: 0; }
     .statusline #guide-btn { flex: none; }
-    body:has(#primer:not([hidden])) .statusline #guide-btn { display: none; } /* the first-visit line carries 읽는 법 자세히: one way in at a time */
+    .js:not(.pr-off) body:has(#primer:not([hidden])) .statusline #guide-btn { display: none; } /* the first-visit line carries 읽는 법 자세히: one way in at a time */
     .fp-zero-note { display: none; }
     .has-zero .fp-zero-note { display: block; }
     @media (prefers-reduced-motion: no-preference) { .has-zero .fp-zero-note { animation: words-in 240ms cubic-bezier(0.16, 1, 0.3, 1); } }
@@ -492,6 +495,13 @@
     .list li.hl::before { content: ""; position: absolute; inset: 0 auto 0 0; z-index: 1; width: 3px; background: var(--note); pointer-events: none; }
     .list li.hl-highest::before { background: var(--high); }
     .list li.hl-high::before { background: var(--mid-mark); }
+    /* The whole list drawn (owner, 11-17: 789 rows, a theme flip 106 ms, each 더 보기 longer): a row off the screen is
+       skipped until it nears it, keeping its last measured height (auto) and until then a closed row's usual one (73-94px,
+       on phones 158-214px). The first ten stay drawn: the list's share of a first screen holds fewer (73px rows under the
+       bar on a 900px screen with no Highlights), so the first paint waits for nothing. A focused row stays drawn too:
+       its ring paints 4px outside the row, which the containment this brings would cut. */
+    #board > li:nth-child(n+11):not(:focus-within) { content-visibility: auto; contain-intrinsic-size: auto 84px; }
+    @media (max-width: 767px) { #board > li:nth-child(n+11):not(:focus-within) { contain-intrinsic-size: auto 170px; } }
 
     /* 최신순: plain rows on one hairline each */
     .list { border-top: 1px solid var(--rule-2); }
@@ -774,6 +784,13 @@
     .sk-tag { width: 3.75rem; height: 1.375rem; border-radius: var(--r-pill); }
     .sk-date { width: 4.5rem; height: 0.75rem; }
     .sk-time { width: 2.5rem; height: 0.75rem; }
+    /* CLS (owner, 11-17): index.html holds this loading Board from the first paint and app.mjs draws the same, so nothing
+       moves when it takes over. A head's bar sits on the line its words will take; the Highlights head keeps the 44px
+       of 모두 펼치기, which comes with the rows. Without script none of it shows. */
+    .sk-head { display: inline-block; vertical-align: middle; }
+    #pinned-head { min-height: var(--tap); align-content: center; }
+    :root:not(.js) :is(#pinned, .skel, .sk, #status, #primer), .pr-off #primer { display: none; }
+    #primer .gauge.sev-critical { --fill: 0.98; } /* the static line's 9.8 ring (a style attribute would need 'unsafe-inline') */
     @keyframes scan { from { background-position: 0 -40vh; } to { background-position: 0 140vh; } }
     @media (prefers-reduced-motion: no-preference) {
       .loading .sk:not(.sk-ring) { background: linear-gradient(180deg, var(--panel-2) 0, var(--panel-2) calc(50% - 4rem), var(--rule-2) 50%, var(--panel-2) calc(50% + 4rem), var(--panel-2) 100%) 0 0 / 100% 40vh no-repeat fixed, var(--panel-2); animation: scan 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
@@ -790,13 +807,13 @@
     .js #about { display: none; }
   </style>
 </head>
-<body>
+<body class="loading">
   <a id="skip-top" class="skip" href="#board-start" data-t="skipTop"></a>
   <button id="new-above" class="new-above off" type="button" data-t-aria="toNew"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span></button>
   <header class="top"><div class="wrap">
     <div class="brand"><h1><a id="home" href="./"><svg viewBox="0 0 64 56" aria-hidden="true"><path fill-rule="evenodd" d="M17 0H44A20 20 0 0 1 44 40H34V56H17V26.5H0V13.5H17ZM53.5 20A9.5 9.5 0 1 0 34.5 20A9.5 9.5 0 1 0 53.5 20Z"/></svg><span data-t="brand">Patch Ticker</span></a></h1>
       <a id="repo" class="btn" href="https://github.com/dwamaker/PatchTicker" target="_blank" rel="noopener noreferrer" data-t-aria="repo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
-      <a id="support" class="btn" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg><span data-t="support"></span></a></div>
+      <a id="support" class="btn" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg><span data-t="support"><span lang="ko">후원</span><span lang="en">Support</span></span></a></div>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal">기본</button><button id="view-easy" type="button" aria-pressed="false" data-t="easy">쉬운 설명</button></div>
     <button id="prefs-btn" class="btn" type="button" aria-controls="prefs" aria-expanded="false" data-t-aria="prefs"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h7M14 5h1M3 13h1M8 13h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="13" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="end" id="prefs">
@@ -811,7 +828,7 @@
   <div class="wrap cn-wrap"><div id="collect-note" class="collect-note" role="note"><p><span lang="ko">Patch Ticker는 2026년 11월 9일부터 수집했습니다. 그 전에 공개된 취약점은 목록에 없을 수 있습니다. 패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.</span><span lang="en">Patch Ticker has collected since 9 November 2026. Vulnerabilities published before then may be missing. An Incident is not removed when a patch ships; it stays for 90 days.</span></p><button id="cn-close" class="cn-close" type="button" aria-label="알림 닫기" data-t-aria="noticeClose"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div></div>
   <main class="wrap">
     <div id="filter">
-      <div class="field"><label for="product-pick" data-t="products"></label><input id="product-pick" list="product-options" spellcheck="false" data-t-placeholder="productsHint" autocomplete="off"></div>
+      <div class="field"><label for="product-pick" data-t="products"><span lang="ko">사용하는 제품</span><span lang="en">Products you run</span></label><input id="product-pick" list="product-options" spellcheck="false" data-t-placeholder="productsHint" autocomplete="off"></div>
       <datalist id="product-options"></datalist>
       <div class="search-row"><div class="field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" spellcheck="false" data-t-placeholder="searchHint" autocomplete="off" aria-keyshortcuts="/"><button id="search-clear" class="clear" type="button" data-t-aria="clearSearch" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><kbd class="key" aria-hidden="true">/</kbd></div><div id="stuck-tools" class="stuck-tools" hidden><button id="stuck-filter" class="btn" type="button" aria-controls="filters" aria-expanded="false" data-t-aria="filterBtn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="stuck-count" class="count" hidden></span></button><label class="sort"><span class="sr-only" data-t="sortLabel"></span><svg class="sort-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v11M2.5 11 5 13.5 7.5 11M11 13.5v-11M8.5 5 11 2.5 13.5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><select id="stuck-sort"></select></label></div></div>
       <p id="pick-hint" class="pick-note" role="status"></p>
@@ -819,36 +836,36 @@
       <div id="picks" data-t-aria="picked"></div>
     </div>
     <div class="statusline">
-      <p id="status"></p>
-      <button id="guide-btn" type="button" aria-controls="guide" aria-expanded="false"><span data-t="guideBtn"></span><i class="chev" aria-hidden="true"></i></button>
+      <p id="status"><span lang="ko">불러오는 중…</span><span lang="en">Loading…</span></p>
+      <button id="guide-btn" type="button" aria-controls="guide" aria-expanded="false"><span data-t="guideBtn"><span lang="ko">읽는 법</span><span lang="en">How to read</span></span><i class="chev" aria-hidden="true"></i></button>
     </div>
     <p id="stale" class="stale" role="status" hidden></p>
-    <aside id="primer" class="primer" data-t-aria="guideBtn" hidden></aside>
+    <aside id="primer" class="primer" data-t-aria="guideBtn" aria-label="읽는 법"><dl class="p-keys"><div class="p-key"><dt><span class="c-risk risk-highest loud"><b class="word"><span lang="ko">긴급</span><span lang="en">Urgent</span></b></span></dt><dd><span lang="ko">실제 공격·9점 이상</span><span lang="en">Attacked or 9+</span></dd></div><div class="p-key"><dt><span class="c-risk risk-high loud"><b class="word"><span lang="ko">위험</span><span lang="en">Elevated</span></b></span></dt><dd><span lang="ko">7점 이상</span><span lang="en">7+</span></dd></div><div class="p-key"><dt><span class="c-risk risk-notice loud"><b class="word"><span lang="ko">참고</span><span lang="en">Notice</span></b></span></dt><dd><span lang="ko">7점 미만</span><span lang="en">Below 7</span></dd></div><div class="p-key"><dt><span class="p-pair"><span class="c-risk risk-notice loud unrated"><b class="word"><span lang="ko">참고</span><span lang="en">Notice</span></b> </span><span class="c-score"><span class="gauge unrated" role="img" aria-label="CVSS 점수 대기">—</span></span></span></dt><dd><span lang="ko">점수 대기</span><span lang="en">Score pending</span></dd></div><div class="p-key"><dt><span class="c-score"><span class="gauge sev-critical" role="img" aria-label="CVSS 9.8"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg><b class="num">9.8</b></span></span></dt><dd><span lang="ko">CVSS 점수 (10점 만점)</span><span lang="en">CVSS score (out of 10)</span></dd></div></dl><button class="btn p-more" type="button"><span lang="ko">읽는 법 자세히</span><span lang="en">How to read</span></button><button class="btn p-close" type="button" aria-label="안내 닫기"><span class="x"></span></button></aside>
     <section id="guide" class="guide" aria-labelledby="guide-title" hidden></section>
     <p id="announce" class="sr-only" aria-live="polite"></p>
     <a id="skip" class="skip" href="#all-head" data-t="skip" hidden></a>
     <div class="bar" id="board-start" tabindex="-1">
       <div class="bar-head">
-        <h2 id="pinned-head"></h2>
+        <h2 id="pinned-head"><i class="sk sk-head"></i></h2>
         <button id="expand-all" class="btn" type="button" hidden></button>
       </div>
       <div class="bar-tools">
-        <button id="filter-btn" class="btn" type="button" aria-controls="filters" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span data-t="filterBtn"></span><span id="filter-count" class="count" hidden></span></button>
-        <label class="sort"><span data-t="sortLabel"></span><select id="sort"></select></label>
+        <button id="filter-btn" class="btn" type="button" aria-controls="filters" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span data-t="filterBtn"><span lang="ko">필터</span><span lang="en">Filters</span></span><span id="filter-count" class="count" hidden></span></button>
+        <label class="sort"><span data-t="sortLabel"><span lang="ko">정렬</span><span lang="en">Sort</span></span><select id="sort"></select></label>
       </div>
     </div>
     <div id="conds" data-t-aria="fpApplied"></div>
     <form id="filters" class="filters" hidden></form>
-    <section id="pinned" aria-labelledby="pinned-head" hidden>
-      <ol id="highlights" class="stack"></ol>
-      <div id="pin-more" class="more"></div>
+    <section id="pinned" aria-labelledby="pinned-head">
+      <ol id="highlights" class="stack"><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li></ol>
+      <div id="pin-more" class="more"><i class="sk sk-btn"></i></div>
     </section>
     <div id="empty" class="empty" hidden></div>
     <div class="list-head">
-      <h2 id="all-head" data-t="all" tabindex="-1"></h2>
+      <h2 id="all-head" data-t="all" tabindex="-1"><i class="sk sk-head"></i></h2>
       <button id="fold-toggle" class="btn" type="button" hidden></button>
     </div>
-    <ol id="board" class="list" aria-labelledby="all-head"></ol>
+    <ol id="board" class="list" aria-labelledby="all-head"><li class="skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li></ol>
     <div id="more" class="more"></div>
     <section id="about">
       <p>Patch Ticker는 새로 공개된 보안 취약점과 패치 소식을 10분마다 모아, 내가 쓰는 제품에 해당하는 것만 골라 볼 수 있게 한 현황판입니다. CVE 기록과 NVD, CISA KEV(실제 악용 목록), KISA 보안공지, 보안 뉴스를 사건 하나로 묶어 위험도와 수정 버전, 대처법을 한국어와 영어로 요약합니다.</p>
@@ -859,7 +876,7 @@
   </main>
   <div id="jump" class="jump">
     <button id="jump-up" class="off" type="button" data-t-aria="toTop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h9M8 14V6M4.5 9.5 8 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div id="step" class="step" role="group" data-t-aria="stepGroup" hidden><button id="step-up" type="button" data-t-aria="stepUp"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10 8 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button id="step-down" type="button" data-t-aria="stepDown"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div id="step" class="step" role="group" data-t-aria="stepGroup"><button id="step-up" type="button" data-t-aria="stepUp"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10 8 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button id="step-down" type="button" data-t-aria="stepDown"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <button id="jump-down" class="off" type="button" data-t-aria="toBottom"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 13.5h9M8 2v8M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <footer><div class="wrap">

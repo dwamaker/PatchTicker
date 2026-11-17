@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts } from '../web/board.mjs';
+import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts } from '../web/board.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -1645,4 +1645,19 @@ test('the collection sentence holds for the store\'s 90 days from the start; the
   const words = { since: 'Collected since 9 November 2026.', keep: 'Stays 90 days.' };
   assert.equal(collectionFacts('2026-11-09', Date.parse('2026-11-17T00:00:00Z'), words), 'Collected since 9 November 2026. Stays 90 days.');
   assert.equal(collectionFacts('2026-11-09', Date.parse('2027-03-01T00:00:00Z'), words), 'Stays 90 days.');
+});
+
+// 더 보기 (owner, 11-17: drawing all 789 rows again on each press took 262 ms): the next page is added under the drawn
+// items while the Board is the one that was drawn; anything changed since draws it whole, as before.
+test('nextPage gives the items after the drawn ones, or null when the Board changed since it was drawn', () => {
+  const result = {};
+  const items = Array.from({ length: 250 }, (_, n) => ({ id: `I${n}` }));
+  const drawn = { result, folding: true, pinAll: false, items, shown: 100 };
+  const same = { result, folding: true, pinAll: false };
+  assert.deepEqual(nextPage(drawn, same, 100).map((i) => i.id), items.slice(100, 200).map((i) => i.id));
+  assert.equal(nextPage({ ...drawn, shown: 200 }, same, 100).length, 50); // the last page can be short
+  assert.equal(nextPage(drawn, { ...same, result: {} }, 100), null); // new data, or the minute moved the Highlights
+  assert.equal(nextPage(drawn, { ...same, folding: false }, 100), null);
+  assert.equal(nextPage(drawn, { ...same, pinAll: true }, 100), null);
+  assert.equal(nextPage({}, same, 100), null); // nothing drawn yet
 });

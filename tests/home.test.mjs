@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { homeLinks, homeResponse } from '../edge/home.mjs';
-import { slug, WORDS } from '../web/board.mjs';
+import { PINNED, slug, WORDS } from '../web/board.mjs';
+
+// app.mjs's TEXT.ko and TEXT.en loading words, in that order (app.mjs needs a DOM, so they are read from its source)
+const [loadingKo, loadingEn] = [...readFileSync(new URL('../web/app.mjs', import.meta.url), 'utf8').matchAll(/ loading: '([^']+)'/g)].map((m) => m[1]);
+const WORDS_APP = { ko: loadingKo, en: loadingEn };
 
 const bucket = (doc) => ({ get: async (key) => (key === 'board/feed.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
 const broken = { get: async () => { throw new Error('R2 down'); } };
@@ -80,6 +84,30 @@ test('the real index.html: one marker inside the about section, and the title th
   assert.equal(html.split('<!--home-links-->').length, 2);
   assert.match(html, /<section id="about">(?:(?!<\/section>)[\s\S])*<!--home-links-->[\s\S]*?<\/section>/);
   assert.equal(/<title>([^<]*)<\/title>/.exec(html)[1], WORDS.ko.title);
+});
+
+test('the real index.html: the feed links name no hreflang (a feed is not this page in another language)', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const feeds = html.match(/<link rel="alternate" type="application\/rss\+xml"[^>]*>/g);
+  assert.equal(feeds.length, 2);
+  for (const link of feeds) assert.doesNotMatch(link, /hreflang/);
+});
+
+// CLS (owner, 11-17): the page paints before app.mjs runs, so the HTML itself holds the loading Board app.mjs then draws
+// (render(), placeholder()): the Highlight frames and list rows, the heads' bars, 불러오는 중, the step buttons.
+test('the real index.html paints the loading Board, so app.mjs taking over moves nothing', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const part = (id) => new RegExp(`<[a-z0-9]+ id="${id}"[^>]*>([\\s\\S]*?)</(?:ol|div|section|aside|p|h2)>\\r?\\n`).exec(html);
+  const skel = '<div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span>'
+    + '<span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span>'
+    + '<span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div>';
+  assert.equal(part('highlights')[1].split(`<li class="alert skel" aria-hidden="true">${skel}</li>`).length - 1, PINNED);
+  assert.equal(part('board')[1].split(`<li class="skel" aria-hidden="true">${skel}</li>`).length - 1, 6);
+  for (const id of ['pinned', 'primer', 'step']) assert.doesNotMatch(new RegExp(`<[a-z]+ id="${id}"[^>]*>`).exec(html)[0], /\shidden/, id);
+  assert.match(html, /<h2 id="pinned-head"><i class="sk sk-head"><\/i><\/h2>/);
+  assert.match(html, /<h2 id="all-head" data-t="all" tabindex="-1"><i class="sk sk-head"><\/i><\/h2>/);
+  assert.match(html, /<body class="loading">/);
+  assert.match(html, new RegExp(`<p id="status"><span lang="ko">${WORDS_APP.ko}</span><span lang="en">${WORDS_APP.en}</span></p>`));
 });
 
 test('the real index.html: #about is the last child of <main>, and no top-level <section> is its 12th child', () => {

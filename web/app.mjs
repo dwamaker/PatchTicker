@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, collectionFacts } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, collectionFacts } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -168,6 +168,13 @@ function loadLang() {
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
 // The theme the page shows: the visitor's remembered choice, else the system's.
 const theme = () => document.documentElement.dataset.theme || (darkQuery.matches ? 'dark' : 'light');
+// Phones tint the browser's own bar from the theme-color metas, which follow the system: a remembered choice writes the
+// page's ground into both, so the bar matches the page.
+function paintBar() {
+  if (!document.documentElement.dataset.theme) return;
+  const ground = getComputedStyle(document.body).backgroundColor;
+  for (const m of document.querySelectorAll('meta[name="theme-color"]')) m.content = ground;
+}
 
 // Text size: 가− / 가+ step through these root sizes, remembered like the theme (index.html's inline script applies
 // it before the first paint).
@@ -690,10 +697,10 @@ const rowNames = new Map();
 const rowName = (id) => rowNames.get(id) || rowNames.set(id, `row-${rowNames.size + 1}`).get(id);
 // Only rows on or near the screen are named: every named row is captured, and off-screen ones cost memory for nothing.
 function nameRows() {
-  for (const li of document.querySelectorAll('li[data-vt]')) {
-    const box = li.getBoundingClientRect();
-    li.style.viewTransitionName = box.bottom > -200 && box.top < innerHeight + 200 ? li.dataset.vt : '';
-  }
+  // every box read before any name is written: a read after a write would restyle the page once per row (789 at the end)
+  const rows = [...document.querySelectorAll('li[data-vt]')];
+  const near = rows.map((li) => { const box = li.getBoundingClientRect(); return box.bottom > -200 && box.top < innerHeight + 200; });
+  rows.forEach((li, n) => { li.style.viewTransitionName = near[n] ? li.dataset.vt : ''; });
 }
 // Resolves once the new Board is drawn (a caller that reads the drawn rows waits for it).
 function boardTransition(change) {
@@ -752,6 +759,7 @@ function pageText() {
   const t = TEXT[lang];
   document.documentElement.lang = lang;
   showTextSize();
+  paintBar(); // at the start and after each theme switch
   document.title = t.title;
   $('rss').href = lang === 'en' ? '/en/feed.xml' : '/feed.xml';
   for (const node of document.querySelectorAll('[data-t]')) {
@@ -970,9 +978,8 @@ function moreButtons(rest) {
   if (rest > 0) {
     const more = Object.assign(el('button', 'btn', t.showMore(rest)), { type: 'button' });
     more.addEventListener('click', () => boardTransition(() => {
-      shown += PAGE;
-      render();
-      $('more').querySelector('button')?.focus({ preventScroll: true }); // render() replaced it; keep the place
+      addPage(); // the next rows under the drawn ones; the whole Board only when it changed since it was drawn
+      $('more').querySelector('button')?.focus({ preventScroll: true }); // replaced; keep the place
       clearTimeout(announcing); // a pending count from the last search must not talk over this
       $('announce').textContent = t.moreDone(Math.min(PAGE, rest), Math.max(0, rest - PAGE)); // the last page can be short
     }));
@@ -1056,7 +1063,7 @@ function render() {
   // 묶음 풀기 / 묶어 보기: only where a fold exists to undo or to bring back.
   $('fold-toggle').hidden = folded === rest || !folded.some((i) => i.fold);
   $('fold-toggle').textContent = folding ? TEXT[lang].unfold : TEXT[lang].refold;
-  $('board').replaceChildren(...items.slice(0, shown).flatMap((i) => (i.fold ? foldRows(i) : [row(i, false)])));
+  $('board').replaceChildren(...items.slice(0, shown).flatMap(itemRows));
   // Nothing found: the empty state below carries 이전 사건에서도 찾기 itself, so the buttons under the list stay away.
   $('more').replaceChildren(...(loadError || !updated || !list.length ? [] : moreButtons(items.length - shown)));
   // OS picks show as pressed buttons in the quick bar, so only Products become chips here.
@@ -1074,8 +1081,8 @@ function render() {
   $('stuck-sort').replaceChildren(...[...$('sort').options].map((o) => o.cloneNode(true)));
   $('stuck-sort').value = filter.sort;
   // Keys, not ids: a Highlight's list copy opens on its own (rowKey), so 모두 펼치기 counts each drawn row once.
-  visibleIds = [...highlights.map((i) => i.id),
-    ...items.slice(0, shown).flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i])).map((i) => rowKey(i, highlightedNow, false))];
+  visibleIds = [...highlights.map((i) => i.id), ...itemKeys(items.slice(0, shown))];
+  drawn = { result: lastBoard.result, folding, pinAll, items, shown };
   $('expand-all').hidden = !visibleIds.length;
   // With no Highlights, 모두 펼치기 stands at the list's head, not alone on the 주요 사건 line (critique 14).
   const expandHome = highlights.length ? $('pinned-head') : $('all-head');
@@ -1106,6 +1113,23 @@ function render() {
   placeJump();
 }
 let shownCount = 0;
+// A list item as rows (a vendor fold is several), and the keys 모두 펼치기 counts for the drawn ones.
+const itemRows = (i) => (i.fold ? foldRows(i) : [row(i, false)]);
+const itemKeys = (items) => items.flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i])).map((i) => rowKey(i, highlightedNow, false));
+// What render() last drew of the list (nextPage): 더 보기 adds to it while it still stands.
+let drawn = {};
+function addPage() {
+  const page = nextPage(drawn, { result: filtered(), folding, pinAll }, PAGE);
+  shown += PAGE;
+  if (!page) return render();
+  $('board').append(...page.flatMap(itemRows));
+  visibleIds.push(...itemKeys(page));
+  drawn.shown = shown;
+  $('expand-all').textContent = allOpen() ? TEXT[lang].collapseAll : TEXT[lang].expandAll;
+  $('more').replaceChildren(...moreButtons(drawn.items.length - shown));
+  watchFresh();
+  placeJump();
+}
 
 // A row-shaped stand-in: the same grid cells as row(), filled with bars, a pill and a ring track. Hidden from
 // screen readers (the status line says 불러오는 중).
@@ -2351,7 +2375,7 @@ function details(incident) {
   // Step 4 (owner, 11-15: 347 group links were shown nowhere): an advisory or write-up is left out only when a drawn CVE
   // line links it; the Easy view draws none.
   const onLines = new Set(easy ? [] : cveLines(incident, lang).flatMap((l) => (incident.cve_links?.[l.cve] || []).map((x) => x.url)));
-  for (const m of [...incident.mentions].sort((a, b) => rank(a) - rank(b))) {
+  for (const m of incident.mentions.toSorted((a, b) => rank(a) - rank(b))) {
     if ((linkedAbove && m.kind === 'cve_record') || (['advisory', 'writeup'].includes(m.kind) && onLines.has(m.url))) continue; // on each CVE's line
     const key = `${m.kind} ${host(m.url)}`;
     groups.set(key, [...(groups.get(key) || []), m]);
@@ -2498,8 +2522,8 @@ function foldRows(group) {
   const t = TEXT[lang];
   const opened = openFolds.has(group.fold);
   const members = group.incidents;
-  const gravest = [...members].sort((a, b) => RISKS.indexOf(riskLevel(a)) - RISKS.indexOf(riskLevel(b)))[0];
-  const top = [...members].sort((a, b) => (b.cvss || 0) - (a.cvss || 0))[0];
+  const gravest = members.toSorted((a, b) => RISKS.indexOf(riskLevel(a)) - RISKS.indexOf(riskLevel(b)))[0];
+  const top = members.toSorted((a, b) => (b.cvss || 0) - (a.cvss || 0))[0];
   const newest = foldNewest(group);
   const li = el('li', opened ? 'vendor-fold open' : 'vendor-fold');
   li.dataset.ids = members.map((i) => i.id).join(' ');

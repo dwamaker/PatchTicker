@@ -662,6 +662,17 @@ Restrained outlined buttons for theme, language and copying a command.
   them (1.6s, the only loop, and only while loading; reduced motion: still bars). When the rows arrive, those on
   screen rise 8px and fade in top to bottom (360ms, 28ms apart, at most twelve) while the rings fill; reduced
   motion: one fade. A reload plays it the same way, at the restored place.
+  That loading Board is in `index.html` itself, painted before `app.mjs` runs (owner, 11-17: CLS 0.18 on a phone): the
+  frames and rows, the heads' bars on the lines their words will take, 불러오는 중, the step buttons, and the first-visit
+  line unless the head script finds it seen; first-screen words are in the markup in both languages, the head script's
+  `lang` showing one. The Highlights head keeps the 44px of 모두 펼치기, which comes with the rows. Whatever `app.mjs`
+  draws on the first screen before the data must be in the markup the same, or it moves the page when the script runs.
+- **The whole list stays light (owner, 11-17: 789 rows, each 더 보기 slower, a theme flip 106 ms):** a list row from the
+  eleventh on is skipped by the browser while it is off the screen (`content-visibility: auto`), holding its last
+  measured height and until then a closed row's usual one (84px, phones 170px); the first ten never are, so the first
+  paint waits for nothing, and a focused row never is, so its ring outside the row is not cut. 더 보기 adds the next
+  rows under the drawn ones; the whole list is drawn again only when the Board changed since. Plain scrolling shows
+  every row; the long 맨 위로 / 맨 아래로 flight can pass rows not yet drawn (their frames, empty) for a frame or two.
 - **Motion for views, folds and arrivals (11-09, owner):** switching 기본 / 쉬운 설명 runs through the Board's View
   Transition: each row on screen lets its old words sink 5px and fade (160ms) while the new ones rise into place
   (300ms, 60ms later), and rows whose height changed glide. A vendor fold opens like an Incident's details: its

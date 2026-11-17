@@ -190,7 +190,7 @@ export const showOrder = (a, b) => showGroup(a) - showGroup(b) || isExploited(b)
 // on no list, or written before the collector carried the category, by its vendor alone.
 export const pinKey = (i) => (typeof i.known_kind === 'string' && i.known_kind ? `${vendorKey(i)}|${i.known_kind}` : vendorKey(i));
 export function pinOrder(chosen, places = PINNED) {
-  const order = [...chosen].sort(showOrder);
+  const order = chosen.toSorted(showOrder);
   const vendors = new Set();
   const pins = [];
   const held = [];
@@ -583,7 +583,7 @@ export const rowTags = (i, lang = 'en') => {
   const devices = (s?.devices || []).length > MANY_DEVICES ? [] : s?.devices || [];
   // Known systems in one fixed order on every row (Windows, macOS, Linux, Android, iOS; critique 12), others after.
   const rank = (p) => { const k = OSES.indexOf(p); return k < 0 ? OSES.length : k; };
-  const platforms = [...(s?.platforms || [])].sort((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
+  const platforms = (s?.platforms || []).toSorted((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
   return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
 };
 // A row, its opened tag line and the Incident page show at most ROW_TAGS tags (owner, 11-11: CVE-2024-36309 drew 51 AMD
@@ -880,6 +880,14 @@ export const foldNewest = (fold) => fold.incidents.reduce((a, b) => (publishedAt
 // row, less 13% so the line the reader was on stays in view; never less than a line's 40px.
 export const STEP_SHARE = 0.87;
 export const stepDistance = (viewHeight, frozen) => Math.max(40, Math.round((viewHeight - frozen) * STEP_SHARE));
+
+// 더 보기 (owner, 11-17: drawing all 789 rows again on each press took 262 ms): the next page of list items to add under
+// the drawn ones, or null when the Board changed since it was drawn (new data, the minute's Highlights, folds, the
+// pinned Highlights) and is drawn whole again. drawn: { result, folding, pinAll, items, shown }; now: the first three.
+export function nextPage(drawn, now, page) {
+  if (!drawn.items || ['result', 'folding', 'pinAll'].some((k) => drawn[k] !== now[k])) return null;
+  return drawn.items.slice(drawn.shown, drawn.shown + page);
+}
 
 // Owner, 11-17 ("오래된 만큼 주요 사건엔 올라오지 못하게": an attack of October 29 reported on November 14 stood among them): an old
 // event is no Highlight, though it stays on the Board with its level and flag. A CVE Incident whose CVE ids are all two
