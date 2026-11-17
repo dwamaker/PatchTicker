@@ -119,7 +119,7 @@ Return one JSON object with the same content in Korean ("ko") and English ("en")
   words as summary, no CVE ID inside it. Empty list for one CVE or none.
 - names: the products in "products", in the same order, as readers of this language know them: in Korean only a name the vendor itself ships in Korean (Korean Windows calls Microsoft Paint "Windows 그림판" and Notepad "Windows 메모장"), else the original name exactly as in "products" ("OpenSSH", "IBM SevOne Network Performance Management", never "IBM SevOne 네트워크 성능 관리"); in English the original names. Never translate a product name yourself; Korean words belong in the descriptions (title, summary, easy), not in names.
 Also:
-- products: the affected product names without versions, as the vendor writes them and never translated, with the vendor in front when the name alone does not say whose it is ("OpenSSH", "OpenWrt", "SonicWall SonicOS", "Apache Axis2").
+- products: the affected product names without versions, as the vendor writes them and never translated, with the vendor in front when the name alone does not say whose it is ("OpenSSH", "OpenWrt", "SonicWall SonicOS", "Apache Axis2"). Name the product the reader knows and installs, not a part, channel or store of it ("Cursor", not "Cursor VS Code Extension Marketplace"); a named component or extension of it may follow as a second product ("Claude Code").
 - lead: the one Mention URL a reader should open first, copied exactly from the Mentions list. Prefer the product's official advisory or release note, then the discoverer's write-up, then the CVE record, then discussion. Empty string if none fits.
 - fixed: the fixed version number alone ("10.6p2"), as a source states it. A CVE record's solutions is a source like any other: a version it says to upgrade to is a fixed version ("Upgrade to 7.4.13 or above" names 7.4.13). Empty string when no source names one. When product lines have different fixed versions, the first line's. When a source says versions "before X" or "prior to X" are affected, X is the fixed version, and mitigation says to update to X or later.
 - fixes: when the sources give different fixed versions for different product lines or models, one entry per line, in the source's order: "for" is the line with its vendor in front, as short as the source allows ("SonicWall Gen7", "SonicWall Gen8"), named as the source names that line ("Synology DSM 7.3", and "Synology DSM 7.2.2" beside "Synology DSM 7.2.1" when the source splits them), never by its fixed version or a range ("DSM 7.3.2" for the 7.3 line, "6.11.0 up to before 6.22.0"), "version" is that line's fixed version alone ("7.3.4-7013"), "devices" is that line's models from "devices", written exactly as there (empty list when the sources do not say which models belong to the line). Empty list when there is a single fixed version or none.
@@ -339,11 +339,16 @@ DELIVERED = (re.compile(r"\b(?:malicious|tampered|trojani[sz]ed|backdoored|poiso
                         r"\b(?:malware|malicious|tampered|trojani[sz]ed|backdoored)\b", re.I),
              # "Attackers pushed tampered copies": a past verb first, so "could push" (a warning) never matches
              re.compile(r"\b(?:placed|published|pushed|uploaded|planted|distributed|delivered|served|shipped)\b(?P<between>)"
-                        r"[^.]{0,30}?\b(?:malicious|tampered|trojani[sz]ed|backdoored|poisoned)\b", re.I))
+                        r"[^.]{0,30}?\b(?:malicious|tampered|trojani[sz]ed|backdoored|poisoned)\b", re.I),
+             # 11-17 patch run (SecurityWeek, Cursor): past "let"/"allowed" only, so "lets"/"allows" (how a flaw works) never match
+             re.compile(r"\b(?:let|allowed|enabled) attackers? (?:to )?(?:place|publish|push|upload|plant|distribute|serve|ship|deliver)\b"
+                        r"(?P<between>[^.]{0,60}?)\b(?:tampered|malicious|trojani[sz]ed|backdoored|poisoned|malware)\b", re.I),
+             re.compile(r"\bsupply[- ]chain (?:attack|compromise)s?\b(?P<between>[^.;]{0,40}?)"
+                        r"\b(?:hit|struck|affected|delivered|reached|infected|compromised)\b", re.I))
 MODAL = re.compile(r"\b(?:could|can|might|would|will|may\s+(?:be|not))\b", re.I)
 # How a flaw works, not a delivery: "lets malicious scripts be planted", "can load a malicious DLL placed in", "an attacker
 # who has planted a malicious value" (live month, 11-17).
-MECHANICS = re.compile(r"\b(?:lets?|allows?|enables?|can|could)\b|\battackers? who\b", re.I)
+MECHANICS = re.compile(r"\b(?:lets?|allows?|enables?|can|could|would|might|will|should)\b|\battackers? who\b", re.I)
 
 
 def attacks_evidenced(summary, kind):

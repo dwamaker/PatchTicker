@@ -315,6 +315,24 @@ class ExploitedEvidenceTest(unittest.TestCase):
             with self.subTest(text):
                 self.assertFalse(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
 
+    def test_a_supply_chain_attack_that_happened_is_an_attack(self):
+        # 11-17 patch run: the fresh SecurityWeek Cursor Summary lost its flag on these words.
+        for text in ("Credentials stolen in the Fireworks AI hack let attackers place tampered Claude Code extension copies in the cache.",
+                     "A stolen token allowed attackers to publish a malicious update to every customer.",
+                     "A supply-chain attack hit the Cursor marketplace on October 29.",
+                     "The supply chain compromise affected up to 5,000 developers.",
+                     "The supply-chain attack has affected thousands of users."):
+            with self.subTest(text):
+                self.assertTrue(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+        for text in ("The flaw could lead to a supply chain attack.",
+                     "Unsigned updates create a risk of supply-chain attacks.",
+                     "A bypass would let attackers push tampered updates.",
+                     "The weak check lets attackers upload malicious packages.",
+                     "The flaw allows attackers to publish malicious updates.",
+                     "A supply-chain attack could hit every user of the plugin."):
+            with self.subTest(text):
+                self.assertFalse(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+
     # 11-17 trial: real attacks lost the flag by wording alone between two runs of the same Incident.
     REPORTED = ("Attacks exploiting this have breached MSPs and their customers' devices.",  # ScreenConnect RMM+
                 "Attacks abusing the flaw are hitting exposed servers.",
@@ -353,6 +371,12 @@ class ExploitedEvidenceTest(unittest.TestCase):
         for text in self.NOT_REPORTED:
             with self.subTest(text):
                 self.assertFalse(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+
+    def test_products_name_what_the_reader_installs_not_its_store(self):
+        # Owner on the Cursor row (11-17): "저것도 cursor가 맞을텐데 태그" for "Cursor VS Code Extension Marketplace".
+        line = next(l for l in summaries.INSTRUCTIONS.splitlines() if l.startswith("- products:"))
+        self.assertIn("the product the reader knows and installs, not a part, channel or store of it", line)
+        self.assertIn('"Cursor", not "Cursor VS Code Extension Marketplace"', line)
 
     def test_the_prompt_counts_a_delivered_malicious_package_as_exploited(self):
         line = next(l for l in summaries.INSTRUCTIONS.splitlines() if l.startswith("- exploited:"))
