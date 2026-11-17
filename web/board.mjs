@@ -713,6 +713,7 @@ export const WORDS = {
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
     kevNote: '공격 발생 표시는 CISA의 알려진 악용 취약점(KEV) 목록이나, 실제 공격을 전한 원문을 바탕으로 합니다.',
     cveNote: 'CVE 정보는 MITRE의 CVE 이용 약관에 따라 사용합니다. 아래는 약관이 요구하는 저작권 표시와 라이선스 원문입니다.',
+    footFold: '출처와 라이선스',
   },
   en: {
     title: 'Patch Ticker · live vulnerability tracker', langName: 'English', langShort: 'EN', langMenu: 'Language',
@@ -734,6 +735,7 @@ export const WORDS = {
     nvd: '',
     kevNote: 'The Attacked sign comes from the CISA Known Exploited Vulnerabilities catalog, or from sources that report attacks.',
     cveNote: 'CVE data is used under the CVE Terms of Use from MITRE; its required copyright notice and license follow.',
+    footFold: 'Sources and licences',
   },
   ja: {
     title: 'Patch Ticker · リアルタイム脆弱性ボード', langName: '日本語', langShort: '日', langMenu: '言語',
@@ -755,6 +757,7 @@ export const WORDS = {
     nvd: 'このサービスは NVD API のデータを使用していますが、NVD による保証や認証は受けていません。',
     kevNote: '攻撃発生の表示は、CISA の既知の悪用された脆弱性（KEV）カタログ、または実際の攻撃を報じた原文に基づきます。',
     cveNote: 'CVE 情報は MITRE の CVE 利用規約に従って使用しています。以下は規約が求める著作権表示とライセンスの原文です。',
+    footFold: '出典とライセンス',
   },
 };
 

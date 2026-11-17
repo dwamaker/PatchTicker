@@ -849,7 +849,7 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .row > .chev::before, .models summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row > .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it
@@ -885,6 +885,14 @@
     main.wrap { min-height: 100vh; min-height: 100dvh; }
     footer { margin-top: 2.5rem; border-top: 1px solid var(--rule); padding: 1rem 0 2.5rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     footer p { margin: 0.25rem 0 0; max-width: 46rem; }
+    /* the notices fold (owner, 11-18): the reference line and the NVD sentence (a condition of the API, never folded)
+       stay; sources and licences open under a summary in the footer's own text, with the folded model list's chevron */
+    .foot-fold summary { display: inline-flex; align-items: center; min-height: 2rem; margin-top: 0.25rem; cursor: pointer; list-style: none; }
+    .foot-fold summary::-webkit-details-marker { display: none; }
+    .foot-fold summary::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; margin: 0 0.625rem 0 0.125rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 160ms ease-out; }
+    .foot-fold[open] summary::before { transform: rotate(45deg); }
+    @media (hover: hover) { .foot-fold summary:hover { color: var(--ink); } }
+    @media (max-width: 599px) { .foot-fold summary { min-height: var(--tap); } }
     /* the about text and latest Incident links are for readers that run no script (search crawlers); the Board replaces them */
     #about { max-width: 46rem; }
     .js #about { display: none; }
@@ -969,11 +977,13 @@
     <a id="support" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer" lang="en"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg>Buy Me a Coffee</a>
     <div class="notes">
     <p data-t="refNote"></p>
-    <p data-t="nvd"></p>
     <p lang="en">This product uses data from the NVD API but is not endorsed or certified by the NVD.</p>
+    <details class="foot-fold"><summary><span data-t="footFold"><span lang="ko">출처와 라이선스</span><span lang="en">Sources and licences</span><span lang="ja">出典とライセンス</span></span></summary>
+    <p data-t="nvd"></p>
     <p data-t="kevNote"></p>
     <p data-t="cveNote"></p>
     <p lang="en">CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation. CVE Usage: MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures (CVE&reg;). Any copy you make for such purposes is authorized provided that you reproduce MITRE's copyright designation and this license in any such copy. <a href="https://www.cve.org/Legal/TermsOfUse">CVE Terms of Use</a></p>
+    </details>
     </div>
   </div></footer>
   <script type="module" src="app.mjs"></script>

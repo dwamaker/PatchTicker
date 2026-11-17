@@ -315,7 +315,12 @@ switch, as the grid did at 600 px (owner, 11-17);
 under 600 px the name, the switch and a settings button share one line (GitHub and RSS leave the line; RSS moves into
 the settings panel). The product picker and search sit on one
 line (picker up to 24rem), stacking under 768 px. The footer holds the data notices and, in its top right corner, the Support badge (see
-Components) (owner, 2026-11-18: 후원 left the header, and the footer's GitHub · RSS line was dropped).
+Components) (owner, 2026-11-18: 후원 left the header, and the footer's GitHub · RSS line was dropped). Two
+notices stay visible: the reference line and the NVD API sentence, which the API's terms require shown, so it is never
+folded. The rest (the Korean NVD line, the Attacked sign's sources, the CVE terms and MITRE's licence) sit in a native
+disclosure, 출처와 라이선스 / Sources and licences / 出典とライセンス, closed by default: footer-sized Secondary Ink
+text with the folded model list's chevron, 44 px tall on phones (owner, 2026-11-18). The Incident and product pages
+keep the full block.
 
 A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
 badges (up to 15rem), published date over time (5.5rem), chevron. Column gap is 1.25rem. Opened details align with the
