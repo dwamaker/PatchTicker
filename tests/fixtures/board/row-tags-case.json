@@ -1,0 +1,207 @@
+{
+ "about": "rowTags in web/board.mjs is the reference; collector/incidents.py row_tags ports it (board/feed-all.json categories).",
+ "cases": [
+  {
+   "incident": {
+    "id": "summary-names",
+    "products": [
+     {
+      "id": "openbsd:openssh",
+      "name": "OpenSSH"
+     }
+    ],
+    "summary": {
+     "products": [
+      "OpenSSH",
+      "Windows Paint"
+     ],
+     "ko": {
+      "names": [
+       "OpenSSH",
+       "Windows 그림판"
+      ]
+     },
+     "en": {
+      "names": [
+       "OpenSSH",
+       "Windows Paint"
+      ]
+     }
+    }
+   },
+   "ko": [
+    "OpenSSH",
+    "Windows 그림판"
+   ],
+   "en": [
+    "OpenSSH",
+    "Windows Paint"
+   ]
+  },
+  {
+   "incident": {
+    "id": "platforms-ordered-and-os-product-dropped",
+    "summary": {
+     "products": [
+      "Android",
+      "Chrome"
+     ],
+     "platforms": [
+      "iOS",
+      "Android",
+      "Windows",
+      "FreeBSD"
+     ]
+    }
+   },
+   "ko": [
+    "Windows",
+    "Android",
+    "iOS",
+    "FreeBSD",
+    "Chrome"
+   ],
+   "en": [
+    "Windows",
+    "Android",
+    "iOS",
+    "FreeBSD",
+    "Chrome"
+   ]
+  },
+  {
+   "incident": {
+    "id": "few-devices",
+    "summary": {
+     "products": [
+      "RouterOS"
+     ],
+     "devices": [
+      "hAP ax2",
+      "RB5009"
+     ]
+    }
+   },
+   "ko": [
+    "RouterOS",
+    "hAP ax2",
+    "RB5009"
+   ],
+   "en": [
+    "RouterOS",
+    "hAP ax2",
+    "RB5009"
+   ]
+  },
+  {
+   "incident": {
+    "id": "many-devices",
+    "summary": {
+     "products": [
+      "RouterOS"
+     ],
+     "devices": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+     ]
+    }
+   },
+   "ko": [
+    "RouterOS"
+   ],
+   "en": [
+    "RouterOS"
+   ]
+  },
+  {
+   "incident": {
+    "id": "record-products-with-vendor",
+    "products": [
+     {
+      "id": "microsoft:paint",
+      "name": "Paint"
+     },
+     {
+      "id": "ibm:ibm_db2",
+      "name": "IBM Db2"
+     },
+     {
+      "id": "acme:widget",
+      "name": "Widget"
+     }
+    ]
+   },
+   "ko": [
+    "Microsoft Paint",
+    "IBM Db2",
+    "Widget"
+   ],
+   "en": [
+    "Microsoft Paint",
+    "IBM Db2",
+    "Widget"
+   ]
+  },
+  {
+   "incident": {
+    "id": "duplicates-by-case",
+    "summary": {
+     "products": [
+      "nginx",
+      "NGINX"
+     ],
+     "platforms": [
+      "Linux"
+     ],
+     "devices": [
+      "linux"
+     ]
+    }
+   },
+   "ko": [
+    "Linux",
+    "nginx"
+   ],
+   "en": [
+    "Linux",
+    "nginx"
+   ]
+  },
+  {
+   "incident": {
+    "id": "latin-name-shortened",
+    "summary": {
+     "products": [
+      "Apache Axis2/Java"
+     ],
+     "ko": {
+      "names": [
+       "Apache Axis2"
+      ]
+     },
+     "en": {
+      "names": [
+       "Apache Axis2"
+      ]
+     }
+    }
+   },
+   "ko": [
+    "Apache Axis2/Java"
+   ],
+   "en": [
+    "Apache Axis2/Java"
+   ]
+  },
+  {
+   "incident": {
+    "id": "nothing"
+   },
+   "ko": [],
+   "en": []
+  }
+ ]
+}

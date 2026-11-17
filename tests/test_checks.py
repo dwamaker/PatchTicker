@@ -128,3 +128,14 @@ class CheckCycleTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+ROW_TAGS = json.loads((Path(__file__).parent / "fixtures" / "board" / "row-tags-case.json").read_text(encoding="utf-8"))
+
+
+class RowTagsTest(unittest.TestCase):
+    def test_the_collector_names_a_rows_tags_as_the_page_does(self):
+        from collector.incidents import row_tags
+        for c in ROW_TAGS["cases"]:
+            for lang in ("ko", "en"):
+                self.assertEqual(row_tags(c["incident"], lang), c[lang], (c["incident"]["id"], lang))

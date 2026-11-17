@@ -77,7 +77,8 @@ function itemLink(e, lang) {
   const url = typeof e.url === 'string' && e.url.startsWith(`${SITE}/`) ? e.url : `${SITE}/#i=${encodeURIComponent(String(e.id))}`;
   return lang === 'en' ? url.replace(`${SITE}/i/`, `${SITE}/en/i/`) : url;
 }
-function productItem(e, names, lang) {
+// guid: the item's GUID, the link itself unless given (the whole-Board feed gives the page address).
+function productItem(e, names, lang, guid = '') {
   const t = TEXT[lang];
   const w = WORDS[lang];
   const cves = Array.isArray(e.cves) ? e.cves.filter((c) => typeof c === 'string') : [];
@@ -86,7 +87,7 @@ function productItem(e, names, lang) {
     e.fixed ? `${t.fixed}: ${e.fixed}` : '',
     count ? `${t.cves(count)}: ${cves.join(', ')}${count > cves.length ? t.more(count - cves.length) : ''}` : ''];
   const link = escapeXml(itemLink(e, lang));
-  return ['<item>', `<title>${escapeXml(e[`title_${lang}`] || e.id)}</title>`, `<link>${link}</link>`, `<guid isPermaLink="false">${link}</guid>`,
+  return ['<item>', `<title>${escapeXml(e[`title_${lang}`] || e.id)}</title>`, `<link>${link}</link>`, `<guid isPermaLink="false">${guid || link}</guid>`,
     `<pubDate>${rfc822(e.published || e.first_seen)}</pubDate>`, categories(names, w.levels[e.level] || w.levels.notice),
     `<description>${escapeXml(lines.filter(Boolean).map((l) => `<p>${escapeXml(l)}</p>`).join(''))}</description>`, '</item>'].join('');
 }
@@ -137,6 +138,35 @@ export async function productFeedResponse(bucket, request, lang, now = Date.now(
   }
   return request.method === 'HEAD' ? new Response(null, res) : res;
 }
+
+// The whole-Board feed (owner, 11-17): /feed/all.xml and /en/feed/all.xml from board/feed-all.json, the newest Board
+// Incidents of every level as light items (collector/checks.py feed_entry: no Summary text). Its link is where /api/check
+// sends (the Incident page, else the Board row); its GUID is the Incident page's address, as /feed.xml's, so an Incident
+// in both is one item to a reader of both, and it stays when the Incident gains its page.
+const ALL_DOC = 'board/feed-all.json';
+const ALL = {
+  ko: { title: 'Patch Ticker · 현황판 전체', about: '현황판의 모든 새 보안 사건, 참고 수준까지 (요약 없이 가볍게)', feed: '/feed/all.xml' },
+  en: { title: 'Patch Ticker · The whole Board', about: 'Every new security Incident on the Board, notice level included, as light items', feed: '/en/feed/all.xml' },
+};
+export const allFeedResponse = (bucket, lang) => failClosed(async () => {
+  const doc = await readJson(bucket, ALL_DOC);
+  if (!doc || !Array.isArray(doc.incidents)) throw new Error(`${ALL_DOC} missing`);
+  const entries = doc.incidents.filter((e) => e && typeof e.id === 'string');
+  const items = await Promise.all(entries.map(async (e) => productItem(e, Array.isArray(e.tags?.[lang]) ? e.tags[lang].map(String) : [], lang,
+    `${SITE}${TEXT[lang].page}${await slug(e.id)}`)));
+  const at = (e) => e.published || e.first_seen;
+  const xml = ['<?xml version="1.0" encoding="UTF-8"?>',
+    '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>',
+    `<title>${escapeXml(ALL[lang].title)}</title>`,
+    `<link>${SITE}/</link>`,
+    `<description>${escapeXml(ALL[lang].about)}</description>`,
+    `<language>${lang}</language>`,
+    `<atom:link href="${SITE}${ALL[lang].feed}" rel="self" type="application/rss+xml"/>`,
+    ...(entries.length ? [`<lastBuildDate>${rfc822(at(entries[0]))}</lastBuildDate>`] : []),
+    ...items,
+    '</channel></rss>'].join('\n');
+  return new Response(xml, { headers: RSS_HEADERS });
+}, () => unavailable('The RSS feed')); // a reader retries later, never gets a half feed
 
 // bucket: the R2 binding (anything with get(key) -> { text() } or null).
 export const feedResponse = (bucket, lang) => failClosed(async () => {

@@ -7,7 +7,7 @@ import hashlib
 from urllib.parse import quote
 
 from collector.incidents import (WELL_KNOWN, cve_order, is_exploited, known_product, on_board, page_slug, product_key, products_of,
-                                 published_at, risk_level, search_worthy, vendor_words)
+                                 published_at, risk_level, row_tags, search_worthy, vendor_words)
 
 SITE = "https://patchticker.com"
 DATA = "https://data.patchticker.com"
@@ -48,6 +48,12 @@ def entry(incident):
             "cve_count": len(incident["cves"]), "cves": cve_order(incident)[:CVES_SHOWN], "fixed": summary.get("fixed") or "",
             "title_en": title("en"), "title_ko": title("ko"),
             **({"detail": f"{DATA}/pages/{page_slug(incident['id'])}.json"} if incident.get("summary") else {})}
+
+
+def feed_entry(incident):
+    """One item of the whole-Board feed (board/feed-all.json, owner 11-17): the check documents' entry, plus the row's tags
+    in both languages for its categories. No Summary text: 270 to 560 Incidents a day."""
+    return entry(incident) | {"tags": {lang: row_tags(incident, lang) for lang in ("ko", "en")}}
 
 
 def product_pages(docs):

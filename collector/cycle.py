@@ -33,6 +33,9 @@ HIGHLIGHTS_MAX = 20
 # The RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed). Owner, 11-17: 50
 # were 14 hours, so a reader that looks once a day missed items; 200 were about 3.5 days (feed.json ~0.9 MB, ~3 ms to render).
 FEED_SIZE = 200
+# The whole-Board feed (board/feed-all.json, /feed/all.xml; owner, 11-17): light items of the newest Board Incidents, every
+# level. In November 63 to 560 were published a day (560 on Patch Tuesday, 11-10), so 600 hold the busiest day.
+FEED_ALL_SIZE = 600
 # An Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs). The
 # store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
 PAGE_DAYS = 90
@@ -231,6 +234,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     feed = {"incidents": [board_view(i) for i in newest[:FEED_SIZE]]}
     if store.read("board/feed.json") != feed:
         store.write("board/feed.json", feed)
+    board = sorted((i for i in shown_incidents if on_board(i)), key=published_at, reverse=True)
+    feed_all = {"incidents": [checks.feed_entry(i) for i in board[:FEED_ALL_SIZE]]}
+    if store.read("board/feed-all.json") != feed_all:
+        store.write("board/feed-all.json", feed_all)
     had_page = store.read("page_hashes.json") or {}  # the page set as the last cycle left it
     pages = write_pages(store, shown_incidents, had_page, now, stamp)
     write_moves(store, incidents, had_page, now, stamp)

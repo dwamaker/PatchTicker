@@ -89,7 +89,7 @@ test('the real index.html: one marker inside the about section, and the title th
 test('the real index.html: the feed links name no hreflang (a feed is not this page in another language)', () => {
   const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
   const feeds = html.match(/<link rel="alternate" type="application\/rss\+xml"[^>]*>/g);
-  assert.equal(feeds.length, 2);
+  assert.equal(feeds.length, 4); // /feed.xml and the whole-Board /feed/all.xml, each in two languages
   for (const link of feeds) assert.doesNotMatch(link, /hreflang/);
 });
 
@@ -182,6 +182,20 @@ test('homeResponse adds a Link header to the API catalog, llms.txt and the feeds
     assert.match(link, /<\/llms\.txt>; rel="describedby"; type="text\/plain"/);
     assert.match(link, /<\/feed\.xml>; rel="alternate"; type="application\/rss\+xml"; title="Patch Ticker \(Korean\)"/);
     assert.match(link, /<\/en\/feed\.xml>; rel="alternate"; type="application\/rss\+xml"; title="Patch Ticker \(English\)"/);
+    assert.match(link, /<\/feed\/all\.xml>; rel="alternate"; type="application\/rss\+xml"; title="Patch Ticker, whole Board \(Korean\)"/);
+    assert.match(link, /<\/en\/feed\/all\.xml>; rel="alternate"; type="application\/rss\+xml"; title="Patch Ticker, whole Board \(English\)"/);
   }
   assert.match((await homeResponse(context(bucket(null)))).headers.get('link'), /^<\/\.well-known\/api-catalog>/); // no Link on the asset
 });
+
+test('the whole-Board feed is named where the other feeds are: the head links, the static line and llms.txt', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  assert.match(html, /<link rel="alternate" type="application\/rss\+xml" title="Patch Ticker 현황판 전체 \(한국어\)" href="\/feed\/all.xml">/);
+  assert.match(html, /<link rel="alternate" type="application\/rss\+xml" title="Patch Ticker whole Board \(English\)" href="\/en\/feed\/all.xml">/);
+  const about = /<section id="about">([\s\S]*?)<\/section>/.exec(html)[1];
+  assert.match(about, /<code>\/feed\/all.xml<\/code>/);
+  assert.match(about, /<code>\/en\/feed\/all.xml<\/code>/);
+  const llms = readFileSync(new URL('../web/llms.txt', import.meta.url), 'utf8');
+  assert.match(llms, /## Feeds[\s\S]*https:\/\/patchticker.com\/feed\/all.xml[\s\S]*newest 600[\s\S]*## Data/);
+});
+

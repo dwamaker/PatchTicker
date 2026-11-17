@@ -465,6 +465,35 @@ def known_product(product):
     return None
 
 
+OSES = ["Windows", "macOS", "Linux", "Android", "iOS"]  # OSES in web/board.mjs: known systems in this order on every row
+MANY_DEVICES = 4
+
+
+def with_vendor(product):
+    """withVendor in web/board.mjs: a record Product named with its web/vendors.json vendor when the name lacks it."""
+    vendor = VENDORS.get(product["id"].split(":")[0])
+    return f"{vendor} {product['name']}" if vendor and vendor.lower() not in product["name"].lower() else product["name"]
+
+
+def row_tags(incident, lang):
+    """A port of rowTags in web/board.mjs (tests/fixtures/board/row-tags-case.json keeps the two in step): a row's tags,
+    operating systems first in OSES order, then its Products (one that is also an OS only as the OS), then up to
+    MANY_DEVICES device models, each name once whatever its letter case."""
+    s = incident.get("summary") or {}
+    products = s.get("products") or []
+    names = [shown_name(s, lang, k) for k in range(len(products))] if products else [with_vendor(p) for p in incident.get("products") or []]
+    systems = {p.lower() for p in s.get("platforms") or []}
+    own = [n for k, n in enumerate(names) if not (k < len(products) and str(products[k] if products[k] is not None else "").lower() in systems)]
+    devices = s.get("devices") or []
+    rank = lambda p: OSES.index(p) if p in OSES else len(OSES)
+    seen, tags = set(), []
+    for name in [*sorted(s.get("platforms") or [], key=rank), *own, *([] if len(devices) > MANY_DEVICES else devices)]:
+        if name.lower() not in seen:
+            seen.add(name.lower())
+            tags.append(name)
+    return tags
+
+
 def vendor_words(pid):
     """Vendor words that may lead a Product's name, each with its space: web/vendors.json's, and its id's vendor."""
     return LED_BY + ([] if pid.startswith("name:") else [pid.split(":")[0].replace("_", " ") + " "])

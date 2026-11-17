@@ -1,7 +1,7 @@
 // The RSS feeds' renderer and response (ticket incident-pages/01), behind a fake R2 binding.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { feedResponse, productFeedResponse } from '../edge/feed.mjs';
+import { allFeedResponse, feedResponse, productFeedResponse } from '../edge/feed.mjs';
 import { slug } from '../web/board.mjs';
 
 const bucket = (doc) => ({ get: async (key) => (key === 'board/feed.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
@@ -206,4 +206,50 @@ test('hostile text in a check document stays text in the products feed', async (
   const xml = await (await ask('products=openssh', 'ko', 'GET', docs)).text();
   assert.doesNotMatch(xml, /<script>|javascript:/);
   assert.match(xml, /<category>A&amp;B &lt;x&gt;<\/category>/);
+});
+
+// The whole-Board feed (owner, 11-17): /feed/all.xml and /en/feed/all.xml from board/feed-all.json, light items of every
+// level. Its GUID is the Incident page's address, as /feed.xml's is, so an Incident in both feeds is one item to a
+// reader of both, and it stays the same when the Incident gains its page later; its link is where /api/check sends.
+const ALL = { incidents: [
+  entryOf(1007, { url: 'https://patchticker.com/#i=CVE-2026-1007', level: 'notice', cvss: null, title_ko: 'Brief 7', title_en: 'Brief 7', tags: { ko: [], en: [] } }),
+  { ...entryOf(1001, { level: 'highest', exploited: true, cvss: 9.8, fixed: '9.9p2' }), tags: { ko: ['Linux', 'OpenSSH'], en: ['Linux', 'OpenSSH'] } },
+  { ...entryOf(0, { id: 'https://example.test/advisory', url: 'https://patchticker.com/#i=https%3A%2F%2Fexample.test%2Fadvisory', cves: [], cve_count: 0 }), tags: { ko: ['그림판'], en: ['Paint'] } },
+] };
+const allFeed = async (lang, doc = ALL) => allFeedResponse(store(doc ? { 'board/feed-all.json': doc } : {}), lang);
+
+test('the whole-Board feed lists every level as light items, its links where /api/check sends, its GUIDs the page addresses', async () => {
+  const res = await allFeed('ko');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'application/rss+xml; charset=utf-8');
+  assert.match(res.headers.get('cache-control'), /max-age=300/);
+  const xml = await res.text();
+  assert.match(xml, /<atom:link href="https:\/\/patchticker.com\/feed\/all.xml" rel="self"/);
+  const items = [...xml.matchAll(/<item>.*?<\/item>/gs)].map((m) => m[0]);
+  assert.equal(items.length, 3);
+  assert.match(items[0], /<title>Brief 7<\/title><link>https:\/\/patchticker.com\/#i=CVE-2026-1007<\/link><guid isPermaLink="false">https:\/\/patchticker.com\/i\/CVE-2026-1007<\/guid>/);
+  assert.match(items[0], /<category>참고<\/category><description>&lt;p&gt;참고&lt;\/p&gt;&lt;p&gt;CVE 1건: CVE-2026-1007&lt;\/p&gt;<\/description>/);
+  assert.match(items[1], /<guid isPermaLink="false">https:\/\/patchticker.com\/i\/CVE-2026-1001<\/guid>.*<category>Linux<\/category><category>OpenSSH<\/category><category>긴급<\/category>/s);
+  assert.match(items[2], new RegExp(`<guid isPermaLink="false">https://patchticker.com/i/${await slug('https://example.test/advisory')}</guid>`));
+  assert.match(items[2], /<category>그림판<\/category>/);
+  const en = await (await allFeed('en')).text();
+  assert.match(en, /<link>https:\/\/patchticker.com\/en\/i\/CVE-2026-1001<\/link><guid isPermaLink="false">https:\/\/patchticker.com\/en\/i\/CVE-2026-1001<\/guid>/);
+  assert.match(en, /<category>Paint<\/category>/);
+  assert.match(en, /<atom:link href="https:\/\/patchticker.com\/en\/feed\/all.xml" rel="self"/);
+});
+
+test('the whole-Board feed and /feed.xml give an Incident the same GUID', async () => {
+  const guid = (xml) => /<guid[^>]*>([^<]*)<\/guid>/.exec(xml)[1];
+  for (const lang of ['ko', 'en']) {
+    const main = await (await feedResponse(bucket({ incidents: [SSHOLE] }), lang)).text();
+    const all = await (await allFeedResponse(store({ 'board/feed-all.json': { incidents: [{ ...entryOf(123158), tags: { ko: [], en: [] } }] } }), lang)).text();
+    assert.equal(guid(all), guid(main), lang);
+  }
+});
+
+test('until the collector has written its document the whole-Board feed answers 503, as the other feed does', async () => {
+  const res = await allFeed('ko', null);
+  assert.equal(res.status, 503);
+  assert.match(await res.text(), /^The RSS feed is unavailable right now\./);
+  assert.equal((await allFeed('en', { incidents: 'oops' })).status, 503);
 });

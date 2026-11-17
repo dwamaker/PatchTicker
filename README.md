@@ -48,7 +48,9 @@ Patch Ticker answers both in seconds, with no security background needed.
 - **Linked to sources**: every claim links to its source; a command is shown only as a source wrote it.
 - **Share and subscribe**: every Incident has an address, and filters live in the address. RSS in
   [Korean](https://patchticker.com/feed.xml) and [English](https://patchticker.com/en/feed.xml), the newest 200 with
-  products and level as categories, or only your products with `?products=openssh,chrome`. Each product has a page of
+  products and level as categories, or only your products with `?products=openssh,chrome`. The whole Board, notice
+  level included, as light items: [Korean](https://patchticker.com/feed/all.xml) and
+  [English](https://patchticker.com/en/feed/all.xml). Each product has a page of
   its Incidents, linked from every Incident page.
 - **For AI agents**: `GET https://patchticker.com/api/check?products=openssh,chrome` answers which Incidents touch
   those products, as JSON, each with `detail`, the address of its whole record. Send a User-Agent that names your

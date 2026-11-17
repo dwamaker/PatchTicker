@@ -1661,3 +1661,8 @@ test('nextPage gives the items after the drawn ones, or null when the Board chan
   assert.equal(nextPage(drawn, { ...same, pinAll: true }, 100), null);
   assert.equal(nextPage({}, same, 100), null); // nothing drawn yet
 });
+
+test('rowTags is what tests/fixtures/board/row-tags-case.json says, which collector/incidents.py row_tags also follows', () => {
+  const kase = JSON.parse(readFileSync(new URL('./fixtures/board/row-tags-case.json', import.meta.url), 'utf8'));
+  for (const c of kase.cases) for (const lang of ['ko', 'en']) assert.deepEqual(rowTags(c.incident, lang), c[lang], `${c.incident.id} ${lang}`);
+});

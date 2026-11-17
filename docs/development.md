@@ -158,7 +158,14 @@ function shares). The function answers `/feed.xml` and `/en/feed.xml` from `boar
 `<category>`. With `?products=<names>` (and `days`, `min`) the same address answers the products feed instead
 (`productFeedResponse` in `edge/feed.mjs`): `/api/check`'s query and matching without the model, from the check documents
 alone, at most 40 documents and 100 items, 400 for bad input as the API, 503 while there is no index, never kept in the
-edge cache (`cache-control` five minutes), so asked names are kept nowhere. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
+edge cache (`cache-control` five minutes), so asked names are kept nowhere.
+`/feed/all.xml` and `/en/feed/all.xml` (`functions/feed/all.xml.js`, `allFeedResponse`; owner, 11-17) carry the whole
+Board, notice level included: the newest 600 Board Incidents (`FEED_ALL_SIZE`) from `board/feed-all.json`, which each
+cycle rewrites only when it changed. Each entry is the check documents' (`feed_entry` in `collector/checks.py`) plus the
+row's tags in both languages (`row_tags`, a port of `rowTags` kept in step by
+`tests/fixtures/board/row-tags-case.json`); an item has no Summary text. Its link is where `/api/check` sends (the page,
+else the Board row) and its GUID the Incident page's address, as in `/feed.xml`, so an Incident in both is one item and
+keeps its GUID when it gains a page. Until the collector has written the document the feed answers 503. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
 The home page `/` goes through `functions/index.js` (`edge/home.mjs`) too: the current static `index.html` with links to
 the feed's 20 newest Incident pages in place of its `<!--home-links-->` marker, for readers that run no script (search

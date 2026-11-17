@@ -10,7 +10,9 @@ const MARKER = '<!--home-links-->';
 // alternate with the RSS type (the feeds, as index.html's <link> elements). Appended to any Link the asset carries.
 const LINK = ['</.well-known/api-catalog>; rel="api-catalog"', '</llms.txt>; rel="describedby"; type="text/plain"',
   '</feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (Korean)"',
-  '</en/feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (English)"'].join(', ');
+  '</en/feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (English)"',
+  '</feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (Korean)"',
+  '</en/feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (English)"'].join(', ');
 const LINKS_KEY = '/__home-links'; // the edge cache entry for the list; never a real path
 
 export async function homeLinks(doc) {
