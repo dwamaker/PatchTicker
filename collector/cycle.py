@@ -40,6 +40,10 @@ FEED_ALL_SIZE = 600
 # store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
 PAGE_DAYS = 90
 MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
+# Seconds a cycle spends on Incident page and check documents; the rest waits for the next cycle. 2026-11-17: a field
+# added to every check document made one cycle rewrite all 3,252 one PUT after another (~2.3 a second, 25 min), so
+# status.json stood still 35 min and two cycles never ran. A usual cycle takes about 3 min of its 10; 120 s is ~280 PUTs.
+BULK_SECONDS = 120
 
 
 OLD_CVE_YEARS = 2  # all CVE ids this many years before now's year: an old event (owner, 11-17)
@@ -84,10 +88,10 @@ def highlights(views, since, now=None):
 
 def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
               curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False,
-              review=False):
+              review=False, clock=time.monotonic):
     """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None.
     ping: indexnow.make_pinger's function, or None. distro_table: look up the Distribution table (step 10); off by
-    default, as its pauses and requests would reach every test cycle."""
+    default, as its pauses and requests would reach every test cycle. clock: what times BULK_SECONDS."""
     stamp = now.strftime(STAMP)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
@@ -239,9 +243,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     if store.read("board/feed-all.json") != feed_all:
         store.write("board/feed-all.json", feed_all)
     had_page = store.read("page_hashes.json") or {}  # the page set as the last cycle left it
-    pages = write_pages(store, shown_incidents, had_page, now, stamp)
+    # One budget, pages first: a check document's `detail` names a page, so no check is written before every due page is.
+    pages = write_pages(store, shown_incidents, had_page, now, stamp, more := bulk_budget(clock))
     write_moves(store, incidents, had_page, now, stamp)
-    product_docs = write_checks(store, shown_incidents, now)
+    product_docs = write_checks(store, shown_incidents, now, more)
     # The sitemaps' document (edge/sitemap.mjs): {slug: {first_seen, changed}} of every search-worthy Incident page, and
     # the product pages with enough Incidents to be worth a search (owner, 11-17).
     sitemap = {"pages": {slug: {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in incidents
@@ -407,48 +412,72 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     changed.update(month_of(i["first_seen"]) for i in waiting_review if "review_pending" not in i)  # stored here
 
 
-def write_pages(store, incidents, known, now, stamp):
+def bulk_budget(clock):
+    """A function that answers True until BULK_SECONDS after this call."""
+    deadline = clock() + BULK_SECONDS
+    return lambda: clock() < deadline
+
+
+def digest_of(doc):
+    return hashlib.sha256(json.dumps(doc, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+
+
+def write_pages(store, incidents, known, now, stamp, more=lambda: True):
     """One Incident page document per slug (pages/<slug>.json, the Board's fields) for every Incident with a Summary first
     seen in the last PAGE_DAYS; the function decides on-Board, 404 and 410 from it. A page is rewritten only when its
     fields changed: page_hashes.json keeps {slug: {hash, changed}} (known: as the last cycle left it), so a cycle reads
     one document, not one per page. The index holds only this cycle's page set, so it never grows past 90 days of
     pages; the page documents left behind are deleted by the bucket's lifecycle rule (docs/development.md).
-    Returns the index."""
+    more(): False once the cycle's writes must stop (bulk_budget). New pages go first, then changed ones, newest first;
+    the rest wait for a later cycle: a changed page keeps its old document and entry, a new one has neither yet.
+    Returns the index: the pages stored, by the hash of what each holds."""
     since = stamp_ago(now, days=PAGE_DAYS)
-    pages = {}
-    for incident in incidents:
+    pages, due = {}, []
+    for incident in sorted(incidents, key=lambda i: i["first_seen"], reverse=True):
         if not incident.get("summary") or incident["first_seen"] < since:
             continue
         slug, view = page_slug(incident["id"]), board_view(incident)
-        digest = hashlib.sha256(json.dumps(view, sort_keys=True).encode("utf-8")).hexdigest()[:16]
-        pages[slug] = known.get(slug)
-        if (pages[slug] or {}).get("hash") != digest:
-            pages[slug] = {"hash": digest, "changed": stamp}
-            store.write(f"pages/{slug}.json", view)
+        digest = digest_of(view)
+        if slug in known:
+            pages[slug] = known[slug]
+        if known.get(slug, {}).get("hash") != digest:
+            due.append((slug, view, digest))
+    for slug, view, digest in sorted(due, key=lambda d: d[0] in known):  # a stable sort: newest first stays
+        if not more():
+            break
+        store.write(f"pages/{slug}.json", view)
+        pages[slug] = {"hash": digest, "changed": stamp}
     if pages != known:
         store.write("page_hashes.json", pages)
     return pages
 
 
-def write_checks(store, incidents, now):
+def write_checks(store, incidents, now, more=lambda: True):
     """GET /api/check's documents (collector/checks.py): a Product's check/p/<slug>.json is rewritten only when it
     changed (check_hashes.json keeps {slug: hash}, so a cycle reads one document, not one per Product), the index when
-    it changed, and a Product with no Incident left loses its document, after the index stops naming it. Returns the
-    documents (the sitemap's product pages are worked out from them)."""
+    it changed, and a Product with no Incident left loses its document, after the index stops naming it. more() as in
+    write_pages: new Products first; one left unwritten keeps its old document and hash, or, new, is in no index yet; a
+    delete left over keeps its hash, so a later cycle deletes it. Returns the documents stored (the sitemap's product
+    pages are worked out from them)."""
     docs, index = checks.check_docs(incidents, stamp_ago(now, days=PAGE_DAYS))
     known = store.read("check_hashes.json") or {}
-    hashes = {}
-    for slug, doc in docs.items():
-        hashes[slug] = hashlib.sha256(json.dumps(doc, sort_keys=True).encode("utf-8")).hexdigest()[:16]
-        if known.get(slug) != hashes[slug]:
-            store.write(f"check/p/{slug}.json", doc)
+    hashes = {slug: known[slug] for slug in docs if slug in known}  # what the store holds: an older document still answers
+    for slug in sorted((s for s in docs if known.get(s) != digest_of(docs[s])), key=lambda s: s in known):
+        if not more():
+            break
+        store.write(f"check/p/{slug}.json", docs[slug])
+        hashes[slug] = digest_of(docs[slug])
+    index = {key: stored for key, slugs in index.items() if (stored := [s for s in slugs if s in hashes])}
     if store.read("check/index.json") != index:
         store.write("check/index.json", index)
-    for slug in known.keys() - hashes.keys():
-        store.delete(f"check/p/{slug}.json")
+    for slug in known.keys() - docs.keys():
+        if more():
+            store.delete(f"check/p/{slug}.json")
+        else:
+            hashes[slug] = known[slug]
     if hashes != known:
         store.write("check_hashes.json", hashes)
-    return docs
+    return {slug: doc for slug, doc in docs.items() if slug in hashes}
 
 
 def write_moves(store, incidents, had_page, now, stamp):
