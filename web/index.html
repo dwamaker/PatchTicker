@@ -117,7 +117,55 @@
     #support { gap: 0.375rem; padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); } /* Buy Me a Coffee, beside GitHub (the Sponsor-in-the-nav pattern) */
     #support svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
     @media (hover: hover) { #support:hover { color: var(--ink); background: var(--panel-2); } }
-    @media (max-width: 599px) { #repo, #support { display: none; } } /* phones: the header line is full; the footer keeps the GitHub link */
+    @media (max-width: 599px) { #repo, #support, #feeds-btn { display: none; } } /* phones: the header line is full; the footer keeps the GitHub link */
+    /* RSS (owner, 11-17): a button beside GitHub and 후원 opens a small menu of the feeds; on phones the same menu opens
+       from the settings panel (#feeds-btn-phone), since the header line is full. A popover: the browser opens it from the
+       button (commandfor), closes it on Escape or a click elsewhere and returns focus; anchored under its button where
+       anchor positioning exists, placed by app.mjs elsewhere. Without popovers the buttons are not drawn (the footer
+       keeps its RSS link). */
+    .feeds-btn { gap: 0.375rem; }
+    .feeds-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    .feeds-btn circle { fill: currentColor; stroke: none; }
+    #feeds-btn { padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); }
+    #feeds-btn[aria-expanded="true"] { background: var(--panel-2); color: var(--ink); }
+    @media (hover: hover) { #feeds-btn:hover { color: var(--ink); background: var(--panel-2); } }
+    #feeds-btn-phone { display: none; }
+    @media (max-width: 599px) { #feeds-btn-phone { display: inline-flex; } #feeds-btn-phone[aria-expanded="true"] { background: var(--panel-2); } .feeds { margin-block: 0.75rem; } }
+    /* 600-1023px: the three-part grid gave the name its third of the line, and the name, GitHub and 후원 already ran under
+       the switch at 600px (and at 700-768px with 150% text). Here 후원 and RSS show their icons alone (the word stays their
+       name), the name keeps one line, and the line wraps rather than overlap where even that does not fit. */
+    @media (min-width: 600px) and (max-width: 1023px) {
+      .top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding-block: 0.625rem; }
+      #views { margin-inline: auto; }
+      .end { margin-left: auto; }
+      h1 { white-space: nowrap; }
+      #support, #feeds-btn { padding: 0; border-radius: 50%; }
+      #support > span, #feeds-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    }
+    @supports not selector(:popover-open) { .feeds-btn { display: none !important; } }
+    #feeds:not(:is(:popover-open)) { display: none; } /* also where popovers are unknown: never drawn in the header line */
+    .feeds { width: min(23rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); margin: 0; padding: 0.375rem; overflow: auto; border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: 0 12px 28px -12px var(--shadow); font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; }
+    @supports (position-area: block-end) { .feeds { inset: auto; margin-block: 0.25rem; position-area: block-end span-inline-end; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; } }
+    @supports not (position-area: block-end) { .feeds { position: fixed; inset: auto; } }
+    .feeds-head { margin: 0.25rem 0.5rem 0.375rem; color: var(--ink-2); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
+    .feeds ul { margin: 0; padding: 0; list-style: none; }
+    .feed { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.125rem 0.5rem; padding: 0.5rem; }
+    .feed + .feed { border-top: 1px solid var(--rule); }
+    .feed > a { color: var(--ink); text-decoration: none; border-radius: 4px; overflow-wrap: anywhere; }
+    .feed > a b, .feed > b { display: block; }
+    .feed > a b { color: var(--focus); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--focus) 50%, transparent); text-underline-offset: 3px; }
+    .feed .note { display: block; color: var(--ink-2); font-size: calc(var(--fs-meta) * var(--ts)); }
+    .feed > .btn { padding: 0 0.75rem; gap: 0.375rem; }
+    .feed > .btn .ok svg { width: 14px; height: 14px; display: block; }
+    .feed code, .feed > p { grid-column: 1 / -1; margin: 0; }
+    .feed code { color: var(--ink-3); font: calc(0.75rem * var(--ts))/1.4 var(--mono); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+    #feed-none > b, #feed-none > .note { grid-column: 1; }
+    #feed-none > .btn { grid-row: 1 / span 2; grid-column: 2; }
+    @media (prefers-reduced-motion: no-preference) {
+      .feeds { opacity: 0; translate: 0 -0.25rem; transition: opacity, translate, display, overlay; transition-duration: 0.15s; transition-behavior: allow-discrete; }
+      .feeds:popover-open { opacity: 1; translate: 0 0; transition-duration: 0.1s; }
+      @starting-style { .feeds:popover-open { opacity: 0; translate: 0 -0.25rem; } }
+    }
     h1 { margin: 0; display: flex; align-items: center; gap: 0.625rem; font: 700 calc(1.25rem * var(--ts))/1 var(--sans); letter-spacing: -0.02em; }
     h1 a { display: flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; border-radius: var(--r-ctl); } /* the logo: back to the top of the Board, conditions and search cleared (app.mjs #home) */
     @media (pointer: coarse) { h1 a { min-height: var(--tap); } } /* 44px to tap; centred in the header line, which its 44px buttons already set */
@@ -757,6 +805,7 @@
     @media (max-width: 767px) { .vt-board .search-row { view-transition-name: vt-search; view-transition-class: frozen; } }
     .vt-board #jump { view-transition-name: vt-jump; view-transition-class: frozen; }
     .vt-board #new-above { view-transition-name: vt-new; view-transition-class: frozen; }
+    .vt-board #feeds:popover-open { view-transition-name: vt-feeds; view-transition-class: frozen; } /* an open RSS menu stays over the moving rows */
     :root::view-transition-old(*.frozen) { display: none; }
     :root::view-transition-new(*.frozen), :root::view-transition-group(*.frozen) { animation: none; }
     :root::view-transition-group(*.frozen) { z-index: 1; } /* the groups' own order put the rows on top */
@@ -822,7 +871,8 @@
   <header class="top"><div class="wrap">
     <div class="brand"><h1><a id="home" href="./"><svg viewBox="0 0 64 56" aria-hidden="true"><path fill-rule="evenodd" d="M17 0H44A20 20 0 0 1 44 40H34V56H17V26.5H0V13.5H17ZM53.5 20A9.5 9.5 0 1 0 34.5 20A9.5 9.5 0 1 0 53.5 20Z"/></svg><span data-t="brand">Patch Ticker</span></a></h1>
       <a id="repo" class="btn" href="https://github.com/dwamaker/PatchTicker" target="_blank" rel="noopener noreferrer" data-t-aria="repo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
-      <a id="support" class="btn" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg><span data-t="support"><span lang="ko">후원</span><span lang="en">Support</span></span></a></div>
+      <a id="support" class="btn" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg><span data-t="support"><span lang="ko">후원</span><span lang="en">Support</span></span></a>
+      <button id="feeds-btn" class="btn feeds-btn" type="button" commandfor="feeds" command="toggle-popover" aria-expanded="false" data-t-aria="feeds"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7.5a6 6 0 0 1 6 6M2.5 2.5a11 11 0 0 1 11 11"/><circle cx="3.5" cy="12.5" r="1.4"/></svg><span>RSS</span></button><div id="feeds" class="feeds" popover role="group" aria-labelledby="feeds-head" tabindex="-1"><p id="feeds-head" class="feeds-head" data-t="feedsHead"><span lang="ko">RSS로 받아 보기</span><span lang="en">Follow by RSS</span></p><ul><li class="feed"><a id="feed-main" href="/feed.xml"><b data-t="feedMain"><span lang="ko">주요 피드</span><span lang="en">Main feed</span></b> <span class="note" data-t="feedMainNote"><span lang="ko">위험 이상, 실제 공격, 아직 CVE 없는 사건</span><span lang="en">Elevated and up, attacked, or no CVE yet</span></span></a><button class="btn" type="button" data-copy="feed-main" aria-describedby="feed-main" data-t="copy"><span lang="ko">복사</span><span lang="en">Copy</span></button><code id="feed-main-url">https://patchticker.com/feed.xml</code></li><li class="feed"><a id="feed-all" href="/feed/all.xml"><b data-t="feedAll"><span lang="ko">현황판 전체</span><span lang="en">The whole Board</span></b> <span class="note" data-t="feedAllNote"><span lang="ko">참고까지 모든 사건</span><span lang="en">Every Incident, Notice too</span></span></a><button class="btn" type="button" data-copy="feed-all" aria-describedby="feed-all" data-t="copy"><span lang="ko">복사</span><span lang="en">Copy</span></button><code id="feed-all-url">https://patchticker.com/feed/all.xml</code></li><li class="feed" id="feed-mine" hidden><a id="feed-products" href="/feed.xml"><b data-t="feedMine"><span lang="ko">내 제품</span><span lang="en">My products</span></b> <span class="note" id="feed-names"></span></a><button class="btn" type="button" data-copy="feed-products" aria-describedby="feed-products" data-t="copy"><span lang="ko">복사</span><span lang="en">Copy</span></button><code id="feed-products-url"></code><p id="feed-left" class="note" hidden></p></li><li class="feed" id="feed-none"><b data-t="feedMine"><span lang="ko">내 제품</span><span lang="en">My products</span></b><span class="note" data-t="feedNone"><span lang="ko">위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.</span><span lang="en">Pick products in “Products you run” above, and an address with only their Incidents appears here.</span></span><button id="feed-pick" class="btn" type="button" data-t="feedPick"><span lang="ko">제품 고르기</span><span lang="en">Pick products</span></button></li></ul></div></div>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal">기본</button><button id="view-easy" type="button" aria-pressed="false" data-t="easy">쉬운 설명</button></div>
     <button id="prefs-btn" class="btn" type="button" aria-controls="prefs" aria-expanded="false" data-t-aria="prefs"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h7M14 5h1M3 13h1M8 13h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="13" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="end" id="prefs">
@@ -832,6 +882,7 @@
       </div>
       <button id="theme" class="btn" type="button" aria-pressed="false" data-t-aria="theme"><svg class="moon" viewBox="0 0 18 18" aria-hidden="true"><path d="M14.5 11.2A6 6 0 0 1 6.8 3.5a6 6 0 1 0 7.7 7.7Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><svg class="sun" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       <button id="lang" class="btn" type="button"><span class="full">English</span><span class="short">EN</span></button>
+      <button id="feeds-btn-phone" class="btn feeds-btn" type="button" commandfor="feeds" command="toggle-popover" aria-expanded="false" data-t-aria="feeds"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7.5a6 6 0 0 1 6 6M2.5 2.5a11 11 0 0 1 11 11"/><circle cx="3.5" cy="12.5" r="1.4"/></svg><span>RSS</span></button>
     </div>
   </div></header>
   <div class="wrap cn-wrap"><div id="collect-note" class="collect-note" role="note"><p><span lang="ko">Patch Ticker는 2026년 11월 9일부터 수집했습니다. 그 전에 공개된 취약점은 목록에 없을 수 있습니다. 패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.</span><span lang="en">Patch Ticker has collected since 9 November 2026. Vulnerabilities published before then may be missing. An Incident is not removed when a patch ships; it stays for 90 days.</span></p><button id="cn-close" class="cn-close" type="button" aria-label="알림 닫기" data-t-aria="noticeClose"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div></div>

@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed } from '../web/board.mjs';
+import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -1660,4 +1662,37 @@ test('nextPage gives the items after the drawn ones, or null when the Board chan
   assert.equal(nextPage(drawn, { ...same, folding: false }, 100), null);
   assert.equal(nextPage(drawn, { ...same, pinAll: true }, 100), null);
   assert.equal(nextPage({}, same, 100), null); // nothing drawn yet
+});
+
+// The header's RSS menu (owner, 11-17): each feed in the page's language, and the picked Products' feed in the form the
+// products feed reads (edge/check.mjs readQuery), so what the menu links is what the feed answers.
+test('the feed addresses follow the page language', () => {
+  assert.equal(feedPath('ko'), '/feed.xml');
+  assert.equal(feedPath('en'), '/en/feed.xml');
+  assert.equal(feedPath('ko', 'all'), '/feed/all.xml');
+  assert.equal(feedPath('en', 'all'), '/en/feed/all.xml');
+});
+
+test('the products feed address carries the picked names, encoded, and reads back as the same names', () => {
+  const feed = productFeed(['OpenSSH', 'Windows 그림판', 'C++ & Co/Lib?', 'nginx'], 'ko');
+  assert.equal(feed.href, '/feed.xml?products=OpenSSH,Windows%20%EA%B7%B8%EB%A6%BC%ED%8C%90,C%2B%2B%20%26%20Co%2FLib%3F,nginx');
+  const read = readQuery(new URL(feed.href, 'https://patchticker.com').searchParams);
+  assert.deepEqual(read.names, ['OpenSSH', 'Windows 그림판', 'C++ & Co/Lib?', 'nginx']);
+  assert.equal(feed.left, 0);
+  assert.equal(productFeed(['nginx'], 'en').href, '/en/feed.xml?products=nginx');
+});
+
+test('the products feed address: no names is no address; a comma, a repeat and the 30-name limit are handled', () => {
+  assert.equal(productFeed([], 'ko'), null);
+  assert.equal(productFeed(['  ', ','], 'ko'), null);
+  // a name's own comma would split it in two at the feed: it becomes a space, which the feed's productKey drops anyway
+  assert.deepEqual(productFeed(['Foo, Inc.'], 'ko').names, ['Foo Inc.']);
+  // one productKey is one ask: "OpenSSH" and "openssh" are sent once, the first spelling kept
+  assert.deepEqual(productFeed(['OpenSSH', 'openssh', 'nginx'], 'ko').names, ['OpenSSH', 'nginx']);
+  const many = Array.from({ length: 34 }, (_, n) => `product ${n}`);
+  const feed = productFeed(many, 'en');
+  assert.equal(feed.names.length, FEED_NAMES);
+  assert.equal(feed.left, 4);
+  assert.equal(readQuery(new URL(feed.href, 'https://patchticker.com').searchParams).names.length, FEED_NAMES); // not a 400
+  assert.equal(FEED_NAMES, Number(/^const MAX_NAMES = (\d+);/m.exec(readFileSync(new URL('../edge/check.mjs', import.meta.url), 'utf8'))[1]));
 });
