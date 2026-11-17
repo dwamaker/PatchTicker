@@ -508,6 +508,15 @@ export function onBoard(i) {
   return Boolean(i.summary_error?.final);
 }
 
+// The status line's named counts: first seen since the visitor's own midnight, and inside the week file's window
+// (`since`), which stays the week's number after older months join the list.
+export function statusCounts(incidents, since, now = new Date()) {
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const shown = incidents.filter(onBoard);
+  return { today: shown.filter((i) => Date.parse(i.first_seen) >= midnight).length,
+    week: shown.filter((i) => !since || Date.parse(i.first_seen) >= Date.parse(since)).length };
+}
+
 // A command or stopgap a reader may paste into a terminal: it starts with a package manager or service tool.
 // Anything else ("PasswordAuthentication no") is a line for a config file and must not look runnable.
 const SHELL = /^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|snap|flatpak|winget|choco|npm|pnpm|yarn|pip3?|pipx|gem|cargo|go|composer|docker|podman|kubectl|helm|systemctl|service|rc-service|launchctl)\s/;

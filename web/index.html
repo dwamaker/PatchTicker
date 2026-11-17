@@ -465,6 +465,7 @@
     .stale-short { display: none; font-weight: 700; color: var(--ink); }
     @media (max-width: 599px) {
       .stale-short { display: inline; }
+      .status-all { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } /* "all N" leaves the phone line; screen readers keep it */
       .stale { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     }
     /* 5: on a phone the guide is a quick reference, tighter, so it is not a screen and a half of reading */

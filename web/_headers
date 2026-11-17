@@ -3,7 +3,7 @@
 # tests/headers.test.mjs fails when any of them changes.
 # static.cloudflareinsights.com / cloudflareinsights.com: the Web Analytics beacon Cloudflare injects (PRODUCT.md).
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-rKEOKuhBYPow3gCHoxX1xSuhZ2Lxe7SB/qpJz5nvpS4=' https://static.cloudflareinsights.com; style-src 'sha256-9MbXgcBSy2QlMueLNNBBwsntJj7W769xqm33bjHsV58=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-rKEOKuhBYPow3gCHoxX1xSuhZ2Lxe7SB/qpJz5nvpS4=' https://static.cloudflareinsights.com; style-src 'sha256-+sXQVC7Vss3o9DuIewmv/9U0Q1BCbeT5vG/FgXyc2eA=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
