@@ -29,14 +29,23 @@ front of a Summary's product name it does not make another Product ("IBM SevOne 
 ## Add a well-known product
 
 A Highlight goes to one 최고 Incident of each well-known product (CONTEXT.md). `collector/well_known.json` is the list:
-kinds ("Browsers", only for reading), each holding labels, one line each: `"Zoom": {"ids": [...], "names": [...]}`.
+kinds ("Browsers", only for reading), each holding labels, one line each:
+`"Zoom": {"ids": [...], "names": [...], "tier": 2}`.
 The label is the product as the one-per-product rule counts it. A Product matches when its id (`vendor:product` as
 `products_of` gives it, or `name:<key>` for a name only a Summary gives; never an `os:` tag) matches one of `ids` as an
 `fnmatch` pattern (`*` for any run: `"zoom_communications:zoom*"`), or when its English name, ignoring case, equals the
 label or one of `names`, as it is or without a leading vendor word (the id's vendor with `_` as spaces, or a spelling in
 `web/vendors.json`: "Google Chrome" is "Chrome"). Names match only when equal: "PHP" is not "phpMyAdmin", "Git" is not
-"GitLab". The first label that matches wins, in file order. The file's order is also the priority: when the Highlights
-are full, a label earlier in the file (kinds in order, labels in order within a kind) goes before a later one, whatever
-the scores, and a product on no list (a Summary's `widely_used`, which no new Summary carries since 11-11) after them all. Moving a label up promotes its product;
-keep everyday products first. To add one, add a line under its kind, check that it parses
-(`python -c "import collector.incidents"`), and run both test suites; the next cycle stamps `known` on the week's rows.
+"GitLab". The first label that matches wins, in file order. Ids are lower case; a label or alias is written once in the
+whole file (a test checks both).
+
+Every label has a `tier`, its reach (owner, 2026-11-17, "많은 사람이 사용하는걸 위로"): **1** on most computers or phones
+(Windows, Chrome, Android), **2** the standard of its field (Zoom, FortiOS, SAP NetWeaver), **3** well known inside its
+field. The tier, not the file's order, is the priority: the well-known Highlights are chosen tier 1 before 2 before 3,
+by score inside a tier, and the pins and 주요 사건 더 보기 show tier 1, tier 2, exploited rows on tier 3 or no list, tier 3,
+then the rest (CONTEXT.md, Highlight). The kind a label sits under also counts: a pin stands for a vendor in one
+kind, so Android (Operating systems) and Chrome (Browsers) both take one while two Google browsers share one; file a
+label under the kind a reader would look for it in. A product on no list (a Summary's `widely_used`, which no new Summary carries
+since 11-11) counts as tier 3. Give the lowest tier that is true: a tier-1 label outranks every exploited row of tier 3.
+To add one, add a line under its kind with its tier, check that it parses (`python -c "import collector.incidents"`),
+and run both test suites; the next cycle stamps `known` and `known_tier` on the week's rows.

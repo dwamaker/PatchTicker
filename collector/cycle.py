@@ -41,8 +41,9 @@ def highlights(views, since):
     """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs;
     tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above published
     since `since`, by score and newest first among equals, every exploited one (owner, 11-10), then the best-scored
-    well-known one of each product (owner, 11-11) in the order of collector/well_known.json (known_rank; one on no list
-    last, by score), then the rest; HIGHLIGHTS..HIGHLIGHTS_MAX in all."""
+    well-known one of each label not held by an exploited row (owner, 11-11, 11-16), tier 1 before 2 before 3 by score
+    inside a tier (known_tier of collector/well_known.json; a label on no list, or a row without a tier, as 3; owner,
+    11-17), then the rest; HIGHLIGHTS..HIGHLIGHTS_MAX in all."""
     # Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in).
     top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice"),
                  key=lambda v: (highlight_score(v), published_at(v)), reverse=True)
@@ -52,8 +53,8 @@ def highlights(views, since):
         if well_known(v) and v["known"] not in labels:
             labels.add(v["known"])
             known.append(v)
-    # A stable sort: rows of equal rank (those on no list) stay by score.
-    lead = [v for v in top if is_exploited(v)] + sorted(known, key=lambda v: v.get("known_rank", float("inf")))
+    # A stable sort: rows of one tier stay by score (tierOf in web/board.mjs: no tier, or another value, counts as 3).
+    lead = [v for v in top if is_exploited(v)] + sorted(known, key=lambda v: v["known_tier"] if v.get("known_tier") in (1, 2, 3) else 3)
     chosen = {v["id"] for v in lead}
     return (lead + [v for v in top if v["id"] not in chosen])[:min(HIGHLIGHTS_MAX, max(HIGHLIGHTS, len(lead)))]
 

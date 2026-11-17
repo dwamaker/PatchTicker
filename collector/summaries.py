@@ -130,7 +130,7 @@ Also:
 - devices: when the affected products are device firmware (routers, cameras, NAS, printers), the affected device models as the sources name them, each with its vendor in front ("Synology DiskStation", "TP-Link Archer"), so a model name never stands alone. Empty list otherwise.
 - incident: true only when the input reports a security flaw or an attack on software or a device that readers install or run themselves (an app, a library, an OS, a server program, a router or other device firmware), so a reader can check whether they are affected and update or change a setting. False for a company's own breach or leak, fraud, scams, heists, lawsuits, policy, opinion, essays, how-tos and tool or feature announcements, even when the story is about security: there is nothing a reader can check or fix on their own systems.
 - platforms: only the operating systems, from Windows, macOS, Linux, Android, iOS, that the affected software itself is installed on and runs natively on, so a reader filtering by their OS finds it: operating systems and their components, desktop and mobile apps, and native servers and tools. Software that runs on several lists all of them (CPython, OpenSSH, Chrome: Windows, macOS, Linux; Chrome also Android). Narrow the list only when the sources limit the flaw to some (sshole needs musl libc: Linux; Microsoft Paint: Windows). Web applications, CMS plugins (WordPress, Drupal, Joomla) and themes, PHP and JavaScript libraries and packages, and SaaS get an empty platforms list even if their host can be any OS (a WordPress plugin, Apache Allura, a PHP admin panel, an npm package). Empty also for online services that only the vendor runs (a bank, ChatGPT, a game's login servers) and for device firmware.
-- exploited: true only when the text of one input source states that attackers are already using this flaw against real targets (exploited in the wild, an attack campaign, active exploitation). False for a proof of concept, exploit code on GitHub, a write-up showing how it could be attacked, a researcher's demo or a warning that attacks are likely. The Board lifts such an Incident to its top Risk level, as a CISA KEV listing does.
+- exploited: true only when the text of one input source states that attackers are already using this flaw against real targets (exploited in the wild, an attack campaign, active exploitation), or that attackers already put malicious code on users' systems through the product itself (a tampered or trojanised package, extension, update, installer or image that users received; incident is true then). False for a company's own breach that delivered nothing to users, a malicious package removed before anyone installed it, a proof of concept, exploit code on GitHub, a write-up showing how it could be attacked, a researcher's demo or a warning that attacks are likely. The Board lifts such an Incident to its top Risk level, as a CISA KEV listing does.
 - exploited_source: when exploited is true, the URL of the source that states the attacks, copied exactly from the Mentions list; the Board shows it as the reason. Empty string otherwise. Without it exploited counts as false.
 - poc_public: true when a source says exploit or proof-of-concept code is public (a PoC repository, a published exploit). This alone never makes it exploited.
 - library: true when the affected product is a library, SDK, framework or package that other programs build in (Brotli, zlib, Qt, an npm or PyPI package), so a reader cannot see its version and must update the program that contains it. False for apps, servers, operating systems and devices.
@@ -299,15 +299,60 @@ def group_scope(summary):
 # when it reports them (a vendor's PSIRT bulletin; Huatian's record citing Shadowserver), and never when it does not.
 ATTACK_SEEN = re.compile(r"in the wild|zero-day|actively (?:exploited|attacked)|being exploited|used in (?:real )?attacks|in real attacks"
                          r"|(?:was|were|has been|have been|is being|are being) (?:exploited|abused|attacked|targeted)"
-                         r"|attackers? (?:are|is|have|has|were|was) (?:exploiting|abusing|using|targeting|breaching|hacking)"
-                         r"|attackers? used|attack(?:s| attempts)? (?:are|were|have been) (?:targeting|seen|observed|reported)"
-                         r"|exploitation (?:was|has been|is|were) (?:\w+ )?(?:seen|observed|reported|detected)", re.I)
+                         r"|attackers? (?:are|is|have|has|were|was)(?: been)? (?:already |now |actively )?"
+                         r"(?:exploiting|abusing|using|targeting|breaching|hacking)"
+                         r"|attackers? used|attack(?:s| attempts)? (?:are|were|have been|has been) (?:already |now )?"
+                         r"(?:targeting|seen|observed|reported|exploiting|abusing|hitting|underway|ongoing)"
+                         # 11-17 trial: the same attack lost its flag by wording alone between runs. Attacks as the subject
+                         # ("Attacks exploiting this have breached MSPs"), never with a modal between or a forecast after.
+                         r"|attacks? (?:exploiting|abusing|targeting|using|leveraging)\b(?:(?!\b(?:could|can|might|would|will|may)\b)[^.;]){0,80}?"
+                         r"\b(?:have|has|had|are|were) (?:already |now )?(?!expected|anticipated|predicted|likely|possible|feared)"
+                         r"(?:been \w+|\w+ed|\w+ing|hit|struck|underway|ongoing)\b"
+                         r"|exploited in (?:[\w-]+,? ){0,3}attacks|under (?:active |ongoing )?attack|attack campaign"
+                         r"|exploitation (?:(?:was|has been|have been|is|were|had been) )?(?!not\b|never\b)(?:\w+ )?"
+                         r"(?:seen|observed|reported|detected|confirmed)"
+                         r"|(?:observed|seen|detected|reported|confirmed) (?:active |ongoing |limited )?exploitation", re.I)
+# Words just before a match that turn it into a denial ("no evidence it has been exploited in the wild", "has not observed
+# exploitation") or a warning ("could be exploited in attacks", "could come under attack"); "may have been" stays a report.
+DENIED = re.compile(r"\b(?:no|not|never|none|nor|without)\b|n't", re.I)
+HEDGED = re.compile(r"\b(?:could|can|would|will|should|if|likely|expected|potential|possible)\b|\b(?:may|might)\b(?!\s+have\b)", re.I)
+
+
+def before(text, start, n):
+    """The last n words before start, within the same clause (a comma ends one)."""
+    return " ".join(re.split(r"[.;:,\n]", text[:start])[-1].split()[-n:])
+
+
+def attack_reported(text):
+    """Whether one ATTACK_SEEN match stands: no denial in the ten words before it and no hedge in the five before it
+    ("Although no patch exists, the flaw is being exploited" is a report: the comma ends the denial's clause)."""
+    return any(not (DENIED.search(before(text, m.start(), 10)) or HEDGED.search(before(text, m.start(), 5)))
+               for m in ATTACK_SEEN.finditer(text))
+
+
+# Malicious code already delivered to users through the product (11-17, Cursor: a tampered Claude Code extension on its
+# marketplace): a malicious thing then how it reached users, or users who received it. A modal before the verb ("could be
+# published", "can be delivered") is a warning or a proof of concept, not an attack; "may have received" is one.
+DELIVERED = (re.compile(r"\b(?:malicious|tampered|trojani[sz]ed|backdoored|poisoned)\b(?P<between>[^.]{0,80}?)"
+                        r"\b(?:placed|published|pushed|uploaded|planted|distributed|delivered|served|shipped)\b", re.I),
+             re.compile(r"(?<!-)\b(?:received|installed|downloaded|pulled)\b(?P<between>[^.]{0,40}?)"  # not "co-installed"
+                        r"\b(?:malware|malicious|tampered|trojani[sz]ed|backdoored)\b", re.I),
+             # "Attackers pushed tampered copies": a past verb first, so "could push" (a warning) never matches
+             re.compile(r"\b(?:placed|published|pushed|uploaded|planted|distributed|delivered|served|shipped)\b(?P<between>)"
+                        r"[^.]{0,30}?\b(?:malicious|tampered|trojani[sz]ed|backdoored|poisoned)\b", re.I))
+MODAL = re.compile(r"\b(?:could|can|might|would|will|may\s+(?:be|not))\b", re.I)
+# How a flaw works, not a delivery: "lets malicious scripts be planted", "can load a malicious DLL placed in", "an attacker
+# who has planted a malicious value" (live month, 11-17).
+MECHANICS = re.compile(r"\b(?:lets?|allows?|enables?|can|could)\b|\battackers? who\b", re.I)
 
 
 def attacks_evidenced(summary, kind):
     """Whether a Summary's exploited flag stands: its English title or summary reports that attacks were seen. kind (the
-    source's Mention kind) no longer decides (owner 11-16); it stays in the call for the reporter rule's callers."""
-    return bool(ATTACK_SEEN.search(f"{summary['en'].get('title', '')}\n{summary['en'].get('summary', '')}"))
+    source's Mention kind) no longer decides (owner 11-16); it stays in the call for the reporter rule's callers. Malicious
+    code already delivered through the product counts (DELIVERED, 11-17)."""
+    text = f"{summary['en'].get('title', '')}\n{summary['en'].get('summary', '')}"
+    return bool(attack_reported(text) or any(not (MODAL.search(m["between"]) or MECHANICS.search(before(text, m.start(), 5)))
+                                             for p in DELIVERED for m in p.finditer(text)))
 
 
 def recheck_exploited(incidents):

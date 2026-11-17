@@ -83,8 +83,8 @@ rest by score, at least ten and at most twenty; `pickHighlights`, owner 11-10 an
 Well known (`wellKnown`): a row at 최고, not exploited, that the collector stamped `known` on both its row and board
 views, worked out at each write and never stored (`known_label` in `collector/incidents.py`): the label of its first
 Product on `collector/well_known.json`, else, when its Summary says `widely_used` (none since 11-11: the schema cannot carry it), that Product's English name; and
-`known_rank`, the label's place in that file, which orders the well-known Highlights (none for a label on no list,
-which comes last). The
+`known_tier`, the label's tier of reach in that file (1 on most computers or phones, 2 the standard of its field,
+3 known inside it), which orders the well-known Highlights (none for a label on no list, which the site counts as 3). The
 collector picks the same Highlights (`highlights` in `collector/cycle.py`, kept in step by
 `tests/fixtures/board/highlights-case.json`) so each is whole in `board/rows.json`. How to add a product:
 `docs/agents/vendors.md`.

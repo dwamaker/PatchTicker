@@ -291,6 +291,74 @@ class ExploitedEvidenceTest(unittest.TestCase):
         first = "Exploitation was first observed by the Shadowserver Foundation on 2024-11-20."
         self.assertTrue(summaries.attacks_evidenced(self.stored("news", first)["summary"], "news"))
 
+    def test_malicious_code_already_delivered_through_the_product_is_an_attack(self):
+        # 11-17, the Cursor marketplace case: a tampered Claude Code extension reached users for about 11 hours.
+        for text in ("A malicious copy of Anthropic's Claude Code extension placed by the attacker could reach at most 5,000 users.",
+                     "Up to 5,000 developers who requested the affected versions may have received malware that tried to install SSH backdoors.",
+                     "Attackers pushed tampered copies of the extension to the marketplace for about 11 hours.",
+                     "The trojanised installer was distributed from the official download page for two days.",
+                     "Users who installed the backdoored package version 1.2.3 must rotate their keys."):
+            with self.subTest(text):
+                self.assertTrue(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+        for text in ("A proof of concept shows how a malicious extension could be published to the marketplace.",
+                     "Researchers warn that attackers could push tampered updates.",
+                     "npm removed a malicious package before anyone installed it.",
+                     "A malicious update can be delivered if the signing key leaks.",
+                     "The company says attackers stole internal data and some credentials.",
+                     # how a flaw works is no delivery (live month, 11-17: GeoNode, WCFM, flowintel, Hitachi, Autodesk, Xiaomi)
+                     "GeoNode upload check bypass lets malicious files be stored and served",
+                     "A stored XSS flaw lets malicious scripts be planted on pages.",
+                     "An attacker who has planted a malicious value in the database can run arbitrary SQL.",
+                     "A binary planting flaw lets an attacker load a planted malicious file.",
+                     "Autodesk Installer can load a malicious DLL placed in an attacker-writable temporary folder.",
+                     "A co-installed malicious app can write files to arbitrary paths."):
+            with self.subTest(text):
+                self.assertFalse(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+
+    # 11-17 trial: real attacks lost the flag by wording alone between two runs of the same Incident.
+    REPORTED = ("Attacks exploiting this have breached MSPs and their customers' devices.",  # ScreenConnect RMM+
+                "Attacks abusing the flaw are hitting exposed servers.",
+                "Attacks targeting the flaw have been reported by several vendors.",
+                "Attacks are exploiting two flaws across several Barracuda appliances.",  # Barracuda
+                "An Outlook spoofing flaw among them is already exploited in attacks.",  # Microsoft November
+                "The flaw was exploited in limited, targeted attacks against government agencies.",
+                "Exploitation observed by Shadowserver since November 2.",
+                "The Shadowserver Foundation first observed exploitation on 2024-11-20.",  # Huatian
+                "CISA has seen exploitation of the flaw against federal agencies.",
+                "Exploitation has been detected against exposed appliances.",
+                "The appliance is under active attack.",
+                "The flaw is under attack, Fortinet says.",
+                "Researchers tied the flaw to an attack campaign against banks.",
+                "Attackers are already exploiting it to deploy ransomware.")
+    NOT_REPORTED = ("A proof of concept shows how the flaw could be exploited.",
+                    "A researcher's demo shows the flaw used in a simulated attack.",
+                    "The researcher's write-up explains how attacks exploiting this would work.",
+                    "Attacks are likely once exploit code spreads.",
+                    "The flaw may be targeted by attackers.",
+                    "The flaw could be exploited in attacks against exposed servers.",
+                    "Attacks exploiting the flaw are expected soon.",
+                    "Microsoft has not observed exploitation of the flaw.",
+                    "No exploitation has been reported so far.",
+                    "Exploitation was not observed.",
+                    "The servers could come under attack if left exposed.",
+                    "The flaw could be used in an attack campaign.",
+                    "There is no evidence the flaw has been exploited in the wild.")
+
+    def test_attacks_as_the_subject_and_observed_exploitation_are_reports(self):
+        for text in self.REPORTED:
+            with self.subTest(text):
+                self.assertTrue(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+
+    def test_a_proof_of_concept_a_demo_a_write_up_a_warning_or_a_denial_is_no_report(self):
+        for text in self.NOT_REPORTED:
+            with self.subTest(text):
+                self.assertFalse(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
+
+    def test_the_prompt_counts_a_delivered_malicious_package_as_exploited(self):
+        line = next(l for l in summaries.INSTRUCTIONS.splitlines() if l.startswith("- exploited:"))
+        self.assertIn("put malicious code on users' systems through the product itself", line)
+        self.assertIn("a malicious package removed before anyone installed it", line)
+
     def test_a_summary_that_reports_no_attack_loses_it_whatever_the_source(self):
         for kind in ("advisory", "cve_record", "writeup", "news"):
             self.assertFalse(summaries.attacks_evidenced(self.stored(kind, self.QUIET)["summary"], kind), kind)

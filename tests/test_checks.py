@@ -36,9 +36,11 @@ class CheckIndexTest(unittest.TestCase):
         self.assertEqual(index["synology diskstation manager"], [dsm])  # its shown name
         self.assertEqual(index["diskstation manager"], [dsm])  # the id's tail, and the name without its vendor
         self.assertEqual(index["windows 11 24h2"], [windows])
-        self.assertEqual(index["windows"], [windows])  # its well-known label ...
-        self.assertEqual(index["windows 10"], [windows])  # ... and an alias of it
-        self.assertEqual(index["paint"], [paint])  # "Microsoft" is a known vendor: product_key drops it
+        # its well-known label (since 11-17 "Microsoft Paint" is an alias of the Windows label, so Paint is found too) ...
+        self.assertEqual(sorted(index["windows"]), sorted([windows, paint]))
+        self.assertEqual(sorted(index["windows 10"]), sorted([windows, paint]))  # ... and an alias of it
+        # "Microsoft" is a known vendor: product_key drops it; Windows answers too, as Paint is one of its aliases (11-17)
+        self.assertEqual(sorted(index["paint"]), sorted([windows, paint]))
         self.assertEqual(index["windows 그림판"], [paint])  # the Korean name
         self.assertEqual(list(index), sorted(index))
 

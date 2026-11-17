@@ -167,7 +167,7 @@ class WellKnownTest(unittest.TestCase):
     def test_a_name_matches_only_when_equal_never_when_it_contains_the_label(self):
         self.assertEqual(self.known(products=["PHP"]), "PHP")
         self.assertEqual(self.known(products=["php"]), "PHP")  # case does not matter
-        for name in ("phpMyAdmin Helper", "Simple CRUD using PHP", "Stripe for WooCommerce", "GitLab Runner"):
+        for name in ("phpMyAdmin Helper", "Simple CRUD using PHP", "Stripe for WooCommerce", "GitLab Pages Helper"):
             with self.subTest(name):
                 self.assertIsNone(self.known(products=[name]))
         self.assertEqual(self.known(products=["phpMyAdmin"]), "phpMyAdmin")  # its own label, not PHP
@@ -200,13 +200,35 @@ class WellKnownTest(unittest.TestCase):
         for view in (rows_view, board_view):
             with self.subTest(view.__name__):
                 self.assertEqual(view(zoom)["known"], "Zoom")
-                # The label's place in the file is its priority (owner, 11-11): Chrome is listed before Zoom.
-                self.assertLess(view(chrome)["known_rank"], view(zoom)["known_rank"])
+                # The label's tier of reach orders the Highlights (owner, 11-17): Chrome 1, Zoom 2; no place rank any more.
+                self.assertEqual((view(chrome)["known_tier"], view(zoom)["known_tier"]), (1, 2))
+                # ... and its category, which with the vendor keys a pin (owner, 11-17)
+                self.assertEqual((view(chrome)["known_kind"], view(zoom)["known_kind"]), ("Browsers", "Messaging and meetings"))
+                self.assertNotIn("known_kind", view(widget))
+                self.assertNotIn("known_rank", view(chrome))
                 self.assertEqual(view(widget)["known"], "Widget")
-                self.assertNotIn("known_rank", view(widget))  # on no list: after every listed label
+                self.assertNotIn("known_tier", view(widget))  # on no list: the site counts it as tier 3
                 self.assertNotIn("known", view(base))
-                self.assertNotIn("known_rank", view(base))
+                self.assertNotIn("known_tier", view(base))
                 self.assertNotIn("known", zoom)  # worked out at write time, never stored
+
+
+class WellKnownListTest(unittest.TestCase):
+    """collector/well_known.json (owner, 11-17: 1,012 labels, each with a tier of reach): every entry has lower-case ids and
+    a tier of 1, 2 or 3; no label or alias is written twice, as the first would silently win; the id pattern compiles."""
+
+    def test_the_list_has_its_shape(self):
+        from collector import incidents
+        seen = {}
+        for label, entry in incidents.WELL_KNOWN.items():
+            self.assertIn(entry.get("tier"), (1, 2, 3), label)
+            for pattern in entry["ids"]:
+                self.assertEqual(pattern, pattern.lower(), label)
+            for name in (label, *entry.get("names", [])):
+                self.assertFalse(name.lower() in seen, f"{name!r} in {label!r} and {seen.get(name.lower())!r}")
+                seen[name.lower()] = label
+        self.assertGreaterEqual(len(incidents.WELL_KNOWN), 1000)
+        self.assertEqual(incidents.KNOWN_IDS.groups, len(incidents.WELL_KNOWN))
 
 
 class CveOrderTest(unittest.TestCase):

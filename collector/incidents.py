@@ -111,12 +111,15 @@ def order_fields(incident, maps):
 
 def known_field(incident):
     """`known` for the page (wellKnown in web/board.mjs), worked out at each write and never stored, so an edit of
-    collector/well_known.json reaches the week's rows at the next cycle. known_rank: the label's place in that file, its
-    priority among Highlights (owner, 11-11); none for a label on no list (a Summary's widely_used)."""
+    collector/well_known.json reaches the week's rows at the next cycle. known_tier: the label's tier of reach in that
+    file (1 on most computers or phones, 2 the standard of its field, 3 known inside it), which orders the Highlights
+    (owner, 11-17; it replaced the label's place, known_rank); none for a label on no list (a Summary's widely_used),
+    which the site counts as tier 3."""
     label = known_label(incident)
     if not label:
         return {}
-    return {"known": label} | ({"known_rank": LABELS.index(label)} if label in WELL_KNOWN else {})
+    # known_kind: the label's category in that file, which with the vendor keys a pin (pinKey; owner, 11-17).
+    return {"known": label} | ({"known_tier": WELL_KNOWN[label]["tier"], "known_kind": LABEL_KIND[label]} if label in WELL_KNOWN else {})
 
 
 ROW_FIELDS = ("id", "cves", "first_seen", "published", "cvss", "kev", "kev_date", "products")
@@ -297,8 +300,10 @@ def product_key(name):
 
 # Well-known Products (Highlight, CONTEXT.md; owner, 11-11): kind -> label -> {"ids": fnmatch patterns, "names": aliases}.
 # How to add one: docs/agents/vendors.md.
-WELL_KNOWN = {label: entry for kind in json.loads((Path(__file__).parent / "well_known.json").read_text(encoding="utf-8")).values()
-              for label, entry in kind.items()}
+_KINDS = json.loads((Path(__file__).parent / "well_known.json").read_text(encoding="utf-8"))
+WELL_KNOWN = {label: entry for kind in _KINDS.values() for label, entry in kind.items()}
+# Label -> its kind ("Browsers"): with the vendor it keys a pin (pinKey in web/board.mjs; owner, 11-17).
+LABEL_KIND = {label: kind for kind, labels in _KINDS.items() for label in labels}
 LABELS = list(WELL_KNOWN)
 # One pattern, one group per label in file order, so a Product id is matched once, not once per pattern.
 KNOWN_IDS = re.compile("|".join(f"({'|'.join(fnmatch.translate(p.lower()) for p in e['ids']) or '(?!)'})" for e in WELL_KNOWN.values()))

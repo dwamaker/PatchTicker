@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey } from '../web/board.mjs';
+import { cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey } from '../web/board.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const utcDay = zoneDay('UTC');
@@ -1039,7 +1039,7 @@ test('a row view replaces a held full Incident only when what its row shows chan
     { ...row, mentions: [...row.mentions, { kind: 'discussion', points: 120 }] },
     { ...row, mentions: [{ kind: 'advisory', points: 150 }] }, // HN buzz: pinReason and highlightScore read the points
     { ...row, quick_title: { ko: { title: '새 제목' }, en: { title: 'New title' } } },
-    { ...row, known: 'Db2' }, { ...row, known_rank: 3 }]) { // a well-known list edit reaches the Highlights at the next refresh
+    { ...row, known: 'Db2' }, { ...row, known_tier: 3 }]) { // a well-known list edit reaches the Highlights at the next refresh
     assert.equal(mergeIncidents([fullOne], [changed]).incidents[0], changed); // owner, 11-10: a new KEV, Summary or Mention shows
   }
   assert.equal(mergeIncidents([row], [fullOne]).incidents[0], fullOne);
@@ -1502,9 +1502,9 @@ test('an exploited Incident published 30 days ago with a KEV date of yesterday i
 });
 
 test('a well-known label already held by an exploited Highlight is not lifted again', () => {
-  const kevChrome = hlRow('CVE-2026-10', { kev: true, kev_date: '2026-11-15', known: 'Chrome', known_rank: 11, products: [{ id: 'google:chrome', name: 'Chrome' }] });
-  const chrome2 = hlRow('CVE-2026-11', { known: 'Chrome', known_rank: 11, cvss: 9.0, products: [{ id: 'google:chrome', name: 'Chrome' }] });
-  const zoom = hlRow('CVE-2026-12', { known: 'Zoom', known_rank: 43, cvss: 9.0, products: [{ id: 'zoom:zoom', name: 'Zoom' }] });
+  const kevChrome = hlRow('CVE-2026-10', { kev: true, kev_date: '2026-11-15', known: 'Chrome', known_tier: 1, products: [{ id: 'google:chrome', name: 'Chrome' }] });
+  const chrome2 = hlRow('CVE-2026-11', { known: 'Chrome', known_tier: 1, cvss: 9.0, products: [{ id: 'google:chrome', name: 'Chrome' }] });
+  const zoom = hlRow('CVE-2026-12', { known: 'Zoom', known_tier: 2, cvss: 9.0, products: [{ id: 'zoom:zoom', name: 'Zoom' }] });
   const ids = filterBoard([kevChrome, chrome2, zoom], [], '', HL_NOW).highlights.map((i) => i.id);
   assert.deepEqual(ids, ['CVE-2026-10', 'CVE-2026-12', 'CVE-2026-11']); // the second Chrome is no longer lifted: it comes by score
 });
@@ -1517,13 +1517,14 @@ test('the four pins go to four vendors, a row of a pinned vendor heads the rest,
   const chosen = [ms('W', 9.8), v('G', 'google', 9.6), story, v('C', 'checkpoint', 9.9), v('S', 'connectwise', 9.0), v('B', 'barracuda', 9.1)];
   const { pins, rest } = pinOrder(chosen);
   assert.deepEqual(new Set(pins.map(vendorKey)).size, 4);
-  assert.deepEqual(pins.map((i) => i.id).sort(), ['C', 'G', 'S', 'W']);
+  // No row has a tier here: the exploited ones lead, then by score (11-17's order), so Barracuda 9.1 takes the fourth
+  // place over ConnectWise 9.0.
+  assert.deepEqual(pins.map((i) => i.id), ['W', 'C', 'G', 'B']);
   assert.equal(rest[0].id, 'https://news/outlook'); // displaced: heads the rest
   assert.equal(vendorKey(story), 'microsoft'); // no Product id: the first word of its product name
   assert.equal(vendorKey(hlRow('lone', { products: [] })), 'id:lone'); // nothing to tell: its own vendor
-  // shown by importance (highlightScore), whatever order came in
-  const scores = pins.map(highlightScore);
-  assert.deepEqual(scores, [...scores].sort((a, b) => b - a));
+  // shown in one order (showOrder), whatever order came in
+  assert.deepEqual(pinOrder([...chosen].reverse()).pins.map((i) => i.id), ['W', 'C', 'G', 'B']);
   // Fewer vendors than places (a search for one product, 11-17 defect B): the free places go to the held rows in rank
   // order, so 더 보기 never shows while a place is free.
   const three = pinOrder(chosen.slice(0, 3));
@@ -1545,4 +1546,59 @@ test('a Highlight stands out of its fold, which keeps the rest and its count, or
   // two Highlights leave two members: below the minimum of three, no fold at all
   assert.deepEqual(foldByVendor(rows, 3, utcDay, (i) => ['CVE-2026-82', 'CVE-2026-83'].includes(i.id)).map((x) => x.id), rows.map((i) => i.id));
   assert.equal(foldByVendor(rows, 3, utcDay).length, 1); // no keep: one fold, as before
+});
+
+// Owner, 11-17 ("많은 사람이 사용하는걸 위로 더 올리고 싶은데"): every listed label has a tier of reach (collector/well_known.json:
+// 1 on most computers or phones, 2 the standard of its field, 3 known inside it). Every exploited candidate is still
+// chosen; then one top-level row per label, tier 1 before 2 before 3; the pins and More run tier 1, tier 2, exploited
+// rows on tier 3 or no list, tier 3, the rest; inside each, exploited first, then by score.
+const tierRow = (id, vendor, extra = {}) => hlRow(id, { products: [{ id: `${vendor}:${id.toLowerCase()}`, name: vendor }], ...extra });
+
+test('a tier-1 top-level row stands above a tier-2 exploited row', () => {
+  const t1 = tierRow('A', 'google', { known: 'Android', known_tier: 1, cvss: 9.1 });
+  const t2x = tierRow('B', 'checkpoint', { known: 'Check Point Gaia', known_tier: 2, kev: true, kev_date: '2026-11-15', cvss: 7.8 });
+  const order = (rows) => { const { pins, rest } = pinOrder(filterBoard(rows, [], '', HL_NOW).highlights); return [...pins, ...rest].map((i) => i.id); };
+  assert.deepEqual(order([t2x, t1]), ['A', 'B']);
+});
+
+test('an exploited row on no list is still chosen and shown when twenty tier-1 and tier-2 rows exist', () => {
+  const rows = Array.from({ length: 20 }, (_, n) => tierRow(`K${n}`, `v${n}`, { known: `Label ${n}`, known_tier: 1 + (n % 2), cvss: 9.8 }));
+  const odd = tierRow('X', 'nobody', { cvss: 7.5, summary: { exploited: true, exploited_source: 'https://example.org/attacks' } });
+  const { highlights } = filterBoard([...rows, odd], [], '', HL_NOW);
+  assert.equal(highlights.length, 20);
+  assert.ok(highlights.some((i) => i.id === 'X'));
+  const { pins, rest } = pinOrder(highlights);
+  assert.ok([...pins, ...rest].some((i) => i.id === 'X'));
+});
+
+test('one row per label: a label that already has a chosen row gets no second', () => {
+  const rows = Array.from({ length: 20 }, (_, n) => tierRow(`K${n}`, `v${n}`, { known: `Label ${n}`, known_tier: 2, cvss: 9.6 }));
+  const second = tierRow('K0b', 'v0', { known: 'Label 0', known_tier: 2, cvss: 9.5 });
+  const ids = filterBoard([...rows, second], [], '', HL_NOW).highlights.map((i) => i.id);
+  assert.equal(ids.length, 20);
+  assert.ok(!ids.includes('K0b'));
+});
+
+test('a row with known and no known_tier behaves as tier 3', () => {
+  const t2 = tierRow('T2', 'a', { known: 'Two', known_tier: 2, cvss: 9.1 });
+  const t3 = tierRow('T3', 'b', { known: 'Three', known_tier: 3, cvss: 9.6 });
+  const bare = tierRow('NT', 'c', { known: 'Old row', cvss: 9.8 }); // written before the collector carried tiers
+  const order = (rows) => { const { pins, rest } = pinOrder(filterBoard(rows, [], '', HL_NOW).highlights); return [...pins, ...rest].map((i) => i.id); };
+  assert.deepEqual(order([bare, t3, t2]), ['T2', 'NT', 'T3']); // tier 2 first, then the two tier 3 by score
+});
+
+// Owner, 11-17: for the pins, the same vendor AND the same category of collector/well_known.json count as one: Android
+// (Google, Operating systems) and Chrome (Google, Browsers) both take a pin; two Google browsers share one.
+test('a tier-1 row of the same vendor in another category takes a pin; one of the same vendor and category does not', () => {
+  const row = (id, vendor, known, kind, tier, cvss) => tierRow(id, vendor, { known, known_tier: tier, known_kind: kind, cvss });
+  const android = row('AND', 'google', 'Android', 'Operating systems', 1, 9.8);
+  const chrome = row('CHR', 'google', 'Chrome', 'Browsers', 1, 9.6);
+  const chrome2 = row('CH2', 'google', 'Chrome Canary', 'Browsers', 1, 9.5);
+  const zoom = row('ZOO', 'zoom', 'Zoom', 'Chat and meetings', 2, 9.4);
+  const sap = row('SAP', 'sap', 'SAP NetWeaver', 'Business software', 2, 9.3);
+  const { pins, rest } = pinOrder([sap, zoom, chrome2, chrome, android]);
+  assert.deepEqual(pins.map((i) => i.id), ['AND', 'CHR', 'ZOO', 'SAP']);
+  assert.equal(rest[0].id, 'CH2');
+  assert.equal(pinKey(android), 'google|Operating systems');
+  assert.equal(pinKey(tierRow('NOL', 'google')), 'google'); // on no list: the vendor alone
 });

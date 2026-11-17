@@ -385,7 +385,7 @@
    },
    "row": {
     "id": "CVE-2026-9004",
-    "known": "Windows", "known_rank": 0,
+    "known": "Windows", "known_tier": 1, "known_kind": "Operating systems",
     "cves": [
      "CVE-2026-9004",
      "CVE-2026-9005",
@@ -663,7 +663,7 @@
    },
    "row": {
     "id": "CVE-2026-9010",
-    "known": "WordPress", "known_rank": 341,
+    "known": "WordPress", "known_tier": 2, "known_kind": "CMS and web apps",
     "cves": [
      "CVE-2026-9010"
     ],
@@ -772,7 +772,9 @@
      {
       "kind": "cve_record"
      }
-    ]
+    ],
+    "known": "IBM Db2",
+    "known_tier": 3, "known_kind": "Databases and data"
    },
    "highlight_score": 16.0,
    "wp_plugin": false

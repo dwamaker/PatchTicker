@@ -112,7 +112,7 @@ export function matchProducts(products, text, label = (p) => p.name) {
 // details are still right.
 const rowShows = (i) => JSON.stringify([i.summary?.at, i.kev, i.kev_date, i.cvss, i.published, i.mentions?.length,
   Math.max(0, ...(i.mentions || []).map((m) => m.points || 0)), i.summary_error?.final, (i.products || []).map((p) => p.id),
-  i.quick_title?.ko?.title, i.quick_title?.en?.title, i.known, i.known_rank, (i.cves || []).join(), i.top_cve]); // step 4: the Lead CVE names the row
+  i.quick_title?.ko?.title, i.quick_title?.en?.title, i.known, i.known_tier, i.known_kind, (i.cves || []).join(), i.top_cve]); // step 4: the Lead CVE names the row
 // week: fresh is the full week (board/recent.json), the truth for row views; one it does not hold left the week or was
 // merged into another Incident, and nothing could ever fill it, so it goes. Full Incidents beyond it (older months) stay.
 export function mergeIncidents(current, fresh, week = false) {
@@ -150,41 +150,57 @@ export const PINNED = 4;
 // the collector stamps `known`, the product's label from collector/well_known.json or, for a product on no list that the
 // Summary calls widely used, its name. Such a row at 최고 that is not exploited (those lead anyway) is lifted.
 export const wellKnown = (i) => Boolean(i.known) && riskLevel(i) === 'highest' && !isExploited(i);
-// The Highlights of the score-sorted candidates: every exploited one, then the best-scored well-known one of each product
-// (the others stay ordinary rows), then the rest by score. The well-known ones go in the order of their labels in
-// collector/well_known.json (known_rank; owner, 11-11: at the cap, a talked-about SAP NetWeaver row cut Zoom), and a
-// label on no list after them all, by score. Also collector/cycle.py (highlights), kept in step by
-// tests/fixtures/board/highlights-case.json.
-const knownRank = (i) => i.known_rank ?? Number.MAX_SAFE_INTEGER;
+// A labelled row's tier of reach (owner, 11-17; collector/well_known.json): 1 on most computers or phones, 2 the standard
+// of its field, 3 known inside it. A label on no list (a Summary's widely_used), or a row written before the collector
+// carried known_tier, counts as 3; a row with no label has none (null).
+export const tierOf = (i) => (i.known ? ([1, 2, 3].includes(i.known_tier) ? i.known_tier : 3) : null);
+// The Highlights of the score-sorted candidates: every exploited one, then the best-scored well-known one of each label
+// not already held by an exploited row (the others stay ordinary rows), tier 1 before 2 before 3, by score inside a tier
+// (owner, 11-17; until then the label's place in the file), then the rest by score. Also collector/cycle.py
+// (highlights), kept in step by tests/fixtures/board/highlights-case.json.
 export function pickHighlights(candidates) {
   // A label an exploited Highlight already holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
   const labels = new Set(candidates.filter((i) => isExploited(i) && i.known).map((i) => i.known));
   const lead = [...candidates.filter(isExploited),
     ...candidates.filter((i) => wellKnown(i) && !labels.has(i.known) && labels.add(i.known))
-      .sort((a, b) => knownRank(a) - knownRank(b))]; // a stable sort: equal ranks stay by score
+      .sort((a, b) => tierOf(a) - tierOf(b))]; // a stable sort: one tier stays by score
   const rest = candidates.filter((i) => !lead.includes(i));
   return [...lead, ...rest].slice(0, Math.min(HIGHLIGHTS_MAX, Math.max(HIGHLIGHTS, lead.length)));
 }
 // The vendor a pin stands for: the first Product id's vendor, else the first word of the row's product name ("Microsoft
 // Outlook" in a news story's Summary), else the row itself.
 export const vendorKey = (i) => vendorOf(i) || String(firstProduct(i, 'en') || '').toLowerCase().split(/\s+/)[0] || `id:${i.id}`;
-// Owner, 11-16 ("고정 네 자리는 서로 다른 회사로", "중요도순으로 고정"): walking the Highlights in importance, the PINNED places go
-// to rows of different vendors; one whose vendor already holds a place leads the rest (주요 사건 더 보기). Both runs are
-// shown by highlightScore, newest first among equals, whatever the visitor's sort. With fewer vendors than places (a
-// search for one product), the free places go to the held rows in rank order, so 더 보기 never shows beside a free place.
+// The one order the pins and 주요 사건 더 보기 show in, whatever the visitor's sort (owner, 11-17, "많은 사람이 사용하는걸 위로"):
+// tier 1, tier 2, exploited rows on tier 3 or on no list, tier 3, the rest; inside each, exploited first, then by
+// highlightScore, newest among equals.
+const showGroup = (i) => {
+  const tier = tierOf(i);
+  if (tier === 1 || tier === 2) return tier - 1;
+  if (isExploited(i)) return 2;
+  return tier === 3 ? 3 : 4;
+};
+export const showOrder = (a, b) => showGroup(a) - showGroup(b) || isExploited(b) - isExploited(a)
+  || highlightScore(b) - highlightScore(a) || newest(a, b);
+// Owner, 11-16 ("고정 네 자리는 서로 다른 회사로"): walking the Highlights in showOrder, the PINNED places go to rows of different
+// vendors, and the pins show in that order; one whose vendor already holds a place stays ahead in the rest (주요 사건 더
+// 보기), which runs in the same order. With fewer vendors than places (a search for one product), the free places go to
+// the held rows in that order, so 더 보기 never shows beside a free place.
+// What one pin stands for (owner, 11-17): the vendor and the category of collector/well_known.json together (the
+// collector's known_kind), so Android and Chrome, both Google, take a pin each while two Google browsers share one; a row
+// on no list, or written before the collector carried the category, by its vendor alone.
+export const pinKey = (i) => (typeof i.known_kind === 'string' && i.known_kind ? `${vendorKey(i)}|${i.known_kind}` : vendorKey(i));
 export function pinOrder(chosen, places = PINNED) {
-  const byScore = (a, b) => highlightScore(b) - highlightScore(a) || newest(a, b);
+  const order = [...chosen].sort(showOrder);
   const vendors = new Set();
   const pins = [];
   const held = [];
-  for (const i of chosen) {
+  for (const i of order) {
     if (pins.length >= places) break;
-    if (vendors.has(vendorKey(i))) held.push(i);
-    else vendors.add(vendorKey(i)) && pins.push(i);
+    if (vendors.has(pinKey(i))) held.push(i);
+    else vendors.add(pinKey(i)) && pins.push(i);
   }
   while (pins.length < places && held.length) pins.push(held.shift());
-  const rest = chosen.filter((i) => !pins.includes(i) && !held.includes(i));
-  return { pins: pins.sort(byScore), rest: [...held.sort(byScore), ...rest.sort(byScore)] };
+  return { pins: order.filter((i) => pins.includes(i)), rest: order.filter((i) => !pins.includes(i)) };
 }
 // Owner, 11-10: a release counts a record, an advisory and a write-up per CVE, so uncapped FFmpeg (331 Mentions), Chrome,
 // IBM API Connect and FreeRDP took all four pins over 15 exploited Incidents. Also in collector/incidents.py.
