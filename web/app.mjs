@@ -850,7 +850,6 @@ function pageText() {
   showTextSize();
   paintBar(); // at the start and after each theme switch
   document.title = t.title;
-  $('rss').href = feedPath(lang);
   for (const node of document.querySelectorAll('[data-t]')) {
     node.textContent = t[node.dataset.t];
     node.hidden = !node.textContent; // the Korean NVD line has no English twin

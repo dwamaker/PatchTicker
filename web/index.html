@@ -120,15 +120,15 @@
     #repo { padding: 0; border-color: transparent; border-radius: 50%; color: var(--ink-2); } /* the public repository, beside the name */
     #repo svg { width: 20px; height: 20px; fill: currentColor; }
     @media (hover: hover) { #repo:hover { color: var(--ink); background: var(--panel-2); } }
-    #support { gap: 0.375rem; padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); } /* Buy Me a Coffee, beside GitHub (the Sponsor-in-the-nav pattern) */
+    #support { display: flex; width: fit-content; margin: 1rem 0 0 auto; gap: 0.375rem; padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); } /* Buy Me a Coffee: the footer's last row, at its right edge (owner, 11-18) */
     #support svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
     @media (hover: hover) { #support:hover { color: var(--ink); background: var(--panel-2); } }
-    @media (max-width: 599px) { #repo, #support, #feeds-btn { display: none; } } /* phones: the header line is full; the footer keeps the GitHub link */
-    /* RSS (owner, 11-17): a button beside GitHub and 후원 opens a small menu of the feeds; on phones the same menu opens
+    @media (max-width: 599px) { #repo, #feeds-btn { display: none; } } /* phones: the header line is full */
+    /* RSS (owner, 11-17): a button beside GitHub opens a small menu of the feeds; on phones the same menu opens
        from the settings panel (#feeds-btn-phone), since the header line is full. A popover: the browser opens it from the
        button (commandfor), closes it on Escape or a click elsewhere and returns focus; anchored under its button where
-       anchor positioning exists, placed by app.mjs elsewhere. Without popovers the buttons are not drawn (the footer
-       keeps its RSS link). */
+       anchor positioning exists, placed by app.mjs elsewhere. Without popovers the buttons are not drawn (the footer's RSS
+       link, once the fallback, was dropped at the owner's word, 11-18). */
     .feeds-btn { gap: 0.375rem; }
     .feeds-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
     .feeds-btn circle { fill: currentColor; stroke: none; }
@@ -138,15 +138,15 @@
     #feeds-btn-phone { display: none; }
     @media (max-width: 599px) { #feeds-btn-phone { display: inline-flex; } #feeds-btn-phone[aria-expanded="true"] { background: var(--panel-2); } .feeds { margin-block: 0.75rem; } }
     /* 600-1023px: the three-part grid gave the name its third of the line, and the name, GitHub and 후원 already ran under
-       the switch at 600px (and at 700-768px with 150% text). Here 후원 and RSS show their icons alone (the word stays their
+       the switch at 600px (and at 700-768px with 150% text). Here RSS shows its icon alone (the word stays its
        name), the name keeps one line, and the line wraps rather than overlap where even that does not fit. */
     @media (min-width: 600px) and (max-width: 1023px) {
       .top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding-block: 0.625rem; }
       #views { margin-inline: auto; }
       .end { margin-left: auto; }
       h1 { white-space: nowrap; }
-      #support, #feeds-btn { padding: 0; border-radius: 50%; }
-      #support > span, #feeds-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      #feeds-btn { padding: 0; border-radius: 50%; }
+      #feeds-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     }
     @supports not selector(:popover-open) { .feeds-btn { display: none !important; } }
     #feeds:not(:is(:popover-open)) { display: none; } /* also where popovers are unknown: never drawn in the header line */
@@ -891,7 +891,6 @@
   <header class="top"><div class="wrap">
     <div class="brand"><h1><a id="home" href="./"><svg viewBox="0 0 64 56" aria-hidden="true"><path fill-rule="evenodd" d="M17 0H44A20 20 0 0 1 44 40H34V56H17V26.5H0V13.5H17ZM53.5 20A9.5 9.5 0 1 0 34.5 20A9.5 9.5 0 1 0 53.5 20Z"/></svg><span data-t="brand">Patch Ticker</span></a></h1>
       <a id="repo" class="btn" href="https://github.com/dwamaker/PatchTicker" target="_blank" rel="noopener noreferrer" data-t-aria="repo"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
-      <a id="support" class="btn" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg><span data-t="support"><span lang="ko">후원</span><span lang="en">Support</span><span lang="ja">支援</span></span></a>
       <button id="feeds-btn" class="btn feeds-btn" type="button" commandfor="feeds" command="toggle-popover" aria-expanded="false" data-t-aria="feeds"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 7.5a6 6 0 0 1 6 6M2.5 2.5a11 11 0 0 1 11 11"/><circle cx="3.5" cy="12.5" r="1.4"/></svg><span>RSS</span></button><div id="feeds" class="feeds" popover role="group" aria-labelledby="feeds-head" tabindex="-1"><p id="feeds-head" class="feeds-head" data-t="feedsHead"><span lang="ko">RSS로 받아 보기</span><span lang="en">Follow by RSS</span><span lang="ja">RSS で受け取る</span></p><ul><li class="feed"><a id="feed-main" href="/feed.xml"><b data-t="feedMain"><span lang="ko">주요 피드</span><span lang="en">Main feed</span><span lang="ja">メインフィード</span></b> <span class="note" data-t="feedMainNote"><span lang="ko">위험 이상, 실제 공격, 아직 CVE 없는 사건</span><span lang="en">Elevated and up, attacked, or no CVE yet</span><span lang="ja">警戒以上、実際の攻撃、CVE 未採番のインシデント</span></span></a><button class="btn" type="button" data-copy="feed-main" aria-describedby="feed-main" data-t="copy"><span lang="ko">복사</span><span lang="en">Copy</span><span lang="ja">コピー</span></button><code id="feed-main-url">https://patchticker.com/feed.xml</code></li><li class="feed"><a id="feed-all" href="/feed/all.xml"><b data-t="feedAll"><span lang="ko">현황판 전체</span><span lang="en">The whole Board</span><span lang="ja">ボード全体</span></b> <span class="note" data-t="feedAllNote"><span lang="ko">참고까지 모든 사건</span><span lang="en">Every Incident, Notice too</span><span lang="ja">参考を含むすべてのインシデント</span></span></a><button class="btn" type="button" data-copy="feed-all" aria-describedby="feed-all" data-t="copy"><span lang="ko">복사</span><span lang="en">Copy</span><span lang="ja">コピー</span></button><code id="feed-all-url">https://patchticker.com/feed/all.xml</code></li><li class="feed" id="feed-mine" hidden><a id="feed-products" href="/feed.xml"><b data-t="feedMine"><span lang="ko">내 제품</span><span lang="en">My products</span><span lang="ja">自分の製品</span></b> <span class="note" id="feed-names"></span></a><button class="btn" type="button" data-copy="feed-products" aria-describedby="feed-products" data-t="copy"><span lang="ko">복사</span><span lang="en">Copy</span><span lang="ja">コピー</span></button><code id="feed-products-url"></code><p id="feed-left" class="note" hidden></p></li><li class="feed" id="feed-none"><b data-t="feedMine"><span lang="ko">내 제품</span><span lang="en">My products</span><span lang="ja">自分の製品</span></b><span class="note" data-t="feedNone"><span lang="ko">위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.</span><span lang="en">Pick products in “Products you run” above, and an address with only their Incidents appears here.</span><span lang="ja">上の「使っている製品」で製品を選ぶと、その製品のインシデントだけが届くアドレスがここに表示されます。</span></span><button id="feed-pick" class="btn" type="button" data-t="feedPick"><span lang="ko">제품 고르기</span><span lang="en">Pick products</span><span lang="ja">製品を選ぶ</span></button></li></ul></div></div>
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal">기본</button><button id="view-easy" type="button" aria-pressed="false" data-t="easy">쉬운 설명</button></div>
     <button id="prefs-btn" class="btn" type="button" aria-controls="prefs" aria-expanded="false" data-t-aria="prefs"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h7M14 5h1M3 13h1M8 13h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="13" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
@@ -968,7 +967,7 @@
     <p data-t="kevNote"></p>
     <p data-t="cveNote"></p>
     <p lang="en">CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation. CVE Usage: MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures (CVE&reg;). Any copy you make for such purposes is authorized provided that you reproduce MITRE's copyright designation and this license in any such copy. <a href="https://www.cve.org/Legal/TermsOfUse">CVE Terms of Use</a></p>
-    <p><a href="https://github.com/dwamaker/PatchTicker">GitHub</a> · <a id="rss" href="/feed.xml">RSS</a></p>
+    <a id="support" class="btn" href="https://buymeacoffee.com/dwamaker" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.5h8.5v3.5a4 4 0 0 1-4 4h-.5a4 4 0 0 1-4-4ZM11 7.5h1a2 2 0 0 1 0 4h-1.3M5.5 1.5v2.5M8.5 1.5v2.5"/></svg><span data-t="support"><span lang="ko">후원</span><span lang="en">Support</span><span lang="ja">支援</span></span></a>
   </div></footer>
   <script type="module" src="app.mjs"></script>
 </body>

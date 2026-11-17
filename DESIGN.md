@@ -309,12 +309,14 @@ numbers do not shimmer.
 
 A single centred column, 75rem wide, with a 1rem gutter (1.5rem from 768 px). The top bar is a
 three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and language buttons right (from 1024 px). From 600 to
-1023 px it is one wrapping line instead: the name on one line, 후원 and RSS as icons, the switch centred in the room left,
+1023 px it is one wrapping line instead: the name on one line, RSS as an icon, the switch centred in the room left,
 the buttons right; where that does not fit (larger text) it breaks into two lines rather than run the name under the
 switch, as the grid did at 600 px (owner, 11-17);
-under 600 px the name, the switch and a settings button share one line (GitHub, 후원 and RSS leave the line; RSS moves into
+under 600 px the name, the switch and a settings button share one line (GitHub and RSS leave the line; RSS moves into
 the settings panel). The product picker and search sit on one
-line (picker up to 24rem), stacking under 768 px.
+line (picker up to 24rem), stacking under 768 px. The footer holds the data notices; its last row is the 후원 button
+(Buy Me a Coffee), at the right edge of the column at every width, styled as before in the header (owner, 2026-11-18:
+it left the header, and the footer's GitHub · RSS line was dropped).
 
 A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
 badges (up to 15rem), published date over time (5.5rem), chevron. Column gap is 1.25rem. Opened details align with the
@@ -369,11 +371,13 @@ Restrained outlined buttons for theme, language and copying a command.
   2px offset on keyboard focus.
 
 ### RSS menu (owner, 11-17)
-- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub and 후원, styled as 후원
-  is: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px both show
-  their icon alone in a 44 px circle, the word kept as their name for screen readers. Under 600 px the header line
+- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub, styled as 후원 (now
+  in the footer) is: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px it shows
+  its icon alone in a 44 px circle, the word kept as its name for screen readers. Under 600 px the header line
   is full, so the button sits in the settings panel after the language button, outlined like its neighbours, and opens
-  the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link stays for everyone.
+  the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link,
+  once the fallback there, was dropped at the owner's word (2026-11-18): such browsers have no RSS link on the page,
+  and feed readers still find the feeds through the `<link rel="alternate">` tags in the head.
 - **Menu:** a popover (Kiosk Panel, Rail border, 10px radius, the panel shadow), up to 23rem and never wider than the
   screen less 2rem, anchored under its button (flipping sideways or upward when it would leave the screen; placed by
   script where anchor positioning is missing). A small bold heading in Secondary Ink (RSS로 받아 보기 / Follow by RSS),
