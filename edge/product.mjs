@@ -5,7 +5,7 @@
 // Board rows become links.
 import { tagHash, WORDS } from '../web/board.mjs';
 import { LEVELS } from './check.mjs';
-import { document, LOCAL_TIME, note, PAGE_CSP, when } from './page.mjs';
+import { alternates, document, langMenu, LOCAL_TIME, note, PAGE_CSP, when } from './page.mjs';
 import { SITE, escapeXml as esc, failClosed, readJson } from './shared.mjs';
 
 export { checkSlug } from './shared.mjs';
@@ -16,16 +16,21 @@ export const PRODUCT_PAGE_MIN = 3;
 const SLUG = /^[0-9a-f]{16}$/; // collector/checks.py check_slug: anything else never reads R2
 
 const TEXT = {
-  ko: { ...WORDS.ko, path: '/p/', page: '/i/', feed: '/feed.xml', locale: 'ko_KR', otherLang: 'en',
+  ko: { ...WORDS.ko, path: '/p/', page: '/i/', feed: '/feed.xml', locale: 'ko_KR',
     heading: (name) => `${name} 보안 사건`, count: (n) => `최근 90일 동안 ${n}건, 새로운 순. 사건마다 대처법과 원문은 사건 페이지에 있습니다.`,
     about: (name, n) => `최근 90일 동안 ${name}에 관한 보안 사건 ${n}건: 위험도, 고친 버전, 사건 페이지 링크.`,
     fixed: (v) => `고친 버전 ${v}`, cves: (n) => `CVE ${n}건`, rss: (name) => `${name} RSS 구독`, board: '현황판에서 보기',
     missing: '이 주소에는 제품 페이지가 없습니다.', down: '지금은 제품 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '현황판으로 가기', links: '이 제품 더 보기' },
-  en: { ...WORDS.en, path: '/en/p/', page: '/en/i/', feed: '/en/feed.xml', locale: 'en_US', otherLang: 'ko',
+  en: { ...WORDS.en, path: '/en/p/', page: '/en/i/', feed: '/en/feed.xml', locale: 'en_US',
     heading: (name) => `${name} security Incidents`, count: (n) => `${n} in the last 90 days, newest first. Each Incident page says what to do and links its sources.`,
     about: (name, n) => `${n} security Incidents of ${name} in the last 90 days: risk level, fixed version and a link to each Incident page.`,
     fixed: (v) => `Fixed in ${v}`, cves: (n) => `${n} CVE${n === 1 ? '' : 's'}`, rss: (name) => `RSS for ${name}`, board: 'Open on the Board',
     missing: 'There is no product page at this address.', down: 'Product pages cannot be loaded right now. Please try again shortly.', home: 'Go to the Board', links: 'More on this product' },
+  ja: { ...WORDS.ja, path: '/ja/p/', page: '/ja/i/', feed: '/ja/feed.xml', locale: 'ja_JP',
+    heading: (name) => `${name} のセキュリティインシデント`, count: (n) => `過去90日間に${n}件、新しい順。対処法と原文は各インシデントのページにあります。`,
+    about: (name, n) => `過去90日間の ${name} に関するセキュリティインシデント${n}件: 危険度、修正バージョン、インシデントページへのリンク。`,
+    fixed: (v) => `修正バージョン ${v}`, cves: (n) => `CVE ${n}件`, rss: (name) => `${name} の RSS`, board: 'ボードで見る',
+    missing: 'このアドレスには製品ページがありません。', down: '現在製品ページを読み込めません。しばらくしてからもう一度お試しください。', home: 'ボードへ戻る', links: 'この製品をもっと見る' },
 };
 
 // The list, in the Incident page's look (DESIGN.md: product page): a panel per Incident edged in its Risk colour.
@@ -52,7 +57,7 @@ function item(e, lang, t) {
   const stamp = e.published || e.first_seen;
   return `<li class="risk-${level}"><p class="pl-head"><span class="word">${esc(t.levels[level])}</span>`
     + `${e.exploited === true ? ` <span class="kev">${esc(t.kevReason)}</span>` : ''}${typeof stamp === 'string' ? ` ${when(stamp, lang)}` : ''}</p>`
-    + `<a class="pl-title" href="${esc(href(e, t))}">${esc(e[`title_${lang}`] || e.id)}</a>${sub ? `<p class="pl-sub">${esc(sub)}</p>` : ''}</li>`;
+    + `<a class="pl-title" href="${esc(href(e, t))}">${esc(e[`title_${lang}`] || e.title_en || e.id)}</a>${sub ? `<p class="pl-sub">${esc(sub)}</p>` : ''}</li>`;
 }
 
 export function productHtml(doc, lang, slug) {
@@ -60,15 +65,12 @@ export function productHtml(doc, lang, slug) {
   const name = String(doc.product || '');
   const incidents = Array.isArray(doc.incidents) ? doc.incidents.filter((e) => e && typeof e.id === 'string') : [];
   const self = `${SITE}${t.path}${slug}`;
-  const ko = `${SITE}${TEXT.ko.path}${slug}`;
   const feed = `${t.feed}?products=${encodeURIComponent(name)}`;
   const head = [`<title>${esc(t.heading(name))} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(t.about(name, incidents.length))}">`,
     ...(incidents.length < PRODUCT_PAGE_MIN ? ['<meta name="robots" content="noindex">'] : []),
     `<link rel="canonical" href="${self}">`,
-    `<link rel="alternate" hreflang="ko" href="${ko}">`,
-    `<link rel="alternate" hreflang="en" href="${SITE}${TEXT.en.path}${slug}">`,
-    `<link rel="alternate" hreflang="x-default" href="${ko}">`,
+    ...alternates((l) => `${SITE}${TEXT[l].path}${slug}`),
     `<link rel="alternate" type="application/rss+xml" title="${esc(t.rss(name))}" href="${esc(feed)}">`,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="Patch Ticker">',
@@ -83,9 +85,7 @@ export function productHtml(doc, lang, slug) {
     `<ol class="plist">${incidents.map((e) => item(e, lang, t)).join('')}</ol>`,
     `<script>${LOCAL_TIME}</script>`,
     `<nav class="links" aria-label="${esc(t.links)}">${board}<a href="${esc(feed)}">${esc(t.rss(name))}</a></nav>`].join('\n');
-  const other = `<a class="lang" href="${TEXT[t.otherLang].path}${slug}" hreflang="${t.otherLang}" lang="${t.otherLang}" aria-label="${esc(t.other)}">`
-    + `<span class="full">${esc(t.other)}</span><span class="short">${esc(t.otherShort)}</span></a>`;
-  return document(lang, head, main, other);
+  return document(lang, head, main, langMenu(lang, (l) => `${TEXT[l].path}${slug}`));
 }
 
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). The document holds 90 days already.

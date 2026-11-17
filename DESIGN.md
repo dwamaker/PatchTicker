@@ -380,7 +380,16 @@ Restrained outlined buttons for theme, language and copying a command.
   then three entries split by Hairlines: 주요 피드 (위험 이상, 실제 공격, 아직 CVE 없는 사건), 현황판 전체 (참고까지 모든
   사건), 내 제품. Each entry is its name as a Wayfinding Blue link with a Meta-size note under it, an outlined 복사 button
   at the right, and the full address under both in Hint Ink mono (up to three lines). Every link is the feed in the
-  page's language (/en/ on the English page).
+  page's language (/en/ on the English page, /ja/ on the Japanese one).
+
+### Language menu (owner, 11-17)
+- Three languages: 한국어, English, 日本語. Japanese is the interface only: the collector writes Summaries in Korean and
+  English, and a Japanese page shows the English Summary (web/board.mjs `withJapanese`; the guide's note says so).
+- **Board:** the language button (a 16px globe, then the page's language in itself; the short code under 600 px) opens a
+  popover like the RSS menu, anchored under it: one entry per language, each in its own language, the current one bold
+  with a Wayfinding Blue tick. Where the browser has no popovers the button steps to the next language.
+- **Incident and product pages:** the same button as a details whose list links this page in every language
+  (/i/, /en/i/, /ja/i/), without script.
 - **내 제품:** built from the Products picked in 사용하는 제품 (not the OS buttons), names comma-separated as the products
   feed reads them, at most 30 (the rest are named as left out); the note lists the first three and counts the rest. It
   follows the picker as it changes. With nothing picked it is no link: the note says to pick products above, beside a

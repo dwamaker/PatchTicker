@@ -26,23 +26,26 @@ function assertWellFormed(text) {
   }
   assert.deepEqual(stack, []);
 }
+// One page's three addresses: Korean at the root, English and Japanese under their prefix.
+const all = (slug, kind = 'i') => ['', '/en', '/ja'].map((p) => `https://patchticker.com${p}/${kind}/${slug}`);
 const locs = (text) => [...text.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
 
-test('each monthly sitemap lists that month\'s pages (by first seen) in both languages', async () => {
-  assert.deepEqual(locs(await xml('incidents-0.xml')), ['https://patchticker.com/i/CVE-2026-1001', 'https://patchticker.com/en/i/CVE-2026-1001']);
-  assert.deepEqual(locs(await xml('incidents-1.xml')), ['https://patchticker.com/i/hn-77', 'https://patchticker.com/en/i/hn-77']);
+test('each monthly sitemap lists that month\'s pages (by first seen) in every language', async () => {
+  assert.deepEqual(locs(await xml('incidents-0.xml')), all('CVE-2026-1001'));
+  assert.deepEqual(locs(await xml('incidents-1.xml')), all('hn-77'));
   assert.deepEqual(locs(await xml('incidents-2.xml')), []);
-  assert.deepEqual(locs(await xml('incidents-3.xml')), ['https://patchticker.com/i/CVE-2026-1005', 'https://patchticker.com/en/i/CVE-2026-1005']);
+  assert.deepEqual(locs(await xml('incidents-3.xml')), all('CVE-2026-1005'));
 });
 
-test('every URL names its last change and both languages as hreflang alternates, Korean as x-default', async () => {
+test('every URL names its last change and every language as hreflang alternates, Korean as x-default', async () => {
   const text = await xml('incidents-1.xml');
   const urls = text.match(/<url>.*?<\/url>/gs);
-  assert.equal(urls.length, 2);
+  assert.equal(urls.length, 3);
   for (const url of urls) {
     assert.match(url, /<lastmod>2026-11-01T08:00:00Z<\/lastmod>/);
     assert.match(url, /<xhtml:link rel="alternate" hreflang="ko" href="https:\/\/patchticker.com\/i\/hn-77"\/>/);
     assert.match(url, /<xhtml:link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/i\/hn-77"\/>/);
+    assert.match(url, /<xhtml:link rel="alternate" hreflang="ja" href="https:\/\/patchticker.com\/ja\/i\/hn-77"\/>/);
     assert.match(url, /<xhtml:link rel="alternate" hreflang="x-default" href="https:\/\/patchticker.com\/i\/hn-77"\/>/);
   }
   assert.match(text, /^<\?xml version="1.0" encoding="UTF-8"\?>\n<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9" xmlns:xhtml="http:\/\/www.w3.org\/1999\/xhtml">/);
@@ -59,21 +62,21 @@ test('hostile entries cannot break the sitemap: odd slugs are dropped, an odd ti
     'CVE-2026-1003': { first_seen: 20261109 },
   } });
   assert.doesNotMatch(text, /script|admin|<b>|&(?!amp;|lt;|gt;|quot;|apos;)/);
-  assert.deepEqual(locs(text), ['https://patchticker.com/i/CVE-2026-1001', 'https://patchticker.com/en/i/CVE-2026-1001']);
+  assert.deepEqual(locs(text), all('CVE-2026-1001'));
   assert.doesNotMatch(text, /<lastmod>/);
   assertWellFormed(text);
 });
 
 test('a month over the 50,000-URL limit of one sitemap file keeps its newest pages', async () => {
   const pages = {};
-  for (let n = 0; n <= 25000; n += 1) {
+  for (let n = 0; n <= 16666; n += 1) {
     const at = new Date(Date.parse('2026-11-01T00:00:00Z') + n * 1000).toISOString().replace('.000', '');
     pages[`CVE-2026-${100000 + n}`] = { first_seen: at, changed: at };
   }
   const found = locs(await xml('incidents-0.xml', { pages }));
-  assert.equal(found.length, 50000);
+  assert.equal(found.length, 49998); // 16,666 pages in three languages
   assert.ok(!found.includes('https://patchticker.com/i/CVE-2026-100000')); // the oldest page is the one left out
-  assert.ok(found.includes('https://patchticker.com/i/CVE-2026-125000'));
+  assert.ok(found.includes('https://patchticker.com/i/CVE-2026-116666'));
 });
 
 test('503, never an empty list, for a document without its pages', async () => {
@@ -107,12 +110,11 @@ test('the static /sitemap.xml is an index of the home page\'s sitemap and the fo
 });
 
 // Owner, 11-17: a page per product (/p/<slug>); the collector lists those worth a search (collector/checks.py product_pages).
-test('the products sitemap lists each listed product page in both languages; a document without the list gives an empty one', async () => {
+test('the products sitemap lists each listed product page in every language; a document without the list gives an empty one', async () => {
   const doc = { ...DOC, products: ['3e96ab9cc2cec1ca', 'not-a-slug', '0f1e2d3c4b5a6978'] };
   const text = await xml('products.xml', doc);
   assertWellFormed(text);
-  assert.deepEqual(locs(text), ['https://patchticker.com/p/3e96ab9cc2cec1ca', 'https://patchticker.com/en/p/3e96ab9cc2cec1ca',
-    'https://patchticker.com/p/0f1e2d3c4b5a6978', 'https://patchticker.com/en/p/0f1e2d3c4b5a6978']);
+  assert.deepEqual(locs(text), [...all('3e96ab9cc2cec1ca', 'p'), ...all('0f1e2d3c4b5a6978', 'p')]);
   assert.match(text, /<url><loc>https:\/\/patchticker.com\/p\/3e96ab9cc2cec1ca<\/loc><xhtml:link rel="alternate" hreflang="ko" href="https:\/\/patchticker.com\/p\/3e96ab9cc2cec1ca"\/><xhtml:link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/p\/3e96ab9cc2cec1ca"\/>/);
   assert.deepEqual(locs(await xml('products.xml')), []); // the collector before product pages: none yet, not an error
   assert.equal((await sitemapResponse(bucket(null), 'products.xml', NOW)).status, 503);

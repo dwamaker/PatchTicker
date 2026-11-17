@@ -41,6 +41,15 @@ test('the Korean and English feeds carry each Incident in their language, linked
   assert.match(en, /<title>sshole<\/title>/); // no Summary: the Brief
 });
 
+test('the Japanese feed is in Japanese words with the English Summary, linked to the Japanese pages', async () => {
+  const ja = await (await feedResponse(bucket({ incidents: [SSHOLE] }), 'ja')).text();
+  assert.match(ja, /<language>ja<\/language>/);
+  assert.match(ja, /<atom:link href="https:\/\/patchticker.com\/ja\/feed.xml"/);
+  assert.match(ja, /<title>OpenSSH sshd authentication bypass \(sshole\)<\/title>/);
+  assert.match(ja, /<link>https:\/\/patchticker.com\/ja\/i\/CVE-2026-123158<\/link>/);
+  assert.match(ja, /&lt;b&gt;対処法&lt;\/b&gt;&lt;\/p&gt;&lt;p&gt;Update to 9.9p2./);
+});
+
 test('the GUID stays when the Summary is rewritten', async () => {
   const before = await (await feedResponse(bucket({ incidents: [SSHOLE] }), 'ko')).text();
   const rewritten = { ...SSHOLE, summary: { ...SSHOLE.summary, ko: { ...SSHOLE.summary.ko, title: '새 제목' } } };
@@ -179,6 +188,10 @@ test('the English products feed links the English pages and words; days and min 
   assert.deepEqual([...xml.matchAll(/<item><title>([^<]*)</g)].map((m) => m[1]), ['Flaw 1']); // CVE-2026-9 is below the min
   assert.match(xml, /<link>https:\/\/patchticker.com\/en\/i\/CVE-2026-1<\/link>/);
   assert.match(unxml(xml), /<p>Urgent · Attacked · CVSS 9\.8<\/p><p>Fixed in: 9\.9p2<\/p><p>7 CVEs: CVE-2026-1, .* and 2 more<\/p>/);
+  const ja = await (await ask('products=openssh&days=90&min=highest', 'ja')).text();
+  assert.deepEqual([...ja.matchAll(/<item><title>([^<]*)</g)].map((m) => m[1]), ['Flaw 1']); // the English title
+  assert.match(ja, /<link>https:\/\/patchticker.com\/ja\/i\/CVE-2026-1<\/link>/);
+  assert.match(unxml(ja), /<p>緊急 · 攻撃発生 · CVSS 9\.8<\/p><p>修正バージョン: 9\.9p2<\/p>/);
   const all = await (await ask('products=openssh&days=90', 'en')).text();
   assert.match(all, /<link>https:\/\/patchticker.com\/#i=CVE-2026-9<\/link>/); // no page: its row on the Board
 });
@@ -236,6 +249,10 @@ test('the whole-Board feed lists every level as light items, its links where /ap
   assert.match(en, /<link>https:\/\/patchticker.com\/en\/i\/CVE-2026-1001<\/link><guid isPermaLink="false">https:\/\/patchticker.com\/en\/i\/CVE-2026-1001<\/guid>/);
   assert.match(en, /<category>Paint<\/category>/);
   assert.match(en, /<atom:link href="https:\/\/patchticker.com\/en\/feed\/all.xml" rel="self"/);
+  const ja = await (await allFeed('ja')).text();
+  assert.match(ja, /<link>https:\/\/patchticker.com\/ja\/i\/CVE-2026-1001<\/link><guid isPermaLink="false">https:\/\/patchticker.com\/ja\/i\/CVE-2026-1001<\/guid>/);
+  assert.match(ja, /<category>Paint<\/category>/); // the English tags
+  assert.match(ja, /<category>参考<\/category>/);
 });
 
 test('the whole-Board feed and /feed.xml give an Incident the same GUID', async () => {

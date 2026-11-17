@@ -5,9 +5,9 @@ import { test } from 'node:test';
 import { homeLinks, homeResponse } from '../edge/home.mjs';
 import { PINNED, slug, WORDS } from '../web/board.mjs';
 
-// app.mjs's TEXT.ko and TEXT.en loading words, in that order (app.mjs needs a DOM, so they are read from its source)
-const [loadingKo, loadingEn] = [...readFileSync(new URL('../web/app.mjs', import.meta.url), 'utf8').matchAll(/ loading: '([^']+)'/g)].map((m) => m[1]);
-const WORDS_APP = { ko: loadingKo, en: loadingEn };
+// app.mjs's TEXT.ko, TEXT.en and TEXT.ja loading words, in that order (app.mjs needs a DOM, so they are read from its source)
+const [loadingKo, loadingEn, loadingJa] = [...readFileSync(new URL('../web/app.mjs', import.meta.url), 'utf8').matchAll(/ loading: '([^']+)'/g)].map((m) => m[1]);
+const WORDS_APP = { ko: loadingKo, en: loadingEn, ja: loadingJa };
 
 const bucket = (doc) => ({ get: async (key) => (key === 'board/feed.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
 const broken = { get: async () => { throw new Error('R2 down'); } };
@@ -89,7 +89,7 @@ test('the real index.html: one marker inside the about section, and the title th
 test('the real index.html: the feed links name no hreflang (a feed is not this page in another language)', () => {
   const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
   const feeds = html.match(/<link rel="alternate" type="application\/rss\+xml"[^>]*>/g);
-  assert.equal(feeds.length, 4); // /feed.xml and the whole-Board /feed/all.xml, each in two languages
+  assert.equal(feeds.length, 6); // /feed.xml and the whole-Board /feed/all.xml, each in three languages
   for (const link of feeds) assert.doesNotMatch(link, /hreflang/);
 });
 
@@ -107,7 +107,7 @@ test('the real index.html paints the loading Board, so app.mjs taking over moves
   assert.match(html, /<h2 id="pinned-head"><i class="sk sk-head"><\/i><\/h2>/);
   assert.match(html, /<h2 id="all-head" data-t="all" tabindex="-1"><i class="sk sk-head"><\/i><\/h2>/);
   assert.match(html, /<body class="loading">/);
-  assert.match(html, new RegExp(`<p id="status"><span lang="ko">${WORDS_APP.ko}</span><span lang="en">${WORDS_APP.en}</span></p>`));
+  assert.match(html, new RegExp(`<p id="status"><span lang="ko">${WORDS_APP.ko}</span><span lang="en">${WORDS_APP.en}</span><span lang="ja">${WORDS_APP.ja}</span></p>`));
 });
 
 // Owner, 11-17: in a Board transition the named rows lay over the frozen search bar. What stays put on screen gets a

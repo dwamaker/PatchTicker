@@ -1,6 +1,6 @@
 // What every Pages Function uses (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision): the site
 // address, escaping, the store read that fails closed, the edge cache, and what to do (the page and the feed alike).
-import { easyAction, easyLine, firstProduct, fixTable, FIXES_SHOWN, isShellCommand, riskLevel, usableFixes, WORDS } from '../web/board.mjs';
+import { easyAction, easyLine, firstProduct, fixTable, FIXES_SHOWN, isShellCommand, riskLevel, usableFixes, withJapanese, WORDS } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
 export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
@@ -22,10 +22,11 @@ export async function checkSlug(id) {
   return [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// bucket: the R2 binding (anything with get(key) -> { text() } or null). A missing document is null.
+// bucket: the R2 binding (anything with get(key) -> { text() } or null). A missing document is null. Every reader gets
+// the English twin as Japanese (board.mjs withJapanese), as the Board does.
 export async function readJson(bucket, key) {
   const obj = await bucket.get(key);
-  return obj && JSON.parse(await obj.text());
+  return obj && JSON.parse(await obj.text(), withJapanese);
 }
 
 // Fail closed: a store that cannot be read, or a document the renderer cannot use, answers down() (a 503 note with a
@@ -70,6 +71,11 @@ const TODO = {
     ...WORDS.en,
     orNewer: (v) => `${v} or later`, // not in WORDS: the Board's uses no-break spaces
     caution: 'A wrong setting can stop the service or lock you out. Check the source links below first.', // not in WORDS: the Board says "source link"
+  },
+  ja: {
+    ...WORDS.ja,
+    orNewer: (v) => `${v} 以降`,
+    caution: '設定を誤るとサービスが止まったり、接続できなくなったりすることがあります。変更する前に下の原文リンクを確認してください。',
   },
 };
 
