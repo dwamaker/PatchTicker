@@ -527,6 +527,21 @@
     /* 3px with a faint track of the same blue, so how far round it has come reads at a glance (critique 13) */
     #jump-up::before { content: ""; position: absolute; inset: -2px; padding: 3px; border-radius: 50%; pointer-events: none; background: conic-gradient(var(--focus) calc(var(--read, 0) * 1turn), color-mix(in srgb, var(--focus) 22%, transparent) 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
     @media (hover: hover) { .jump button:hover { background: var(--panel-2); } }
+    /* 한 화면 위로 / 아래로 (owner, 11-17: move by a press, not a scroll; "작은 사각형 2개로"): two small squares between the
+       circles, 32px with the small radius, the circles' surface, edge and shadow, so the two kinds read apart at a glance;
+       on touch each target is 44px with the same 32px square drawn inside. A step with nowhere to go dims and is disabled */
+    .jump .step { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s; }
+    .jump .step[hidden] { display: none; }
+    .jump .step button { width: 32px; height: 32px; border-radius: var(--r-ctl); }
+    .jump .step svg { width: 16px; height: 16px; }
+    .jump .step button:disabled { color: var(--ink-3); opacity: 0.5; cursor: default; }
+    @media (hover: hover) { .jump .step button:disabled:hover { background: var(--panel); } }
+    @media (pointer: coarse) {
+      .jump .step { gap: 0; }
+      .jump .step button { position: relative; isolation: isolate; width: var(--tap); height: var(--tap); border: 0; background: none; box-shadow: none; }
+      .jump .step button::before { content: ""; position: absolute; inset: 6px; z-index: -1; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--panel); box-shadow: 0 6px 16px -8px var(--shadow); }
+    }
+    @media (max-width: 767px) { .jump-idle .jump .step:not(:focus-within) { opacity: 0; visibility: hidden; transition-duration: 400ms; } }
     @media (prefers-reduced-motion: reduce) { .jump button, .jump button.off, .new-above.off { transform: none; translate: none; } .jump button:active, .new-above:active { transform: none; scale: none; } }
     /* 쉬운 설명 beckons as the Board arrives in 기본 (until it has been tried once; owner, 11-09: it sits at the very top,
        so it must be loud): twice, 1.4s each, the whole 기본|쉬운 설명 switch swells to 112% and settles with a bounce, a
@@ -824,8 +839,9 @@
     </section>
   </main>
   <div id="jump" class="jump">
-    <button id="jump-up" class="off" type="button" data-t-aria="toTop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button id="jump-down" class="off" type="button" data-t-aria="toBottom"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="jump-up" class="off" type="button" data-t-aria="toTop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h9M8 14V6M4.5 9.5 8 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div id="step" class="step" role="group" data-t-aria="stepGroup" hidden><button id="step-up" type="button" data-t-aria="stepUp"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10 8 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button id="step-down" type="button" data-t-aria="stepDown"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <button id="jump-down" class="off" type="button" data-t-aria="toBottom"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 13.5h9M8 2v8M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <footer><div class="wrap">
     <p data-t="refNote"></p>

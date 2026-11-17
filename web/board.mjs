@@ -875,3 +875,8 @@ export function foldByVendor(rows, min = VENDOR_FOLD_MIN, dayOf = localDay, keep
 }
 // The fold row's date (DESIGN.md "Vendor fold": the newest date), whatever order its members stand in.
 export const foldNewest = (fold) => fold.incidents.reduce((a, b) => (publishedAt(b) > publishedAt(a) ? b : a));
+
+// 한 화면 위로 / 아래로 (owner, 11-17: "스크롤 말고 눌러서 이동"): one screen is the window's height below the frozen search
+// row, less 13% so the line the reader was on stays in view; never less than a line's 40px.
+export const STEP_SHARE = 0.87;
+export const stepDistance = (viewHeight, frozen) => Math.max(40, Math.round((viewHeight - frozen) * STEP_SHARE));

@@ -596,6 +596,15 @@ Restrained outlined buttons for theme, language and copying a command.
   shadow appear once the page has scrolled.
 - **Jump buttons (owner, 11-09):** 맨 위로 and 맨 아래로 sit at the bottom right (44px circles, Panel on Edge), each shown
   only when there is more than 60% of a screen to go that way.
+- **One screen up and down (owner, 11-17: "스크롤 말고 눌러서 이동"; "작은 사각형 2개로 하자, 알약형 말고"):** between them, two
+  small squares (32px, the 8px control radius, Panel on Edge with the circles' shadow; on touch a 44px target around the
+  same 32px square), centred on the circles' axis with the group's gap, so the two kinds read apart: 한 화면 위로 / 한 화면 아래로
+  ("Up one screen" / "Down one screen") move by a press, not a scroll, 87% of the window's height below the frozen
+  search row, so the line the reader was on stays in view (`stepDistance`), smooth unless motion is reduced. Top and
+  bottom wear an arrow against a bar, the steps a plain chevron; every button names itself on hover and to screen
+  readers. A step with nowhere to go dims and is disabled; the pill shows whenever the page scrolls. On a phone the
+  group rests 6 s after a step press instead of 2 s, so the next press finds it under the finger; once rested, a small
+  scroll brings it back (a tap cannot, as the buttons are hidden). Page Up/Down, Space, Home and End stay the browser's.
 - **Phone header (critique 10, a.1):** one line with the name, 기본|쉬운 설명 and a settings button; 가−/가+, theme and
   language open under it (Escape or a tap elsewhere closes). At 375px the first Highlight moved from 490px to 430px.
 - **쉬운 설명 beckons (owner, 11-09):** as the Board arrives in 기본, a light blue band sweeps across the 쉬운 설명 button
