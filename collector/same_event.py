@@ -44,6 +44,13 @@ def product_ids(incident):
     return {p["id"] for p in products_of(incident, "en") if not p["id"].startswith("os:")}
 
 
+def shared_product(a, b):
+    """Whether two Incidents name one Product: the same id, or one id the other's plus further words on a word boundary
+    (11-17, Optimizely: "Optimizely Web" and "Optimizely" named each other as same_as and were refused); "Plexamp" is not
+    "Plex", and "Plex Web App" is not "Plex Media Server"."""
+    return any(x == y or x.startswith(f"{y} ") or y.startswith(f"{x} ") for x in product_ids(a) for y in product_ids(b))
+
+
 def apply_same_as(incidents, stamp):
     """Decide each same_as answer save_reply left on an Incident: merge the two when the id was listed in that request,
     that Incident still exists without a CVE and on the Board (and so does the asker), and the two share a Product;
@@ -61,7 +68,7 @@ def apply_same_as(incidents, stamp):
                else "gone" if other is None or here is None else "already one" if other is here
                else "has a CVE now" if other["cves"] or here["cves"]
                else "not on the Board" if not (on_board(other) and on_board(here))
-               else "no shared Product" if not product_ids(here) & product_ids(other) else "accepted")
+               else "no shared Product" if not shared_product(here, other) else "accepted")
         title = lambda i: short(i["summary"].get("en", {}).get("title", ""), 100) if i and i.get("summary") else ""
         log.append({"at": stamp, "incident": {"id": short(asker["id"], 300), "title": title(asker)}, "candidates": len(wish["listed"]),
                     "same_as": {"id": short(wish["id"], 300), "title": title(other)} if wish["id"] else "",

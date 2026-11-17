@@ -489,6 +489,32 @@ class ReviewedAttackTest(unittest.TestCase):
         self.assertEqual(changed, [unconfirmed])
 
 
+class SameAsProductNameTest(unittest.TestCase):
+    """11-17, Optimizely: HN 50524767 ("Optimizely Web") and the BleepingComputer story ("Optimizely") named each other as
+    same_as and were refused, "no shared Product". A Product that is the other's name plus further words, on a word
+    boundary, is the same Product for a same_as answer; a different product of one vendor still is not."""
+
+    def decide(self, asked, named):
+        from test_same_event import PLEX_BC, PLEX_SW, at, no_pages, plain, quiet, story
+        from collector import same_event
+        candidate = story(PLEX_BC, "2026-11-06T17:10:00Z", "A story", [named])
+        asker = story(PLEX_SW, "2026-11-09T13:20:00Z")
+        incidents = [candidate, asker]
+        stamp = "2026-11-09T13:30:00Z"
+        listed = same_event.same_as_candidates(asker, incidents, at(stamp[:-1]))
+        quiet(summaries.summarize_now, asker, FakeClaude(plain(asked) | {"same_as": PLEX_BC}), no_pages, stamp, listed)
+        (_, log), _ = quiet(same_event.apply_same_as, incidents, stamp)
+        return log[0]["why"]
+
+    def test_a_name_plus_further_words_is_the_same_product(self):
+        self.assertEqual(self.decide("Optimizely Web", "Optimizely"), "accepted")
+        self.assertEqual(self.decide("Optimizely", "Optimizely Web"), "accepted")
+
+    def test_a_longer_word_or_another_product_of_the_vendor_is_not(self):
+        self.assertEqual(self.decide("Plexamp", "Plex"), "no shared Product")
+        self.assertEqual(self.decide("Plex Web App", "Plex Media Server"), "no shared Product")
+
+
 class KevWindowTest(unittest.TestCase):
     """Owner, 11-17: only an Incident published in the last seven days can be a Highlight; a KEV listing this week no
     longer brings an older one in, so rows carry no kev_last (11-16's field for that rule) any more."""
