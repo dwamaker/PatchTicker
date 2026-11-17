@@ -224,8 +224,22 @@ class CycleTest(unittest.TestCase):
 
         self.assertEqual(
             self.store.read("status.json"),
-            {"updated": "2026-11-07T13:30:00Z", "collector": "test-box"},
+            {"updated": "2026-11-07T13:30:00Z", "collector": "test-box", "total": 2},
         )
+
+    def test_status_total_counts_every_kept_month_as_the_board_shows_it(self):
+        # October: one CVE and a CVE-less HN story with no Summary yet, which the Board leaves out.
+        self.store.write("months/2026-10.json", {"month": "2026-10", "incidents": [
+            incident("CVE-2026-1", "old", "2026-10-20T00:00:00Z"),
+            {"id": "https://news.ycombinator.com/item?id=1", "cves": [], "first_seen": "2026-10-21T00:00:00Z",
+             "mentions": [], "urls": [], "brief": {"text": "a story", "lead": "https://news.ycombinator.com/item?id=1"}}]})
+        self.store.write("index.json", {"months": ["2026-10"]})
+        run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")
+
+        # The story is still in October's file; the count is the October CVE plus November's two from the delta log.
+        self.assertEqual(len(self.store.read("board/2026-10.json")["incidents"]), 2)
+        self.assertEqual(self.store.read("status.json")["total"], 3)
+        self.assertEqual(self.store.read("board/recent.json")["status"]["total"], 3)
 
     def test_second_cycle_with_nothing_new_changes_nothing(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")

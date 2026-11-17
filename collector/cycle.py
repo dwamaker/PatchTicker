@@ -219,6 +219,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     # Everything the reader sees shows each Product by one name (owner, 11-17): the views below are written from these
     # copies; the months above keep the Summaries as stored.
     shown_incidents = reader_named(incidents)
+    # Every kept month's rows as the page counts them: equals the page's own count once it has loaded every month.
+    status["total"] = sum(1 for i in shown_incidents if on_board(i))
     # The page's slim files: changed months, any month not written yet, and the last week every cycle.
     for m in (changed | {m for m in index["months"] if store.read(f"board/{m}.json") is None}) & kept:
         store.write(f"board/{m}.json", {"month": m, "incidents": [board_view(i) for i in shown_incidents if month_of(i["first_seen"]) == m]})
