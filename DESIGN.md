@@ -158,6 +158,12 @@ components:
     typography: "{typography.code}"
     rounded: "{rounded.code}"
     padding: "6px 10px"
+  feeds-menu:
+    backgroundColor: "{colors.kiosk-panel}"
+    textColor: "{colors.sign-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.frame}"
+    padding: "6px"
 ---
 
 # Design System: vuln-radar
@@ -302,8 +308,12 @@ numbers do not shimmer.
 ## Layout
 
 A single centred column, 75rem wide, with a 1rem gutter (1.5rem from 768 px). The top bar is a
-three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and language buttons right;
-under 600 px the name, the switch and a settings button share one line. The product picker and search sit on one
+three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and language buttons right (from 1024 px). From 600 to
+1023 px it is one wrapping line instead: the name on one line, 후원 and RSS as icons, the switch centred in the room left,
+the buttons right; where that does not fit (larger text) it breaks into two lines rather than run the name under the
+switch, as the grid did at 600 px (owner, 11-17);
+under 600 px the name, the switch and a settings button share one line (GitHub, 후원 and RSS leave the line; RSS moves into
+the settings panel). The product picker and search sit on one
 line (picker up to 24rem), stacking under 768 px.
 
 A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
@@ -357,6 +367,29 @@ Restrained outlined buttons for theme, language and copying a command.
   size at weight 500.
 - **Hover / Focus:** Recessed Panel fill and Sign Ink text on hover; a 2px Wayfinding Blue ring at
   2px offset on keyboard focus.
+
+### RSS menu (owner, 11-17)
+- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub and 후원, styled as 후원
+  is: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px both show
+  their icon alone in a 44 px circle, the word kept as their name for screen readers. Under 600 px the header line
+  is full, so the button sits in the settings panel after the language button, outlined like its neighbours, and opens
+  the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link stays for everyone.
+- **Menu:** a popover (Kiosk Panel, Rail border, 10px radius, the panel shadow), up to 23rem and never wider than the
+  screen less 2rem, anchored under its button (flipping sideways or upward when it would leave the screen; placed by
+  script where anchor positioning is missing). A small bold heading in Secondary Ink (RSS로 받아 보기 / Follow by RSS),
+  then three entries split by Hairlines: 주요 피드 (위험 이상, 실제 공격, 아직 CVE 없는 사건), 현황판 전체 (참고까지 모든
+  사건), 내 제품. Each entry is its name as a Wayfinding Blue link with a Meta-size note under it, an outlined 복사 button
+  at the right, and the full address under both in Hint Ink mono (up to three lines). Every link is the feed in the
+  page's language (/en/ on the English page).
+- **내 제품:** built from the Products picked in 사용하는 제품 (not the OS buttons), names comma-separated as the products
+  feed reads them, at most 30 (the rest are named as left out); the note lists the first three and counts the rest. It
+  follows the picker as it changes. With nothing picked it is no link: the note says to pick products above, beside a
+  제품 고르기 button that closes the menu and puts the caret in the product field.
+- **Behaviour:** the browser opens and closes the menu from its button (Enter, Space, click), closes it on Escape or a
+  click elsewhere and returns focus to the button; Tab walks link, 복사, link, 복사…, and tabbing out closes it. On a
+  phone, Escape closes the menu alone and the settings panel stays. 복사 is the copy stamp (check and 복사됨, 2 s);
+  with the clipboard blocked the address is selected for a manual copy. It fades and drops 4px in (100ms; 150ms out),
+  never with reduced motion. Open during a Board redraw it stays above the moving rows, like the frozen row.
 
 ### View switch (기본 | 쉬운 설명)
 - **Style:** a pill track in Recessed Panel with a Control Edge border and 3px inset; two pill options
@@ -636,7 +669,7 @@ Restrained outlined buttons for theme, language and copying a command.
   group rests 6 s after a step press instead of 2 s, so the next press finds it under the finger; once rested, a small
   scroll brings it back (a tap cannot, as the buttons are hidden). Page Up/Down, Space, Home and End stay the browser's.
 - **Phone header (critique 10, a.1):** one line with the name, 기본|쉬운 설명 and a settings button; 가−/가+, theme and
-  language open under it (Escape or a tap elsewhere closes). At 375px the first Highlight moved from 490px to 430px.
+  language open under it (Escape or a tap elsewhere closes), and since 11-17 the RSS button (RSS menu). At 375px the first Highlight moved from 490px to 430px.
 - **쉬운 설명 beckons (owner, 11-09):** as the Board arrives in 기본, a light blue band sweeps across the 쉬운 설명 button
   twice (1.2s each), until the visitor has tried that view once (`vr-easy-tried`); never with reduced motion.
 - **공격 발생 (critique 10, b.2):** the reason a row sits at the top is set at 14px/800, no longer the row's smallest text.

@@ -1,4 +1,5 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, collectionFacts } from './board.mjs';
+import { feedPath, productFeed } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -60,6 +61,10 @@ const TEXT = {
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
     copy: '복사', copied: '복사됨', share: '이 사건 링크 복사',
+    feeds: 'RSS 피드', feedsHead: 'RSS로 받아 보기', feedMain: '주요 피드', feedMainNote: '위험 이상, 실제 공격, 아직 CVE 없는 사건',
+    feedAll: '현황판 전체', feedAllNote: '참고까지 모든 사건', feedMine: '내 제품', feedPick: '제품 고르기',
+    feedNone: '위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.',
+    feedMore: (n) => ` 외 ${n}개`, feedLeft: (n) => `주소 하나에는 제품 30개까지 담깁니다. 나머지 ${n}개는 빠졌습니다.`,
     tagsOnly: '이 제품의 사건만 보기', tagOnly: (name) => `${name} 사건만 보기`,
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
     versionHelp: (cve) => (cve ? `내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 ${cve} 번호로 물어보세요.` : '내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요.'),
@@ -109,6 +114,10 @@ const TEXT = {
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
     copy: 'Copy', copied: 'Copied', share: 'Copy link to this Incident',
+    feeds: 'RSS feeds', feedsHead: 'Follow by RSS', feedMain: 'Main feed', feedMainNote: 'Elevated and up, attacked, or no CVE yet',
+    feedAll: 'The whole Board', feedAllNote: 'Every Incident, Notice too', feedMine: 'My products', feedPick: 'Pick products',
+    feedNone: 'Pick products in “Products you run” above, and an address with only their Incidents appears here.',
+    feedMore: (n) => ` and ${n} more`, feedLeft: (n) => `One address holds up to 30 products; the other ${n} are left out.`,
     tagsOnly: 'Show only Incidents of', tagOnly: (name) => `Show only ${name} Incidents`,
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
     versionHelp: (cve) => (cve ? `Your version is usually shown in the program's settings or About screen. If not, ask an AI chatbot about ${cve}.` : "Your version is usually shown in the program's settings or About screen."),
@@ -1048,6 +1057,7 @@ function boardLists() {
 
 function render() {
   pageText();
+  feedRows();
   if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
   const { list, variants, extra, highlights, pinned, rest, folded, items } = boardLists();
   shownList = list;
@@ -1681,14 +1691,89 @@ function setPrefs(open) {
 }
 $('prefs-btn').addEventListener('click', () => setPrefs(!$('prefs').classList.contains('open')));
 document.addEventListener('pointerdown', (event) => {
-  if ($('prefs').classList.contains('open') && !$('prefs').contains(event.target) && !$('prefs-btn').contains(event.target)) setPrefs(false);
+  if ($('prefs').classList.contains('open') && !$('prefs').contains(event.target) && !$('prefs-btn').contains(event.target)
+    && !$('feeds').contains(event.target)) setPrefs(false); // the RSS menu opened from the panel keeps it
 });
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && $('prefs').classList.contains('open')) {
+  if (event.key === 'Escape' && $('prefs').classList.contains('open') && !feedsOpen()) { // Escape closes the RSS menu alone
     setPrefs(false);
     $('prefs-btn').focus();
   }
 });
+
+// The RSS menu (owner, 11-17; DESIGN.md "RSS menu"): the brand row's button, or on phones the settings panel's, opens one
+// popover. The browser opens and closes it (commandfor), closes it on Escape or a click elsewhere and returns focus to
+// the button. Each entry links its feed in the page's language with its address to copy; 내 제품 follows the picks.
+const feedButtons = ['feeds-btn', 'feeds-btn-phone'].map($);
+const canPop = Object.hasOwn(HTMLElement.prototype, 'popover'); // without it index.html does not draw the buttons
+const feedsOpen = () => canPop && $('feeds').matches(':popover-open');
+function feedRows() {
+  const t = TEXT[lang];
+  const set = (id, path) => {
+    $(id).href = path;
+    $(`${id}-url`).textContent = $(id).href;
+  };
+  set('feed-main', feedPath(lang));
+  set('feed-all', feedPath(lang, 'all'));
+  // Products only (OS picks are the panel's, and the feeds have no OS documents); before products.json arrives a pick
+  // is asked by its id's tail, which the check index also knows ("openbsd:openssh" is "openssh").
+  const names = filter.picks.filter((p) => !p.startsWith('os:'))
+    .map((id) => products.find((p) => p.id === id)?.name || id.slice(id.indexOf(':') + 1).replace(/_/g, ' '));
+  const feed = productFeed(names, lang);
+  $('feed-mine').hidden = !feed;
+  $('feed-none').hidden = Boolean(feed);
+  if (!feed) return;
+  set('feed-products', feed.href);
+  $('feed-names').textContent = feed.names.slice(0, 3).join(', ') + (feed.names.length > 3 ? t.feedMore(feed.names.length - 3) : '');
+  $('feed-left').hidden = !feed.left;
+  $('feed-left').textContent = feed.left ? t.feedLeft(feed.left) : '';
+}
+if (canPop) {
+  const menu = $('feeds');
+  // Invoker commands are newer than popovers: without them the buttons toggle the menu here.
+  if (!('commandForElement' in HTMLButtonElement.prototype)) {
+    for (const button of feedButtons) {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (feedsOpen()) menu.hidePopover();
+        else menu.showPopover({ source: button });
+      });
+    }
+  }
+  menu.addEventListener('toggle', (event) => {
+    const opening = event.newState === 'open';
+    for (const button of feedButtons) button.setAttribute('aria-expanded', opening);
+    // Without anchor positioning: under the visible button, kept inside the screen, above it when there is no room below.
+    if (!opening || CSS.supports('position-area: block-end')) return;
+    const box = feedButtons.find((b) => b.getClientRects().length).getBoundingClientRect();
+    const left = Math.max(8, Math.min(box.left, innerWidth - menu.offsetWidth - 8));
+    const below = box.bottom + 4 + menu.offsetHeight <= innerHeight || box.top - 4 - menu.offsetHeight < 0;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${below ? box.bottom + 4 : box.top - 4 - menu.offsetHeight}px`;
+  });
+  // Tab past the last entry leaves the menu: it closes, so focus never stays behind it.
+  document.addEventListener('focusin', (event) => {
+    if (feedsOpen() && !menu.contains(event.target) && !feedButtons.includes(event.target)) menu.hidePopover();
+  });
+  menu.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-copy]');
+    if (!button) return;
+    try {
+      await navigator.clipboard.writeText($(button.dataset.copy).href);
+      stampCopied(button);
+      clearTimeout(button.settle);
+      button.settle = setTimeout(() => { button.textContent = TEXT[lang].copy; }, 2000);
+    } catch {
+      getSelection().selectAllChildren($(`${button.dataset.copy}-url`)); // clipboard blocked: the address selected, to copy by hand
+    }
+  });
+  // No product picked: 제품 고르기 closes the menu and puts the visitor in the picker.
+  $('feed-pick').addEventListener('click', () => {
+    menu.hidePopover();
+    setPrefs(false);
+    $('product-pick').focus();
+  });
+}
 
 // The search row stays at the top while the Board scrolls (like frozen panes); its height is kept in --stick so
 // rows scrolled into view, the new-Incidents pill and the jump buttons clear it.

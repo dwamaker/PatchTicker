@@ -911,3 +911,19 @@ export const sinceStillTrue = (since, now) => {
 };
 // What an empty search says about what the Board holds: both sentences while the first is true, then the retention alone.
 export const collectionFacts = (since, now, words) => (sinceStillTrue(since, now) ? `${words.since} ${words.keep}` : words.keep);
+
+// The RSS feeds in the header's menu (owner, 11-17): the main feed, the whole Board, and the visitor's picked Products,
+// each in the page's language. The products feed takes names as /api/check does (edge/check.mjs readQuery: comma-separated,
+// at most FEED_NAMES names), so a name's own comma would split it: it becomes a space, which productKey drops anyway.
+// Two names with one productKey ask for the same thing and are sent once; past FEED_NAMES the first ones go, the rest
+// are counted in left so the menu can say so.
+export const FEED_NAMES = 30;
+export const feedPath = (lang, kind = 'main') => `${lang === 'en' ? '/en' : ''}/${kind === 'all' ? 'feed/all.xml' : 'feed.xml'}`;
+export function productFeed(names, lang) {
+  const keys = new Set();
+  const unique = names.map((n) => String(n).replace(/,/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter((n) => n && !keys.has(productKey(n)) && keys.add(productKey(n)));
+  if (!unique.length) return null;
+  const used = unique.slice(0, FEED_NAMES);
+  return { href: `${feedPath(lang)}?products=${used.map(encodeURIComponent).join(',')}`, names: used, left: unique.length - used.length };
+}

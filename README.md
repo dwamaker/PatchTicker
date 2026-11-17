@@ -18,6 +18,13 @@
 </p>
 
 <p align="center">
+  <b>Follow by RSS</b> (Korean · English)<br>
+  Main feed, Elevated and up, attacked or no CVE yet: <a href="https://patchticker.com/feed.xml">/feed.xml</a> · <a href="https://patchticker.com/en/feed.xml">/en/feed.xml</a><br>
+  The whole Board: <a href="https://patchticker.com/feed/all.xml">/feed/all.xml</a> · <a href="https://patchticker.com/en/feed/all.xml">/en/feed/all.xml</a><br>
+  Only your products: <code>/feed.xml?products=openssh,nginx</code> (up to 30 names; the site's RSS button builds it from the products you pick)
+</p>
+
+<p align="center">
   <em>Find it useful? A coffee keeps it running.</em><br>
   <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>

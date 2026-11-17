@@ -18,6 +18,13 @@
 </p>
 
 <p align="center">
+  <b>RSS로 받아 보기</b> (한국어 · 영어)<br>
+  주요 피드, 위험 이상·실제 공격·아직 CVE 없는 사건: <a href="https://patchticker.com/feed.xml">/feed.xml</a> · <a href="https://patchticker.com/en/feed.xml">/en/feed.xml</a><br>
+  현황판 전체: <a href="https://patchticker.com/feed/all.xml">/feed/all.xml</a> · <a href="https://patchticker.com/en/feed/all.xml">/en/feed/all.xml</a><br>
+  내 제품만: <code>/feed.xml?products=openssh,nginx</code> (이름 30개까지, 사이트의 RSS 버튼이 고른 제품으로 주소를 만들어 줍니다)
+</p>
+
+<p align="center">
   <em>도움이 되셨다면 커피 한 잔으로 응원해 주세요.</em><br>
   <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>
