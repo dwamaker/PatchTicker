@@ -110,6 +110,20 @@ test('the real index.html paints the loading Board, so app.mjs taking over moves
   assert.match(html, new RegExp(`<p id="status"><span lang="ko">${WORDS_APP.ko}</span><span lang="en">${WORDS_APP.en}</span><span lang="ja">${WORDS_APP.ja}</span></p>`));
 });
 
+// Owner, 11-17 ("break the line after each full stop"): index.html #collect-note and the empty search state (app.mjs
+// noticeSince + noticeKeep) say the same sentences, one per line, in each language.
+test('the collection notice in index.html is app.mjs\'s sentences, one per line, in ko, en and ja', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../web/app.mjs', import.meta.url), 'utf8');
+  const note = /<div id="collect-note"[^>]*><p>([\s\S]*?)<\/p>/.exec(html)[1];
+  const texts = [...app.matchAll(/noticeSince: \['([^']+)', '([^']+)'\], noticeKeep: '([^']+)'/g)].map((m) => m.slice(1));
+  assert.equal(texts.length, 3);
+  ['ko', 'en', 'ja'].forEach((lang, n) => {
+    const lines = new RegExp(`<span lang="${lang}">([^<]*(?:<br>[^<]*)*)</span>`).exec(note)[1].split('<br>');
+    assert.deepEqual(lines, texts[n], lang);
+  });
+});
+
 // Owner, 11-17: in a Board transition the named rows lay over the frozen search bar. What stays put on screen gets a
 // name of its own while one runs (app.mjs adds .vt-board), drawn after the rows, neither faded nor moved.
 test('the real index.html keeps the frozen bar and the jump group above the rows in a Board transition', () => {
