@@ -47,5 +47,8 @@ then the rest (CONTEXT.md, Highlight). The kind a label sits under also counts: 
 kind, so Android (Operating systems) and Chrome (Browsers) both take one while two Google browsers share one; file a
 label under the kind a reader would look for it in. A product on no list (a Summary's `widely_used`, which no new Summary carries
 since 11-11) counts as tier 3. Give the lowest tier that is true: a tier-1 label outranks every exploited row of tier 3.
+Reach is counted for the site's readers, who are Korean: Java is tier 1 (owner, 2026-11-17, "한국은 자바공화국"), since
+66.3% of the public IT projects put out to tender use the Java-based eGovFrame (MOIS, end of 2025) and a ministry
+notice tells agencies to consider it first.
 To add one, add a line under its kind with its tier, check that it parses (`python -c "import collector.incidents"`),
 and run both test suites; the next cycle stamps `known` and `known_tier` on the week's rows.

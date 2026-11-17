@@ -306,7 +306,7 @@
     "Node.js": {"ids": ["nodejs:node.js", "nodejs:node", "nodejs:nodejs", "joyent:node.js"], "tier": 2},
     "Deno": {"ids": ["denoland:deno", "deno:deno"], "tier": 3},
     "Bun": {"ids": ["oven-sh:bun", "anthropic:bun"], "tier": 3},
-    "Java": {"ids": ["oracle:java_se*", "oracle:jdk*", "oracle:openjdk*", "openjdk:*", "sun:jdk"], "names": ["OpenJDK", "Oracle Java SE", "JDK"], "tier": 2},
+    "Java": {"ids": ["oracle:java_se*", "oracle:jdk*", "oracle:openjdk*", "openjdk:*", "sun:jdk"], "names": ["OpenJDK", "Oracle Java SE", "JDK"], "tier": 1},
     "Go": {"ids": ["golang:go", "go_standard_library:*", "go:go", "go_toolchain:*"], "names": ["Golang"], "tier": 2},
     "Ruby": {"ids": ["ruby-lang:ruby", "ruby:ruby"], "tier": 3},
     "Rust": {"ids": ["rust-lang:rust", "rust:rust"], "tier": 3},
