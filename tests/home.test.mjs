@@ -110,17 +110,17 @@ test('the real index.html paints the loading Board, so app.mjs taking over moves
   assert.match(html, new RegExp(`<p id="status"><span lang="ko">${WORDS_APP.ko}</span><span lang="en">${WORDS_APP.en}</span><span lang="ja">${WORDS_APP.ja}</span></p>`));
 });
 
-// Owner, 11-17 ("break the line after each full stop"): index.html #collect-note and the empty search state (app.mjs
-// noticeSince + noticeKeep) say the same sentences, one per line, in each language.
-test('the collection notice in index.html is app.mjs\'s sentences, one per line, in ko, en and ja', () => {
+// Owner, 11-17/18 (a line never breaks inside a sentence; no forced breaks): index.html #collect-note and the empty
+// search state (app.mjs noticeSince + noticeKeep) say the same sentences, each in its own box, joined by one space.
+test('the collection notice in index.html is app.mjs\'s sentences, a box each, in ko, en and ja', () => {
   const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
   const app = readFileSync(new URL('../web/app.mjs', import.meta.url), 'utf8');
   const note = /<div id="collect-note"[^>]*><p>([\s\S]*?)<\/p>/.exec(html)[1];
   const texts = [...app.matchAll(/noticeSince: \['([^']+)', '([^']+)'\], noticeKeep: '([^']+)'/g)].map((m) => m.slice(1));
   assert.equal(texts.length, 3);
   ['ko', 'en', 'ja'].forEach((lang, n) => {
-    const lines = new RegExp(`<span lang="${lang}">([^<]*(?:<br>[^<]*)*)</span>`).exec(note)[1].split('<br>');
-    assert.deepEqual(lines, texts[n], lang);
+    const body = new RegExp(`<span lang="${lang}">((?:<span class="sentence">[^<]*</span> ?)+)</span>`).exec(note)[1];
+    assert.equal(body, texts[n].map((s) => `<span class="sentence">${s}</span>`).join(' '), lang);
   });
 });
 

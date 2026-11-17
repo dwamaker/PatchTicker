@@ -1350,10 +1350,10 @@ function emptyState() {
   if (filter.picks.length && !quick && !query) return [allClear(), ...actions];
   // A search that found nothing says what the Board holds (owner, 11-17: "why is my October CVE missing?"), whether or
   // not the notice under the header was closed; past the store's 90 days only the retention sentence stays.
-  // One sentence per line, with <br> as in index.html #collect-note (owner, 11-17).
+  // Each sentence its own box, as in index.html #collect-note: lines break between sentences (owner, 11-18).
   const lines = sinceStillTrue(document.documentElement.dataset.collectedSince, Date.now()) ? [...t.noticeSince, t.noticeKeep] : [t.noticeKeep];
-  const facts = para('scope', lines[0]);
-  for (const line of lines.slice(1)) facts.append(el('br'), ...keepIds(line));
+  const facts = Object.assign(el('p', 'scope'), { lang });
+  lines.forEach((line, n) => { const box = el('span', 'sentence'); box.append(...keepIds(line)); facts.append(...(n ? [' ', box] : [box])); });
   return [para('', message), scope, ...(query ? [facts] : []), ...actions];
 }
 
