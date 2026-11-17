@@ -309,12 +309,18 @@ numbers do not shimmer.
 
 A single centred column, 75rem wide, with a 1rem gutter (1.5rem from 768 px). The top bar is a
 three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and language buttons right (from 1024 px). From 600 to
-1023 px it is one wrapping line instead: the name on one line, 후원 and RSS as icons, the switch centred in the room left,
+1023 px it is one wrapping line instead: the name on one line, RSS as an icon, the switch centred in the room left,
 the buttons right; where that does not fit (larger text) it breaks into two lines rather than run the name under the
 switch, as the grid did at 600 px (owner, 11-17);
-under 600 px the name, the switch and a settings button share one line (GitHub, 후원 and RSS leave the line; RSS moves into
+under 600 px the name, the switch and a settings button share one line (GitHub and RSS leave the line; RSS moves into
 the settings panel). The product picker and search sit on one
-line (picker up to 24rem), stacking under 768 px.
+line (picker up to 24rem), stacking under 768 px. The footer holds the data notices and, in its top right corner, the Support badge (see
+Components) (owner, 2026-11-18: 후원 left the header, and the footer's GitHub · RSS line was dropped). Two
+notices stay visible: the reference line and the NVD API sentence, which the API's terms require shown, so it is never
+folded. The rest (the Korean NVD line, the Attacked sign's sources, the CVE terms and MITRE's licence) sit in a native
+disclosure, 출처와 라이선스 / Sources and licences / 出典とライセンス, closed by default: footer-sized Secondary Ink
+text with the folded model list's chevron, 44 px tall on phones (owner, 2026-11-18). The Incident and product pages
+keep the full block.
 
 A row is a six-column grid: risk (6.5rem), name and title (fluid), CVSS ring (2.75rem), line
 badges (up to 15rem), published date over time (5.5rem), chevron. Column gap is 1.25rem. Opened details align with the
@@ -368,12 +374,25 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Hover / Focus:** Recessed Panel fill and Sign Ink text on hover; a 2px Wayfinding Blue ring at
   2px offset on keyboard focus.
 
+### Support badge (owner, 2026-11-18)
+- The README's Buy Me a Coffee badge, alone, drawn by the page itself (no third-party image: `img-src 'self'`): Buy Me
+  a Coffee yellow `#ffdd00`, the cup icon and "BUY ME A COFFEE" in black, 14px bold upper case, 0.1em tracking, 4px
+  corners, 44 px high, about 220 px wide. It does not follow the text size: it is a mark.
+- Place: inside the footer, under its line, in the top right corner beside the notices (they keep their 46rem column),
+  level with the first of them, from 1024 px. Narrower it takes a row of its own above the notices, centred, which
+  also keeps it clear of the jump column at 360 px. One element: first in the footer's markup, moved to the corner by
+  a two-column grid.
+- The yellow is the one colour outside the palette, kept so the badge reads as the service's own mark, the same in both
+  themes; black on it is 15.6:1.
+
 ### RSS menu (owner, 11-17)
-- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub and 후원, styled as 후원
-  is: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px both show
-  their icon alone in a 44 px circle, the word kept as their name for screen readers. Under 600 px the header line
+- **Place:** an RSS button (the RSS mark, 16px, and the word "RSS") in the brand row after GitHub, styled as
+  the old 후원 button was: no outline, a pill, Secondary Ink, Recessed fill on hover and while its menu is open; from 600 to 1023 px it shows
+  its icon alone in a 44 px circle, the word kept as its name for screen readers. Under 600 px the header line
   is full, so the button sits in the settings panel after the language button, outlined like its neighbours, and opens
-  the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link stays for everyone.
+  the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link,
+  once the fallback there, was dropped at the owner's word (2026-11-18): such browsers have no RSS link on the page,
+  and feed readers still find the feeds through the `<link rel="alternate">` tags in the head.
 - **Menu:** a popover (Kiosk Panel, Rail border, 10px radius, the panel shadow), up to 23rem and never wider than the
   screen less 2rem, anchored under its button (flipping sideways or upward when it would leave the screen; placed by
   script where anchor positioning is missing). A small bold heading in Secondary Ink (RSS로 받아 보기 / Follow by RSS),
