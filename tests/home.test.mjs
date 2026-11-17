@@ -110,6 +110,18 @@ test('the real index.html paints the loading Board, so app.mjs taking over moves
   assert.match(html, new RegExp(`<p id="status"><span lang="ko">${WORDS_APP.ko}</span><span lang="en">${WORDS_APP.en}</span></p>`));
 });
 
+// Owner, 11-17: in a Board transition the named rows lay over the frozen search bar. What stays put on screen gets a
+// name of its own while one runs (app.mjs adds .vt-board), drawn after the rows, neither faded nor moved.
+test('the real index.html keeps the frozen bar and the jump group above the rows in a Board transition', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  for (const sel of ['#filter', '.search-row', '#jump', '#new-above']) {
+    assert.match(html, new RegExp(`\\.vt-board ${sel.replace(/[.#-]/g, '\\$&')} \\{ view-transition-name: vt-[a-z]+; view-transition-class: frozen; \\}`), sel);
+  }
+  assert.match(html, /:root::view-transition-old\(\*\.frozen\) \{ display: none; \}/);
+  assert.match(html, /:root::view-transition-new\(\*\.frozen\), :root::view-transition-group\(\*\.frozen\) \{ animation: none; \}/);
+  assert.match(html, /:root::view-transition-group\(\*\.frozen\) \{ z-index: 1; \}/); // the groups' own order drew rows on top
+});
+
 test('the real index.html: #about is the last child of <main>, and no top-level <section> is its 12th child', () => {
   const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
   const main = /<main class="wrap">([\s\S]*?)<\/main>/.exec(html)[1];

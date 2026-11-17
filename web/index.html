@@ -751,6 +751,15 @@
     ::view-transition-old(*):only-child { animation-duration: 140ms; }
     ::view-transition-old(*), ::view-transition-new(*) { height: auto; object-fit: none; object-position: top; }
     .vt-still::view-transition-group(*) { animation: none; }
+    /* what stays put on screen stays above the moving rows (owner, 11-17: rows lay over the frozen search bar): while a
+       Board transition runs it is named, so its picture is drawn after the rows', and it neither fades nor moves */
+    @media (min-width: 768px) { .vt-board #filter { view-transition-name: vt-filter; view-transition-class: frozen; } }
+    @media (max-width: 767px) { .vt-board .search-row { view-transition-name: vt-search; view-transition-class: frozen; } }
+    .vt-board #jump { view-transition-name: vt-jump; view-transition-class: frozen; }
+    .vt-board #new-above { view-transition-name: vt-new; view-transition-class: frozen; }
+    :root::view-transition-old(*.frozen) { display: none; }
+    :root::view-transition-new(*.frozen), :root::view-transition-group(*.frozen) { animation: none; }
+    :root::view-transition-group(*.frozen) { z-index: 1; } /* the groups' own order put the rows on top */
     /* a row that arrived by a refresh drops into its place at the top of the Board (where supported) */
     li.fresh { view-transition-class: fresh; }
     @media (prefers-reduced-motion: no-preference) {

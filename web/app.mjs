@@ -690,7 +690,8 @@ function fold(node, opening, done = () => {}) {
   };
 }
 
-// Board redraws the visitor asked for (filters, sort, 주요 사건 더 보기, 더 보기, 모두 펼치기) keep each row's identity: a row
+// Board redraws the visitor asked for (filters, sort, 주요 사건 더 보기, 모두 펼치기, the view; 더 보기 only when it draws the
+// whole Board, not when it adds rows) keep each row's identity: a row
 // that stays glides to its new place, a new one fades in, a gone one fades out (View Transitions; each row is named in
 // row()). Reduced motion: nothing moves, the change only cross-fades. Typing in search redraws plainly.
 const rowNames = new Map();
@@ -703,9 +704,14 @@ function nameRows() {
   rows.forEach((li, n) => { li.style.viewTransitionName = near[n] ? li.dataset.vt : ''; });
 }
 // Resolves once the new Board is drawn (a caller that reads the drawn rows waits for it).
+let boardRuns = 0;
 function boardTransition(change) {
   if (!document.startViewTransition) return Promise.resolve(change());
   document.documentElement.classList.toggle('vt-still', reducedMotion.matches);
+  // the frozen search bar and the jump group get names of their own while it runs (index.html, .vt-board), so the moving
+  // rows pass under them; counted, so a transition that cuts in keeps them named until the last one ends
+  boardRuns++;
+  document.documentElement.classList.add('vt-board');
   nameRows();
   const transition = document.startViewTransition(() => {
     change();
@@ -714,6 +720,7 @@ function boardTransition(change) {
   transition.ready.catch(() => {}); // a newer redraw skipped this one: nothing is wrong
   transition.finished.finally(() => {
     for (const li of document.querySelectorAll('li[data-vt]')) li.style.viewTransitionName = '';
+    if (--boardRuns === 0) document.documentElement.classList.remove('vt-board');
   });
   return transition.updateCallbackDone.catch(() => {});
 }
@@ -977,12 +984,20 @@ function moreButtons(rest) {
   const buttons = [];
   if (rest > 0) {
     const more = Object.assign(el('button', 'btn', t.showMore(rest)), { type: 'button' });
-    more.addEventListener('click', () => boardTransition(() => {
-      addPage(); // the next rows under the drawn ones; the whole Board only when it changed since it was drawn
-      $('more').querySelector('button')?.focus({ preventScroll: true }); // replaced; keep the place
-      clearTimeout(announcing); // a pending count from the last search must not talk over this
-      $('announce').textContent = t.moreDone(Math.min(PAGE, rest), Math.max(0, rest - PAGE)); // the last page can be short
-    }));
+    more.addEventListener('click', () => {
+      const done = () => {
+        $('more').querySelector('button')?.focus({ preventScroll: true }); // replaced; keep the place
+        clearTimeout(announcing); // a pending count from the last search must not talk over this
+        $('announce').textContent = t.moreDone(Math.min(PAGE, rest), Math.max(0, rest - PAGE)); // the last page can be short
+      };
+      // Rows only added under the drawn ones: nothing drawn moves, so no transition (owner, 11-17: its old picture of the
+      // button and footer showed through the new rows). The whole Board drawn again (it changed since): the transition.
+      const page = nextPage(drawn, { result: filtered(), folding, pinAll }, PAGE);
+      if (page) {
+        addPage(page);
+        done();
+      } else boardTransition(() => { shown += PAGE; render(); done(); });
+    });
     buttons.push(more);
   }
   if (!olderMonths.length && olderAdded !== null) buttons.push(Object.assign(el('p', 'older-done', t.olderDone(olderAdded)), { tabIndex: -1 })); // takes the focus when the button is gone
@@ -1118,11 +1133,17 @@ const itemRows = (i) => (i.fold ? foldRows(i) : [row(i, false)]);
 const itemKeys = (items) => items.flatMap((i) => (i.fold ? (openFolds.has(i.fold) ? i.incidents : []) : [i])).map((i) => rowKey(i, highlightedNow, false));
 // What render() last drew of the list (nextPage): 더 보기 adds to it while it still stands.
 let drawn = {};
-function addPage() {
-  const page = nextPage(drawn, { result: filtered(), folding, pinAll }, PAGE);
+function addPage(page) {
   shown += PAGE;
-  if (!page) return render();
-  $('board').append(...page.flatMap(itemRows));
+  const added = page.flatMap(itemRows);
+  $('board').append(...added);
+  // the added rows that reach the screen fade in on their own (reduced motion: they are just there)
+  if (!reducedMotion.matches) {
+    for (const li of added) {
+      if (li.getBoundingClientRect().top >= innerHeight) break;
+      li.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: EASE_OUT });
+    }
+  }
   visibleIds.push(...itemKeys(page));
   drawn.shown = shown;
   $('expand-all').textContent = allOpen() ? TEXT[lang].collapseAll : TEXT[lang].expandAll;

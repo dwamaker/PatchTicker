@@ -542,10 +542,15 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Reload keeps the place:** scroll position, 더 보기 counts, opened rows and folds, and loaded older months come back
   on a reload (sessionStorage `vr-place`).
 - **Board continuity:** a redraw the visitor asked for (필터 적용, a chip's ×, clear buttons, a picked Product, 정렬,
-  주요 사건 더 보기 / 접기, 더 보기, 모두 펼치기 / 접기) keeps each row's identity through a View Transition: rows that stay
-  glide to their new place (260ms ease-out), new rows fade in, gone ones leave faster (140ms). Only rows on or within
-  200px of the screen are named, so a long Board stays cheap; typing in search redraws plainly. Reduced motion: rows
-  do not move, the change only cross-fades.
+  주요 사건 더 보기 / 접기, 모두 펼치기 / 접기, the view switch) keeps each row's identity through a View Transition: rows
+  that stay glide to their new place (260ms ease-out), new rows fade in, gone ones leave faster (140ms). Only rows on or
+  within 200px of the screen are named, so a long Board stays cheap; typing in search redraws plainly. Reduced motion:
+  rows do not move, the change only cross-fades. What stays put on screen stays above the moving rows (owner, 11-17:
+  rows lay over the frozen search bar): while a Board transition runs, the frozen bar (`#filter` from 768px, the
+  search row on phones), the jump group and the new-Incidents pill are named, drawn over the rows, and neither fade
+  nor move. 더 보기 runs through no transition when it only adds rows (owner, 11-17: the old picture of its button and
+  the footer showed through the new rows): nothing drawn moves, and the added rows on screen fade in (180ms; reduced
+  motion: none). When the Board changed since it was drawn, 더 보기 draws it whole through the transition.
 - **Micro-feedback (100-250ms):** buttons, chips and the switch press in to 96% and tint in 120ms; the 기본|쉬운
   설명 pill slides under the pressed side (240ms); a copied command's check draws itself and "복사됨" slides in; the
   filter count pops when it changes; the all-clear check draws itself when the sign first appears; the theme icon
@@ -671,7 +676,7 @@ Restrained outlined buttons for theme, language and copying a command.
   eleventh on is skipped by the browser while it is off the screen (`content-visibility: auto`), holding its last
   measured height and until then a closed row's usual one (84px, phones 170px); the first ten never are, so the first
   paint waits for nothing, and a focused row never is, so its ring outside the row is not cut. 더 보기 adds the next
-  rows under the drawn ones; the whole list is drawn again only when the Board changed since. Plain scrolling shows
+  rows under the drawn ones (Board continuity); the whole list is drawn again only when the Board changed since. Plain scrolling shows
   every row; the long 맨 위로 / 맨 아래로 flight can pass rows not yet drawn (their frames, empty) for a frame or two.
 - **Motion for views, folds and arrivals (11-09, owner):** switching 기본 / 쉬운 설명 runs through the Board's View
   Transition: each row on screen lets its old words sink 5px and fade (160ms) while the new ones rise into place
