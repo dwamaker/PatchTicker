@@ -92,6 +92,7 @@
          --fs-meta: status, dates, secondary lines; --fs-small: labels, controls, detail text. */
       --ts: 1; /* text scale from the 가−/가+ buttons: only font sizes use it, layout stays */
       --tap: 44px;
+      --jump-right: max(1rem, env(safe-area-inset-right)); /* the floating jump column's distance from the right edge */
       --r-pill: 999px;
       --r-frame: 10px;
       --r-ctl: 8px;
@@ -108,8 +109,8 @@
     :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     button, input { font: inherit; color: inherit; }
     a { color: var(--focus); text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--focus) 50%, transparent); }
-    .wrap { max-width: 75rem; margin: 0 auto; padding: 0 1rem; }
-    @media (min-width: 768px) { .wrap { padding: 0 1.5rem; } }
+    .wrap { --gutter: 1rem; max-width: 75rem; margin: 0 auto; padding: 0 var(--gutter); }
+    @media (min-width: 768px) { .wrap { --gutter: 1.5rem; } }
 
     /* top bar: name, 기본|쉬운 설명, theme and language */
     .top { position: relative; border-bottom: 1px solid var(--rule); }
@@ -120,7 +121,8 @@
     #repo { padding: 0; border-color: transparent; border-radius: 50%; color: var(--ink-2); } /* the public repository, beside the name */
     #repo svg { width: 20px; height: 20px; fill: currentColor; }
     @media (hover: hover) { #repo:hover { color: var(--ink); background: var(--panel-2); } }
-    #support { display: flex; width: fit-content; margin: 1rem 0 0 auto; gap: 0.375rem; padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); } /* Buy Me a Coffee: the footer's last row, at its right edge (owner, 11-18) */
+    #support { display: flex; width: fit-content; margin: 1rem max(0px, calc(var(--jump-right) + var(--tap) + 0.5rem - (100vw - min(100vw, 75rem)) / 2 - var(--gutter))) 0 auto; gap: 0.375rem; padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); } /* Buy Me a Coffee: the footer's last row, at its right edge (owner, 11-18), inset to clear the jump column where
+       that column stands over the footer (the column's reach less the room between the screen's edge and the content box) */
     #support svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
     @media (hover: hover) { #support:hover { color: var(--ink); background: var(--panel-2); } }
     @media (max-width: 599px) { #repo, #feeds-btn { display: none; } } /* phones: the header line is full */
@@ -610,8 +612,8 @@
     .new-above svg { width: 16px; height: 16px; flex: none; }
     @media (hover: hover) { .new-above:hover { background: var(--ink-2); } }
     /* 맨 위로 / 맨 아래로: a quiet pair at the bottom right, each only when there is somewhere to go */
-    .jump { position: fixed; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 14; display: flex; flex-direction: column; gap: 0.5rem; }
-    .jump button { display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--edge); border-radius: 50%; background: var(--panel); color: var(--ink); box-shadow: 0 6px 16px -8px var(--shadow); cursor: pointer; }
+    .jump { position: fixed; right: var(--jump-right); pointer-events: none; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 14; display: flex; flex-direction: column; gap: 0.5rem; }
+    .jump button { pointer-events: auto; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 1px solid var(--edge); border-radius: 50%; background: var(--panel); color: var(--ink); box-shadow: 0 6px 16px -8px var(--shadow); cursor: pointer; }
     /* in: rise 8px and grow from 90% (200ms); out: sink and shrink faster (140ms); a press dips to 94% */
     .jump button { transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1), background-color 120ms ease-out, visibility 0s; }
     .jump button.off { opacity: 0; transform: translateY(8px) scale(0.9); visibility: hidden; pointer-events: none; transition: opacity 140ms cubic-bezier(0.4, 0, 1, 1), transform 140ms cubic-bezier(0.4, 0, 1, 1), visibility 0s linear 140ms; }
