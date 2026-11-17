@@ -17,8 +17,8 @@ const SLUG = /^[0-9a-f]{16}$/; // collector/checks.py check_slug: anything else 
 
 const TEXT = {
   ko: { ...WORDS.ko, path: '/p/', page: '/i/', feed: '/feed.xml', locale: 'ko_KR',
-    heading: (name) => `${name} 보안 사건`, count: (n) => `최근 90일 동안 ${n}건, 새로운 순. 사건마다 대처법과 원문은 사건 페이지에 있습니다.`,
-    about: (name, n) => `최근 90일 동안 ${name}에 관한 보안 사건 ${n}건: 위험도, 고친 버전, 사건 페이지 링크.`,
+    heading: (name) => `${name} 보안 사건`, count: (n) => `최근 90일 동안 ${n}건이며 최신순입니다. 대처법과 원문은 각 사건 페이지에 있습니다.`,
+    about: (name, n) => `최근 90일 동안 나온 ${name} 보안 사건 ${n}건의 위험도, 고친 버전, 사건 페이지 링크입니다.`,
     fixed: (v) => `고친 버전 ${v}`, cves: (n) => `CVE ${n}건`, rss: (name) => `${name} RSS 구독`, board: '현황판에서 보기',
     missing: '이 주소에는 제품 페이지가 없습니다.', down: '지금은 제품 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '현황판으로 가기', links: '이 제품 더 보기' },
   en: { ...WORDS.en, path: '/en/p/', page: '/en/i/', feed: '/en/feed.xml', locale: 'en_US',
