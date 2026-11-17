@@ -170,6 +170,9 @@ def smoke(claude):
         "cve lines": cve_lines.lines_params(cve_lines.lines_input(SMOKE_INCIDENT, SMOKE_INCIDENT["cves"])),
         # The review of every Summary (owner 11-16): its own schema and instructions, built as the cycle builds it.
         "review": summaries.review_params(SMOKE_SUMMARY, SMOKE_INCIDENT),
+        # An exploited flag the pattern misses: the same review with the attacks question and its schema (owner 11-17).
+        "review with attacks question": summaries.review_params(SMOKE_SUMMARY | {"exploited": True, "exploited_unconfirmed": True},
+                                                                SMOKE_INCIDENT),
     }
     code = 0
     for name, params in shapes.items():

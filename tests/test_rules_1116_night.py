@@ -7,7 +7,7 @@ import json
 import unittest
 import unittest.mock
 
-from collector import cve_lines, numbers, summaries, summary_input
+from collector import cve_lines, numbers, review, summaries, summary_input
 from test_cve_lines import MANY, MAX, line, lines_row, saved
 from test_summaries import SSHOLE_SUMMARY, FakeClaude
 
@@ -372,6 +372,13 @@ class ExploitedEvidenceTest(unittest.TestCase):
             with self.subTest(text):
                 self.assertFalse(summaries.attacks_evidenced(self.stored("news", text)["summary"], "news"))
 
+    def test_the_source_of_attacks_is_one_the_board_accepts_when_there_is_one(self):
+        # 11-17, merged Cursor Incident: 7 of 8 replies named Cursor's own blog post (a write-up) though SecurityWeek,
+        # BleepingComputer and a curator stated the same attack; parse() then dropped the flag.
+        line = next(l for l in summaries.INSTRUCTIONS.splitlines() if l.startswith("- exploited_source:"))
+        self.assertIn("When several sources state them, name a news report, a curator or an official advisory, not a write-up"
+                      " or a discussion", line)
+
     def test_products_name_what_the_reader_installs_not_its_store(self):
         # Owner on the Cursor row (11-17): "저것도 cursor가 맞을텐데 태그" for "Cursor VS Code Extension Marketplace".
         line = next(l for l in summaries.INSTRUCTIONS.splitlines() if l.startswith("- products:"))
@@ -401,6 +408,85 @@ class ExploitedEvidenceTest(unittest.TestCase):
         self.assertTrue(strong["summary"]["exploited"])
         self.assertTrue(kev["summary"]["exploited"])  # KEV decides on its own; the Summary flag is not touched
         self.assertEqual(summaries.recheck_exploited([weak, strong]), [])  # a second pass changes nothing
+
+
+class ReviewedAttackTest(unittest.TestCase):
+    """Owner, 11-17 ("패턴이 못 알아보면 검토 요청이 판정"): an exploited flag whose wording ATTACK_SEEN and DELIVERED miss
+    is no longer dropped by the pattern when a review runs; the review that follows every Summary is asked whether the
+    text reports attacks that already happened, and its answer keeps or drops the flag. Without a review the pattern
+    decides, as before; recheck_exploited leaves a flag the review confirmed alone."""
+    NEWS = "https://www.securityweek.com/hackers-exploit-widget/"
+    MISSED = "Attacks are already confirmed against a couple of dozen Widget customers."  # Barracuda's and Check Point's words
+    POC = "A researcher's write-up shows how the flaw could be chained to take over a server."
+    SEEN = "Attackers are exploiting the flaw to take over servers."
+
+    def reply(self, text):
+        return SSHOLE_SUMMARY | {"lead": self.NEWS, "exploited": True, "exploited_source": self.NEWS,
+                                 "en": SSHOLE_SUMMARY["en"] | {"summary": text},
+                                 "ko": SSHOLE_SUMMARY["ko"] | {"summary": "Widget 결함에 관한 글입니다."}}
+
+    def save(self, text, claude):
+        reply = self.reply(text)
+        source = (f"Mentions:\n- writeup {self.NEWS}\nText of {self.NEWS}{summary_input.LEAD_MARK}:\n"
+                  + json.dumps(reply, ensure_ascii=False))
+        item = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "mentions": [{"kind": "writeup", "url": self.NEWS}]}
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(item, FakeClaude.message(reply), source, {"cves": [], "kev": False, "advisories": []},
+                                 "2026-11-17T12:00:00Z", review_with=claude)
+        return item
+
+    def test_a_real_attack_the_pattern_misses_is_kept_when_the_review_says_yes(self):
+        self.assertFalse(summaries.attacks_evidenced(self.reply(self.MISSED), "writeup"))
+        claude = FakeClaude({"findings": [], "attacks_happened": True})
+        item = self.save(self.MISSED, claude)
+        self.assertEqual((item["summary"]["exploited"], item["summary"]["exploited_source"]), (True, self.NEWS))
+        self.assertTrue(item["summary"]["exploited_review"])
+        self.assertNotIn("exploited_unconfirmed", item["summary"])
+        self.assertEqual(claude.sent[0]["output_config"]["format"]["schema"], review.ATTACKS_SCHEMA)
+        self.assertIn(review.ATTACKS_QUESTION, claude.user_text())
+
+    def test_the_question_excludes_what_the_exploited_rule_excludes(self):
+        # 11-17 measurement: without it the review said yes to 6 of 20 company breaches and leaks forced to exploited.
+        for words in ("proof of concept", "a warning that attacks may come", "a company's own breach or data leak that delivered nothing to users"):
+            self.assertIn(words, review.ATTACKS_QUESTION)
+
+    def test_a_poc_write_up_flagged_exploited_is_dropped_when_the_review_says_no(self):
+        item = self.save(self.POC, FakeClaude({"findings": [], "attacks_happened": False}))
+        self.assertEqual((item["summary"]["exploited"], item["summary"]["exploited_source"]), (False, ""))
+        self.assertNotIn("exploited_review", item["summary"])
+
+    def test_the_verdict_is_no_finding_a_finding_still_costs_the_retry(self):
+        finding = {"field": "summary", "lang": "both", "quote": self.MISSED[:30], "against": "", "problem": "x.", "severity": "high"}
+        item = self.save(self.MISSED, FakeClaude({"findings": [finding], "attacks_happened": True}))
+        self.assertNotIn("summary", item)
+        self.assertTrue(item["summary_error"]["reason"].startswith(review.REASON))
+        item = self.save(self.MISSED, FakeClaude({"findings": [], "attacks_happened": False}))
+        self.assertNotIn("summary_error", item)  # a no drops the flag, never the Summary
+
+    def test_without_a_review_the_pattern_decides(self):
+        self.assertFalse(self.save(self.MISSED, None)["summary"]["exploited"])
+        self.assertTrue(self.save(self.SEEN, None)["summary"]["exploited"])
+
+    def test_a_review_cut_off_or_unreadable_leaves_the_pattern_to_decide(self):
+        item = self.save(self.MISSED, FakeClaude({"findings": []}))  # no attacks_happened in the reply
+        self.assertFalse(item["summary"]["exploited"])
+
+    def test_a_flag_the_pattern_recognises_asks_the_review_nothing_more(self):
+        claude = FakeClaude({"findings": []})
+        item = self.save(self.SEEN, claude)
+        self.assertTrue(item["summary"]["exploited"])
+        self.assertNotIn("exploited_review", item["summary"])
+        self.assertEqual(claude.sent[0]["output_config"]["format"]["schema"], review.SCHEMA)
+        self.assertNotIn(review.ATTACKS_QUESTION, claude.user_text())
+
+    def test_recheck_leaves_a_review_confirmed_flag_and_clears_an_unconfirmed_one(self):
+        def stored(confirmed):
+            summary = self.reply(self.MISSED) | ({"exploited_review": True} if confirmed else {})
+            return {"id": "x", "cves": ["CVE-2026-1"], "mentions": [{"kind": "writeup", "url": self.NEWS}], "summary": summary}
+        confirmed, unconfirmed = stored(True), stored(False)
+        changed = summaries.recheck_exploited([confirmed, unconfirmed])
+        self.assertEqual([i["summary"]["exploited"] for i in (confirmed, unconfirmed)], [True, False])
+        self.assertEqual(changed, [unconfirmed])
 
 
 class KevWindowTest(unittest.TestCase):

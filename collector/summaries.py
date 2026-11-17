@@ -131,7 +131,7 @@ Also:
 - incident: true only when the input reports a security flaw or an attack on software or a device that readers install or run themselves (an app, a library, an OS, a server program, a router or other device firmware), so a reader can check whether they are affected and update or change a setting. False for a company's own breach or leak, fraud, scams, heists, lawsuits, policy, opinion, essays, how-tos and tool or feature announcements, even when the story is about security: there is nothing a reader can check or fix on their own systems.
 - platforms: only the operating systems, from Windows, macOS, Linux, Android, iOS, that the affected software itself is installed on and runs natively on, so a reader filtering by their OS finds it: operating systems and their components, desktop and mobile apps, and native servers and tools. Software that runs on several lists all of them (CPython, OpenSSH, Chrome: Windows, macOS, Linux; Chrome also Android). Narrow the list only when the sources limit the flaw to some (sshole needs musl libc: Linux; Microsoft Paint: Windows). Web applications, CMS plugins (WordPress, Drupal, Joomla) and themes, PHP and JavaScript libraries and packages, and SaaS get an empty platforms list even if their host can be any OS (a WordPress plugin, Apache Allura, a PHP admin panel, an npm package). Empty also for online services that only the vendor runs (a bank, ChatGPT, a game's login servers) and for device firmware.
 - exploited: true only when the text of one input source states that attackers are already using this flaw against real targets (exploited in the wild, an attack campaign, active exploitation), or that attackers already put malicious code on users' systems through the product itself (a tampered or trojanised package, extension, update, installer or image that users received; incident is true then). False for a company's own breach that delivered nothing to users, a malicious package removed before anyone installed it, a proof of concept, exploit code on GitHub, a write-up showing how it could be attacked, a researcher's demo or a warning that attacks are likely. The Board lifts such an Incident to its top Risk level, as a CISA KEV listing does.
-- exploited_source: when exploited is true, the URL of the source that states the attacks, copied exactly from the Mentions list; the Board shows it as the reason. Empty string otherwise. Without it exploited counts as false.
+- exploited_source: when exploited is true, the URL of the source that states the attacks, copied exactly from the Mentions list; the Board shows it as the reason. When several sources state them, name a news report, a curator or an official advisory, not a write-up or a discussion: only those count. Empty string otherwise. Without it exploited counts as false.
 - poc_public: true when a source says exploit or proof-of-concept code is public (a PoC repository, a published exploit). This alone never makes it exploited.
 - library: true when the affected product is a library, SDK, framework or package that other programs build in (Brotli, zlib, Qt, an npm or PyPI package), so a reader cannot see its version and must update the program that contains it. False for apps, servers, operating systems and devices.
 - titles_ko: for each Mention with a title (in brackets after its URL) that is not in Korean, except repositories, a short Korean rendering of that title: "url" copied exactly from the Mentions list, "title" in Korean with product names and CVE IDs kept as written ("sshole (OpenSSH 로그인 결함)"). Empty list when there are none.
@@ -367,7 +367,7 @@ def recheck_exploited(incidents):
     changed = []
     for i in incidents:
         summary = i.get("summary") or {}
-        if i.get("kev") or not summary.get("exploited") or not isinstance(summary.get("en"), dict):
+        if i.get("kev") or not summary.get("exploited") or summary.get("exploited_review") or not isinstance(summary.get("en"), dict):
             continue
         kind = next((m["kind"] for m in i.get("mentions", []) if m["url"] == summary.get("exploited_source")), None)
         if not attacks_evidenced(summary, kind):
@@ -945,7 +945,7 @@ def review_params(summary, incident, ttl=None):
         summary = summary | {lang: summary[lang] | {"cve_lines": []} for lang in ("ko", "en")}
         if len(review.entry_text(summary, incident)) > REVIEW_MAX_CHARS:
             return None
-    return review.params(summary, incident, ttl=ttl)
+    return review.params(summary, incident, ttl=ttl, ask_attacks=bool(summary.get("exploited_unconfirmed")))
 
 
 def review_now(incident, draft, claude):
@@ -967,8 +967,11 @@ def review_now(incident, draft, claude):
 
 def finish_review(incident, draft, reply):
     """A high finding is a soft problem: a retry with the draft kept (review.REASON quotes what disagrees, for the note);
-    none, or an unreadable review reply, stores the Summary."""
+    none, or an unreadable review reply, stores the Summary. Its attacks_happened answer, when asked, goes with the draft
+    to keep(): it is no finding."""
     incident.pop("review_pending", None)
+    if draft["summary"].get("exploited_unconfirmed"):
+        draft = draft | {"verdict": review.attacks_happened(reply)}
     why = review.reason(review.findings_of(reply, draft["summary"]))
     if why:
         failed(incident, why)
@@ -1011,10 +1014,24 @@ def release_reviews(incidents, batches):
     return released
 
 
-def keep(incident, summary, seen, stamp, listed, due, words=()):
+def settle_attacks(summary, verdict):
+    """An exploited flag parse() left unconfirmed (ATTACK_SEEN and DELIVERED miss its wording) stands only on the
+    review's yes, marked exploited_review so recheck_exploited leaves it; a no, or no review at all, drops it."""
+    if not summary.pop("exploited_unconfirmed", False):
+        return
+    if verdict is True:
+        summary["exploited_review"] = True
+    else:
+        summary["exploited"], summary["exploited_source"] = False, ""
+        summary.pop("exploited_cves", None)
+
+
+def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None):
     """Store a checked Summary. The last try keeps it, but never an Easy action that contradicts it: the Easy view then
     shows the mitigation. words: the runs of other letters only the request's input had, kept so the stored Summary
-    passes stray_script() in needs_summary(), which has no input."""
+    passes stray_script() in needs_summary(), which has no input. verdict: the review's attacks_happened, None when no
+    review answered it."""
+    settle_attacks(summary, verdict)
     if words:
         incident["script_words"] = sorted(set(incident.get("script_words", [])) | set(words))
     for lang in easy_action_mismatch(summary):
@@ -1332,9 +1349,11 @@ def parse(reply, input_text, urls):
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
     # never the Summary.
     trusted_text, reporters = trusted(input_text)
-    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters
-            and attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"]))):
+    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters):
         summary["exploited"], summary["exploited_source"] = False, ""
+    elif not attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"])):
+        # Wording the pattern misses: the review decides (owner 11-17), else keep() drops it (settle_attacks)
+        summary["exploited_unconfirmed"] = True
     # Step 4: the attacked CVEs of a group, each one of the Incident's own by exact id; none once exploited is dropped.
     # Stored only when it names one, so a Summary without it reads as before (readers default to []). SCHEMA has no room
     # for the field yet (see there), so a reply under it never carries one; this check is ready for when it does.

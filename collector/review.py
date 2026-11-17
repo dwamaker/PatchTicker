@@ -66,6 +66,17 @@ SCHEMA = {
     "additionalProperties": False,
 }
 
+# Owner, 11-17 ("패턴이 못 알아보면 검토 요청이 판정"): when summaries.ATTACK_SEEN and DELIVERED miss the wording of an
+# exploited flag, the review is asked this too, with the schema below; its answer keeps or drops the flag
+# (summaries.settle_attacks). It is no finding: it never sends the Summary back by itself.
+ATTACKS_QUESTION = ("Also answer attacks_happened: true only when this entry's own text reports attacks that already"
+                    " happened, against real targets, or malicious code that already reached users through the product."
+                    " False when it reports a proof of concept, a demo, a researcher's write-up of how an attack could"
+                    " work, a warning that attacks may come, a company's own breach or data leak that delivered nothing to"
+                    " users of its product, or only the flaw itself.")
+ATTACKS_SCHEMA = SCHEMA | {"properties": SCHEMA["properties"] | {"attacks_happened": {"type": "boolean"}},
+                           "required": [*SCHEMA["required"], "attacks_happened"]}
+
 INSTRUCTIONS = """You check one entry of vuln-radar, a public board of security flaws read in Korean and English by home-server owners and small IT teams, before it is published. The entry was written from sources you do not see. You get its CVE ids, its language-free fields (fixed version, fixed versions per product line, products, exploited, stopgap) and its Korean ("ko") and English ("en") text: title, summary, conditions, easy_conditions (the same conditions in everyday words), mitigation, easy, easy_title, easy_action, command_for, stopgap_then, and cve_lines (one line per CVE: what that CVE lets an attacker do).
 
 You cannot see the sources, so never judge whether a fact is true in the world. Report only where the entry disagrees with itself, so that a reader would believe a wrong fact or act wrongly. What matters most is a reader told they are safe, or less exposed than they are, or told to do something that does not protect them: that is always high. A text that warns more people than a condition says is at most low.
@@ -96,15 +107,27 @@ def entry_text(summary, incident):
                       f"en: {json.dumps(langs['en'], ensure_ascii=False)}"])
 
 
-def params(summary, incident, ttl=None):
-    """One review request's parameters; a batch sends the same with ttl="1h". summary: as summaries.parse() returns it."""
+def params(summary, incident, ttl=None, ask_attacks=False):
+    """One review request's parameters; a batch sends the same with ttl="1h". summary: as summaries.parse() returns it.
+    ask_attacks adds ATTACKS_QUESTION after the entry (the cached instructions stay the same) and its schema."""
     return {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,  # a cap, not a charge: thinking counts toward it on Haiku 5.5
         "system": [{"type": "text", "text": INSTRUCTIONS, "cache_control": {"type": "ephemeral"} | ({"ttl": ttl} if ttl else {})}],
-        "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": SCHEMA}},
-        "messages": [{"role": "user", "content": entry_text(summary, incident)}],
+        "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": ATTACKS_SCHEMA if ask_attacks else SCHEMA}},
+        "messages": [{"role": "user", "content": entry_text(summary, incident) + (f"\n\n{ATTACKS_QUESTION}" if ask_attacks else "")}],
     }
+
+
+def attacks_happened(reply):
+    """The reviewer's answer to ATTACKS_QUESTION: True or False, None for a cut-off or unreadable reply or none given."""
+    if reply.stop_reason != "end_turn":
+        return None
+    try:
+        answer = reply_json(reply).get("attacks_happened")
+    except (StopIteration, ValueError, AttributeError, TypeError):
+        return None
+    return answer if isinstance(answer, bool) else None
 
 
 def _flat(text):
