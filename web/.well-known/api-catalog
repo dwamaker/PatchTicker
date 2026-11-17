@@ -1,0 +1,13 @@
+{
+ "linkset": [
+  {
+   "anchor": "https://patchticker.com/api/check",
+   "service-doc": [
+    {
+     "href": "https://patchticker.com/llms.txt",
+     "type": "text/plain"
+    }
+   ]
+  }
+ ]
+}

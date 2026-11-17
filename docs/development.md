@@ -139,10 +139,26 @@ project `patchradar`, for example from a copy without that folder:
 npx wrangler@4 pages deploy <copy of web without data/> --project-name patchradar --branch main
 ```
 
+The copy must keep the hidden folder `web/.well-known/` (the API catalog). `web/404.html` makes an unknown path answer
+404 with that page (owner, 11-17); without it Pages treats the site as a single-page app and answers every unknown
+path with the home page and a 200. Every address the site uses is a file or a Function route (the Board routes by
+`#`), so nothing relied on that fallback. `/.well-known/api-catalog` is an RFC 9727 API catalog, a Linkset listing
+`/api/check` with `llms.txt` as its `service-doc`; `_headers` gives it its type
+(`application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`, the file has no extension) and a
+`Link: rel="api-catalog"` header, which the RFC requires on a HEAD. The home page's Function adds a Link header to the
+catalog (`api-catalog`), `llms.txt` (`describedby`) and the two feeds (`alternate`, RSS), after any Link the asset
+carries. `404.html`'s one style block has its own hash in `_headers`' `style-src`.
+
 Run it from the repository root: `functions/` (the Pages Function) is taken from the working directory, and it imports
 `edge/` (`edge/shared.mjs`: the site address, escaping, the R2 read, the edge cache and the what-to-do text every
 function shares). The function answers `/feed.xml` and `/en/feed.xml` from `board/feed.json` in R2 through the binding
-`DATA` (bucket `patchradar`), which the Pages project must have. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
+`DATA` (bucket `patchradar`), which the Pages project must have. The feed holds the newest 200 search-worthy Incidents
+(`FEED_SIZE`; owner, 11-17: 50 were 14 hours; on 11-17 200 were about 3.5 days, a 0.9 MB document rendered in about
+3 ms on a desktop into a 215 KB feed), each item with its products as the row shows them and its level as
+`<category>`. With `?products=<names>` (and `days`, `min`) the same address answers the products feed instead
+(`productFeedResponse` in `edge/feed.mjs`): `/api/check`'s query and matching without the model, from the check documents
+alone, at most 40 documents and 100 items, 400 for bad input as the API, 503 while there is no index, never kept in the
+edge cache (`cache-control` five minutes), so asked names are kept nowhere. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
 The home page `/` goes through `functions/index.js` (`edge/home.mjs`) too: the current static `index.html` with links to
 the feed's 20 newest Incident pages in place of its `<!--home-links-->` marker, for readers that run no script (search
@@ -184,12 +200,25 @@ HEAD, after 5 seconds, or when the model fails (the free 10,000 neurons a day ar
 without the model. Measured on 30 typed names against the live index: 22 `maybe` entries, none wrong, about 15
 neurons and 1.6 to 3.4 s for 10 names. Nothing is cached or stored; the names do go to Cloudflare's model.
 To try it without the network, pass a fake binding as `checkResponse`'s fourth argument (`tests/check.test.mjs`).
+Each Incident of a check document carries `detail` (owner, 11-17), the address of its page document on the data host
+(`https://data.patchticker.com/pages/<slug>.json`, its whole record), when it has a Summary; `cves` stays the first five.
+An older document without it answers as before.
+The product pages `/p/<slug>` and `/en/p/<slug>` (`functions/p/[slug].js`, `edge/product.mjs`; owner, 11-17) are drawn
+from the same `check/p/<slug>.json`: the product's Incidents of the last 90 days with level, title, date and fixed
+version, each linking its Incident page (or its Board row), in the Incident page's shell and CSP, with a link to the
+product's feed. A product with fewer than 3 Incidents (`PRODUCT_PAGE_MIN`, in `edge/product.mjs` and
+`collector/checks.py`) is `noindex`. 404 for a slug that is not 16 hex characters or has no document, 503 when R2 cannot
+be read. An Incident page links its products' pages (at most five, operating systems aside), and states its headline,
+description, dates, language and address as JSON-LD in a `<script type="application/ld+json">` block, which runs
+nothing (the CSP's `script-src` does not apply to it) and holds no `<`, `>` or `&` unescaped.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
 search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`
 alternates and the page's last change as `lastmod`, at most 25,000 pages (50,000 URLs) per file, newest first. They
-come from `sitemap.json`, which each cycle rewrites when it changed: `{pages: {slug: {first_seen, changed}}}`, the last
-change taken from `page_hashes.json`.
+come from `sitemap.json`, which each cycle rewrites when it changed: `{pages: {slug: {first_seen, changed}}, products:
+[slug]}`, the last change taken from `page_hashes.json`. A fifth, `/sitemaps/products.xml`, lists the product pages in
+`products`, those with at least 3 Incidents (`product_pages` in `collector/checks.py`); a `sitemap.json` from before the
+list gives an empty one.
 Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
 `pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
 `wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document

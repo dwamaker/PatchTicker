@@ -98,10 +98,22 @@ test('the static /sitemap.xml is an index of the home page\'s sitemap and the fo
   const index = readFileSync(new URL('../web/sitemap.xml', import.meta.url), 'utf8');
   assert.match(index, /<sitemapindex xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9">/);
   assert.deepEqual(locs(index), ['https://patchticker.com/sitemap-home.xml',
-    ...[0, 1, 2, 3].map((n) => `https://patchticker.com/sitemaps/incidents-${n}.xml`)]);
+    ...[0, 1, 2, 3].map((n) => `https://patchticker.com/sitemaps/incidents-${n}.xml`), 'https://patchticker.com/sitemaps/products.xml']);
   const home = readFileSync(new URL('../web/sitemap-home.xml', import.meta.url), 'utf8');
   assert.deepEqual(locs(home), ['https://patchticker.com/']);
   assertWellFormed(index);
   assertWellFormed(home);
   assert.match(readFileSync(new URL('../web/robots.txt', import.meta.url), 'utf8'), /^Sitemap: https:\/\/patchticker.com\/sitemap.xml$/m);
+});
+
+// Owner, 11-17: a page per product (/p/<slug>); the collector lists those worth a search (collector/checks.py product_pages).
+test('the products sitemap lists each listed product page in both languages; a document without the list gives an empty one', async () => {
+  const doc = { ...DOC, products: ['3e96ab9cc2cec1ca', 'not-a-slug', '0f1e2d3c4b5a6978'] };
+  const text = await xml('products.xml', doc);
+  assertWellFormed(text);
+  assert.deepEqual(locs(text), ['https://patchticker.com/p/3e96ab9cc2cec1ca', 'https://patchticker.com/en/p/3e96ab9cc2cec1ca',
+    'https://patchticker.com/p/0f1e2d3c4b5a6978', 'https://patchticker.com/en/p/0f1e2d3c4b5a6978']);
+  assert.match(text, /<url><loc>https:\/\/patchticker.com\/p\/3e96ab9cc2cec1ca<\/loc><xhtml:link rel="alternate" hreflang="ko" href="https:\/\/patchticker.com\/p\/3e96ab9cc2cec1ca"\/><xhtml:link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/p\/3e96ab9cc2cec1ca"\/>/);
+  assert.deepEqual(locs(await xml('products.xml')), []); // the collector before product pages: none yet, not an error
+  assert.equal((await sitemapResponse(bucket(null), 'products.xml', NOW)).status, 503);
 });

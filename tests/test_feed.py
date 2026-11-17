@@ -34,8 +34,14 @@ class FeedDocumentTest(unittest.TestCase):
         self.assertEqual(ids, ["CVE-2026-2", "CVE-2026-1", "CVE-2026-4"])
         self.assertNotIn("urls", store.read("board/feed.json")["incidents"][0])  # the page's slim copy, not the store's
 
-    def test_keeps_the_newest_fifty(self):
-        rows = [row(n, 8.0, f"2026-11-0{1 + n // 20}T{n % 20:02d}:00:00Z") for n in range(60)]
+    def test_keeps_the_newest_feed_size(self):
+        rows = [row(n, 8.0, f"2026-11-0{1 + n // 24}T{n % 24:02d}:00:00Z") for n in range(FEED_SIZE + 10)]
         feed = self.run_with(rows).read("board/feed.json")["incidents"]
         self.assertEqual(len(feed), FEED_SIZE)
-        self.assertEqual(feed[0]["id"], "CVE-2026-59")
+        self.assertEqual(feed[0]["id"], f"CVE-2026-{FEED_SIZE + 9}")
+
+
+class FeedSizeTest(unittest.TestCase):
+    def test_the_feed_holds_more_than_a_day_for_a_reader_that_looks_once_a_day(self):
+        # owner, 11-17: 50 Incidents were 14 hours; 200 were about three and a half days on 11-17
+        self.assertEqual(FEED_SIZE, 200)

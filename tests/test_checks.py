@@ -8,7 +8,7 @@ from pathlib import Path
 from test_pages import SUMMARY, WatchedStore, cycle, row
 
 from collector.checks import check_docs, check_slug
-from collector.incidents import product_key
+from collector.incidents import page_slug, product_key
 
 KEY_CASE = json.loads((Path(__file__).parent / "fixtures" / "board" / "product-key-case.json").read_text(encoding="utf-8"))
 SINCE = "2026-08-11T00:00:00Z"
@@ -75,8 +75,19 @@ class CheckDocumentTest(unittest.TestCase):
              "cves": ["CVE-2026-2000"], "fixed": "", "title_en": "Quick title", "title_ko": "빠른 제목"},
             {"id": "CVE-2026-1000", "url": "https://patchticker.com/i/CVE-2026-1000", "first_seen": "2026-11-09T00:00:00Z",
              "published": "2026-11-08T00:00:00Z", "level": "highest", "exploited": True, "cvss": 9.8, "cve_count": 6,
-             "cves": cves[:5], "fixed": "9.9p2", "title_en": "OpenSSH auth bypass", "title_ko": "OpenSSH 인증 우회"},
+             "cves": cves[:5], "fixed": "9.9p2", "title_en": "OpenSSH auth bypass", "title_ko": "OpenSSH 인증 우회",
+             # owner, 11-17: an agent read the 11 MB week file for a group's other CVEs; the whole Incident is this one document
+             "detail": "https://data.patchticker.com/pages/CVE-2026-1000.json"},
         ])
+
+    def test_detail_names_the_page_document_of_a_group_by_its_slug_and_only_when_it_has_one(self):
+        url_id = "https://example.test/advisory/1"
+        docs, _ = check_docs([held(url_id, cves=["CVE-2026-7", "CVE-2026-8"], products=[{"id": "a:b", "name": "B"}],
+                                   summary={"incident": True, "en": {"title": "T"}}),
+                              held("CVE-2026-9", products=[{"id": "a:b", "name": "B"}])], SINCE)
+        by_id = {e["id"]: e for e in docs[check_slug("a:b")]["incidents"]}
+        self.assertEqual(by_id[url_id]["detail"], f"https://data.patchticker.com/pages/{page_slug(url_id)}.json")
+        self.assertNotIn("detail", by_id["CVE-2026-9"])  # no Summary yet: no page document is written for it
 
     def test_no_summary_and_no_quick_title_titles_it_by_its_brief(self):
         docs, _ = check_docs([held("CVE-2026-1", products=[{"id": "a:b", "name": "B"}])], SINCE)

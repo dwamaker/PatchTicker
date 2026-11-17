@@ -231,3 +231,34 @@ test('a check lost while the app slept, with no time limit or abort reaching it,
   on.focus();
   assert.equal(asked.length, 2);
 });
+
+// Owner, 11-17: without a top-level 404.html Pages serves the home page with 200 for every unknown path (scanners'
+// probes counted as visits, soft 404s). The 404 page runs no script and its one style block is allowed by its hash,
+// beside index.html's, in the same /* CSP (one more hash in style-src rather than a second rule or 'unsafe-inline').
+test('404.html is small, in both languages, runs no script, and its style is allowed by the static CSP', () => {
+  const page = read('web/404.html');
+  assert.doesNotMatch(page, /<script/i);
+  assert.doesNotMatch(page, /\son[a-z]+=|\sstyle=/i);
+  const styles = [...page.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+  assert.equal(styles.length, 1);
+  assert.ok(csp['style-src'].includes(hash(styles[0])), `style-src lacks ${hash(styles[0])}`);
+  assert.match(page, /<meta name="robots" content="noindex">/);
+  assert.match(page, /<html lang="ko">/);
+  assert.match(page, /<h1>페이지를 찾을 수 없습니다<\/h1>/);
+  assert.match(page, /<p lang="en">[^<]*Page not found/);
+  assert.match(page, /<a href="\/">/);
+  assert.ok(Buffer.byteLength(page) < 6000, `${Buffer.byteLength(page)} bytes`);
+});
+
+// Owner, 11-17: an API catalog as RFC 9727 defines it: a Linkset (RFC 9264) at /.well-known/api-catalog, served as
+// application/linkset+json with the RFC's profile, and a Link header with rel="api-catalog" so a HEAD finds it too
+// (section 2). One API, /api/check; llms.txt is its documentation, `service-doc` (RFC 8631: for people to read; a
+// `service-desc` would be a machine description such as OpenAPI, which does not exist).
+test('the API catalog lists /api/check with llms.txt as its documentation, served as a linkset with its Link header', () => {
+  const catalog = JSON.parse(read('web/.well-known/api-catalog'));
+  assert.deepEqual(catalog, { linkset: [{ anchor: 'https://patchticker.com/api/check',
+    'service-doc': [{ href: 'https://patchticker.com/llms.txt', type: 'text/plain' }] }] });
+  const block = /^\/\.well-known\/api-catalog\n((?:[ \t]+.*\n?)+)/m.exec(headers)?.[1] || '';
+  assert.match(block, /^\s+Content-Type: application\/linkset\+json; profile="https:\/\/www\.rfc-editor\.org\/info\/rfc9727"$/m);
+  assert.match(block, /^\s+Link: <\/\.well-known\/api-catalog>; rel="api-catalog"$/m);
+});

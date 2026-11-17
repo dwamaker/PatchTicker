@@ -5,6 +5,12 @@ import { slug } from '../web/board.mjs';
 import { escapeXml, readJson, titleOf } from './shared.mjs';
 
 const MARKER = '<!--home-links-->';
+// Owner, 11-17: the machine-readable entry points, for a program that reads the home page's headers. Registered relation
+// types only (RFC 8288 2.1.1; IANA Link Relations): api-catalog (RFC 9727), describedby (llms.txt describes this site),
+// alternate with the RSS type (the feeds, as index.html's <link> elements). Appended to any Link the asset carries.
+const LINK = ['</.well-known/api-catalog>; rel="api-catalog"', '</llms.txt>; rel="describedby"; type="text/plain"',
+  '</feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (Korean)"',
+  '</en/feed.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker (English)"'].join(', ');
 const LINKS_KEY = '/__home-links'; // the edge cache entry for the list; never a real path
 
 export async function homeLinks(doc) {
@@ -40,5 +46,6 @@ export async function homeResponse(context) {
   const headers = new Headers(asset.headers);
   headers.delete('etag'); // the body changed
   headers.delete('content-length');
+  headers.append('link', LINK);
   return new Response(context.request.method === 'HEAD' ? null : body, { status: 200, headers });
 }

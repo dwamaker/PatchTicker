@@ -141,3 +141,47 @@ test('the real index.html: #about is the last child of <main>, and no top-level 
   assert.match(html, /<\/section>\s*<\/main>/);
   for (const [k, tag] of top.entries()) if (tag.startsWith('<section')) assert.notEqual(k + 1, 12, tag);
 });
+
+// Owner, 11-17: agents read llms.txt literally, and a crawler followed its old "board/YYYY-MM.json" to a 404. It names no
+// placeholder address, and the numbers it states are the code's.
+test('llms.txt names no placeholder address, and its feed size and CVE count are the collector\'s', () => {
+  const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const text = read('web/llms.txt');
+  assert.doesNotMatch(text, /YYYY|\{month\}|<month>/);
+  for (const url of text.match(/https:\/\/[^\s)`"<>]+/g)) assert.doesNotMatch(url, /YYYY|\{|\}/, url);
+  assert.match(text, new RegExp(`newest ${/^FEED_SIZE = (\d+)/m.exec(read('collector/cycle.py'))[1]} Incidents`));
+  assert.match(text, new RegExp(`first ${/^CVES_SHOWN = (\d+)/m.exec(read('collector/checks.py'))[1]} \`cves\``));
+  assert.match(text, /`detail` \(below\)/);
+});
+
+test('the static about block, which only readers without script see, says where the data is in both languages', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const about = /<section id="about">([\s\S]*?)<\/section>/.exec(html)[1];
+  assert.match(about, /<p>프로그램과 에이전트용 데이터: <a href="\/llms.txt">llms.txt<\/a>[^\n]*\/api\/check\?products=[^\n]*\/feed.xml\?products=/);
+  assert.match(about, /<p lang="en">For programs and agents: <a href="\/llms.txt">llms.txt<\/a>[^\n]*\/api\/check\?products=[^\n]*\/en\/feed.xml\?products=/);
+  assert.match(html, /\.js #about \{ display: none; \}/); // so a visitor with script never sees it, and nothing moves
+});
+
+test('the static data line and llms.txt tell a program to name itself in its User-Agent (Cloudflare refuses urllib\'s default)', () => {
+  const about = /<section id="about">([\s\S]*?)<\/section>/.exec(readFileSync(new URL('../web/index.html', import.meta.url), 'utf8'))[1];
+  assert.match(about, /User-Agent를 보내세요\(Python urllib 기본값은 403/);
+  assert.match(about, /Send a User-Agent that names your client: Python urllib's default one gets 403\./);
+  assert.match(readFileSync(new URL('../web/llms.txt', import.meta.url), 'utf8'), /## Start here[\s\S]*Send a User-Agent that names your client[\s\S]*## For agents/);
+});
+
+// Owner, 11-17: a program that reads only the home page's headers finds the machine-readable entry points. Registered
+// relation types only (RFC 8288 2.1.1, IANA): api-catalog (RFC 9727, its own home-page example), describedby (POWDER:
+// "a resource providing information about the link's context") for llms.txt, alternate with the RSS type for the feeds,
+// as the page's <link> elements say. Added beside any Link the asset carries (Pages' modulepreload hints).
+test('homeResponse adds a Link header to the API catalog, llms.txt and the feeds, keeping the asset\'s own Link', async () => {
+  const withLink = { fetch: async () => new Response(SHELL, { headers: { 'content-type': 'text/html; charset=utf-8', link: '<app.mjs>; rel="modulepreload"' } }) };
+  for (const method of ['GET', 'HEAD']) {
+    const link = (await homeResponse(context(bucket(null), method, withLink))).headers.get('link');
+    assert.match(link, /^<app\.mjs>; rel="modulepreload", /);
+    assert.match(link, /<\/\.well-known\/api-catalog>; rel="api-catalog"/);
+    assert.match(link, /<\/llms\.txt>; rel="describedby"; type="text\/plain"/);
+    assert.match(link, /<\/feed\.xml>; rel="alternate"; type="application\/rss\+xml"; title="Patch Ticker \(Korean\)"/);
+    assert.match(link, /<\/en\/feed\.xml>; rel="alternate"; type="application\/rss\+xml"; title="Patch Ticker \(English\)"/);
+  }
+  assert.match((await homeResponse(context(bucket(null)))).headers.get('link'), /^<\/\.well-known\/api-catalog>/); // no Link on the asset
+});

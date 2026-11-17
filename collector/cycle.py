@@ -30,7 +30,9 @@ DISTRO_FIRST_DAYS, DISTRO_FOLLOW_DAYS, DISTRO_BACKFILL_DAYS = 7, 37, 30
 WHOLE_NEWEST = 100
 HIGHLIGHTS = 10
 HIGHLIGHTS_MAX = 20
-FEED_SIZE = 50  # the RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed)
+# The RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed). Owner, 11-17: 50
+# were 14 hours, so a reader that looks once a day missed items; 200 were about 3.5 days (feed.json ~0.9 MB, ~3 ms to render).
+FEED_SIZE = 200
 # An Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs). The
 # store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
 PAGE_DAYS = 90
@@ -232,12 +234,14 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     had_page = store.read("page_hashes.json") or {}  # the page set as the last cycle left it
     pages = write_pages(store, shown_incidents, had_page, now, stamp)
     write_moves(store, incidents, had_page, now, stamp)
-    # The Incident sitemap's document: {slug: {first_seen, changed}} of every search-worthy page (edge/sitemap.mjs).
+    product_docs = write_checks(store, shown_incidents, now)
+    # The sitemaps' document (edge/sitemap.mjs): {slug: {first_seen, changed}} of every search-worthy Incident page, and
+    # the product pages with enough Incidents to be worth a search (owner, 11-17).
     sitemap = {"pages": {slug: {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in incidents
-                         if (slug := page_slug(i["id"])) in pages and search_worthy(i)}}
+                         if (slug := page_slug(i["id"])) in pages and search_worthy(i)},
+               "products": checks.product_pages(product_docs)}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
-    write_checks(store, shown_incidents, now)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(shown_incidents, picker_since)})
     # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
@@ -422,7 +426,8 @@ def write_pages(store, incidents, known, now, stamp):
 def write_checks(store, incidents, now):
     """GET /api/check's documents (collector/checks.py): a Product's check/p/<slug>.json is rewritten only when it
     changed (check_hashes.json keeps {slug: hash}, so a cycle reads one document, not one per Product), the index when
-    it changed, and a Product with no Incident left loses its document, after the index stops naming it."""
+    it changed, and a Product with no Incident left loses its document, after the index stops naming it. Returns the
+    documents (the sitemap's product pages are worked out from them)."""
     docs, index = checks.check_docs(incidents, stamp_ago(now, days=PAGE_DAYS))
     known = store.read("check_hashes.json") or {}
     hashes = {}
@@ -436,6 +441,7 @@ def write_checks(store, incidents, now):
         store.delete(f"check/p/{slug}.json")
     if hashes != known:
         store.write("check_hashes.json", hashes)
+    return docs
 
 
 def write_moves(store, incidents, had_page, now, stamp):

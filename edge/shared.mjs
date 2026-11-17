@@ -15,6 +15,13 @@ export const escapeXml = (s) => String(s ?? '').replace(/[\u0000-\u0008\u000B\u0
 
 export { titleOf } from '../web/board.mjs';
 
+// A Product's check document name (check/p/<slug>.json) and product page address (/p/<slug>): the first 16 hex of its
+// id's SHA-256, a port of collector/checks.py check_slug.
+export async function checkSlug(id) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id)));
+  return [...digest.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). A missing document is null.
 export async function readJson(bucket, key) {
   const obj = await bucket.get(key);

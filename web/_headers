@@ -1,8 +1,13 @@
 # Static files only; the Functions (Incident pages, feeds, sitemaps) set their own headers.
-# The two hashes are index.html's inline theme <script> and its <style>: tests/headers.test.mjs fails when either changes.
+# The hashes are index.html's inline theme <script> and its <style>, then 404.html's <style> (its only inline block):
+# tests/headers.test.mjs fails when any of them changes.
 # static.cloudflareinsights.com / cloudflareinsights.com: the Web Analytics beacon Cloudflare injects (PRODUCT.md).
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-h99u0CSDBnV3dttUMZEhvFx6IWWAY4KEzZQvifL8VEA=' https://static.cloudflareinsights.com; style-src 'sha256-B+4RtqCclkf01KGScr2AGtNy4PfaUswhtadG+DxIilE='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-h99u0CSDBnV3dttUMZEhvFx6IWWAY4KEzZQvifL8VEA=' https://static.cloudflareinsights.com; style-src 'sha256-B+4RtqCclkf01KGScr2AGtNy4PfaUswhtadG+DxIilE=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+# The API catalog (RFC 9727): a file without an extension, so its type comes from here; the Link header lets a HEAD find it.
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
+  Link: </.well-known/api-catalog>; rel="api-catalog"

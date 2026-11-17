@@ -3,8 +3,8 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
-import { SITE, SLUG, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS } from '../web/board.mjs';
+import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
 // The Board's logo symbol (index.html #home) and its 틀린 내용 알리기 icon (app.mjs reportLink).
@@ -17,9 +17,9 @@ const MITRE = 'CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Cor
 const TEXT = {
   ko: {
     ...WORDS.ko,
-    path: '/i/', locale: 'ko_KR', otherLang: 'en',
+    path: '/i/', productPath: '/p/', locale: 'ko_KR', otherLang: 'en',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
-    summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
+    productPages: '제품별 사건', summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     firstSeen: '처음 확인', zone: ' KST',
     board: '현황판에서 보기', cveRecord: 'CVE 기록 보기', tagLink: (name) => `현황판에서 ${name} 사건 보기`,
     expired: '보관 기간 90일이 지났어요. 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
@@ -27,9 +27,9 @@ const TEXT = {
   },
   en: {
     ...WORDS.en,
-    path: '/en/i/', locale: 'en_US', otherLang: 'ko',
+    path: '/en/i/', productPath: '/en/p/', locale: 'en_US', otherLang: 'ko',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
-    summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
+    productPages: 'Incidents by product', summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
     firstSeen: 'First seen', zone: ' UTC',
     board: 'Open on the Board', cveRecord: 'See the CVE record', tagLink: (name) => `See ${name} Incidents on the Board`,
     expired: 'This Incident page has expired: pages are kept for 90 days.', missing: 'There is no Incident page at this address.',
@@ -147,7 +147,7 @@ const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
 // Without script, Korean pages say Korean time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in
 // UTC, so the browser below reads the same one even from a stamp without a zone.
-function when(stamp, lang) {
+export function when(stamp, lang) {
   const at = Date.parse(stamp);
   if (Number.isNaN(at)) return esc(stamp);
   const d = new Date(at + (lang === 'ko' ? 9 * 60 * 60 * 1000 : 0)).toISOString();
@@ -155,8 +155,10 @@ function when(stamp, lang) {
 }
 // The browser then shows each time in the visitor's zone, as the Board does, named like "GMT+9"; a browser without
 // shortOffset keeps the text above. A string, not a function: the bundler rewrites code, and the CSP pins these bytes.
-const LOCAL_TIME = 'for(const t of document.querySelectorAll("time[datetime]"))try{const d=new Date(t.dateTime),two=(n)=>String(n).padStart(2,"0");t.textContent=d.getFullYear()+"-"+two(d.getMonth()+1)+"-"+two(d.getDate())+" "+two(d.getHours())+":"+two(d.getMinutes())+" "+new Intl.DateTimeFormat("en",{timeZoneName:"shortOffset"}).formatToParts(d).find((p)=>p.type==="timeZoneName").value}catch{}';
+export const LOCAL_TIME = 'for(const t of document.querySelectorAll("time[datetime]"))try{const d=new Date(t.dateTime),two=(n)=>String(n).padStart(2,"0");t.textContent=d.getFullYear()+"-"+two(d.getMonth()+1)+"-"+two(d.getDate())+" "+two(d.getHours())+":"+two(d.getMinutes())+" "+new Intl.DateTimeFormat("en",{timeZoneName:"shortOffset"}).formatToParts(d).find((p)=>p.type==="timeZoneName").value}catch{}';
 const LOCAL_TIME_SHA256 = 'oAEYH/gLR7li4Nk9meP5pB8aLXZMHwekOrjaIjs5Acs='; // tests/page.test.mjs recomputes it
+// One script, LOCAL_TIME, by its hash; inline styles only (the Board's tokens and line colours). The product page's too.
+export const PAGE_CSP = `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}' https://static.cloudflareinsights.com; connect-src https://cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 // The risk banner: the rule-based level, why it is exploited, and the CVSS ring.
 function banner(i, t) {
@@ -198,6 +200,14 @@ function products(i, lang) {
   const rest = more ? `<details class="more"><summary>${esc(t.tagsRest(more))}</summary><ul class="tags">${items.slice(shown.length).join('')}</ul></details>` : '';
   return `<ul class="tags">${shown.join('')}</ul>${rest}`;
 }
+
+// Owner, 11-17: under the tags, each product's page (/p/<slug>, edge/product.mjs), operating systems aside.
+// pages: [{ name, slug }] worked out by pageResponse (the slug is a hash, so async).
+const productPages = (pages, t) => (pages.length
+  ? `<p class="others">${pages.map((x) => `<a href="${t.productPath}${x.slug}">${esc(x.name)}</a>`).join(' · ')}</p>` : '');
+const PRODUCT_LINKS = 5;
+export const productPageList = async (i, lang) => Promise.all(productsOf(i, lang).filter((x) => !x.id.startsWith('os:')).slice(0, PRODUCT_LINKS)
+  .map(async (x) => ({ name: x.name, slug: await checkSlug(x.id) })));
 
 // M1 (owner, 11-15): under the Mitigation, the Board filtered to the first Product when it had other Incidents lately.
 function othersLink(i, lang, t, others) {
@@ -245,8 +255,8 @@ function mentions(i, lang, t) {
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
 
-// other: the language switch for the header; the short notes have none.
-function document(lang, head, main, other = '') {
+// other: the language switch for the header; the short notes have none. Also the product page's shell (edge/product.mjs).
+export function document(lang, head, main, other = '') {
   const t = TEXT[lang];
   return `<!doctype html>
 <html lang="${lang}">
@@ -267,8 +277,15 @@ ${footer(t)}
 </html>`;
 }
 
-// others: board/others.json (M1), or null.
-export function pageHtml(i, lang, slug, others = null) {
+// Owner, 11-17: what the page states, as schema.org data for search engines and agents. A data block runs nothing, so the
+// CSP's script-src does not apply to it; '<', '>', '&' and the two line separators are written as \u escapes, so no text
+// from the web or a model can close the element or read as markup.
+const LD_UNSAFE = new RegExp(`[<>&${String.fromCharCode(0x2028, 0x2029)}]`, 'g');
+const jsonLd = (data) => `<script type="application/ld+json">${JSON.stringify(data)
+  .replace(LD_UNSAFE, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)}</script>`;
+
+// others: board/others.json (M1), or null. pages: productPageList's answer (the products' pages), or none.
+export function pageHtml(i, lang, slug, others = null, pages = []) {
   const t = TEXT[lang];
   const s = i.summary?.[lang] || {};
   const level = riskLevel(i);
@@ -294,7 +311,10 @@ export function pageHtml(i, lang, slug, others = null) {
     '<meta property="og:image:height" content="630">',
     `<meta property="og:locale" content="${t.locale}">`,
     `<meta property="og:locale:alternate" content="${TEXT[t.otherLang].locale}">`,
-    '<meta name="twitter:card" content="summary_large_image">'].join('\n');
+    '<meta name="twitter:card" content="summary_large_image">',
+    jsonLd({ '@context': 'https://schema.org', '@type': 'Article', headline: title, description,
+      datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
+      isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` } })].join('\n');
   // M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
   const times = [i.published ? `${esc(t.published)} ${when(i.published, lang)}` : '',
     publicDay(i) ? `${esc(t.publicDate)} ${esc(publicDay(i))}` : '', `${esc(t.firstSeen)} ${when(i.first_seen, lang)}`].filter(Boolean);
@@ -305,6 +325,7 @@ export function pageHtml(i, lang, slug, others = null) {
     section('conditions', t.conditions, ul(strings(s.conditions).map((c) => condition(c, i.cves)))),
     section('todo', t.todo, whatToDo(i, lang) + othersLink(i, lang, t, others) + distroFold(i, lang, t)),
     section('products', t.products, products(i, lang)),
+    section('product-pages', t.productPages, productPages(pages, t)),
     section('cves', t.cves, cveList(i, lang, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
     section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
@@ -322,7 +343,7 @@ const CACHE = 'public, max-age=300';
 const CACHE_404 = 'public, max-age=60';
 
 // A short note in place of a page (404, 410, 503): never indexed, always a way on. A 503 is never cached.
-function note(lang, status, text, links) {
+export function note(lang, status, text, links) {
   const head = `<title>Patch Ticker</title>\n<meta name="robots" content="noindex">`;
   const body = `<h1>${esc(text)}</h1><nav class="links">${links.join('')}</nav>`;
   const extra = { 503: { 'retry-after': '600' }, 404: { 'cache-control': CACHE_404 }, 410: { 'cache-control': CACHE } }[status];
@@ -356,10 +377,8 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
     const others = await readJson(bucket, 'board/others.json').catch(() => null);
-    return new Response(pageHtml(doc, lang, slug, others), {
-      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE,
-        // One script, LOCAL_TIME, by its hash; inline styles only (the Board's tokens and line colours).
-        'content-security-policy': `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}' https://static.cloudflareinsights.com; connect-src https://cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` },
+    return new Response(pageHtml(doc, lang, slug, others, await productPageList(doc, lang)), {
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP },
     });
   }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));
 }

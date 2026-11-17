@@ -1,5 +1,8 @@
-import { feedResponse } from '../edge/feed.mjs';
+import { feedResponse, productFeedResponse } from '../edge/feed.mjs';
 import { cached } from '../edge/shared.mjs';
 
-export const onRequestGet = (context) => cached(context, () => feedResponse(context.env.DATA, 'ko'));
+// ?products=<names>: the products feed, like /api/check never kept in the edge cache (asked names are stored nowhere).
+export const onRequestGet = (context) => (new URL(context.request.url).searchParams.has('products')
+  ? productFeedResponse(context.env.DATA, context.request, 'ko')
+  : cached(context, () => feedResponse(context.env.DATA, 'ko')));
 export const onRequestHead = onRequestGet;

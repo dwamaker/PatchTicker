@@ -52,7 +52,7 @@ test('the Korean page names itself canonical, links the English one and previews
   assert.match(html, /<meta property="og:image" content="https:\/\/patchticker.com\/og.png">/);
   assert.match(html, /<meta property="og:locale" content="ko_KR">/);
   assert.doesNotMatch(html, /noindex/); // exploited: search-worthy
-  assert.equal(html.match(/<script/gi).length, 1); // the times' own
+  assert.equal(html.match(/<script(?! type="application\/ld\+json")/gi).length, 1); // the times' own; the JSON-LD block runs nothing
   assert.equal(html.match(/<h1/g).length, 1);
   assert.match(html, /<h1>OpenSSH sshd 인증 우회 \(sshole\)<\/h1>/);
 });
@@ -241,7 +241,9 @@ test('hostile text is escaped and only http(s) links are kept', async () => {
     summary: { ...SSHOLE.summary, exploited: true, exploited_source: 'javascript:alert(2)', ko: { ...SSHOLE.summary.ko, title: '</title><script>alert(1)</script>', easy: '"><script>alert(3)</script>' } },
   };
   const html = await (await page(hostile)).text();
-  assert.deepEqual(html.match(/<script|<img /gi), ['<script']); // the times' own
+  assert.deepEqual(html.match(/<script(?! type="application\/ld\+json")|<img /gi), ['<script']); // the times' own
+  const ld = /<script type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]; // no '<' at all inside: it cannot close early
+  assert.equal(JSON.parse(ld).headline, '</title><script>alert(1)</script>');
   assert.doesNotMatch(html, /javascript:/i);
   assert.match(html, /&lt;\/title&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.match(html, /href="https:\/\/example.com\/&quot;&gt;&lt;script&gt;x&lt;\/script&gt;"/);
@@ -581,4 +583,18 @@ test('four or more fixed lines are an aligned list, five in view and the rest be
   const three = await (await page(withFixes(3), 'ko')).text();
   assert.doesNotMatch(three, /class="fix-list"/);
   assert.match(three, /<p>내 제품에 맞는 버전 이상으로 업데이트하세요:<\/p><ul><li><strong>Windows Server 2010<\/strong>/); // as before
+});
+
+// Owner, 11-17: search engines and agents read what the page states as schema.org data, in a block that runs nothing
+// (the CSP's script-src does not apply to it) and holds no '<', so no text from the web or a model can close it.
+test('an Incident page states its headline, description, dates, language and address as JSON-LD', async () => {
+  const html = await (await page(SSHOLE)).text();
+  const ld = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]);
+  assert.deepEqual(ld, { '@context': 'https://schema.org', '@type': 'Article', headline: 'OpenSSH sshd 인증 우회 (sshole)',
+    description: '리눅스 서버가 뚫릴 수 있습니다!', datePublished: '2026-11-05T10:00:00Z', dateCreated: '2026-11-06T00:46:00Z', inLanguage: 'ko',
+    url: 'https://patchticker.com/i/CVE-2026-123158', mainEntityOfPage: 'https://patchticker.com/i/CVE-2026-123158',
+    isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: 'https://patchticker.com/' } });
+  const en = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(await (await page(SSHOLE, 'en')).text())[1]);
+  assert.equal(en.inLanguage, 'en');
+  assert.equal(en.url, 'https://patchticker.com/en/i/CVE-2026-123158');
 });

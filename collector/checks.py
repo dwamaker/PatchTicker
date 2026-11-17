@@ -10,7 +10,11 @@ from collector.incidents import (WELL_KNOWN, cve_order, is_exploited, known_prod
                                  published_at, risk_level, search_worthy, vendor_words)
 
 SITE = "https://patchticker.com"
+DATA = "https://data.patchticker.com"
 CVES_SHOWN = 5
+# A product page (/p/<slug>, edge/product.mjs) with fewer Incidents in PAGE_DAYS is thin: the page says noindex and the
+# sitemap leaves it out (edge/product.mjs PRODUCT_PAGE_MIN is the same number; owner's choice to change, 11-17).
+PRODUCT_PAGE_MIN = 3
 
 
 def check_slug(product_id):
@@ -32,7 +36,9 @@ def names_of(product, ko_name):
 
 def entry(incident):
     """An Incident as an agent reads it: small, with its Incident page when it is offered to search engines, else its
-    row on the Board."""
+    row on the Board, and `detail`, its whole record (pages/<slug>.json: every CVE, the Summary, the sources), when it has
+    one: a page document is written for each Incident with a Summary (cycle.write_pages). Owner, 11-17: an agent read
+    the 11 MB week file for a group's other CVEs."""
     summary, quick = incident.get("summary") or {}, incident.get("quick_title") or {}
     title = lambda lang: ((summary.get(lang) or {}).get("title") or (quick.get(lang) or {}).get("title")
                           or (incident.get("brief") or {}).get("text") or incident["id"])
@@ -40,7 +46,13 @@ def entry(incident):
     return {"id": incident["id"], "url": url, "first_seen": incident["first_seen"], "published": published_at(incident),
             "level": risk_level(incident), "exploited": is_exploited(incident), "cvss": incident.get("cvss"),
             "cve_count": len(incident["cves"]), "cves": cve_order(incident)[:CVES_SHOWN], "fixed": summary.get("fixed") or "",
-            "title_en": title("en"), "title_ko": title("ko")}
+            "title_en": title("en"), "title_ko": title("ko"),
+            **({"detail": f"{DATA}/pages/{page_slug(incident['id'])}.json"} if incident.get("summary") else {})}
+
+
+def product_pages(docs):
+    """The product pages worth a sitemap entry: the check documents' slugs with PRODUCT_PAGE_MIN Incidents or more, sorted."""
+    return sorted(slug for slug, doc in docs.items() if len(doc["incidents"]) >= PRODUCT_PAGE_MIN)
 
 
 def check_docs(incidents, since):

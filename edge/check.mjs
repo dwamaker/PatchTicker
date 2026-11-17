@@ -6,9 +6,9 @@ import { productKey, SEARCH_ALIASES } from '../web/board.mjs';
 import { readJson } from './shared.mjs';
 
 const MAX_NAMES = 30;
-const MAX_DOCS = 40; // product documents read for one request
+export const MAX_DOCS = 40; // product documents read for one request (also the products feed, edge/feed.mjs)
 const BROAD_MAX = 5; // Products a name matches by its start alone
-const LEVELS = ['notice', 'high', 'highest'];
+export const LEVELS = ['notice', 'high', 'highest'];
 const MAYBE_MAX = 10; // unmatched names one request sends to the model
 const MAYBE_WAIT = 5000; // ms the model gets before it is given up
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -20,9 +20,9 @@ const HEADERS = { 'content-type': 'application/json; charset=utf-8', 'access-con
   'cache-control': 'public, max-age=300', 'x-content-type-options': 'nosniff' };
 
 const json = (body, status = 200, more = {}) => new Response(JSON.stringify(body), { status, headers: { ...HEADERS, ...more } });
-const error = (text, status = 400, more = {}) => json({ error: text }, status, more);
+export const error = (text, status = 400, more = {}) => json({ error: text }, status, more);
 // No index yet (the collector not deployed) or a store that cannot be read: never kept, so the next request tries again.
-const down = () => error('The product check is unavailable right now; try again in 10 minutes.', 503, { 'cache-control': 'no-store', 'retry-after': '600' });
+export const down = () => error('The product check is unavailable right now; try again in 10 minutes.', 503, { 'cache-control': 'no-store', 'retry-after': '600' });
 
 // The query's names, days and min, or the 400's text.
 export function readQuery(params) {
@@ -37,8 +37,9 @@ export function readQuery(params) {
 
 // Which product slugs each asked name stands for: its exact key; else its alias's English names (SEARCH_ALIASES, owner
 // 11-11: 크롬 is Chrome), each by its exact key or broadly; else (broad) the keys that start with it and a space, the first
-// BROAD_MAX Products of them by key. One pass over the index serves every name and alias name that missed.
-function lookUp(index, names) {
+// BROAD_MAX Products of them by key. One pass over the index serves every name and alias name that missed. The products
+// feed (edge/feed.mjs) matches by this too, without the model.
+export function lookUp(index, names) {
   const keys = names.map(productKey);
   const has = (k) => Object.hasOwn(index, k);
   const aliases = names.map((name, n) => (has(keys[n]) ? null : SEARCH_ALIASES[name.toLowerCase().replace(/\s+/g, '')] || null));

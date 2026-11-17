@@ -4,19 +4,13 @@
 
 Each Incident (one row; it may hold several CVEs, or none yet) has a risk level set by rules, not by a model: exploited (CISA KEV, or a source that reports attacks) or CVSS 9.0 and up is "urgent", CVSS 7.0 and up is "elevated", everything else is a notice. Summaries in Korean and English are written by Claude from the linked sources only, and every Incident links to its official advisory.
 
-## Data
+## Start here
 
-Public JSON, refreshed every 10 minutes. Please fetch each file at most once every 10 minutes; bursts are rate limited.
+To learn which Incidents touch some products, ask `/api/check` (below) first: its answer is small. Then read one Incident whole through its `detail` address. The week and month files below are megabytes; download them only to work on the whole board.
 
-- [Status](https://data.patchticker.com/status.json): when the data was last updated
-- [Last 7 days](https://data.patchticker.com/board/recent.json): every Incident first seen in the last week, with risk inputs, products, summaries and source links
-- [Last 7 days, light](https://data.patchticker.com/board/rows.json): the same Incidents as the week file, most without details (marked `rows`), for drawing the list
-- [Months](https://data.patchticker.com/index.json): the months that have data; each month is at `https://data.patchticker.com/board/YYYY-MM.json`. Only Incidents first seen in the last 90 days are kept; older ones are deleted
-- [Products](https://data.patchticker.com/board/products.json): product names seen in the last 90 days
+Send a User-Agent that names your client, like `my-agent/1.0`. Cloudflare's browser check answers 403 (error 1010) on both patchticker.com and data.patchticker.com to a library's bare default such as Python urllib's (`Python-urllib/3.13`); any client that names itself is let through (curl, requests, httpx, Go and Node were on 2026-11-17).
 
 ## For agents: check an inventory
-
-To find which Incidents touch the products someone runs, ask once instead of downloading a month file:
 
 `https://patchticker.com/api/check?products=<names>&days=<1-90>&min=<notice|high|highest>`
 
@@ -25,7 +19,8 @@ To find which Incidents touch the products someone runs, ask once instead of dow
 - A name nothing matches may be read by a language model (Cloudflare Workers AI) as a product's official English name, at most 10 names per request. When that name is in our list, the answer gains `maybe` after `unmatched`: entries like a product's, with `read_as` (the English names tried) instead of `alias`, and the name leaves `unmatched`.
 - `maybe` is a model's guess, never mixed into `products`: check `matched` before relying on it. It is absent when the model finds nothing, fails or is slow.
 - `days`: Incidents first seen in the last 1 to 90 days (default 30). `min`: the lowest risk level to include (default `notice`, everything).
-- Each Incident: `id`, `url` (its page, or its row on the board), `first_seen`, `published`, `level` (`highest`, `high` or `notice`), `exploited`, `cvss`, `cve_count` and the first 5 `cves`, `fixed` (the fixed version, or ""), `title_en`, `title_ko`. Within one product: exploited first, then by level, then newest.
+- Each Incident: `id`, `url` (its page, or its row on the board), `first_seen`, `published`, `level` (`highest`, `high` or `notice`), `exploited`, `cvss`, `cve_count` and the first 5 `cves`, `fixed` (the fixed version, or ""), `title_en`, `title_ko`, and `detail` (below) once it has a Summary. Within one product: exploited first, then by level, then newest.
+- `id` is the Incident's own key, not its gravest CVE: a CVE ID, a Hacker News item address, or the address of the source that first reported it. For a group (`cve_count` above 1) it is the CVE or address the Incident was first filed under, which may not be in `cves` at all. `cves` is in Lead order: an exploited CVE first, else the highest-scored, else the first to arrive; `cves[0]` is the Lead CVE the title is written around. `cvss` is the highest score among all the CVEs.
 - Ask at most once every 10 minutes (the data changes no faster; answers are cached for 5 minutes). More than 30 names, or a bad `days` or `min`, answers 400 with the reason.
 - Product names are sent in the URL. Nothing about a request is logged or stored by the site.
 
@@ -36,15 +31,37 @@ Example (values illustrative, trimmed): `https://patchticker.com/api/check?produ
  "products": [{"asked": "openssh", "matched": ["OpenSSH"], "incidents": [
    {"id": "CVE-2026-123158", "url": "https://patchticker.com/i/CVE-2026-123158", "first_seen": "2026-11-06T00:46:00Z",
     "published": "2026-11-05T10:00:00Z", "level": "highest", "exploited": true, "cvss": 9.8, "cve_count": 1,
-    "cves": ["CVE-2026-123158"], "fixed": "9.9p2", "title_en": "OpenSSH sshd authentication bypass", "title_ko": "OpenSSH sshd 인증 우회"}]},
+    "cves": ["CVE-2026-123158"], "fixed": "9.9p2", "title_en": "OpenSSH sshd authentication bypass", "title_ko": "OpenSSH sshd 인증 우회",
+    "detail": "https://data.patchticker.com/pages/CVE-2026-123158.json"}]},
    {"asked": "nginx", "matched": ["nginx"], "incidents": []}],
  "unmatched": [],
  "note": "Summaries are AI-written from the sources; check the linked advisory before acting. No request data is stored. Names that match nothing are read by a language model on Cloudflare Workers AI to guess the product (the `maybe` list); verify `matched` before relying on it."}
 ```
 
+## One Incident whole
+
+`detail` is the address of the Incident's whole record as JSON, the same one its page is drawn from: every CVE in `cves`, and for each its one-line text (`cve_texts`), its score (`cve_scores`, in a group) and its record links (`cve_links`); `summary` with `ko` and `en` (title, summary, conditions, mitigation), the fixed versions and the products; `mentions`, every source link by kind (advisory, write-up, CVE record, discussion); `cvss`, `kev`, `published`, `first_seen`. A record is tens of kilobytes even for a group of twenty CVEs. It exists for an Incident with a Summary first seen in the last 90 days.
+
+## Feeds
+
+- [RSS, Korean](https://patchticker.com/feed.xml) and [RSS, English](https://patchticker.com/en/feed.xml): the newest 200 Incidents at the elevated level and up, exploited, or without a CVE yet (about three days). Each item names its products and its level as `<category>`.
+- For some products only: add `?products=<names>` to either feed, with `days` and `min` as in `/api/check` and matched the same way (no model). Each item gives the level, the fixed version and the CVE count, and links the Incident page (or its row on the board when it has none). Bad input answers 400 as the API does.
+- A page per product: each Incident page links its products' pages, which list that product's Incidents of the last 90 days and its feed.
+
+## Data
+
+Public JSON, refreshed every 10 minutes. Please fetch each file at most once every 10 minutes; bursts are rate limited. Send a User-Agent naming your client here too: Python urllib's default one is refused with 403. Sizes are as of 2026-11-17 and grow with the news.
+
+- [Status](https://data.patchticker.com/status.json): when the data was last updated
+- [Last 7 days](https://data.patchticker.com/board/recent.json): every Incident first seen in the last week, whole (about 11 MB, 2 MB compressed)
+- [Last 7 days, light](https://data.patchticker.com/board/rows.json): the same Incidents, most without details (marked `rows`), for drawing the list (about 4 MB)
+- [Months](https://data.patchticker.com/index.json): the months that have data, like "2026-11". A month's file has the week file's address with `recent` replaced by the month (November 2026 was 21.5 MB on the 17th). Only Incidents first seen in the last 90 days are kept; older ones are deleted
+- [Products](https://data.patchticker.com/board/products.json): product names seen in the last 90 days
+
 ## About
 
 - [Site](https://patchticker.com/): the board itself (filters and search run in the browser)
+- [API catalog](https://patchticker.com/.well-known/api-catalog): `/api/check` and this file as its documentation, as an RFC 9727 linkset
 - [Source code](https://github.com/dwamaker/PatchTicker): how the collector and the page work
 - [Report a mistake](https://github.com/dwamaker/PatchTicker/issues): corrections come from readers
 

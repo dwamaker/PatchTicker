@@ -1,7 +1,7 @@
 // The RSS feeds' renderer and response (ticket incident-pages/01), behind a fake R2 binding.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { feedResponse } from '../edge/feed.mjs';
+import { feedResponse, productFeedResponse } from '../edge/feed.mjs';
 import { slug } from '../web/board.mjs';
 
 const bucket = (doc) => ({ get: async (key) => (key === 'board/feed.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
@@ -131,4 +131,79 @@ test('answers RSS with a short cache, and 503 when the store cannot be read', as
   assert.match(ok.headers.get('cache-control'), /max-age=300/);
   assert.equal((await feedResponse(bucket(null), 'ko')).status, 503);
   assert.equal((await feedResponse({ get: async () => { throw new Error('R2 down'); } }, 'en')).status, 503);
+});
+
+// Owner, 11-17: a reader filters by category. Each item names its products as the row shows them (rowTags: operating
+// systems first) and its level in the feed's language; the text is escaped like every other.
+test('an item carries its products as the row shows them and its level, as categories in the feed language', async () => {
+  const tagged = { ...SSHOLE, cvss: 9.8, summary: { ...SSHOLE.summary, products: ['OpenSSH', 'A&B <x>'], platforms: ['Linux'] } };
+  const cats = (xml) => [...xml.matchAll(/<category>([^<]*)<\/category>/g)].map((m) => m[1]);
+  assert.deepEqual(cats(await (await feedResponse(bucket({ incidents: [tagged] }), 'ko')).text()), ['Linux', 'OpenSSH', 'A&amp;B &lt;x&gt;', '긴급']);
+  assert.deepEqual(cats(await (await feedResponse(bucket({ incidents: [tagged] }), 'en')).text()), ['Linux', 'OpenSSH', 'A&amp;B &lt;x&gt;', 'Urgent']);
+  assert.deepEqual(cats(await (await feedResponse(bucket({ incidents: [STORY] }), 'en')).text()), ['Notice']); // no products: the level alone
+});
+
+// The products feed (owner, 11-17): /feed.xml?products=<names>, matched as /api/check matches (no model), from the check
+// documents alone (collector/checks.py entry: no Summary, no page documents read per request).
+const SSH_SLUG = 'a1b2c3d4e5f60718';
+const NGINX_SLUG = '0f1e2d3c4b5a6978';
+const at = (h) => `2026-11-1${h}T00:00:00Z`;
+const entryOf = (n, extra = {}) => ({ id: `CVE-2026-${n}`, url: `https://patchticker.com/i/CVE-2026-${n}`, first_seen: at(5), published: at(5),
+  level: 'high', exploited: false, cvss: 7.5, cve_count: 1, cves: [`CVE-2026-${n}`], fixed: '', title_en: `Flaw ${n}`, title_ko: `취약점 ${n}`, ...extra });
+const CHECK = {
+  'check/index.json': { openssh: [SSH_SLUG], nginx: [NGINX_SLUG] },
+  [`check/p/${SSH_SLUG}.json`]: { product: 'OpenSSH', id: 'openbsd:openssh', incidents: [
+    entryOf(1, { published: at(6), level: 'highest', exploited: true, cvss: 9.8, cve_count: 7, cves: ['CVE-2026-1', 'CVE-2026-2', 'CVE-2026-3', 'CVE-2026-4', 'CVE-2026-5'], fixed: '9.9p2' }),
+    entryOf(9, { url: 'https://patchticker.com/#i=CVE-2026-9', first_seen: '2026-09-01T00:00:00Z', published: '2026-09-01T00:00:00Z' })] },
+  [`check/p/${NGINX_SLUG}.json`]: { product: 'nginx', id: 'f5:nginx', incidents: [entryOf(4, { published: at(4), level: 'notice' })] },
+};
+const store = (docs) => ({ get: async (key) => (Object.hasOwn(docs, key) ? { text: async () => JSON.stringify(docs[key]) } : null) });
+const ask = (query, lang = 'ko', method = 'GET', docs = CHECK) => productFeedResponse(store(docs), new Request(`https://patchticker.com/feed.xml?${query}`, { method }), lang, Date.parse(at(7)));
+
+test('the products feed lists the asked products\' Incidents newest first, with level, fixed version and CVE count', async () => {
+  const res = await ask('products=openssh,NGINX');
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'application/rss+xml; charset=utf-8');
+  const xml = await res.text();
+  assert.deepEqual([...xml.matchAll(/<item><title>([^<]*)</g)].map((m) => m[1]), ['취약점 1', '취약점 4']); // CVE-2026-9 is past 30 days
+  assert.match(xml, /<title>Patch Ticker · OpenSSH, nginx<\/title>/);
+  assert.match(xml, /<link>https:\/\/patchticker.com\/i\/CVE-2026-1<\/link><guid isPermaLink="false">https:\/\/patchticker.com\/i\/CVE-2026-1<\/guid>/);
+  assert.match(xml, /<category>OpenSSH<\/category><category>긴급<\/category>/);
+  const body = unxml(/<item>.*?<description>([^<]*)<\/description>/.exec(xml)[1]);
+  assert.equal(body, '<p>긴급 · 공격 발생 · CVSS 9.8</p><p>고친 버전: 9.9p2</p><p>CVE 7건: CVE-2026-1, CVE-2026-2, CVE-2026-3, CVE-2026-4, CVE-2026-5 외 2건</p>');
+  assert.match(xml, /<atom:link href="https:\/\/patchticker.com\/feed.xml\?products=openssh%2CNGINX" rel="self"/);
+});
+
+test('the English products feed links the English pages and words; days and min work as in /api/check', async () => {
+  const xml = await (await ask('products=openssh&days=90&min=highest', 'en')).text();
+  assert.deepEqual([...xml.matchAll(/<item><title>([^<]*)</g)].map((m) => m[1]), ['Flaw 1']); // CVE-2026-9 is below the min
+  assert.match(xml, /<link>https:\/\/patchticker.com\/en\/i\/CVE-2026-1<\/link>/);
+  assert.match(unxml(xml), /<p>Urgent · Attacked · CVSS 9\.8<\/p><p>Fixed in: 9\.9p2<\/p><p>7 CVEs: CVE-2026-1, .* and 2 more<\/p>/);
+  const all = await (await ask('products=openssh&days=90', 'en')).text();
+  assert.match(all, /<link>https:\/\/patchticker.com\/#i=CVE-2026-9<\/link>/); // no page: its row on the Board
+});
+
+test('bad input answers as /api/check does; names nothing matches give an empty feed that says so; HEAD has no body', async () => {
+  for (const query of ['', 'products=', 'products=openssh&days=0', 'products=openssh&min=low']) {
+    const res = await ask(query);
+    assert.equal(res.status, 400, query);
+    assert.match((await res.json()).error, /^(products|days|min):/);
+  }
+  const none = await (await ask('products=nosuchthing')).text();
+  assert.doesNotMatch(none, /<item>/);
+  assert.match(none, /<description>[^<]*nosuchthing[^<]*<\/description>/);
+  const head = await ask('products=openssh', 'ko', 'HEAD');
+  assert.equal(head.status, 200);
+  assert.equal(await head.text(), '');
+  assert.equal((await ask('products=openssh', 'ko', 'GET', {})).status, 503); // no index yet
+});
+
+test('hostile text in a check document stays text in the products feed', async () => {
+  const docs = structuredClone(CHECK);
+  docs[`check/p/${SSH_SLUG}.json`].incidents[0].title_ko = '</title><script>alert(1)</script>';
+  docs[`check/p/${SSH_SLUG}.json`].product = 'A&B <x>';
+  docs[`check/p/${SSH_SLUG}.json`].incidents[0].url = 'javascript:alert(1)';
+  const xml = await (await ask('products=openssh', 'ko', 'GET', docs)).text();
+  assert.doesNotMatch(xml, /<script>|javascript:/);
+  assert.match(xml, /<category>A&amp;B &lt;x&gt;<\/category>/);
 });

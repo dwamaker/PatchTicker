@@ -473,6 +473,24 @@ Restrained outlined buttons for theme, language and copying a command.
   이 명령으로 업데이트하세요:"); a config line names its file when a source does ("설정 파일 /etc/ssh/sshd_config에 이 줄을
   넣으세요:"). On the Korean page an English source title reads as the Summary's Korean line; the original is its tooltip.
 
+### Product page (owner, 11-17)
+- **What it is:** `/p/<slug>`, one product's Incidents of the last 90 days, newest first, for search and for a reader who
+  follows one product; plain HTML in the Incident page's shell (header, footer, tokens, CSP), one script (the times).
+- **Shape:** the product's name as the heading ("OpenSSH 보안 사건"), one Secondary Ink line with the count, then a list
+  of panels, each edged on the left in its Risk colour like the Incident page's banner: the risk word in its sign
+  (with 공격 발생 in red when attacked) and the time on a small Secondary Ink line, the title in Ink and bold as the
+  link to its Incident page (or its Board row when it has none), and the fixed version and CVE count under it. The
+  page's links end it: the Board filtered to the product, and the product's RSS.
+- **From the Incident page:** a "제품별 사건" section after the products lists each product's page (at most five,
+  operating systems aside); the tags keep linking the Board's filter.
+- **Thin pages:** fewer than 3 Incidents and the page is `noindex` and out of the sitemap (the number is the owner's to
+  change).
+
+### Not found page (owner, 11-17)
+- `web/404.html`, which Pages serves with a 404 for any unknown path: the Incident page's header, tokens and type in
+  both themes, the heading and one line in Korean, the same line in English, and two outlined links (the Board,
+  llms.txt). No script; its one style block is hashed in `_headers`.
+
 ### Small moments (delight)
 - **Empty state names every narrowing:** with Products picked and a search, it says both ("고른 제품(OpenSSH) 가운데
   'zzqq'에 맞는 사건이 없습니다."), never "nothing for OpenSSH" while the search hid an OpenSSH row; its recovery

@@ -8,12 +8,13 @@ import { SITE, SLUG, failClosed, readJson, unavailable } from './shared.mjs';
 
 const DOC = 'sitemap.json';
 const MAX_PAGES = 25000; // two URLs each: one sitemap file holds at most 50,000
-const NAME = /^incidents-([0-3])\.xml$/;
+const NAME = /^(?:incidents-([0-3])|(products))\.xml$/;
+const PRODUCT = /^[0-9a-f]{16}$/; // collector/checks.py check_slug
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/; // the collector's STAMP, a W3C datetime
 
-function urls(slug, changed) {
-  const ko = `${SITE}/i/${slug}`;
-  const en = `${SITE}/en/i/${slug}`;
+function urls(slug, changed, kind = 'i') {
+  const ko = `${SITE}/${kind}/${slug}`;
+  const en = `${SITE}/en/${kind}/${slug}`;
   const lastmod = STAMP.test(changed) ? `<lastmod>${changed}</lastmod>` : '';
   const alternates = `<xhtml:link rel="alternate" hreflang="ko" href="${ko}"/><xhtml:link rel="alternate" hreflang="en" href="${en}"/>`
     + `<xhtml:link rel="alternate" hreflang="x-default" href="${ko}"/>`;
@@ -39,6 +40,16 @@ export function sitemapXml(doc, monthsAgo, now) {
     '</urlset>'].join('\n');
 }
 
+// Owner, 11-17: the product pages (/p/<slug>, edge/product.mjs) the collector lists as worth a search (sitemap.json
+// products: enough Incidents, collector/checks.py product_pages); a document from before that list gives none.
+export function productsXml(doc) {
+  const list = Array.isArray(doc?.products) ? doc.products.filter((s) => typeof s === 'string' && PRODUCT.test(s)) : [];
+  return ['<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+    ...list.slice(0, MAX_PAGES).flatMap((slug) => urls(slug, null, 'p')),
+    '</urlset>'].join('\n');
+}
+
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). name: the file name after /sitemaps/.
 export async function sitemapResponse(bucket, name, now = Date.now()) {
   const slot = NAME.exec(name);
@@ -46,6 +57,6 @@ export async function sitemapResponse(bucket, name, now = Date.now()) {
   return failClosed(async () => {
     const doc = await readJson(bucket, DOC);
     if (!doc) throw new Error(`${DOC} missing`);
-    return new Response(sitemapXml(doc, Number(slot[1]), now), { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+    return new Response(slot[2] ? productsXml(doc) : sitemapXml(doc, Number(slot[1]), now), { headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300' } });
   }, () => unavailable('The sitemap')); // a crawler retries later, never reads a half list as "these pages are gone"
 }

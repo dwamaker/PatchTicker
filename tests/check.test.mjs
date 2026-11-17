@@ -261,3 +261,12 @@ test('no shortening for a one-word name, twice, to a broad match, or for a name 
   assert.deepEqual(out.unmatched, ['flash', 'media', 'one', 'same']);
   assert.deepEqual(out.maybe.map((m) => [m.asked, m.matched, m.broad]), [['plus', ['NGINX Plus R30'], true], ['ui', ['nginx ui'], undefined]]);
 });
+
+// Owner, 11-17: `detail`, the Incident's whole record, comes from the check document as written; a document from before
+// it has none, and the answer is the same otherwise (the collector and the site are deployed apart).
+test('an Incident keeps its detail address from the check document, and one without it answers as before', async () => {
+  const detail = 'https://data.patchticker.com/pages/CVE-2026-9.json';
+  const docs = { ...DOCS, 'check/p/nginx.json': { ...DOCS['check/p/nginx.json'], incidents: [inc('CVE-2026-9', 1, { detail })] } };
+  assert.equal((await body('products=nginx', { docs })).products[0].incidents[0].detail, detail);
+  assert.equal('detail' in (await body('products=nginx')).products[0].incidents[0], false);
+});
