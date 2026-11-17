@@ -540,7 +540,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Stale data notice:** an hour without an update (six missed 10-minute runs) puts a notice under the status line
   (its text names no age since critique 12: the status line just above says it, and fixed text is announced once):
   Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "업데이트가
-  멈춰 있습니다. 수집이 멈춰 최근 사건이 빠졌을 수 있습니다." (critique 13: no "an hour"; the data may be a day old). On
+  멈춰 있습니다. 수집이 끊겨 최근 사건이 빠졌을 수 있습니다." (critique 13: no "an hour"; the data may be a day old). On
   phones it is "· 업데이트 멈춤" at the end of the status line, the full sentence kept for screen readers. It is a status region (heard once) and is
   rechecked every minute, as is the status line's age, so a tab left open goes stale visibly.
 - **All-clear sign:** when only Products are picked and none is on the Board, the empty state is a sign, not a

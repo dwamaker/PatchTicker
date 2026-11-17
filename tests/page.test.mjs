@@ -269,7 +269,7 @@ test('410 past 90 days from first seen, with the Board and the CVE record', asyn
   const res = await page({ ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' });
   assert.equal(res.status, 410);
   const html = await res.text();
-  assert.match(html, /보관 기간 90일이 지났어요/);
+  assert.match(html, /보관 기간 90일이 지나 이 사건 페이지는/);
   assert.match(html, /href="\/#i=CVE-2026-123158"/);
   assert.match(html, /href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
   assert.match(html, /noindex/);
@@ -304,7 +304,7 @@ test('410 when the move or the survivor is past 90 days', async () => {
     const res = await moved(doc, target);
     assert.equal(res.status, 410);
     const html = await res.text();
-    assert.match(html, /보관 기간 90일이 지났어요/);
+    assert.match(html, /보관 기간 90일이 지나 이 사건 페이지는/);
     assert.match(html, /noindex/);
   }
   assert.equal((await moved({ ...MOVED, moved: '2026-08-12T00:00:00Z' })).status, 301);

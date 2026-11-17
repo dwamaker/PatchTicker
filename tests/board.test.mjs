@@ -1159,7 +1159,7 @@ test('the shared words hold the same keys in every language, each a non-empty te
   filled(WORDS.en, 'en');
   filled(WORDS.ja, 'ja');
   // The Board's 대처법 line and the Incident page say the same sentence when no fix is known.
-  assert.equal(WORDS.ko.none, '고친 버전을 아직 확인하지 못했습니다. 아래 원문 링크에서 확인하세요.');
+  assert.equal(WORDS.ko.none, '고친 버전은 아직 확인하지 못했습니다. 아래 원문 링크를 살펴보세요.');
   assert.equal(WORDS.en.none, 'We have not confirmed a fixed version yet. Check the source links below.');
 });
 
