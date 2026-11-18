@@ -780,7 +780,10 @@ def absorb(target, other):
     # Per CVE, only for CVEs the target holds: a narrowed join (link, not trusted) lends no other CVE's score.
     for cve, entry in (other.get("cve_scores") or {}).items():
         if cve in target["cves"]:
-            merge_score(target.setdefault("cve_scores", {}), cve, entry["cvss"], entry["vector"], entry.get("by", ""))
+            scores = target.setdefault("cve_scores", {})
+            if "record" in entry:  # a page's raise: the record's own pair first, so it stays under the raise
+                merge_score(scores, cve, entry["record"]["cvss"], entry["record"]["vector"])
+            merge_score(scores, cve, entry["cvss"], entry["vector"], entry.get("by", ""))
     for cve, day in (other.get("kev_cves") or {}).items():
         if cve in target["cves"]:
             listed = target.setdefault("kev_cves", {})
@@ -917,10 +920,22 @@ def merge_public_dates(incident, dates):
 def merge_score(scores, cve, score, vector, by=""):
     """Keep `score` and its own vector as `cve`'s entry in a cve_scores map when it has none or this one is strictly
     higher, so an equal score never flips the vector between cycles. by: who gave a score read from a page
-    (sheets.page_scores), kept beside it; a record's or NVD's has none. True when the entry changed."""
-    if score is None or cve in scores and score <= scores[cve]["cvss"]:
+    (sheets.page_scores). Such an entry is {"cvss": the page's score, "vector": "", "by", "record": {"cvss", "vector"}}:
+    the record's (or NVD's) own pair stays under "record", and a higher record or NVD score that is still not above the
+    page's updates it there. True when the entry changed."""
+    old = scores.get(cve)
+    if score is None:
         return False
-    scores[cve] = {"cvss": score, "vector": vector or ""} | ({"by": by} if by else {})
+    if old and score <= old["cvss"]:
+        if by or "record" not in old or score <= old["record"]["cvss"]:
+            return False
+        old["record"] = {"cvss": score, "vector": vector or ""}
+        return True
+    if by:
+        record = old and old.get("record", {"cvss": old["cvss"], "vector": old["vector"]})
+        scores[cve] = {"cvss": score, "vector": "", "by": by} | ({"record": record} if record else {})
+    else:
+        scores[cve] = {"cvss": score, "vector": vector or ""}
     return True
 
 

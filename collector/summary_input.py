@@ -126,8 +126,10 @@ def scored(cve, score):
     header: SOURCE_RE would stop reading the record as trusted."""
     if not score:
         return cve
-    vector = " ".join(score["vector"].split())  # CNA text: folded like the descriptions
-    return f"{cve} (CVSS {score['cvss']}{', ' + vector if vector else ''})"
+    own = score.get("record") or score  # a page's raise keeps the record's own score and vector under "record"
+    vector = " ".join(own["vector"].split())  # CNA text: folded like the descriptions
+    page = f"; {score['cvss']} given by {' '.join(score['by'].split())}" if "by" in score and own is not score else ""
+    return f"{cve} (CVSS {own['cvss']}{', ' + vector if vector else ''}{page})"
 
 
 # Pages that draw their text with script hold nothing in their HTML; read the JSON the page itself loads instead.
@@ -183,7 +185,10 @@ def cve_fields(raw, score=None):
     keep |= {k: [readable(i) if isinstance(i, dict) else i for i in cna[k]]
              for k in ("solutions", "workarounds", "configurations") if isinstance(cna.get(k), list)}
     if score:
-        keep |= {"cvss": score["cvss"], "vector": score["vector"]}
+        own = score.get("record") or score  # the record's own pair; a page's higher score beside it, with who gave it
+        keep |= {"cvss": own["cvss"], "vector": own["vector"]}
+        if own is not score and "by" in score:
+            keep |= {"page_cvss": score["cvss"], "page_cvss_by": score["by"]}
     return json.dumps(keep, ensure_ascii=False)
 
 

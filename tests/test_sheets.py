@@ -3,11 +3,14 @@ cycle that goes on without them."""
 
 import contextlib
 import io
+import json
 import unittest
 from datetime import datetime
 
 from collector import sheets, summaries
 from collector.cycle import route_summaries
+from collector.incidents import absorb, merge_score
+from collector.summary_input import cve_fields, scored
 from collector.store import MemoryStore
 from collector.summary_input import page_mentions
 from test_batch_summaries import CREDIT_EXHAUSTED, api_error
@@ -121,8 +124,38 @@ class PageScoreTest(unittest.TestCase):
     def test_the_finders_own_score_raises_the_cve_and_says_who_gave_it(self):
         inc = self.java()
         self.assertTrue(sheets.page_scores(inc, [finder_page()]))
-        self.assertEqual(inc["cve_scores"]["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif"})
+        self.assertEqual(inc["cve_scores"]["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif",
+                                                               "record": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}})
         self.assertEqual(inc["cvss"], 9.2)
+
+    def test_the_records_own_pair_stays_under_the_raise_and_still_moves(self):
+        scores = self.java()["cve_scores"]
+        merge_score(scores, "CVE-2026-1000", 9.2, "", by="Calif")
+        self.assertFalse(merge_score(scores, "CVE-2026-1000", 8.0, "CVSS:3.1/old"))
+        self.assertTrue(merge_score(scores, "CVE-2026-1000", 8.6, "CVSS:4.0/new"))  # the record rose, the page still higher
+        self.assertEqual(scores["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif",
+                                                   "record": {"cvss": 8.6, "vector": "CVSS:4.0/new"}})
+        self.assertTrue(merge_score(scores, "CVE-2026-1000", 9.4, "CVSS:4.0/top"))  # the record now wins whole
+        self.assertEqual(scores["CVE-2026-1000"], {"cvss": 9.4, "vector": "CVSS:4.0/top"})
+        bare = {}
+        merge_score(bare, "CVE-2026-1000", 9.2, "", by="Calif")  # no record score yet: nothing under it
+        self.assertEqual(bare, {"CVE-2026-1000": {"cvss": 9.2, "vector": "", "by": "Calif"}})
+
+    def test_the_summary_input_gives_the_records_vector_and_the_page_score_beside_it(self):
+        raised = {"cvss": 9.2, "vector": "", "by": "Calif", "record": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}}
+        self.assertEqual(scored("CVE-2026-1000", raised), "CVE-2026-1000 (CVSS 8.1, CVSS:3.1/AV:N; 9.2 given by Calif)")
+        record = json.dumps({"containers": {"cna": {"descriptions": []}}})
+        self.assertEqual(json.loads(cve_fields(record, raised)),
+                         {"descriptions": [], "cvss": 8.1, "vector": "CVSS:3.1/AV:N", "page_cvss": 9.2, "page_cvss_by": "Calif"})
+        self.assertEqual(scored("CVE-2026-1000", {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}), "CVE-2026-1000 (CVSS 8.1, CVSS:3.1/AV:N)")
+
+    def test_a_merge_of_incidents_keeps_the_raise_and_the_record_under_it(self):
+        target = incident() | {"cvss": 7.0, "cve_scores": {}, "products": []}
+        other = incident() | {"id": "x", "cvss": 9.2, "products": [], "cve_scores": {"CVE-2026-1000": {
+            "cvss": 9.2, "vector": "", "by": "Calif", "record": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}}}}
+        absorb(target, other)
+        self.assertEqual(target["cve_scores"]["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif",
+                                                                 "record": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}})
 
     def test_a_news_quote_and_a_curator_are_refused(self):
         for page in (finder_page("https://www.bleepingcomputer.com/news/security/java4shell/", role="vendor_advisory"),
