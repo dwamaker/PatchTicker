@@ -20,9 +20,11 @@ const JAVA = {
 };
 const { score_by: _, ...PLAIN } = JAVA;
 
-test('a raised score shows both scores with their CVSS versions, higher first; an unknown version is "CVSS" alone', () => {
+test('a raised score shows both scores with their CVSS versions, higher first, only when both versions are known and differ', () => {
   assert.equal(scorePair(JAVA), 'CVSS 4.0 9.2 / CVSS 3.1 8.1');
-  assert.equal(scorePair({ ...JAVA, score_by: { ...JAVA.score_by, version: '', record_version: '' } }), 'CVSS 9.2 / CVSS 8.1');
+  // SonicWall (11-18): the page wrote "CVSS Score: 5.2", no version: the line stays "CVSS 5.2 · CVE-…".
+  assert.equal(scorePair({ ...JAVA, cvss: 5.2, score_by: { cvss: 5.2, version: '', record: 5.1, record_version: '3.1' } }), '');
+  assert.equal(scorePair({ ...JAVA, score_by: { ...JAVA.score_by, version: '3.1' } }), ''); // the same standard twice
 });
 
 test('no pair without a page raise, or when the shown score is no longer the raised one', () => {

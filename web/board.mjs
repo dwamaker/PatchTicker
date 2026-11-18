@@ -266,12 +266,14 @@ export const cveScore = (i, cve) => (Number.isFinite(i.cve_scores?.[cve]?.cvss) 
 // The CVE the Incident's score (the highest) belongs to, named only in a group: one CVE needs no name.
 // When a page raised the shown score (the collector's score_by: the finder's 9.2 under CVSS 4.0 over the record's 8.1
 // under CVSS 3.1), both scores with their CVSS versions, higher first: "CVSS 4.0 9.2 / CVSS 3.1 8.1" (owner 11-18: two
-// standards, so the text names the version, not who gave it). A version not known shows "CVSS" alone. '' otherwise.
+// standards, so the text names the version, not who gave it). Only when both versions are known and differ: a page that
+// wrote "CVSS Score: 5.2" gives no version, so the line stays "CVSS 5.2" as for any score (11-18). '' otherwise.
 export const scorePair = (i) => {
   const s = i.score_by;
   if (!s || !Number.isFinite(s.cvss) || !Number.isFinite(s.record) || s.cvss !== i.cvss) return '';
-  const one = (version, score) => `CVSS${typeof version === 'string' && version ? ` ${version}` : ''} ${score.toFixed(1)}`;
-  return `${one(s.version, s.cvss)} / ${one(s.record_version, s.record)}`;
+  const known = (v) => typeof v === 'string' && /^\d\.\d$/.test(v);
+  if (!known(s.version) || !known(s.record_version) || s.version === s.record_version) return '';
+  return `CVSS ${s.version} ${s.cvss.toFixed(1)} / CVSS ${s.record_version} ${s.record.toFixed(1)}`;
 };
 export const scoreCve = (i) => ((i.cves?.length || 0) > 1 && i.cves.includes(i.top_cve) && Number.isFinite(i.cvss) ? i.top_cve : null);
 

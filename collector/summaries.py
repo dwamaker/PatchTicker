@@ -693,6 +693,7 @@ def record_says_affected(summary, input_text):
 
 
 LOST_FIX = "a fixed version the stored Summary had is missing: "  # retry() gives it its own sentence
+AFFECTED_LABEL = "a fixes entry is named after an affected build: "  # retry() gives it its own sentence
 EPOCH = re.compile(r"(?<![\w.:])\d+:(?=\d)")  # "0:" of "0:1.21.1-10.el9_8.3": the same package without it
 FIX_WORDS = r"(?:fixed|patched|resolved|upgrade to|update to|updating to|before|prior to|<\s?)"
 
@@ -1001,7 +1002,8 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
         informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
-        hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary)) if p)
+        hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary),
+        affected_label(summary, text)) if p)
     draft = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due, "words": words}
     last = incident.get("summary_error", {}).get("tries", 0) + 1 >= MAX_TRIES
     if problem and not last:
@@ -1200,6 +1202,8 @@ RETRY_SENTENCES = [
     # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
     # 11-15: the bound comes from the CVE records' fix keys, which the input may not hold (CVE-2026-125712, 1.28.4);
     # naming it as the version to write sent the model to it, and the number check rejected it.
+    (AFFECTED_LABEL, " A `fixes` entry's `for` names the product line (\"Oracle Java SE 8\"), never an affected build;"
+                     " the fixed version goes under `version`."),
     (LOST_FIX, " The input still gives that version as a fix, and the entry shown today names it: keep it in `fixed` or"
                " `fixes` (with its product line) unless the input now says it does not fix the flaw."),
     (RECORD_AFFECTED, " The CVE record's own text calls that version affected, so it is not a fixed version: in `fixed`"
@@ -1485,6 +1489,7 @@ def parse(reply, input_text, urls):
         # The Easy entry takes its twin's ids (the easy rules ban ids, so the model may leave them out, and the Easy
         # view would then read it as holding for every CVE); unpaired, the page falls back to the conditions.
         easy = [c and e and (c[0], e[1]) for c, e in zip(conditions, easy)] if len(easy) == len(conditions) else []
+        conditions, easy = merge_conditions(conditions, easy, own)
         fields["conditions"], fields["easy_conditions"] = ([f"{', '.join(ids)}: {text}" if ids else text for ids, text in filter(None, entries)]
                                                            for entries in (conditions, easy))
     if summary["lead"] and summary["lead"] not in urls:
@@ -1525,6 +1530,7 @@ def parse(reply, input_text, urls):
         summary[lang]["names"] = [html.unescape(n) if isinstance(n, str) else n for n in summary[lang]["names"]]
     summary["products"] = [html.unescape(p) for p in summary["products"]]
     # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
+    lead_fixed(summary, input_text)
     summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
     return summary
 
@@ -1560,6 +1566,83 @@ def name_titles(summary, names):
         title = summary[lang]["title"]
         if names and not any(n.lower() in title.lower() for n in names):
             summary[lang]["title"] = f"{title.rstrip()} ({', '.join(names)})"
+
+
+def merge_conditions(conditions, easy, own):
+    """One entry per condition sentence: the same text for several CVE lists becomes one entry with the CVEs of all of
+    them, in the Incident's order, or none when together they are every CVE (Java, integrated test 11-18: "웹 서비스 등으로
+    외부 데이터를 API에 전달하는 경우" twice, once for 114938/41/42/45 and once for 114940/43/44/46). conditions, easy:
+    per_cve() entries ((ids, text) or None), easy paired by index (or [] unpaired); the Easy twin follows its condition."""
+    out, twins, at = [], [], {}
+    for n, entry in enumerate(conditions):
+        twin = easy[n] if easy else None
+        if entry and entry[1] in at:
+            k = at[entry[1]]
+            ids = [] if not out[k][0] or not entry[0] else [c for c in own if c in out[k][0] or c in entry[0]]
+            ids = [] if len(ids) == len(own) else ids
+            out[k] = (ids, entry[1])
+            if easy and twins[k]:
+                twins[k] = (ids, twins[k][1])
+            continue
+        if entry:
+            at[entry[1]] = len(out)
+        out.append(entry)
+        twins.append(twin)
+    return out, (twins if easy else [])
+
+
+def lead_fixed(summary, input_text):
+    """A group's `fixed` is its Lead CVE's fix (the feed's "Fixed", the product pages, /api/check's fixed, the Easy action
+    when there is no list): when the reply's `fixed` is on a release line the Lead CVE's record does not name, the first
+    `fixes` entry on a line it names takes its place (Java4Shell: "8u513-perf", a line CVE-2026-114938 does not touch,
+    where its own first fix is 17.0.21.1). Left alone when the record names no line of any entry."""
+    own = input_cves(input_text)
+    record = re.search(rf"^CVE record {re.escape(own[0])}:\n(.*)$", input_text, re.M) if len(own) > 1 else None
+    if not record or not summary["fixes"] or not summary["fixed"]:
+        return
+    lines = {tuple(v.split(".")[:2]) for v in VERSION_RE.findall(record[1])}
+
+    def line(version):
+        found = VERSION_RE.search(str(version))
+        return tuple(found[0].split(".")[:2]) if found else None
+    if line(summary["fixed"]) in lines:
+        return
+    pick = next((f["version"] for f in summary["fixes"] if line(f.get("version")) in lines), None)
+    if pick:
+        summary["fixed"] = pick
+
+
+BUILD = re.compile(r"(?<![\w.])\d+(?:u\d+|(?:\.\d+)+)[\w.+-]*")
+
+
+def affected_label(summary, input_text):
+    """A `fixes` entry whose `for` holds a version the input calls affected (round 2, Java4Shell: "Oracle Java SE
+    8u511b33-perf" for 8u513-perf): the label must name the product line, not the vulnerable build. Affected: a CVE
+    record's affected versions, or a version its text calls affected, or the fact sheet's "Affected" lines. The reason,
+    or ""."""
+    affected, descriptions = set(), []
+    for block in SOURCE_RE.finditer(input_text):
+        if block[1]:
+            continue
+        try:
+            record = json.loads(block[3])
+        except ValueError:
+            continue
+        descriptions += [d.get("value", "") for d in record.get("descriptions", []) if isinstance(d, dict)]
+        for product in record.get("affected", []) if isinstance(record.get("affected"), list) else []:
+            for v in (product.get("versions") or []) if isinstance(product, dict) else []:
+                # A single affected build, never a range's start ("7.2.2" with lessThan "7.2.2-72806" names a line).
+                if (isinstance(v, dict) and v.get("status", "affected") == "affected" and isinstance(v.get("version"), str)
+                        and not v.get("lessThan") and not v.get("lessThanOrEqual")):
+                    affected.add(v["version"].strip())
+    affected |= page_sheets.record_affected(descriptions)
+    affected |= {b for line in re.findall(r"^- Affected: (.*) \[", input_text, re.M) for b in BUILD.findall(line)}
+    for fix in summary.get("fixes") or []:
+        label = str(fix.get("for", ""))
+        hit = [b for b in BUILD.findall(label) if b in affected and b != fix.get("version")]
+        if hit:
+            return f"{AFFECTED_LABEL}{label}"
+    return ""
 
 
 def input_cves(input_text):

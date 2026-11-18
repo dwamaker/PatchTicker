@@ -1656,3 +1656,47 @@ class LostFixTest(unittest.TestCase):
         self.assertEqual(incident["summary"]["fixed"], "10.6.2")  # the stored Summary stays
         self.assertEqual(incident["summary_error"]["reason"], summaries.LOST_FIX + "10.6.2")
         self.assertIn("The input still gives that version as a fix", summaries.retry(incident, text)["note"])
+
+
+class JavaGroupFieldsTest(unittest.TestCase):
+    """Java4Shell (CVE-2026-114938), 11-18: the headline fixed version, a fixes label and a repeated condition."""
+
+    OWN = ["CVE-2026-114938", "CVE-2026-114940", "CVE-2026-114941", "CVE-2026-114942", "CVE-2026-114943"]
+    RECORD = json.dumps({"descriptions": [{"lang": "en", "value": "Vulnerability in Oracle Java SE. Supported versions that are affected are Oracle Java SE: 8u511b33-perf, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3."}],
+                         "affected": [{"product": "Java SE", "versions": [{"version": "8u511b33-perf", "status": "affected"},
+                                                                           {"version": "17.0.21.0.3", "status": "affected"}]}]})
+
+    def text(self):
+        return f"Incident: {', '.join(self.OWN)}\nLead CVE: {self.OWN[0]}\nMentions:\nCVE record {self.OWN[0]}:\n{self.RECORD}"
+
+    def test_a_groups_fixed_is_on_the_lead_cves_line(self):
+        fixes = [{"for": "Oracle Java SE 8 performance build", "version": "8u513-perf"}, {"for": "Oracle Java SE 11", "version": "11.0.33.1"},
+                 {"for": "Oracle Java SE 17", "version": "17.0.21.1"}]
+        summary = {"fixed": "8u513-perf", "fixes": fixes}
+        summaries.lead_fixed(summary, self.text())
+        self.assertEqual(summary["fixed"], "17.0.21.1")
+        kept = {"fixed": "17.0.21.1", "fixes": fixes}
+        summaries.lead_fixed(kept, self.text())
+        self.assertEqual(kept["fixed"], "17.0.21.1")
+        one = {"fixed": "8u513-perf", "fixes": fixes}
+        summaries.lead_fixed(one, f"Incident: {self.OWN[0]}\nCVE record {self.OWN[0]}:\n{self.RECORD}")  # one CVE: as written
+        self.assertEqual(one["fixed"], "8u513-perf")
+
+    def test_a_fixes_label_naming_an_affected_build_goes_back(self):
+        bad = {"fixes": [{"for": "Oracle Java SE 8u511b33-perf", "version": "8u513-perf"}]}
+        self.assertEqual(summaries.affected_label(bad, self.text()), summaries.AFFECTED_LABEL + "Oracle Java SE 8u511b33-perf")
+        good = {"fixes": [{"for": "Oracle Java SE 8 performance build", "version": "8u513-perf"},
+                          {"for": "Synology DSM 7.2.2", "version": "7.2.2-72806"}]}
+        self.assertEqual(summaries.affected_label(good, self.text()), "")
+
+    def test_one_condition_sentence_keeps_one_line_with_every_cve_it_holds_for(self):
+        own = self.OWN
+        text = "웹 서비스 등으로 외부 데이터를 API에 전달하는 경우"
+        conditions = [(own[:1], "Java 17 이상"), ([own[0], own[2]], text), ([own[1], own[4]], text), ([own[3]], "TLS")]
+        easy = [(c[0], f"쉬운 {c[1]}") for c in conditions]
+        merged, twins = summaries.merge_conditions(conditions, easy, own)
+        self.assertEqual(merged, [(own[:1], "Java 17 이상"), ([own[0], own[1], own[2], own[4]], text), ([own[3]], "TLS")])
+        self.assertEqual([t[1] for t in twins], ["쉬운 Java 17 이상", f"쉬운 {text}", "쉬운 TLS"])
+        self.assertEqual(twins[1][0], [own[0], own[1], own[2], own[4]])
+        everyone, _ = summaries.merge_conditions([(own[:3], text), (own[3:], text)], [], own)
+        self.assertEqual(everyone, [([], text)])  # together every CVE: no ids
