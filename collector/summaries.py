@@ -627,13 +627,21 @@ KO_FORBIDDEN = ((re.compile(r"(?<![가-힣])소스(?:에는|에서는|에서|에
                 (re.compile(r"(?<![가-힣])벤더"), "벤더", "제조사"),
                 # "release line" put word for word (owner 11-16, Git "2.50 줄은 2.50.2"): 줄 right after a dotted version,
                 # an R-numbered release or 버전. A plain number before 줄 is a count of lines ("10 줄짜리"), and 줄바꿈 is no line.
-                (re.compile(r"(?:\d+(?:\.\d+)+[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![가-힣])버전)\s?(?P<w>줄)(?!바꿈)"), "줄", "계열"),
-                # 라인 likewise (owner 11-16, "계열로 통일"), after a version, a codename ("Ulmo 라인"), a release word or a
-                # modifier ("해당 라인", "있는 라인"); never glued to a syllable (온라인, 파이프라인, 메인라인, 카메라인지), never
-                # 라인업, and not after a plain word or an acronym ("기본 라인", "DNS 라인": a DNS feature, CVE-2026-129468).
-                (re.compile(r"(?:(?:\d+(?:\.\d+)*(?:\.x)?[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![A-Za-z])[A-Z][a-z]+)\s?"
-                            r"|(?:(?<![가-힣])(?:버전|해당|제품|여러|각|다른|같은|최신|기존|이전|모든)|[가-힣]*(?:는|인|된))\s"
-                            r"|(?<![가-힣A-Za-z])(?=라인별))(?P<w>라인)(?!업)"), "라인", "계열"))
+                # A product's line (round 2 and live, Java: "Java 줄마다", "Java 8과 11 줄", "17 줄"): 줄 a space after a
+                # product name or a release number, or after 제품/해당/그/각/쓰는 when a version or an update follows;
+                # never a count glued to it ("5줄"), "한 줄", "아래 줄", the verb ("줄 수 있습니다", "줄이세요").
+                (re.compile(r"(?:\d+(?:\.\d+)+[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![가-힣])버전)\s?줄(?!바꿈)"
+                            r"|(?:(?<![A-Za-z])[A-Z][a-z]+[A-Za-z]*|(?<![\d.-])\d+(?:\s?[·,]\s?\d+)*)\s줄(?!바꿈|짜리|일|여|\s수\s)"
+                            r"|(?<![가-힣])(?:제품|해당|그|각|쓰는|사용하는|중인)\s줄"
+                            r"(?=마다|별|[의을를은도만]?[^.]{0,15}?(?:버전|최신|업데이트|올리))"), "줄", "계열"),
+                # 라인 likewise (owner 11-16, "계열로 통일"), after a version, a codename ("Ulmo 라인", "GraalVM 라인"), a
+                # release word or a modifier ("해당 라인", "그 라인", "21 이상 라인"), or opening "라인별"/"라인마다"; never
+                # glued to a syllable (온라인, 파이프라인, 메인라인, 카메라인지), never 라인업, and not after a plain word or an
+                # acronym ("기본 라인", "DNS 라인": a DNS feature, CVE-2026-129468).
+                (re.compile(r"(?:(?:\d+(?:\.\d+)*(?:\.x)?[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![A-Za-z])[A-Z][a-z]+[A-Za-z]*)\s?"
+                            r"|(?:(?<![가-힣])(?:버전|해당|제품(?:과|이나)?|여러|각|그|다른|같은|최신|기존|이전|이상|이하|모든)"
+                            r"|[가-힣]*(?:는|인|된))\s"
+                            r"|(?<![가-힣A-Za-z])(?=라인(?:별|마다)))라인(?!업)"), "라인", "계열"))
 
 
 def language_gaps(summary):

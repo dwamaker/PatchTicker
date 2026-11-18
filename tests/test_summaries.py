@@ -1318,7 +1318,14 @@ class LanguageGapsTest(unittest.TestCase):
                        ("2.56.0 줄의 Git이 해당합니다.", "Git 2.56.0 is affected."),
                        ("8.0.0줄은 수정 버전이 없습니다.", "The 8.0.0 line has no fix."),
                        ("최신 버전(2026 R2 줄 등)으로 업데이트하세요.", "Update to the newest version."),
-                       ("해당 버전 줄의 수정 버전으로 업데이트하세요.", "Update to your line's fixed version.")):
+                       ("해당 버전 줄의 수정 버전으로 업데이트하세요.", "Update to your line's fixed version."),
+                       # A product's line (round 2 and live, Java).
+                       ("쓰는 Java 줄마다 수정 버전으로 업데이트하세요.", "Update each Java line you run."),
+                       ("Java 8과 11 줄도 고칩니다.", "It also fixes Java 8 and 11."),
+                       ("Java 17 줄은 아래 목록을 보세요.", "For Java 17 see the list."),
+                       ("Java 21·25·27 줄만 해당합니다.", "Only Java 21, 25 and 27."),
+                       ("쓰는 Java를 해당 줄의 수정 버전으로 올리세요.", "Update Java to its fixed version."),
+                       ("그 줄도 최신으로 두세요.", "Keep those current too.")):
             with self.subTest(ko):
                 self.assertEqual(self.gaps(ko={"easy": ko}, en={"easy": en}), "Korean wording: 줄 (write 계열)")
 
@@ -1330,7 +1337,12 @@ class LanguageGapsTest(unittest.TestCase):
                        ("FortiOS 여러 라인이 해당합니다.", "Several FortiOS lines are affected."),
                        ("수정 버전이 있는 라인으로 옮기세요.", "Move to a line that has a fix."),
                        ("Ulmo 라인은 업데이트하세요.", "Update Ulmo."),
-                       ("라인별 수정 버전을 확인하세요.", "Check each line's fix.")):
+                       ("라인별 수정 버전을 확인하세요.", "Check each line's fix."),
+                       # Round 2, Java draw 2 (passed before): a product name ending in capitals, then 그 라인.
+                       ("쓰는 GraalVM 라인을 각각 그 라인의 수정 버전으로 올리세요.", "Update the GraalVM you run."),
+                       ("Java 21 이상 라인 사용", "Java 21 or later"),
+                       ("라인마다 수정 버전이 다릅니다.", "Each line has its own fix."),
+                       ("쓰는 제품이나 라인의 수정 버전으로 올리세요.", "Update what you run.")):
             with self.subTest(ko):
                 self.assertEqual(self.gaps(ko={"easy": ko}, en={"easy": en}), "Korean wording: 라인 (write 계열)")
 
@@ -1345,7 +1357,10 @@ class LanguageGapsTest(unittest.TestCase):
     def test_lines_of_text_and_the_verb_jul_pass(self):
         for text in ("명령 한 줄로 업데이트하세요.", "CVE별 줄에 적힌 내용입니다.", "피해를 줄일 수 있습니다.", "로그 줄을 꾸밀 수 있습니다.",
                      "여러 줄을 한 번에 넣을 수 있습니다.", "명령줄에 비밀번호가 남습니다.", "설정에 줄바꿈을 넣을 수 있습니다.",
-                     "공격자에게 영향을 줄 수 있습니다.", "10 줄짜리 파일입니다.", "첫 줄이 잘립니다.", "작업 스케줄러가 멈춥니다."):
+                     "공격자에게 영향을 줄 수 있습니다.", "10 줄짜리 파일입니다.", "첫 줄이 잘립니다.", "작업 스케줄러가 멈춥니다.",
+                     "5줄짜리 스크립트입니다.", "줄 바꿈 문자를 넣습니다.", "아래 줄을 설정에 추가하세요.", "루프에 한 줄 수정을 적용하세요.",
+                     "Vim에서 악성 줄을 고르면 실행됩니다.", "CVE-2026-1234만 줄일 수 있습니다.", "파일의 줄 길이를 잘못 계산합니다.",
+                     "@import 줄에서 실행됩니다.", "각 줄의 길이를 셉니다."):
             with self.subTest(text):
                 self.assertEqual(self.gaps(ko={"easy": text}), "")
 
