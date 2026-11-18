@@ -1704,6 +1704,33 @@ class DisputedAttacksTest(unittest.TestCase):
         self.assertNotIn("exploited_disputed", first["review_pending"]["summary"])
 
 
+class UpdateOutFindingTest(unittest.TestCase):
+    """11-18 dry run: the review kept back five Oracle entries for "the same update also fixes" beside "no source names a
+    fixed version", though each mitigation says to apply the November patch update (release_without_fix's case)."""
+
+    def summary(self, fixed="", en_mitigation="No source names a fixed version yet. Apply Oracle's November 2026 Critical Patch Update."):
+        return {"fixed": fixed, "fixes": [],
+                "ko": {"summary": "공격자가 Foo를 장악할 수 있습니다. 같은 업데이트는 데이터 노출 결함도 고칩니다.",
+                       "mitigation": "수정 버전을 밝힌 출처가 아직 없습니다. Oracle 11월 패치를 적용하세요."},
+                "en": {"summary": "An attacker can take over Foo. The same update also fixes a data exposure flaw.",
+                       "mitigation": en_mitigation}}
+
+    FINDING = {"field": "summary", "lang": "both", "quote": "같은 업데이트는 데이터 노출 결함도", "against": "수정 버전을 밝힌 출처가 아직 없습니다",
+               "problem": "Readers think a fix exists.", "severity": "high"}
+
+    def test_the_finding_is_dropped_when_the_mitigation_names_an_update_to_apply(self):
+        self.assertTrue(summaries.update_out_finding(self.FINDING, self.summary()))
+
+    def test_it_stays_when_there_is_nothing_to_apply_or_a_version_is_named_or_it_is_another_finding(self):
+        cases = {"nothing to apply": (self.FINDING, self.summary(en_mitigation="No source names a fixed version yet.")),
+                 "a fixed version": (self.FINDING, self.summary(fixed="1.2.3")),
+                 "a graver flaw left out (OpenMage)": (self.FINDING | {"against": "서버에서 코드를 실행할 수 있음"}, self.summary()),
+                 "another sentence": (self.FINDING | {"quote": "공격자가 Foo를 장악할 수 있습니다."}, self.summary())}
+        for case, (finding, summary) in cases.items():
+            with self.subTest(case):
+                self.assertFalse(summaries.update_out_finding(finding, summary))
+
+
 class LostFixTest(unittest.TestCase):
     """A re-summary never drops a fixed version the stored Summary had while the input still gives it as a fix (owner
     11-18: Git's 2.49.1 in the integrated test, yggdrasil's only package in the re-summary dry run)."""

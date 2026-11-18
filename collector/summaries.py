@@ -433,6 +433,19 @@ def release_without_fix(summary):
     return NO_FIX_RELEASE if any(RELEASE_FIXES_RE.search(summary[lang]["summary"]) for lang in ("ko", "en")) else ""
 
 
+def update_out_finding(finding, summary):
+    """A review finding that the summary's "the same update also fixes" contradicts the mitigation's "no source names a
+    fixed version", while that mitigation names an update to apply: release_without_fix's case, which it lets through
+    (11-18 dry run: 5 of the 17 kept back, all Oracle Critical Patch Update entries). The review is wrong there."""
+    if summary["fixed"] or summary["fixes"] or not UPDATE_OUT_RE.search(summary["en"]["mitigation"]):
+        return False
+    quote, against = (re.sub(r"\s+", " ", finding.get(k) or "").strip() for k in ("quote", "against"))
+    says_fixes = [s for lang in ("ko", "en") for s in re.split(r"(?<=[.!?])\s+", summary[lang]["summary"])
+                  if re.search(r"고치|고칩|고쳐|\bfix(?:es|ed)?\b", s, re.I)]
+    return bool(quote and any(quote in s for s in says_fixes) and re.search(r"출처|\bsources?\b", against, re.I)
+                and any(against in summary[lang]["mitigation"] for lang in ("ko", "en")))
+
+
 INFORMAL = "a Korean per-CVE line in 해요 style"
 INFORMAL_RE = re.compile(r"(?:[아어여해]요|이?에요|예요|죠)[.!?]?\s*$")
 
@@ -1096,7 +1109,7 @@ def finish_review(incident, draft, reply):
     draft = draft | {"event_date": review.event_date(reply)}  # owner 11-17: an old event is no Highlight
     if draft["summary"].get("exploited_unconfirmed") or draft["summary"].get("exploited_disputed"):
         draft = draft | {"verdict": review.attacks_happened(reply)}
-    why = review.reason(review.findings_of(reply, draft["summary"]))
+    why = review.reason([f for f in review.findings_of(reply, draft["summary"]) if not update_out_finding(f, draft["summary"])])
     if why:
         failed(incident, why)
         incident["summary_error"]["draft"] = draft
