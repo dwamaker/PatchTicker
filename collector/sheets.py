@@ -463,3 +463,68 @@ def union(summary, rows):
         have.append((v, label))
     return added
 
+
+# The must-carry list (owner's carry trial, part 2): what a Summary must carry from the pages, sent beside the input on
+# every try. A stopgap a reader can type: an option ("-XX:UseAVX=2", not the "-line" of "one-line"), a setting
+# ("key = value") or a command in backticks; prose advice and a developer's code fix ("hash_equals()") are not carried.
+OPTION = re.compile(r"(?:(?<![\w-])-{1,2}[A-Za-z][\w:.+=-]*|[\w.\[\]'$]+\s?=\s?[\w.:/'-]+|`[^`]+`)")
+DEV_FIX = re.compile(r"(?:suggested fix|one-line fix|patch the|line \d+|commit)", re.I)
+FILLER = {"the", "and", "for", "with", "via", "in", "of", "x86", "64", "flaw", "vulnerability", "component", "function", "module",
+          "file", "endpoint", "handler", "api", "php", "java", "src", "lib"}
+
+
+def words(text):
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def must_carry(sheets):
+    """[{kind, words, needles, source}]: each stopgap with an option, setting or command from a rank-A page or the
+    finder's own; the upstream project two hosts give; the flawed component as the word pair two hosts share, from at
+    least half the pages that name a component (a group's pages may each name another CVE's: SunEditor had eight). The
+    component's words are the shortest page wording that holds the pair."""
+    out, seen = [], set()
+    for s, f in facts_of(sheets):
+        if s["rank"] != "A" and f.get("page_role") != "finder_disclosure":
+            continue
+        for m in f["mitigations"]:
+            found = tuple(x.strip("`") for x in OPTION.findall(m))
+            if found and not DEV_FIX.search(m) and found not in seen:
+                seen.add(found)
+                out.append({"kind": "stopgap", "words": " / ".join(found), "needles": list(found), "source": host(s["url"])})
+    hosts = defaultdict(set)
+    for s, f in facts_of(sheets):
+        if norm(f.get("upstream_project") or ""):
+            hosts[norm(f["upstream_project"])].add(host(s["url"]))
+    out += [{"kind": "upstream_project", "words": v, "needles": [v], "source": ", ".join(sorted(hs))} for v, hs in hosts.items() if len(hs) >= 2]
+    pairs, at, pages = defaultdict(set), defaultdict(list), defaultdict(set)
+    for s, f in facts_of(sheets):
+        w = words(f.get("flawed_component") or "")
+        for n, (a, b) in enumerate(zip(w, w[1:])):
+            if a == b or a in FILLER or b in FILLER or min(len(a), len(b)) < 3:
+                continue
+            pairs[f"{a} {b}"].add(host(s["url"]))
+            pages[f"{a} {b}"].add(s["url"])
+            at[f"{a} {b}"].append(n)
+    named = [s for s, f in facts_of(sheets) if (f.get("flawed_component") or "").strip()]
+    # The pair the most hosts share, then the one nearest the start (the head noun: "base64 decoder" before "base64
+    # intrinsic").
+    best = sorted((-len(h), sum(at[p]) / len(at[p]), p) for p, h in pairs.items() if len(h) >= 2 and 2 * len(pages[p]) >= len(named))
+    if best:
+        p = best[0][2]
+        said = sorted((f["flawed_component"] for _, f in facts_of(sheets) if p in " ".join(words(f.get("flawed_component") or ""))), key=len)
+        out.append({"kind": "flawed_component", "words": said[0].split("(")[0].strip() if said else p, "needles": [p],
+                    "source": ", ".join(sorted(pairs[p]))})
+    return out
+
+
+def carry_left(summary, items):
+    """The items a reply leaves out: a stopgap's every option or setting, the project's name, the component's every word
+    by its first five letters ("users profile" is in "users.profile.php"), in either language's text."""
+    text = "\n".join([*(str((summary.get(lang) or {}).get(k, "")) for lang in ("en", "ko")
+                        for k in ("title", "summary", "mitigation", "stopgap_then")),
+                      *(" ".join((summary.get(lang) or {}).get("conditions") or []) for lang in ("en", "ko")),
+                      str(summary.get("stopgap", "")), str(summary.get("command", ""))]).lower()
+    flat_text, have = " ".join(text.split()), {w[:5] for w in words(text)}
+    return [c for c in items if not (all(w[:5] in have for w in c["needles"][0].split()) if c["kind"] == "flawed_component"
+                                     else all(n.lower() in flat_text for n in c["needles"]))]
+

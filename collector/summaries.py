@@ -1007,7 +1007,8 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
     candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill)."""
     text, seen = summary_input(incident, http_get, sheets), basis(incident)
     rows = page_sheets.fix_rows(sheets, incident, record_texts(text)) if sheets else []
-    asked = params(text, candidates=same_as_text(candidates), **retry(incident, text))
+    carry = page_sheets.must_carry(sheets) if sheets else []
+    asked = params(text, candidates=same_as_text(candidates), **retry(incident, text, carry))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
         reply = claude.messages.create(**asked, **({"timeout": REQUEST_TIMEOUT} if asked["max_tokens"] > MAX_TOKENS_RETRY else {}))
@@ -1019,13 +1020,13 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
         failed(incident, f"request rejected: {err.status_code} {err.message}")
         return
     save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None,
-               fix_rows=rows)
+               fix_rows=rows, carry=carry)
 
 
 BATCH = "batch"  # save_reply's review_with for a batch reply: its review goes out in the next review batch
 
 
-def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=()):
+def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=(), carry=()):
     # review_with (owner 11-16, "모든 요약에 검토 추가"): None for no review (VR_SUMMARY_REVIEW=0), a client for the instant
     # path (one review call here), or BATCH (the reply waits in review_pending for a review batch, submit_reviews()).
     # Only a reply that passed every rule check and is not a last try is reviewed: a rule failure already costs the retry,
@@ -1063,13 +1064,15 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     words = sorted({r for r in script_runs(summary) if r not in own_text(incident)})  # stray_script passed: from the input
     # Every one is reported, so the retry note answers each (audit F4).
     mismatch = easy_action_mismatch(summary)
+    # The must-carry list (carry: sheets.must_carry), a soft check on the first try only: one retry at most.
+    left = not incident.get("summary_error", {}).get("tries") and page_sheets.carry_left(summary, carry)
     problem = SEPARATOR.join(p for p in (
         easy_jargon(summary) and f"{JARGON}: {easy_jargon(summary)}", missing_stopgap_step(summary),
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
         informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
         hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary),
-        affected_label(summary, text)) if p)
+        affected_label(summary, text), left and CARRY_LEFT + ", ".join(f"{c['kind']} {c['words']}" for c in left)) if p)
     # The union of fixed versions (owner's carry trial, 11-18), after every check so it costs no retry, and before the
     # review so the reviewed and stored Summary carry it: each trusted sheet row (fix_rows: sheets.fix_rows) the reply
     # lacks, marked from_sheet (the Board reads only for and version). Java4Shell kept 14 of 14 lines in all six draws.
@@ -1257,6 +1260,12 @@ CUT_OFF = "stop_reason max_tokens"  # parse()'s reason for a reply cut off at ma
 SEPARATOR = "; "  # between the soft problems of one reply
 JARGON = "jargon in the Easy view"
 EASY_MISMATCH = "Easy action disagrees with the mitigation"
+CARRY_LEFT = "the reply leaves out what the pages give: "
+# The must-carry note's wording as the carry trial sent it (part 2): beside the input, never in the cached instructions.
+CARRY_HEAD = ("Carry these from the pages, in the summary or the mitigation, in both languages, in the input's words"
+              " (each is in the input; leave one out only if the input contradicts it):")
+CARRY_LINE = {"stopgap": "the stopgap ", "upstream_project": "the upstream project the flawed code comes from: ",
+              "flawed_component": "the flawed component: "}
 NUMBER_SENTENCE = (" Write every number and version exactly as the input writes it: never shorten or round one (not 10.86"
                    " for 10.86.51, not 4.2 for 4.2.16), never add one the input does not have, and use the same numbers in"
                    " Korean and English.")
@@ -1320,6 +1329,7 @@ RETRY_SENTENCES = [
     ("cve_lines names a CVE not in the input", " In cve_lines name only CVEs of the input's Incident line (only those of"
                                                " its \"Per-CVE lines only for:\" line when it has one), copied exactly."),
     (CUT_OFF, " Keep every field as short as the rules say, so the reply ends within its budget."),
+    (CARRY_LEFT, " Carry every item of the list above, in the summary or the mitigation, in both languages."),
 ]
 
 
@@ -1360,21 +1370,23 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
     candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked. sheets: an
     Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text, and
-    the request keeps the sheets' fixed rows (sheets.fix_rows) for the union when the result comes in."""
+    the request keeps the sheets' fixed rows (sheets.fix_rows) and must-carry list (sheets.must_carry) for the union and
+    the carry check when the result comes in."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
     requests = {}
     for n, i in enumerate(incidents[:limit]):
         text = summary_input(i, http_get, sheets(i))
         rows = page_sheets.fix_rows(sheets(i), i, record_texts(text)) if sheets(i) else []
+        carry = page_sheets.must_carry(sheets(i)) if sheets(i) else []
         requests[f"r{n}"] = ({"incident": i["id"], "input": text, "basis": basis(i)}
                              | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
-                             | ({"fix_rows": rows} if rows else {}))
+                             | ({"fix_rows": rows} if rows else {}) | ({"carry": carry} if carry else {}))
     by_id = {i["id"]: i for i in incidents[:limit]}
     if not requests:
         return None
     batch = claude.messages.batches.create(requests=[
         Request(custom_id=cid, params=params(r["input"], ttl="1h", candidates=same_as_text(listed[r["incident"]]),
-                                             **retry(by_id[r["incident"]], r["input"]))) for cid, r in requests.items()])
+                                             **retry(by_id[r["incident"]], r["input"], r.get("carry", ())))) for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
 
 
@@ -1416,24 +1428,32 @@ def collect_batch(pending, incidents, claude, stamp, review=False):
             continue
         if item.result.type == "succeeded":
             save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, sent.get("candidates", []),
-                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()))
+                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()), carry=sent.get("carry", ()))
         elif item.result.type == "errored":
             failed(incident, f"batch request errored: {item.result.error.error.type}")
         touched.append(incident)
     return touched
 
 
-def retry(incident, text=""):
+def carry_note(items):
+    """The must-carry list (sheets.must_carry) as the note gives it, or ""."""
+    return "\n".join([CARRY_HEAD, *(f"- {CARRY_LINE[c['kind']]}{c['words']} ({c['source']})" for c in items)]) if items else ""
+
+
+def retry(incident, text="", carry=()):
     """What the last rejected try of this Incident got wrong, for the next request (owner, 2026-11-10: three blind tries
     failed the same way; Netpbm's "10.86.51" kept coming back as "10.86"). The note is sent beside the input, never
     inside it: a reply is checked against the input alone, so a number named here does not become allowed.
     A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
-    10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact)."""
+    10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact).
+    carry: the must-carry list (sheets.must_carry), which starts the note on the first try and on every later one (carry
+    trial part 2: Java4Shell carried every item in 6 of 6 runs, against 4 of 12 with the list only in a retry)."""
     reason = incident.get("summary_error", {}).get("reason", "")
     # A one-CVE Incident never cut off and read from two pages or fewer asks with params()' own MAX_TOKENS, as before.
     room = {"max_tokens": budget(incident, text)} if budget(incident, text) != MAX_TOKENS else {}
+    head = carry_note(carry)
     if not reason:
-        return room
+        return ({"note": head} if head else {}) | room
     # One sentence per reason, each keyed on the start of its reason; save_reply joins soft ones (audit F3, F4).
     parts = reason.split(SEPARATOR)
     sentences = dict.fromkeys(sentence for key, sentence in RETRY_SENTENCES for part in parts
@@ -1448,7 +1468,7 @@ def retry(incident, text=""):
             lines.append(f"- {token}: the input has {', '.join(behind)}; write one of them exactly, or the range as the input"
                          " writes it" if behind else f"- {token}: not in the input, leave it out")
         note += " For each rejected number:\n" + "\n".join(lines)
-    return {"note": note} | room
+    return {"note": "\n\n".join(p for p in (head, note) if p)} | room
 
 
 def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):

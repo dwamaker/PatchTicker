@@ -431,5 +431,58 @@ class UnionTest(unittest.TestCase):
         self.assertIn(" fixes_lines=1 ", line.text())
 
 
+class MustCarryTest(unittest.TestCase):
+    """The must-carry list (owner's carry trial, part 2), on a rewritten Java4Shell: the finder's JVM flags, OpenJDK and
+    its Base64 decoder, which draws kept leaving out."""
+
+    NOTE = ("Carry these from the pages, in the summary or the mitigation, in both languages, in the input's words (each is"
+            " in the input; leave one out only if the input contradicts it):\n"
+            "- the stopgap -XX:-UseBASE64Intrinsics (calif.example)\n"
+            "- the stopgap -XX:UseAVX=2 (calif.example)\n"
+            "- the upstream project the flawed code comes from: OpenJDK (calif.example, mikiri.example)\n"
+            "- the flawed component: Base64 decoder (calif.example, mikiri.example)")
+
+    def pages(self):
+        return [sheet("https://calif.example/java4shell", "B", "writeup", page_role="finder_disclosure", upstream_project="OpenJDK",
+                      flawed_component="Base64 decoder",
+                      mitigations=["Run Java with -XX:-UseBASE64Intrinsics", "Or start the JVM with -XX:UseAVX=2"]),
+                sheet("https://mikiri.example/a", "B", "writeup", upstream_project="OpenJDK",
+                      flawed_component="the Base64 decoder of OpenJDK (x86-64)", mitigations=["Set `-XX:UseAVX=0`"]),  # no finder
+                sheet("https://oracle.example/cpu", "A", mitigations=["See the suggested fix: `hash_equals()`",  # a developer's fix
+                                                                      "Segment it behind a VPN"]),  # prose
+                sheet("https://news.example/a", "C", "writeup", upstream_project="OpenJ9")]  # one host
+
+    def test_the_list_and_its_wording(self):
+        carry = sheets.must_carry(self.pages())
+        self.assertEqual(summaries.carry_note(carry), self.NOTE)
+        self.assertEqual(summaries.retry({"id": "x", "cves": ["CVE-2026-1000"]}, "", carry)["note"], self.NOTE)
+        said = {"en": {"summary": "OpenJDK's Base64 decoder ...", "mitigation": "Until then use -XX:-UseBASE64Intrinsics or -XX:UseAVX=2."}}
+        self.assertEqual(sheets.carry_left(said, carry), [])
+        self.assertEqual([c["words"] for c in sheets.carry_left({"en": {"summary": "A Base64 decoder flaw in OpenJDK."}}, carry)],
+                         ["-XX:-UseBASE64Intrinsics", "-XX:UseAVX=2"])
+
+    def test_a_first_reply_that_leaves_an_item_out_is_kept_back_once_and_the_list_goes_with_every_try(self):
+        from test_batch_summaries import plain
+        inc, get = incident(4), lambda url, headers=None: PAGE.encode()
+        claude = FakeClaude(plain("Widget"), plain("Widget"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(inc, claude, get, STAMP, sheets=self.pages())
+            self.assertTrue(inc["summary_error"]["reason"].startswith(summaries.CARRY_LEFT + "stopgap -XX:-UseBASE64Intrinsics, "))
+            summaries.summarize_now(inc, claude, get, STAMP, sheets=self.pages())
+        self.assertTrue(claude.user_text(0).endswith("\n\n" + self.NOTE))
+        second = claude.user_text(1)
+        self.assertIn("\n\n" + self.NOTE + "\n\nYour previous reply for this Incident was rejected: " + summaries.CARRY_LEFT, second)
+        self.assertIn("Carry every item of the list above", second)
+        self.assertIn("summary", inc)  # a later try is never kept back for the list
+        self.assertEqual(claude.sent[0]["system"][0]["text"], summaries.INSTRUCTIONS)  # the cached instructions stay as they were
+        # The batch path sends and checks the same list.
+        batch, batched = FakeClaude(), incident(4)
+        pending = summaries.submit_batch([batched], batch, get, sheets=lambda i: self.pages())
+        self.assertTrue(batch.batch_inputs()[0].endswith("\n\n" + self.NOTE))
+        batch.end_batch({batched["id"]: plain("Widget")})
+        summaries.collect_batch(pending, [batched], batch, STAMP)
+        self.assertTrue(batched["summary_error"]["reason"].startswith(summaries.CARRY_LEFT))
+
+
 if __name__ == "__main__":
     unittest.main()
