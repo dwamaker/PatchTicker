@@ -72,7 +72,7 @@ class MergeTest(unittest.TestCase):
     def test_a_version_the_records_text_calls_affected_is_never_a_fixed_row(self):
         # Apache Roller, CVE-2026-129448: oss-security filed 6.1.5 as fixed; the record recommends 6.1.6.
         pages = [sheet("https://seclists.example/a", "D", "discussion", versions=[version("6.1.5", "fixed"), version("6.1.6", "fixed")])]
-        record = ["Apache Roller versions before 6.1.6, including 6.1.5, are affected. Users are recommended to upgrade to 6.1.6."]
+        record = ["An earlier record listed only Apache Roller 6.1.5 as affected. Users are recommended to upgrade to 6.1.6."]
         self.assertEqual([v[2] for v, _ in sheets.merge(pages, None, record)["fixed"]], ["6.1.6"])
 
     def test_a_fixed_row_below_the_records_first_fixed_version_of_its_line_is_dropped(self):

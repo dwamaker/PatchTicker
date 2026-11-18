@@ -726,6 +726,8 @@ def fixed_conflict(incident, summary):
 
 
 RECORD_AFFECTED = "a CVE record's text calls "  # retry() gives it its own sentence
+PATCH_ON = re.compile(r"(?<![\w.])v?\d+(?:\.\d+)+\s+(?:[A-Za-z]{1,4}\d|(?:interim\s+fix|fix\s*pack|patch|hotfix|update|build)\b)",
+                      re.I)
 
 
 def record_texts(input_text):
@@ -748,7 +750,8 @@ def record_says_affected(summary, input_text):
     affected = page_sheets.record_affected(record_texts(input_text))
     for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
                                          if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
-        named = set(page_sheets.VERSION.findall(text)) if isinstance(text, str) else set()
+        # A patch on an affected release is its own build: IBM's "2.2.1 IF001", "5.0.19 PL1", "5.4.0 Patch 8".
+        named = set(page_sheets.VERSION.findall(PATCH_ON.sub("", text))) if isinstance(text, str) else set()
         if named & affected:
             return f"{RECORD_AFFECTED}{sorted(named & affected)[0]} affected, yet the reply names it as fixed"
     return ""
