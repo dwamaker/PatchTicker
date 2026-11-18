@@ -753,7 +753,8 @@ def lost_fix(incident, summary, input_text):
     """A re-summary that drops a fixed version the stored Summary had while the input still gives it as a fix (Git in the
     integrated test, 11-18: the stored 2.49.1, the record's "before 2.49.1", a draw that named none; yggdrasil,
     CVE-2026-18379, whose only fixed version went). Not a loss: the same version without its epoch, or a version of the
-    same release line at least as high (a group's widest replacing a narrower one: Qt 6.8.9 -> 6.8.10). Named in the new
+    same release line at least as high (a group's widest replacing a narrower one: Qt 6.8.9 -> 6.8.10), except for a
+    distribution's package (sheets.distro_build), kept only by its whole string (Cockpit, CVE-2026-91151). Named in the new
     mitigation only is still lost: the fix line and the Easy action read fixed and fixes. A version with no dotted number ("U/L 95") is not judged. The input gives it as a fix when the
     CVE records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
     and the records' own text does not call it affected (the whole version: a package's "0.2.3-7.el10_2.9" is not the
@@ -775,7 +776,9 @@ def lost_fix(incident, summary, input_text):
         if not dotted or compact(v) in new_text:
             continue
         line = tuple(map(int, dotted[0].split(".")))
-        if any(n[:2] == line[:2] and n >= line for n in new_lines) or EPOCH.sub("", v.strip()) in affected:
+        # A distribution's package needs its whole string (above): RHEL 9's 366.1.1-1.el9_9 is not RHEL 10's -1.el10_3.
+        if (not page_sheets.distro_build(v) and any(n[:2] == line[:2] and n >= line for n in new_lines)
+                or EPOCH.sub("", v.strip()) in affected):
             continue
         bare = EPOCH.sub("", v.strip())
         given = bare in bounds or any(re.search(rf"{FIX_WORDS}[^.\n]{{0,60}}?(?<![\w.]){re.escape(form)}(?![\w.]|-\d)",

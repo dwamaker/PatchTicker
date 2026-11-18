@@ -400,6 +400,13 @@ class UnionTest(unittest.TestCase):
                          [("Oracle Java SE 8", "8u513"), ("Amazon Corretto 17", "17.0.21.1.2"), ("Azul Zulu 17", "17.0.21.1-zulu")])
         self.assertEqual(summary["fixes"], model)  # union() only returns the lines; save_reply appends them
 
+    def test_a_distributions_package_is_a_line_of_its_own(self):
+        # Cockpit, CVE-2026-91151 (rewritten): the RHEL 9 build of the same upstream version does not cover RHEL 10's.
+        summary = {"fixed": "", "fixes": [{"for": "Red Hat Enterprise Linux 9", "version": "366.1.1-1.el9_9"}]}
+        rows = [{"for": "Red Hat Enterprise Linux 10", "version": "cockpit-366.1.1-1.el10_3"},
+                {"for": "Red Hat Enterprise Linux 9", "version": "cockpit-366.1.1-1.el9_9"}]
+        self.assertEqual([a["version"] for a in sheets.union(summary, rows)], ["cockpit-366.1.1-1.el10_3"])
+
     def test_save_reply_appends_marked_lines_that_pass_the_checks_on_both_paths(self):
         inc = incident(4) | {"fix_keys": ["acme:widget<1.3.2"]}
         pages = [sheet("https://acme.example/a", "A", versions=[version("1.3.2", "fixed"), version("1.3.1", "fixed")])]

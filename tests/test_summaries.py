@@ -1813,6 +1813,14 @@ class LostFixTest(unittest.TestCase):
                "fix_keys": ["red_hat:red_hat_enterprise_linux_10:yggdrasil-worker-package-manager<0:0.2.3-7.el10_2.9"]}
         self.assertTrue(summaries.lost_fix(ygg, self.reply("", mitigation="Update to 0.2.3-7.el10_2.9 or later."),
                                            self.text("yggdrasil-worker-package-manager 0.2.3 is affected.")))
+        # Cockpit, CVE-2026-91151: RHEL 9's build of the same upstream version is another distribution release.
+        cockpit = {"id": "x", "summary": {"fixed": "", "fixes": [{"for": "RHEL 10", "version": "366.1.1-1.el10_3"},
+                                                                 {"for": "RHEL 9", "version": "366.1.1-1.el9_9"}]},
+                   "fix_keys": ["red_hat:enterprise_linux_10:cockpit<0:366.1.1-1.el10_3"]}
+        self.assertEqual(summaries.lost_fix(cockpit, self.reply("", ["366.1.1-1.el9_9"]), self.text("cockpit flaw.")),
+                         summaries.LOST_FIX + "366.1.1-1.el10_3")
+        self.assertEqual(summaries.lost_fix(cockpit, self.reply("", ["0:366.1.1-1.el10_3", "366.1.1-1.el9_9"]),
+                                            self.text("cockpit flaw.")), "")  # the epoch aside
 
     def test_renamings_and_versions_the_input_no_longer_gives_are_no_loss(self):
         git = {"id": "CVE-2026-105437", "summary": {"fixed": "2.49.1", "fixes": []}}

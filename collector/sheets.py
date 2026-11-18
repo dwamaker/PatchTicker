@@ -12,7 +12,7 @@ from collections import defaultdict
 
 import anthropic
 
-from collector.incidents import is_news, merge_score, page_slug
+from collector.incidents import DISTRO_PACKAGE, is_news, merge_score, page_slug
 from collector.model import CVE_ID, EFFORT, MAX_TOKENS, MODEL, reply_json
 from collector.summary_input import CVE_LINES_MAX, fetch_page, host, main_text, page_mentions
 
@@ -433,8 +433,14 @@ def signature(v):
     return tuple(w for w in re.findall(r"\d+|[a-z]+|[가-힣]+", v.lower()) if w not in NOISE)
 
 
+def distro_build(v):
+    """A distribution's package build ("366.1.1-1.el10_3", "1.2-3+deb12u1", "...+esm1"): its release line is the whole
+    package, since the RHEL 9 build of the same upstream version fixes nothing on RHEL 10 (Cockpit, CVE-2026-91151)."""
+    return bool(DISTRO_PACKAGE.search(str(v)) or "+esm" in str(v).lower())
+
+
 def release_line(v):
-    found = re.match(r"\D{0,2}(\d+)\.(\d+)\.\d", v)
+    found = not distro_build(v) and re.match(r"\D{0,2}(\d+)\.(\d+)\.\d", v)
     return found and found.groups()
 
 
@@ -447,7 +453,8 @@ def union(summary, rows):
     added: a version the summary already shows under any label (KISA's "Multi-Domain Security Management R82.10 ... 이상"
     beside the model's "Check Point R82.10"); an older fix on a release line (major.minor) a labelled line of the same
     product already fixes (Coder's 2.38.2 beside the model's 2.38.4; the headline fixed has no label and never counts:
-    Java's "17.0.21.1" kept Corretto's 17.0.21.1.2 out); and any row under a label of the model's own that names a
+    Java's "17.0.21.1" kept Corretto's 17.0.21.1.2 out; a distribution's package is a line of its own, distro_build);
+    and any row under a label of the model's own that names a
     release (Red Hat Satellite's "... 6.16 for RHEL 9" with its package build, where the sheet gives 6.16.15)."""
     model = [(vcore(f.get("version", "")), f.get("for") or "") for f in summary.get("fixes") or [] if isinstance(f, dict)]
     have = model + ([(vcore(summary["fixed"]), "")] if summary.get("fixed") else [])
