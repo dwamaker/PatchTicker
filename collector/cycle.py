@@ -417,7 +417,9 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
     # Page sheets of the gated Incidents due now, the instant ones first, before any Summary is asked. A missing sheet
     # never holds a Summary back: it is written from what is there. Not on a probe: one request tests the budget.
-    made = sheets.fill(store, instant + rest, claude, http_get, stamp) if store and not probe else {}
+    # The Summaries take the pages the sheets fetched, not fetching them again (shared_pages).
+    keep, http_get = summary_input.shared_pages(http_get)
+    made = sheets.fill(store, instant + rest, claude, keep, stamp) if store and not probe else {}
     for incident in instant + rest:
         if incident["id"] in made and sheets.page_scores(incident, made[incident["id"]]):
             changed.add(month_of(incident["first_seen"]))

@@ -335,6 +335,22 @@ class CycleTest(unittest.TestCase):
                             lambda url, headers=None: PAGE.encode(), datetime(2026, 11, 18), STAMP, set(), probe=True, store=store)
         self.assertFalse(any(p["system"][0]["text"] == sheets.INSTRUCTIONS for p in probe.sent))
 
+    def test_a_page_the_sheets_fetched_is_not_fetched_again_for_the_summary(self):
+        store, inc, fetched = MemoryStore(), self.candidate(), []
+
+        def get(url, headers=None):
+            fetched.append(url)
+            if "h1." in url:
+                raise OSError("HTTP Error 403: Forbidden")
+            return PAGE.encode()
+        claude = FakeClaude(*[facts()] * 3, "{")
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], claude, get, datetime(2026, 11, 18), STAMP, set(), probe=False, store=store)
+        pages = [u for u in fetched if ".example/" in u]
+        self.assertEqual(sorted(pages), sorted(m["url"] for m in inc["mentions"]))  # each once, the refused one too
+        self.assertIn("Text of https://h0.example/a", claude.sent[-1]["messages"][0]["content"])
+        self.assertNotIn("Text of https://h1.example/a", claude.sent[-1]["messages"][0]["content"])
+
 
 if __name__ == "__main__":
     unittest.main()
