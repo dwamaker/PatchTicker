@@ -1605,3 +1605,54 @@ class DisputedAttacksTest(unittest.TestCase):
             summaries.save_reply(first, FakeClaude.message(SSHOLE_SUMMARY), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
                                  "2026-11-18T12:00:00Z", review_with=summaries.BATCH)
         self.assertNotIn("exploited_disputed", first["review_pending"]["summary"])
+
+
+class LostFixTest(unittest.TestCase):
+    """A re-summary never drops a fixed version the stored Summary had while the input still gives it as a fix (owner
+    11-18: Git's 2.49.1 in the integrated test, yggdrasil's only package in the re-summary dry run)."""
+
+    GIT_RECORD = "Git versions before 2.49.1 are affected by a heap buffer overflow in three-way merge."
+
+    def text(self, description=GIT_RECORD):
+        record = json.dumps({"descriptions": [{"lang": "en", "value": description}]})
+        return f"Incident: CVE-2026-105437\nMentions:\nCVE record CVE-2026-105437:\n{record}"
+
+    def reply(self, fixed, fixes=(), mitigation="Update."):
+        return {"fixed": fixed, "fixes": [{"for": "Git", "version": v, "devices": []} for v in fixes],
+                "ko": {"mitigation": mitigation}, "en": {"mitigation": mitigation}}
+
+    def test_a_dropped_version_the_input_still_gives_goes_back(self):
+        git = {"id": "CVE-2026-105437", "summary": {"fixed": "2.49.1", "fixes": [{"for": "Git", "version": "2.49.1"}]}}
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.50.2", ["2.50.2", "2.51.3"]), self.text()),
+                         summaries.LOST_FIX + "2.49.1")
+        # yggdrasil, CVE-2026-18379: the record's fix key bounds at the package; the new mitigation alone naming it is a loss.
+        ygg = {"id": "CVE-2026-18379", "summary": {"fixed": "0:0.2.3-7.el10_2.9", "fixes": []},
+               "fix_keys": ["red_hat:red_hat_enterprise_linux_10:yggdrasil-worker-package-manager<0:0.2.3-7.el10_2.9"]}
+        self.assertTrue(summaries.lost_fix(ygg, self.reply("", mitigation="Update to 0.2.3-7.el10_2.9 or later."),
+                                           self.text("yggdrasil-worker-package-manager 0.2.3 is affected.")))
+
+    def test_renamings_and_versions_the_input_no_longer_gives_are_no_loss(self):
+        git = {"id": "CVE-2026-105437", "summary": {"fixed": "2.49.1", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.49.1"), self.text()), "")
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.49.2"), self.text()), "")  # the same line, higher
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.50.2"), self.text("Git has a heap overflow.")), "")
+        self.assertEqual(summaries.lost_fix({"id": "x"}, self.reply(""), self.text()), "")  # a first Summary
+        krb5 = {"id": "x", "summary": {"fixed": "0:1.21.1-10.el9_8.3", "fixes": []}, "fix_keys": ["red_hat:x:krb5<0:1.21.1-10.el9_8.3"]}
+        self.assertEqual(summaries.lost_fix(krb5, self.reply("1.21.1-10.el9_8.3"), self.text("krb5 flaw.")), "")  # the epoch
+        braun = {"id": "x", "summary": {"fixed": "U/L 95", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(braun, self.reply("U/L 95 build 2041"), self.text("before U/L 95")), "")
+        qt = {"id": "x", "summary": {"fixed": "6.8.9", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(qt, self.reply("6.8.10"), self.text("Qt before 6.8.9 is affected.")), "")
+
+    def test_the_reply_is_kept_back_with_a_note_naming_the_version(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}],
+                    "summary": {"fixed": "10.6p2", "fixes": []}, "fix_keys": ["openbsd:openssh<10.6.2"]}
+        text = (f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+                + " Upgrade to 10.6.2 fixes it.")
+        incident["summary"]["fixed"] = "10.6.2"
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY | {"fixed": "", "fixes": []}), text,
+                                 {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-18T12:00:00Z")
+        self.assertEqual(incident["summary"]["fixed"], "10.6.2")  # the stored Summary stays
+        self.assertEqual(incident["summary_error"]["reason"], summaries.LOST_FIX + "10.6.2")
+        self.assertIn("The input still gives that version as a fix", summaries.retry(incident, text)["note"])

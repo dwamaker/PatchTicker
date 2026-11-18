@@ -692,6 +692,53 @@ def record_says_affected(summary, input_text):
     return ""
 
 
+LOST_FIX = "a fixed version the stored Summary had is missing: "  # retry() gives it its own sentence
+EPOCH = re.compile(r"(?<![\w.:])\d+:(?=\d)")  # "0:" of "0:1.21.1-10.el9_8.3": the same package without it
+FIX_WORDS = r"(?:fixed|patched|resolved|upgrade to|update to|updating to|before|prior to|<\s?)"
+
+
+def lost_fix(incident, summary, input_text):
+    """A re-summary that drops a fixed version the stored Summary had while the input still gives it as a fix (Git in the
+    integrated test, 11-18: the stored 2.49.1, the record's "before 2.49.1", a draw that named none; yggdrasil,
+    CVE-2026-18379, whose only fixed version went). Not a loss: the same version without its epoch, or a version of the
+    same release line at least as high (a group's widest replacing a narrower one: Qt 6.8.9 -> 6.8.10). Named in the new
+    mitigation only is still lost: the fix line and the Easy action read fixed and fixes. A version with no dotted number ("U/L 95") is not judged. The input gives it as a fix when the
+    CVE records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
+    and the records' own text does not call it affected (the whole version: a package's "0.2.3-7.el10_2.9" is not the
+    upstream 0.2.3). The reason, or ""."""
+    stored = incident.get("summary")
+    if not stored:
+        return ""
+    def versions(s):
+        return [v for v in [s.get("fixed"), *(f.get("version") for f in s.get("fixes") or [] if isinstance(f, dict))]
+                if isinstance(v, str) and v.strip()]
+    compact = lambda t: re.sub(r"\s+", "", EPOCH.sub("", t)).lower()  # noqa: E731
+    new_text = compact(" ".join(versions(summary)))  # the Board's fix line reads these, not the mitigation
+    new_lines = [tuple(map(int, m.split("."))) for v in versions(summary) for m in VERSION_RE.findall(v)]
+    descriptions = []
+    for block in SOURCE_RE.finditer(input_text):
+        if not block[1]:
+            try:
+                descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
+            except (ValueError, AttributeError, TypeError):
+                continue
+    affected = page_sheets.record_affected(descriptions)
+    bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
+    for v in dict.fromkeys(versions(stored)):
+        dotted = VERSION_RE.search(v)
+        if not dotted or compact(v) in new_text:
+            continue
+        line = tuple(map(int, dotted[0].split(".")))
+        if any(n[:2] == line[:2] and n >= line for n in new_lines) or EPOCH.sub("", v.strip()) in affected:
+            continue
+        bare = EPOCH.sub("", v.strip())
+        given = bare in bounds or any(re.search(rf"{FIX_WORDS}[^.\n]{{0,60}}?(?<![\w.]){re.escape(form)}(?![\w.]|-\d)",
+                                                input_text, re.I) for form in {v.strip(), bare})
+        if given:
+            return f"{LOST_FIX}{v.strip()}"
+    return ""
+
+
 # A run of letters outside ASCII, Latin-1 and Latin Extended-A/B ("é", "ü", "İ", "µ") and Hangul (jamo, compatibility
 # jamo, syllables). Not letters (digits, marks, ZWNJ, "–") end a run.
 STRAY_RUN = re.compile(r"(?:(?![\x00-\x7f\u00aa-\u024f\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7ff])[^\W\d_])+")
@@ -936,7 +983,10 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
         summary["exploited_disputed"] = True
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
-    conflict = fixed_conflict(incident, summary) or record_says_affected(summary, text) or stray_script(incident, summary, text)
+    # A fixed version the stored Summary had and the input still gives is never lost: asked again, and when the tries
+    # run out the stored Summary stays.
+    conflict = (fixed_conflict(incident, summary) or record_says_affected(summary, text) or lost_fix(incident, summary, text)
+                or stray_script(incident, summary, text))
     if conflict:
         failed(incident, conflict)
         return
@@ -1150,6 +1200,8 @@ RETRY_SENTENCES = [
     # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
     # 11-15: the bound comes from the CVE records' fix keys, which the input may not hold (CVE-2026-125712, 1.28.4);
     # naming it as the version to write sent the model to it, and the number check rejected it.
+    (LOST_FIX, " The input still gives that version as a fix, and the entry shown today names it: keep it in `fixed` or"
+               " `fixes` (with its product line) unless the input now says it does not fix the flaw."),
     (RECORD_AFFECTED, " The CVE record's own text calls that version affected, so it is not a fixed version: in `fixed`"
                       " and `fixes` name only a version a source says fixes the flaw, such as the one the record"
                       " recommends upgrading to."),
