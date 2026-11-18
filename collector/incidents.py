@@ -48,7 +48,18 @@ def board_view(incident):
     view = {k: incident[k] for k in PAGE_FIELDS if k in incident} | order_fields(incident, maps=True)
     if incident.get("summary_error", {}).get("final"):
         view["summary_error"] = {"final": True}
-    return view | known_field(incident) | public_field(incident, view["cves"]) | distro_fields(incident, view["cves"])
+    return (view | known_field(incident) | public_field(incident, view["cves"]) | distro_fields(incident, view["cves"])
+            | score_by_field(incident))
+
+
+def score_by_field(incident):
+    """When the shown score is a page's raise (sheets.page_scores), whose it is and what the CVE record gives, for the one
+    plain line under the Summary (owner 11-18): {"score_by": {"cvss", "by", "record"}}. Only the top CVE's."""
+    top = top_cve(incident)
+    entry = (incident.get("cve_scores") or {}).get(top) if top else None
+    if not entry or not entry.get("by") or "record" not in entry:
+        return {}
+    return {"score_by": {"cvss": entry["cvss"], "by": entry["by"], "record": entry["record"]["cvss"]}}
 
 
 def distro_fields(incident, order):

@@ -264,6 +264,13 @@ export const exploitedCves = (i) => (i.cves || []).filter((c) => cveExploit(i, c
 // One CVE's own score, null when the collector has none for it.
 export const cveScore = (i, cve) => (Number.isFinite(i.cve_scores?.[cve]?.cvss) ? i.cve_scores[cve].cvss : null);
 // The CVE the Incident's score (the highest) belongs to, named only in a group: one CVE needs no name.
+// The shown score when a page raised it (the collector's score_by: the finder's own 9.2 over the record's 8.1): one plain
+// line under the Summary on the Board and the Incident page, nothing beside the score itself (owner 11-18).
+export const scoreByLine = (i, lang) => {
+  const s = i.score_by;
+  const ok = s && Number.isFinite(s.cvss) && Number.isFinite(s.record) && typeof s.by === 'string' && s.by.trim() && s.cvss === i.cvss;
+  return ok ? WORDS[lang].scoreBy(s.cvss.toFixed(1), s.by.trim(), s.record.toFixed(1)) : '';
+};
 export const scoreCve = (i) => ((i.cves?.length || 0) > 1 && i.cves.includes(i.top_cve) && Number.isFinite(i.cvss) ? i.top_cve : null);
 
 // N1 (owner, 11-15): the searched CVE, when the search names one of the Incident's CVEs that does not lead it, with its line
@@ -706,6 +713,8 @@ export const WORDS = {
     distroTable: (n) => `배포판별 패키지 (${n})`, distroSources: '출처:',
     distroStates: { fixed: (v) => `${v}에서 수정됨`, not_affected: '영향 없음', not_fixed: '아직 수정 안 됨', wont_fix: '수정 계획 없음' },
     scoreOf: (cve) => `${cve}의 점수`, kevSource: 'CISA KEV',
+    // "에서", not "가/이": a Latin name gives no final sound to pick the particle by ("Street #CySec").
+    scoreBy: (score, by, record) => `${score}는 ${by}에서 매긴 점수입니다. CVE 기록의 점수는 ${record}입니다.`,
     none: '고친 버전은 아직 확인하지 못했습니다. 아래 원문 링크를 살펴보세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
     newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기', tagsMore: (n) => `외 ${n}개`, tagsRest: (n) => `나머지 ${n}개 보기`,
@@ -728,6 +737,7 @@ export const WORDS = {
     distroTable: (n) => `Distribution packages (${n})`, distroSources: 'Sources:',
     distroStates: { fixed: (v) => `fixed in ${v}`, not_affected: 'not affected', not_fixed: 'not fixed yet', wont_fix: 'will not be fixed' },
     scoreOf: (cve) => `Score of ${cve}`, kevSource: 'CISA KEV',
+    scoreBy: (score, by, record) => `The ${score} score is ${by}'s. The CVE record gives ${record}.`,
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
     newTab: ' (opens in a new tab)', report: 'Report a mistake', tagsMore: (n) => `+${n} more`, tagsRest: (n) => `Show ${n} more`,
@@ -750,6 +760,7 @@ export const WORDS = {
     distroTable: (n) => `ディストリビューション別パッケージ (${n})`, distroSources: '出典:',
     distroStates: { fixed: (v) => `${v} で修正済み`, not_affected: '影響なし', not_fixed: '未修正', wont_fix: '修正予定なし' },
     scoreOf: (cve) => `${cve} のスコア`, kevSource: 'CISA KEV',
+    scoreBy: (score, by, record) => `${score} は ${by} が付けたスコアです。CVE レコードのスコアは ${record} です。`,
     none: '修正バージョンはまだ確認できていません。下の原文リンクを確認してください。',
     mentionKinds: { advisory: 'セキュリティ勧告', writeup: '解説記事', cve_record: 'CVE レコード', discussion: '議論', curator: 'ニュースレター', notice: 'KISA 告知', repo: 'リポジトリ' },
     newTab: '（新しいタブで開きます）', report: '誤りを報告', tagsMore: (n) => `ほか${n}件`, tagsRest: (n) => `残り${n}件を表示`,

@@ -9,7 +9,7 @@ from datetime import datetime
 
 from collector import sheets, summaries
 from collector.cycle import route_summaries
-from collector.incidents import absorb, merge_score
+from collector.incidents import absorb, board_view, merge_score
 from collector.summary_input import cve_fields, scored
 from collector.store import MemoryStore
 from collector.summary_input import page_mentions
@@ -148,6 +148,17 @@ class PageScoreTest(unittest.TestCase):
         self.assertEqual(json.loads(cve_fields(record, raised)),
                          {"descriptions": [], "cvss": 8.1, "vector": "CVSS:3.1/AV:N", "page_cvss": 9.2, "page_cvss_by": "Calif"})
         self.assertEqual(scored("CVE-2026-1000", {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}), "CVE-2026-1000 (CVSS 8.1, CVSS:3.1/AV:N)")
+
+    def test_the_board_view_carries_whose_the_shown_score_is_and_nothing_else_does(self):
+        inc = self.java() | {"products": []}
+        sheets.page_scores(inc, [finder_page()])
+        self.assertEqual(board_view(inc)["score_by"], {"cvss": 9.2, "by": "Calif", "record": 8.1})
+        self.assertNotIn("score_by", board_view(self.java() | {"products": []}))  # no raise: no field
+        group = self.java() | {"cves": ["CVE-2026-1000", "CVE-2026-1001"], "products": []}
+        group["cve_scores"]["CVE-2026-1001"] = {"cvss": 9.5, "vector": "CVSS:3.1/AV:N"}
+        group["cvss"] = 9.5
+        sheets.page_scores(group, [finder_page()])  # raises the other CVE: not the shown score, no line
+        self.assertNotIn("score_by", board_view(group))
 
     def test_a_merge_of_incidents_keeps_the_raise_and_the_record_under_it(self):
         target = incident() | {"cvss": 7.0, "cve_scores": {}, "products": []}

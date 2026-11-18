@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scoreByLine, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -115,6 +115,7 @@ section{margin-top:1.5rem}
 code{font-family:var(--mono);font-size:.875rem}
 .command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:.375rem .625rem;white-space:pre-wrap;overflow-wrap:break-word}
 .caution{color:var(--ink-2);font-size:.875rem}
+.score-by{color:var(--ink-2)}
 .tags{display:flex;flex-wrap:wrap;gap:.375rem;padding:0;list-style:none}
 .tags li{display:flex;max-width:100%}
 .tags a{display:inline-flex;align-items:center;justify-content:center;max-width:100%;border-radius:999px;text-decoration:none}
@@ -351,7 +352,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
   const main = [`<article><h1>${esc(title)}</h1>`,
     banner(i, t),
     p(plain, 'easy'),
-    section('summary', t.summary, p(s.summary)),
+    section('summary', t.summary, p(s.summary) + p(scoreByLine(i, lang), 'score-by')),
     section('conditions', t.conditions, ul(strings(s.conditions).map((c) => condition(c, i.cves)))),
     section('todo', t.todo, whatToDo(i, lang) + othersLink(i, lang, t, others) + distroFold(i, lang, t)),
     section('products', t.products, products(i, lang)),
