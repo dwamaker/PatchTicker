@@ -14,7 +14,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import alert, curators, cve_lines, discord, indexnow, kisa, news, summaries
+from collector import alert, curators, cve_lines, discord, indexnow, kisa, news, sheets, summaries
 from collector.cycle import run_cycle
 from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -173,6 +173,8 @@ def smoke(claude):
         # An exploited flag the pattern misses: the same review with the attacks question and its schema (owner 11-17).
         "review with attacks question": summaries.review_params(SMOKE_SUMMARY | {"exploited": True, "exploited_unconfirmed": True},
                                                                 SMOKE_INCIDENT),
+        # A page's fact sheet (gated Incidents, collector.sheets): its own schema and instructions.
+        "page sheet": sheets.sheet_params(SMOKE_INCIDENT, "https://widget.example/advisory", SMOKE_TEXT),
     }
     code = 0
     for name, params in shapes.items():

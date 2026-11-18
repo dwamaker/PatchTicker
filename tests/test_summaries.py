@@ -1382,3 +1382,136 @@ class LanguageGapsTest(unittest.TestCase):
         for words in ("출처", "수정 버전", "제조사", "never a word of any other language", "empty in both or in neither",
                       '"prior to X"', "a page that could not be read"):
             self.assertIn(words, summaries.INSTRUCTIONS)
+
+
+class PagesBudgetTest(unittest.TestCase):
+    """Owner's trial 11-18: with four pages in the input, 6 of 9 long one-CVE replies were cut off at MAX_TOKENS and 0 of 9
+    at MAX_TOKENS_RETRY, so an input with more than two pages gets the larger room from its first try."""
+
+    def text(self, pages):
+        record = "CVE record CVE-2026-1:\nWidget 1.2 lets anyone in."
+        return "\n\n".join([record, *(f"Text of https://host{n}.example/a:\nPage {n}." for n in range(pages))])
+
+    def test_more_than_two_pages_ask_with_the_larger_budget_and_two_do_not(self):
+        one = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"]}
+        self.assertEqual(summaries.retry(one, self.text(3))["max_tokens"], MAX_TOKENS_RETRY)
+        self.assertNotIn("max_tokens", summaries.retry(one, self.text(2)))  # the CVE record is not a page
+        self.assertEqual(summaries.retry(one | {"cves": ["CVE-2026-1", "CVE-2026-2"]}, self.text(3))["max_tokens"], MAX_TOKENS_GROUP)
+
+    def test_a_cut_off_at_the_larger_budget_is_asked_again_with_the_same_room_never_less(self):
+        one = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"]}
+        for pages in (3, 1, 3):  # the next input may carry fewer pages: the cut-off keeps the room
+            summaries.failed(one, "stop_reason max_tokens")
+            self.assertEqual(summaries.retry(one, self.text(pages))["max_tokens"], MAX_TOKENS_RETRY)
+        self.assertTrue(one["summary_error"]["final"])  # MAX_TRIES ends it
+
+    def test_the_batch_and_the_instant_path_both_send_it(self):
+        hosts = ("vendor.example", "cert.example", "blog.example")
+        incident = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-11-18T00:00:00Z",
+                    "brief": {"text": "Widget flaw.", "lead": f"https://{hosts[0]}/a"}, "products": [], "urls": [],
+                    "mentions": [{"kind": "advisory", "url": f"https://{h}/a", "title": "Widget"} for h in hosts]}
+        page = lambda url, headers=None: b"<html><body><main><p>Widget 1.2 is affected.</p></main></body></html>"
+        claude = FakeClaude()
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.submit_batch([incident], claude, page)
+        self.assertEqual(claude.batches[0]["requests"][0]["params"]["max_tokens"], MAX_TOKENS_RETRY)
+        claude = FakeClaude(cut("{"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(incident, claude, page, "2026-11-18T00:00:00Z")
+        self.assertEqual((claude.sent[0]["max_tokens"], claude.sent[0].get("timeout")), (MAX_TOKENS_RETRY, None))
+
+
+class RecordSaysAffectedTest(unittest.TestCase):
+    """A fixed version the CVE record's own text calls affected is kept back and asked again (Apache Roller,
+    CVE-2026-129448, integration test 11-18)."""
+
+    ROLLER = ("Deserialization of Untrusted Data in Apache Roller versions 4.0.0 through 6.1.4 allows an unauthenticated"
+              " remote attacker to execute arbitrary code.\n\nThis is the same vulnerability as CVE-2026-82384, which listed"
+              " only Apache Roller 6.1.5 as affected. This issue is being actively exploited.\n\nUsers are recommended to"
+              " upgrade to Apache Roller 6.1.6 or later.")
+    GIT = "Git versions before 2.49.1 are affected by a flaw in the credential helper. Fixed in 2.49.1."
+
+    def text(self, description):
+        record = json.dumps({"descriptions": [{"lang": "en", "value": description}]})
+        return f"Incident: CVE-2026-129448\nMentions:\nCVE record CVE-2026-129448:\n{record}"
+
+    def test_a_version_the_record_calls_affected_is_no_fix_and_its_bound_still_is(self):
+        self.assertTrue(summaries.record_says_affected({"fixed": "6.1.5", "fixes": []}, self.text(self.ROLLER))
+                        .startswith(summaries.RECORD_AFFECTED + "6.1.5"))
+        self.assertTrue(summaries.record_says_affected({"fixed": "", "fixes": [{"for": "Apache Roller", "version": "6.1.5"}]},
+                                                       self.text(self.ROLLER)))
+        self.assertEqual(summaries.record_says_affected({"fixed": "6.1.6", "fixes": []}, self.text(self.ROLLER)), "")
+        self.assertEqual(summaries.record_says_affected({"fixed": "2.49.1", "fixes": []}, self.text(self.GIT)), "")
+        # A page's words are not the record's.
+        self.assertEqual(summaries.record_says_affected({"fixed": "6.1.5", "fixes": []},
+                                                        "Incident: x\nText of https://a.example/:\n6.1.5 is affected"), "")
+
+    def test_the_reply_is_kept_back_with_its_own_retry_sentence(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        # The Lead's text holds every number the borrowed reply uses; the record's text calls 6.1.5 affected.
+        text = (f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+                + "\n" + self.text(self.ROLLER).split("\n", 2)[2])
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY | {"fixed": "6.1.5"}), text,
+                                 {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-18T00:00:00Z")
+        self.assertNotIn("summary", incident)
+        self.assertTrue(incident["summary_error"]["reason"].startswith(summaries.RECORD_AFFECTED + "6.1.5"), incident["summary_error"])
+        self.assertIn("The CVE record's own text calls that version affected", summaries.retry(incident, text)["note"])
+
+
+class FlawNameTitleTest(unittest.TestCase):
+    """The flaw's name in a title comes from code (owner 11-18): a name two Mention titles carry is added; the model's own
+    closing brackets stay."""
+
+    def mentions(self, *titles):
+        return {"mentions": [{"kind": kind, "url": f"https://h{n}.example/", "title": t} for n, (kind, t) in enumerate(titles)]}
+
+    def summary(self, en, ko="위젯 결함"):
+        return {"ko": {"title": ko, "easy_title": "위젯 해킹 위험"}, "en": {"title": en, "easy_title": "Widget hackable"}}
+
+    def test_a_name_counts_when_two_titles_carry_it_letter_for_letter(self):
+        two = self.mentions(("writeup", "Java4Shell: a flaw in Base64"), ("advisory", "Patch now for Java4Shell"))
+        self.assertEqual(summaries.trusted_names(two), ["Java4Shell"])
+        for titles in ((("writeup", "Java4Shell"), ("writeup", "java4shell")), (("writeup", "Java4Shell"), ("repo", "Java4Shell PoC")),
+                       (("writeup", "Java4Shell"), ("cve_record", "Java4Shell in Widget")),
+                       (("writeup", "Backdoor found"), ("writeup", "Backdoor in X")),
+                       # CVE-2026-124308: two oss-security posts named a function, "DecLibRecon::createSubPicRefBufs".
+                       (("discussion", "UAF in DecLibRecon::createSubPicRefBufs"), ("discussion", "DecLibRecon::createSubPicRefBufs again")),
+                       (("discussion", "x.getFile leaks"), ("discussion", "p->getFile too"))):
+            with self.subTest(titles):
+                self.assertEqual(summaries.trusted_names(self.mentions(*titles)), [])
+
+    def test_the_models_own_brackets_stay_and_the_name_follows_them(self):
+        for en, want in (("Widget flaw lets attackers in (SSRF)", "Widget flaw lets attackers in (SSRF) (Java4Shell)"),
+                         ("Widget flaw (no login needed)", "Widget flaw (no login needed) (Java4Shell)"),
+                         ("Widget flaw (Java4Shell, SSRF)", "Widget flaw (Java4Shell, SSRF)"),  # already holds it
+                         ("Widget flaw lets attackers in", "Widget flaw lets attackers in (Java4Shell)")):
+            with self.subTest(en):
+                summary = self.summary(en)
+                summaries.name_titles(summary, ["Java4Shell"])
+                self.assertEqual(summary["en"]["title"], want)
+
+    def test_a_title_showing_one_trusted_name_gets_no_second_bracket_and_the_easy_title_none(self):
+        summary = self.summary("Widget decoder flaw runs code", ko="위젯 디코더 결함 (Java4Shell)")
+        summaries.name_titles(summary, ["Java4Shell", "Base64Bleed"])
+        self.assertEqual(summary["en"]["title"], "Widget decoder flaw runs code (Java4Shell, Base64Bleed)")
+        self.assertEqual(summary["ko"]["title"], "위젯 디코더 결함 (Java4Shell)")
+        # N-able, integration test 11-18: "(Able2Shell)" became "(Able2Shell) (4EverAble2Shell)".
+        nable = self.summary("N-able N-central server remote code execution flaws (Able2Shell)")
+        summaries.name_titles(nable, ["4EverAble2Shell", "Able2Shell"])
+        self.assertEqual(nable["en"]["title"], "N-able N-central server remote code execution flaws (Able2Shell)")
+        self.assertEqual((summary["en"]["easy_title"], summary["ko"]["easy_title"]), ("Widget hackable", "위젯 해킹 위험"))
+        nothing = self.summary("Widget flaw (VSA-2026-062)")
+        summaries.name_titles(nothing, [])
+        self.assertEqual(nothing["en"]["title"], "Widget flaw (VSA-2026-062)")
+
+    def test_a_stored_summary_gets_the_name(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"], "title": "SSHole: musl OpenSSH"},
+                                            {"kind": "discussion", "url": "https://news.example/1", "title": "SSHole explained"}]}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        reply = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"title": SSHOLE_SUMMARY["en"]["title"] + " (OSS advisory)"}}
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                             "2026-11-18T00:00:00Z")
+        self.assertNotIn("summary_error", incident, incident.get("summary_error"))
+        self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"] + " (OSS advisory) (SSHole)")
+        self.assertEqual(incident["summary"]["ko"]["title"], SSHOLE_SUMMARY["ko"]["title"] + " (SSHole)")

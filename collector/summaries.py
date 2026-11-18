@@ -8,20 +8,21 @@ shares (model), same_as merging (same_event) and the per-CVE lines batch (cve_li
 """
 
 import html
+import json
 import re
 import sys
 
 import anthropic
 from anthropic.types.messages.batch_create_params import Request
 
-from collector import hn, review
+from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
 from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
-from collector.summary_input import CVE_LINES_ONLY, is_hn, mention_kinds, summary_input, trusted
+from collector.summary_input import CVE_LINES_ONLY, SOURCE_RE, is_hn, mention_kinds, summary_input, trusted
 
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
@@ -171,6 +172,7 @@ Output:
 # told a reader of another flaw they were safe).
 GROUP_INSTRUCTIONS = """This Incident holds several CVEs, fixed together. For it, these rules apply instead of two lines above: title, summary and the easy fields are written around the gravest flaw, not only the Lead CVE; and a condition that only some CVEs need is kept in conditions and easy_conditions with their ids, not in easy or easy_title. With the rest of the rule for groups above:
 - The title names the gravest kind of flaw in the group (code execution or an authentication bypass before a slowdown or a cookie leak), usually the Lead CVE's; when another CVE is graver, it names that kind too. The summary's first sentence describes the gravest flaw; its second sentence says, by kind, in a few words and without counting them, what else the same release fixes. When fixed and fixes are empty and mitigation says there is no fix or no source names one, it says by kind what other flaws the group holds, never that a release or an update fixes them.
+- When sources name the gravest flaw's component and the upstream project its code comes from (OpenJDK's Base64 decoder), the summary's first sentence names both; its second sentence still says, by kind, what else the same release fixes.
 - Title, summary, easy, easy_title and easy_action of a group carry NO sentence about who or what is not affected, and NO configuration, role, login, component or version limit that belongs to one CVE. Such limits go only into conditions, each with the ids of the CVEs it holds for (the form the rules above give), and into easy_conditions. A version range in the summary is the group's widest, versions before the fixed version of each product line, never one CVE's range or lower bound.
 - The easy fields warn of the gravest danger.
 - A stopgap that covers only some of the CVEs: mitigation names the ids it covers and says the update is the only fix for the others.
@@ -662,6 +664,30 @@ def fixed_conflict(incident, summary):
     return ""
 
 
+RECORD_AFFECTED = "a CVE record's text calls "  # retry() gives it its own sentence
+
+
+def record_says_affected(summary, input_text):
+    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
+    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
+    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
+    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
+    descriptions = []
+    for block in SOURCE_RE.finditer(input_text):
+        if not block[1]:  # a "CVE record" block: cve_fields() JSON on one line
+            try:
+                descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
+            except (ValueError, AttributeError, TypeError):
+                continue
+    affected = page_sheets.record_affected(descriptions)
+    for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
+                                         if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
+        named = set(page_sheets.VERSION.findall(text)) if isinstance(text, str) else set()
+        if named & affected:
+            return f"{RECORD_AFFECTED}{sorted(named & affected)[0]} affected, yet the reply names it as fixed"
+    return ""
+
+
 # A run of letters outside ASCII, Latin-1 and Latin Extended-A/B ("é", "ü", "İ", "µ") and Hangul (jamo, compatibility
 # jamo, syllables). Not letters (digits, marks, ZWNJ, "–") end a run.
 STRAY_RUN = re.compile(r"(?:(?![\x00-\x7f\u00aa-\u024f\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7ff])[^\W\d_])+")
@@ -860,10 +886,10 @@ def is_budget_error(err):
     return status == 402 or status == 400 and bool(re.search(r"credit balance|usage limit|spend limit", err.message, re.I))
 
 
-def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False):
+def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False, sheets=()):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
-    candidates: its same_as_candidates(), listed beside the input."""
-    text, seen = summary_input(incident, http_get), basis(incident)
+    candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill)."""
+    text, seen = summary_input(incident, http_get, sheets), basis(incident)
     asked = params(text, candidates=same_as_text(candidates), **retry(incident, text))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
@@ -897,9 +923,10 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
     except Rejected as err:
         failed(incident, str(err))
         return
+    name_titles(summary, trusted_names(incident, text))
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
-    conflict = fixed_conflict(incident, summary) or stray_script(incident, summary, text)
+    conflict = fixed_conflict(incident, summary) or record_says_affected(summary, text) or stray_script(incident, summary, text)
     if conflict:
         failed(incident, conflict)
         return
@@ -1072,6 +1099,9 @@ RETRY_SENTENCES = [
     # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
     # 11-15: the bound comes from the CVE records' fix keys, which the input may not hold (CVE-2026-125712, 1.28.4);
     # naming it as the version to write sent the model to it, and the number check rejected it.
+    (RECORD_AFFECTED, " The CVE record's own text calls that version affected, so it is not a fixed version: in `fixed`"
+                      " and `fixes` name only a version a source says fixes the flaw, such as the one the record"
+                      " recommends upgrading to."),
     (FIXED_CONFLICT, " A version below that bound is still affected. In `fixed` and `fixes` name only a fixed version the"
                      " input itself writes; when the input names none at or above the bound, leave `fixed` empty and never"
                      " write the bound yourself. A distribution's package version (Red Hat's 1.16.1-8.el8_10) goes only"
@@ -1131,22 +1161,28 @@ def failed(incident, reason):
                                  | ({"draft": draft} if draft else {}) | ({"final": True} if tries >= MAX_TRIES else {}))
 
 
-def budget(incident):
-    """max_tokens for this Incident's next Summary request: a group's from the first try, else the larger one once a
-    reply was cut off."""
+def budget(incident, text=""):
+    """max_tokens for this Incident's next Summary request: a group's from the first try; else the larger one when its
+    input (text) carries more than two pages, or once a reply was cut off. It never shrinks between tries: a cut-off
+    try is asked again with the same larger room, and MAX_TRIES ends it."""
     if len(incident.get("cves") or []) > 1:
         return MAX_TOKENS_GROUP
     error = incident.get("summary_error", {})
+    # Owner's trial 11-18: with four pages the model reasons longer; 6 of 9 long one-CVE replies were cut off at
+    # MAX_TOKENS, 0 of 9 at MAX_TOKENS_RETRY. A cap, not a charge: a shorter reply costs the same.
+    pages = sum(1 for block in SOURCE_RE.finditer(text) if block[1])
     # An error stored before "cut" came says so by its reason only.
-    return MAX_TOKENS_RETRY if error.get("cut") or error.get("reason", "").startswith(CUT_OFF) else MAX_TOKENS
+    cut = error.get("cut") or error.get("reason", "").startswith(CUT_OFF)
+    return MAX_TOKENS_RETRY if cut or pages > 2 else MAX_TOKENS
 
 
-def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
+def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: [], sheets=lambda incident: ()):
     """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
-    candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked."""
+    candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked. sheets: an
+    Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
-    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
+    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get, sheets(i)), "basis": basis(i)}
                 | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
                 for n, i in enumerate(incidents[:limit])}
     by_id = {i["id"]: i for i in incidents[:limit]}
@@ -1210,8 +1246,8 @@ def retry(incident, text=""):
     A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
     10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact)."""
     reason = incident.get("summary_error", {}).get("reason", "")
-    # A one-CVE Incident never cut off asks with params()' own MAX_TOKENS, as before.
-    room = {"max_tokens": budget(incident)} if budget(incident) != MAX_TOKENS else {}
+    # A one-CVE Incident never cut off and read from two pages or fewer asks with params()' own MAX_TOKENS, as before.
+    room = {"max_tokens": budget(incident, text)} if budget(incident, text) != MAX_TOKENS else {}
     if not reason:
         return room
     # One sentence per reason, each keyed on the start of its reason; save_reply joins soft ones (audit F3, F4).
@@ -1388,6 +1424,39 @@ def parse(reply, input_text, urls):
     # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
     summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
     return summary
+
+
+# The flaw's own name in a title is added here, never asked for by a prompt line (owner's trial 11-18, 66 Incidents:
+# names right 5 -> 14, names missed 13 -> 4). The model's own closing brackets stay (owner 11-18: "(SSRF)", "(no login
+# needed)" tell a reader something). A name-looking word: ...2Shell, ...4Shell, ...Bleed, ...door and the like, or a
+# coinage with a capital inside (regreSSHion). Never a word a title writes as code, after "::", "." or "->": oss-security
+# titles name functions ("DecLibRecon::createSubPicRefBufs", two posts of CVE-2026-124308).
+NAME_WORD = re.compile(r"(?<![:.>])\b[\w-]*(?:[24][Ss]hell|SHELL|Bleed|bleed|SSHole|sshole|door|Gate|Hole)\b"
+                       r"|(?<![:.>])\b[a-z]+[A-Z]\w*\b")
+NOT_A_NAME = {"backdoor"}  # a kind of flaw that many titles carry, not one flaw's name
+
+
+def trusted_names(incident, input_text=""):
+    """A name the input's fact sheet gives from two or more source hosts (the request's own input: the batch path keeps
+    it), then the name-looking words that two or more of the Incident's Mention titles carry letter for letter. Repos and
+    CVE records do not count. One source alone is not enough: round 3 then gave advisory titles and "UNIX Hard Link" as names."""
+    names = page_sheets.sheet_names(input_text)
+    titles = [m.get("title") or "" for m in incident["mentions"] if m["kind"] not in ("repo", "cve_record")]
+    words = sorted({w for t in titles for w in NAME_WORD.findall(t)})
+    return names + [w for w in words if w.lower() not in NOT_A_NAME and sum(w in t for t in titles) >= 2
+                    and w.lower() not in {n.lower() for n in names}]
+
+
+def name_titles(summary, names):
+    """" (Name, ...)" at the end of the Korean and the English title when it holds none of the trusted names anywhere
+    (inside a bracket of its own counts): a title that shows one name gets no second bracket (N-able's "(Able2Shell)"
+    became "(Able2Shell) (4EverAble2Shell)"). A closing bracket the model wrote stays before it: "... (SSRF) (Name)".
+    The Easy title is left alone: five plain words for a reader who never heard of the product, where a coined name says
+    nothing."""
+    for lang in ("ko", "en"):
+        title = summary[lang]["title"]
+        if names and not any(n.lower() in title.lower() for n in names):
+            summary[lang]["title"] = f"{title.rstrip()} ({', '.join(names)})"
 
 
 def input_cves(input_text):

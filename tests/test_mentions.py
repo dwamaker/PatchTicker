@@ -467,19 +467,25 @@ class StoryPageTest(unittest.TestCase):
         self.assertEqual([m["kind"] for m in target["mentions"]], ["discussion", "advisory", "cve_record"])
         self.assertEqual(target["brief"]["lead"], psirt)
 
-    def test_the_records_own_cvss_is_used_cna_first_then_adp_and_v3_before_v4(self):
+    def test_the_records_highest_cvss_of_any_container_and_version_is_used(self):
         from collector.cvelist import record_cvss
         self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}, {}])[0], 8.1)  # sshole's CNA score
         self.assertEqual(record_cvss([{}, {"metrics": [{"cvssV3_1": {"baseScore": 7.5}}]}])[0], 7.5)  # CISA ADP only
-        self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3}}, {"cvssV3_1": {"baseScore": 8.8}}]}])[0], 8.8)
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3}}, {"cvssV3_1": {"baseScore": 8.8}}]}])[0], 9.3)
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 6.5}}]}, {"metrics": [{"cvssV3_1": {"baseScore": 9.8}}]}])[0], 9.8)
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV2_0": {"baseScore": 10.0}}, {"cvssV3_1": {"baseScore": 7.5}}]}])[0], 7.5)
         self.assertEqual(record_cvss([{"metrics": [{"other": {"content": {}}}]}]), (None, ""))
 
-    def test_a_records_score_comes_with_the_vector_of_the_same_metric_cna_first_v3_1_before_v4_0(self):
+    def test_a_records_score_comes_with_the_vector_of_the_same_metric_and_a_tie_keeps_v3_1_then_the_cna(self):
         from collector.cvelist import record_cvss
         v31, v40, adp = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", "CVSS:4.0/AV:N/AC:L", "CVSS:3.1/AV:L/AC:H"
         cna = {"metrics": [{"cvssV4_0": {"baseScore": 9.3, "vectorString": v40}},
                            {"cvssV3_1": {"baseScore": 9.8, "vectorString": v31}}]}
         self.assertEqual(record_cvss([cna, {"metrics": [{"cvssV3_1": {"baseScore": 5.5, "vectorString": adp}}]}]), (9.8, v31))
+        tie = {"metrics": [{"cvssV4_0": {"baseScore": 9.8, "vectorString": v40}}, {"cvssV3_1": {"baseScore": 9.8, "vectorString": v31}}]}
+        self.assertEqual(record_cvss([tie]), (9.8, v31))
+        self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 9.8, "vectorString": v31}}]},
+                                      {"metrics": [{"cvssV3_1": {"baseScore": 9.8, "vectorString": adp}}]}]), (9.8, v31))
         self.assertEqual(record_cvss([{"metrics": [{"cvssV4_0": {"baseScore": 9.3, "vectorString": v40}}]}]), (9.3, v40))
         self.assertEqual(record_cvss([{"metrics": [{"cvssV3_1": {"baseScore": 8.1}}]}]), (8.1, ""))  # a score with no vector
 

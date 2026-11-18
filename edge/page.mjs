@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -202,7 +202,10 @@ function banner(i, t) {
   if (why && hit.length) why += ` · ${hit.map(esc).join(', ')}`;
   const poc = !reason && i.summary?.poc_public === true; // red like the Board's .kev line, the one red reason (critique 14)
   if (poc) why = esc(t.poc);
-  const named = top ? `<p class="reason">${esc(t.scoreOf(top))}: CVSS ${cvss.toFixed(1)}</p>` : '';
+  // A score a page raised: both standards' scores, higher first (owner 11-18), one-CVE Incidents too.
+  const pair = rating ? scorePair(i) : '';
+  const named = top ? `<p class="reason">${esc(t.scoreOf(top))}: ${esc(pair || `CVSS ${cvss.toFixed(1)}`)}</p>`
+    : pair ? `<p class="reason">${esc(pair)}</p>` : '';
   return `<div class="banner risk-${level}${pending ? ' unrated' : ''}">${sign}${ring}${named}${why ? `<p class="reason${poc ? ' kev' : ''}">${why}</p>` : ''}</div>`;
 }
 

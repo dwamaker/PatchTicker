@@ -12,9 +12,11 @@ from urllib.parse import urlsplit
 from collector import cvelist
 from collector.incidents import cve_order, is_news, top_cve
 
-PAGE_CHARS = 8000  # shortcut: page text past this is cut; sshhole.com's Mitigation sits at ~7,000.
-MAX_PAGES = 2
-PAGE_KINDS = ("advisory", "writeup", "discussion")  # in Lead order; repos and newsletters are not read
+PAGE_CHARS = 8000  # a longer page keeps its opening and the sentences about the Incident (focused) up to this
+# Owner's trial, 11-18 (variant C): 4 pages, chosen by readable() and cut by focused(), raised ground-truth facts in the
+# Summary from 36% to 52% on 9 multi-source Incidents, with no wrong fixed version, for 14% more input tokens.
+MAX_PAGES = 4
+PAGE_KINDS = ("advisory", "writeup", "discussion")  # the Mentions list's order; repos are never read
 # The CVE JSON 5 record of cvelist.record_url, for one too fresh for the raw path (three 404s in the 2026-11-08 run).
 CVE_API_RECORD = "https://cveawg.mitre.org/api/cve/{cve}"
 # Owner, 2026-11-10: a Summary writes per-CVE lines for this many CVEs (IBM API Connect's 204 ran past MAX_TOKENS_RETRY);
@@ -30,7 +32,7 @@ INPUT_CHARS_MAX = 400_000  # about 100k tokens; past it the descriptions of the 
 LEAD_MARK = " (the Lead: its numbers win when sources disagree)"
 
 
-def summary_input(incident, http_get):
+def summary_input(incident, http_get, sheets=()):
     # Step 4: a group's CVEs in cve_order (its Lead CVE first, the twelve records read are the highest-scored) with each
     # CVE's score; a one-CVE input stays as it was, byte for byte.
     cves, group = cve_order(incident), len(incident["cves"]) > 1
@@ -58,17 +60,22 @@ def summary_input(incident, http_get):
     # Pages come before the CVE records and the Lead is marked: CVE text can round a boundary (sshole's
     # record says "between 256 and 1024", its write-up "between 257 and 1024") and the model followed
     # whichever it read first.
-    readable = [m for m in preferred if m["kind"] in PAGE_KINDS and not is_hn(m["url"])]
-    for m in readable[:MAX_PAGES]:
+    for m in page_mentions(incident)[:MAX_PAGES]:
         page = fetch_page(http_get, m["url"])
-        text = page_text(page, m["url"]) if page else None  # None: not loaded, or not parsed; the input goes on
+        text = page_text(page, m["url"], incident) if page else None  # None: not loaded, or not parsed; the input goes on
         if text is not None:
             mark = LEAD_MARK if m["url"] == lead else ""
             lines += [f"Text of {m['url']}{mark}:", text[:PAGE_CHARS]]
+    descriptions = []
     for cve in cves[:CVE_LINES_MAX]:
         record = fetch_page(http_get, cvelist.record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
             lines += [f"CVE record {cve}:", cve_fields(record, scores.get(cve))]
+            descriptions += record_descriptions(record)
+    # The pages' sheets (collector.sheets, gated Incidents only), merged and guarded against the records' text.
+    if sheets:
+        from collector.sheets import text_for  # sheets imports this module
+        lines += [text for text in [text_for(sheets, incident, descriptions)] if text]
     # The rest get the Incident's own one-line description and no request. Whitespace is folded so a description
     # cannot start a line that trusted() would read as a Mention or a source block.
     texts = incident.get("cve_texts") or {}
@@ -82,13 +89,47 @@ def summary_input(incident, http_get):
     return "\n".join(lines)
 
 
+def host(url):
+    try:
+        return urlsplit(url).netloc.lower().removeprefix("www.")
+    except ValueError:  # "http://[..." from scraped text
+        return url
+
+
+def page_mentions(incident):
+    """The Mentions whose pages the input reads, in order: the Lead; vendor advisories and national CERT notices (KISA's
+    held the Java group's only Java 8 and 11 fixed versions, 11-18); write-ups that are not news; news; curator
+    newsletters; discussions. One page per host before a second from the same host. Never Hacker News, a repo or
+    cve.org's record page (drawn by script: its HTML holds no text; the record itself is read below)."""
+    lead = incident["brief"]["lead"]
+
+    def rank(m):
+        if m["url"] == lead:
+            return 0
+        if m["kind"] in ("advisory", "notice"):
+            return 1
+        if m["kind"] == "writeup":
+            return 3 if is_news(m["url"]) else 2
+        return 4 if m["kind"] == "curator" else 5
+
+    pages = sorted((m for m in incident["mentions"] if m["kind"] in PAGE_KINDS + ("notice", "curator")
+                    and not is_hn(m["url"]) and host(m["url"]) != "cve.org"), key=rank)
+    seen, first, later = set(), [], []
+    for m in pages:
+        (later if host(m["url"]) in seen else first).append(m)
+        seen.add(host(m["url"]))
+    return first + later
+
+
 def scored(cve, score):
     """An Other CVEs line's head: "CVE-X (CVSS 7.5, CVSS:3.1/...)", or the bare id without a score. Never in a "CVE record"
     header: SOURCE_RE would stop reading the record as trusted."""
     if not score:
         return cve
-    vector = " ".join(score["vector"].split())  # CNA text: folded like the descriptions
-    return f"{cve} (CVSS {score['cvss']}{', ' + vector if vector else ''})"
+    own = score.get("record") or score  # a page's raise keeps the record's own score and vector under "record"
+    vector = " ".join(own["vector"].split())  # CNA text: folded like the descriptions
+    page = f"; {score['cvss']} given by {' '.join(score['by'].split())}" if "by" in score and own is not score else ""
+    return f"{cve} (CVSS {own['cvss']}{', ' + vector if vector else ''}{page})"
 
 
 # Pages that draw their text with script hold nothing in their HTML; read the JSON the page itself loads instead.
@@ -144,8 +185,20 @@ def cve_fields(raw, score=None):
     keep |= {k: [readable(i) if isinstance(i, dict) else i for i in cna[k]]
              for k in ("solutions", "workarounds", "configurations") if isinstance(cna.get(k), list)}
     if score:
-        keep |= {"cvss": score["cvss"], "vector": score["vector"]}
+        own = score.get("record") or score  # the record's own pair; a page's higher score beside it, with who gave it
+        keep |= {"cvss": own["cvss"], "vector": own["vector"]}
+        if own is not score and "by" in score:
+            keep |= {"page_cvss": score["cvss"], "page_cvss_by": score["by"]}
     return json.dumps(keep, ensure_ascii=False)
+
+
+def record_descriptions(raw):
+    """The CNA's description texts of a CVE record, for the sheet's fixed-row guard."""
+    try:
+        cna = json.loads(raw)["containers"]["cna"]
+        return [d["value"] for d in cna.get("descriptions", []) if isinstance(d.get("value"), str)]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return []
 
 
 URL = re.compile(r"https?://\S+")
@@ -212,12 +265,88 @@ def cell_text(html_text):
     return " ".join("".join(parser.parts).split()) if parsed(parser, html_text, "a CVE record's HTML") else ""
 
 
-def page_text(page, url=""):
-    """The page's text, or None when it cannot be parsed: then it counts as a page that failed to load."""
+FURNITURE = {"nav", "header", "footer", "aside", "noscript", "svg", "form", "button", "select"}
+
+
+class _Main(_Text):
+    """The page's main content: no script or style, no navigation, header, footer, aside or forms. A line per block, so
+    focused() can tell sentences apart; inline tags join their text as written."""
+    def handle_starttag(self, tag, attrs):
+        if tag in FURNITURE:
+            self.skip += 1
+        super().handle_starttag(tag, attrs)
+        self.parts.append("\n" if tag in BLOCKS else "")
+
+    def handle_endtag(self, tag):
+        if tag in FURNITURE and self.skip:
+            self.skip -= 1
+        super().handle_endtag(tag)
+        self.parts.append("\n" if tag in BLOCKS else "")
+
+
+# What makes a sentence worth keeping in a long page (the trial's variant C, 11-18).
+VERSION = re.compile(r"(?<![\w.])v?\d+(?:\.\d+){1,4}(?:[-_.]?[A-Za-z]*\d*)?(?![\w.])|\b\d+u\d+\b")
+FOCUS_WORDS = re.compile(r"(?i)\b(?:fix(?:ed|es)?|patch(?:ed|es)?|update|upgrade|affected|vulnerab\w*|exploit\w*|"
+                         r"proof.of.concept|PoC|CVSS|workaround|mitigat\w*|disable|in the wild|attack\w*|dubbed|named)\b")
+SENTENCE = re.compile(r"(?<=[.!?])\s+|\n")
+GENERIC_PRODUCT_WORDS = {"oracle", "edition", "enterprise", "server"}  # in many products' names: they would match everything
+OPENING_SENTENCES = 4
+NEIGHBOUR_MAX = 400  # a sentence this long or longer keeps no neighbour: it is a block of its own (a table row, a list)
+
+
+def focused(text, incident, limit=PAGE_CHARS):
+    """A long page's opening sentences, then each sentence naming the Incident's CVE IDs, a product word or a version,
+    or speaking of fixes, exploitation, scores or workarounds, with a neighbour on each side, in page order, " … " where
+    sentences were skipped, up to limit. A page where nothing matches keeps its opening text up to limit."""
+    terms = {c.lower() for c in incident["cves"]} | {
+        w.lower() for p in incident.get("products", []) for w in re.split(r"[\s/,()]+", p["name"])
+        if len(w) >= 4 and w.lower() not in GENERIC_PRODUCT_WORDS}
+    sentences = [s.strip() for s in SENTENCE.split(text) if s.strip()]
+    keep = set(range(min(OPENING_SENTENCES, len(sentences))))
+    for n, s in enumerate(sentences):
+        if any(t in s.lower() for t in terms) or VERSION.search(s) or FOCUS_WORDS.search(s):
+            keep |= {n - 1, n, n + 1} if len(s) < NEIGHBOUR_MAX else {n}
+    if len(keep) <= OPENING_SENTENCES:  # no match: the opening, as an uncut page would give it
+        return " ".join(text.split())[:limit]
+    out, total, last = [], 0, -2
+    for n in sorted(k for k in keep if 0 <= k < len(sentences)):
+        piece = (" … " if out and n != last + 1 else " ") + sentences[n]
+        if total + len(piece) > limit:
+            break
+        out.append(piece)
+        total, last = total + len(piece), n
+    # A first sentence over the limit (a page with no stops) leaves nothing: its opening then, cut like any page.
+    return " ".join("".join(out).split()) or " ".join(text.split())[:limit]
+
+
+def main_text(page, url=""):
+    """The page's main content (no navigation, header, footer or forms), a line per block, or None when it cannot be
+    parsed."""
     if "<" not in page[:2000]:
-        return " ".join(page.split())  # plain text, e.g. an OpenSSH release note
-    parser = _Text()
-    return " ".join(" ".join(parser.parts).split()) if parsed(parser, page, url) else None
+        text = page  # plain text, e.g. an OpenSSH release note
+    else:
+        parser = _Main()
+        if not parsed(parser, page, url):
+            return None
+        text = "".join(parser.parts)
+        if len(text.split()) < 50:
+            whole = _Text()
+            parsed(whole, page, url)  # the same markup parsed once already
+            # A page held whole in a <form> (ASP.NET) or a <header> lost its content: its text then, furniture and all.
+            if len(text.split()) * 10 < len(" ".join(whole.parts).split()):
+                text = "\n".join(whole.parts)
+    return "\n".join(line for line in (" ".join(raw.split()) for raw in text.split("\n")) if line)
+
+
+def page_text(page, url="", incident=None):
+    """main_text() on one line, or None when it cannot be parsed: then it counts as a page that failed to load. Given
+    the Incident, a page longer than PAGE_CHARS is focused() on it. page_keys() reads the raw page (fetch_page), never
+    this."""
+    text = main_text(page, url)
+    if text is None:
+        return None
+    flat = " ".join(text.split())
+    return focused(text, incident) if incident and len(flat) > PAGE_CHARS else flat
 
 
 def is_hn(url):
