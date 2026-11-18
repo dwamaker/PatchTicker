@@ -23,7 +23,7 @@ PAGE = "<html><body><main><p>" + "Widget 1.2 is affected; update to Widget 1.3. 
 def incident(pages=4, cves=1, kinds=None):
     kinds = kinds or ["advisory"] * pages
     ids = [f"CVE-2026-{1000 + n}" for n in range(cves)]
-    return {"id": ids[0], "cves": ids, "first_seen": STAMP, "products": [{"name": "Widget"}], "urls": [],
+    return {"id": ids[0], "cves": ids, "first_seen": STAMP, "products": [{"id": "acme:widget", "name": "Widget"}], "urls": [],
             "brief": {"text": "Widget flaw.", "lead": "https://h0.example/a"},
             "mentions": [{"kind": kind, "url": f"https://h{n}.example/a", "title": "Widget"} for n, kind in enumerate(kinds)]}
 

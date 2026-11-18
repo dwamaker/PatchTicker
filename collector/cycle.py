@@ -44,6 +44,12 @@ MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 # added to every check document made one cycle rewrite all 3,252 one PUT after another (~2.3 a second, 25 min), so
 # status.json stood still 35 min and two cycles never ran. A usual cycle takes about 3 min of its 10; 120 s is ~280 PUTs.
 BULK_SECONDS = 120
+# Seconds a cycle spends on instant Summaries (owner's ledger, 11-18: Oracle's patch day brought 96 Incidents at 06:40
+# KST, every one a candidate, asked one after another at 16-24 s each; that cycle took 25 min 53 s and the next two never
+# ran). A Summary starts only inside the budget, so one may run past it by its own length. 180 s is about 9 Summaries:
+# with the sources (~2 min), the sheets (at most 10, ~36 s), the titles and BULK_SECONDS, a cycle stays inside its 10
+# minutes and the Board is written before the next mark. The rest wait for the next cycle, most urgent first (priority).
+INSTANT_SECONDS = 180
 
 
 # A CVE-less story's page that failed to load is fetched again (11-17: openjdk.org's advisory gave nothing at 21:10Z
@@ -227,7 +233,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         was = (store.read("status.json") or {}).get("summaries")
         try:
             route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused", review=review,
-                            store=store)
+                            store=store, clock=clock)
             changed.update(month_of(i["first_seen"]) for i in summaries.recheck_exploited(incidents))  # owner 11-16
         except anthropic.APIError as err:
             # Briefs still go out; the next cycle asks again (in full after "stopped", with a probe after "paused").
@@ -394,10 +400,10 @@ def prune(incidents, since):
     return {month_of(i["first_seen"]) for i in old}
 
 
-def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False, store=None):
-    """Collect ended batches, summarize every Highlight candidate at once, title every row still without a Summary,
-    batch the rest's Summaries. Lets API errors
-    through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
+def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False, store=None,
+                    clock=time.monotonic):
+    """Collect ended batches, summarize Highlight candidates at once (within INSTANT_SECONDS by clock), title every row
+    still without a Summary, batch the rest's Summaries. Lets API errors through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
     instead of building a full one that would likely fail. review (VR_SUMMARY_REVIEW, owner 11-16): every Summary that
     passes the rule checks is reviewed before it is stored: at once on the instant path, in a review batch sent here for
     a batch reply (it waits in review_pending, shown as it was before, and is not asked again meanwhile). store: where
@@ -424,7 +430,12 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
         if incident["id"] in made and sheets.page_scores(incident, made[incident["id"]]):
             changed.add(month_of(incident["first_seen"]))
     sheets_of = lambda incident: made.get(incident["id"], ())
-    for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
+    # Every candidate in the cycle that sees it (a breaking-news board, owner 2026-11-09), inside INSTANT_SECONDS: the
+    # rest keep their Brief and quick title until a later cycle.
+    more = bulk_budget(clock, INSTANT_SECONDS)
+    for incident in instant:
+        if not more():
+            break
         summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident))
         changed.add(month_of(incident["first_seen"]))
     # Every row still without a Summary gets its titles now, several a request (owner, 2026-11-09): candidates whose
@@ -460,9 +471,9 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     changed.update(month_of(i["first_seen"]) for i in waiting_review if "review_pending" not in i)  # stored here
 
 
-def bulk_budget(clock):
-    """A function that answers True until BULK_SECONDS after this call."""
-    deadline = clock() + BULK_SECONDS
+def bulk_budget(clock, seconds=None):
+    """A function that answers True until `seconds` (BULK_SECONDS by default) after this call."""
+    deadline = clock() + (BULK_SECONDS if seconds is None else seconds)
     return lambda: clock() < deadline
 
 

@@ -521,6 +521,37 @@ class InstantSummaryTest(unittest.TestCase):
         buzz_only = {**row(None), "mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=1", "points": 500}]}
         ranked = sorted([buzz_only, row(7.5), row(9.8)], key=summaries.priority)
         self.assertEqual([i["cvss"] for i in ranked], [9.8, 7.5, None])
+        # A well-known product (collector/well_known.json) goes before a lesser one of its band.
+        chrome = row(9.6) | {"products": [{"id": "google:chrome", "name": "Google Chrome"}]}
+        ranked = sorted([row(9.8), chrome], key=summaries.priority)
+        self.assertEqual([i["cvss"] for i in ranked], [9.6, 9.8])
+
+    def test_the_instant_path_stops_at_its_budget_and_the_rest_wait_for_the_next_cycle(self):
+        # 11-18 06:40 KST: 96 Incidents at once, every candidate asked one after another; the cycle took 25 min 53 s.
+        from datetime import datetime
+        from collector.cycle import INSTANT_SECONDS, route_summaries
+        now, t = datetime(2026, 11, 9, 12, 0), [0]
+        row = lambda n, cvss, **more: {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss, "mentions": [],  # noqa: E731
+                                       "first_seen": "2026-11-09T11:00:00Z", "published": "2026-11-09T10:00:00Z",
+                                       "products": [], "brief": {"text": "A flaw.", "lead": ""}, **more}
+        rows = [row(1, 7.5), row(2, 9.8), row(3, 7.0, kev=True), row(4, 8.0)]
+        claude = FakeClaude(*["{"] * 8)
+        create = claude.messages.create
+
+        def slow(**params):  # each Summary takes 70 s of the clock; the titles request none
+            t[0] += 70 if "Incident:" in params["messages"][0]["content"] else 0
+            return create(**params)
+        claude.messages.create = slow
+        asked = lambda: [p["messages"][0]["content"].split("\n")[0] for p in claude.sent if "Incident:" in p["messages"][0]["content"]]  # noqa: E731
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries(rows, [], claude, lambda url, headers=None: b"", now, "2026-11-09T12:00:00Z", set(), probe=False,
+                            clock=lambda: t[0])
+        # KEV, then CVSS 9+, then arrival order inside the 7+ band; started at 0, 70 and 140 s of the 180.
+        self.assertEqual(asked(), ["Incident: CVE-2026-3", "Incident: CVE-2026-2", "Incident: CVE-2026-1"])
+        self.assertEqual(INSTANT_SECONDS, 180)
+        # Kept back, not failed: no try counted, still due, and still an instant candidate for the next cycle.
+        self.assertNotIn("summary_error", rows[3])
+        self.assertTrue(summaries.needs_summary(rows[3]) and summaries.is_candidate(rows[3], now))
 
     def test_a_group_summary_gives_each_cve_one_line_and_names_only_cves_from_the_input(self):
         lines = {"ko": [{"cve": "CVE-2026-123158", "text": "긴 비밀번호로 로그인 우회"}], "en": [{"cve": "CVE-2026-123158", "text": "Login bypass with a long password"}]}

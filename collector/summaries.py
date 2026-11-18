@@ -17,7 +17,7 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
-from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago, url_key
+from collector.incidents import DISTRO_PACKAGE, is_news, known_label, published_at, stamp_ago, url_key
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
@@ -855,11 +855,12 @@ def hn_points(incident):
 
 
 def priority(incident):
-    """Sort key for instant candidates (all are summarized each cycle; the order decides who goes first if the API
-    stops midway): KEV, then CVSS 9.0+, then a curator's pick, then CVSS 7.0+, then HN buzz; arrival order within each."""
+    """Sort key for instant candidates (the order decides who goes first when the cycle's INSTANT_SECONDS run out or the
+    API stops midway): KEV, then CVSS 9.0+, then a well-known product (collector/well_known.json), then a curator's
+    pick, then CVSS 7.0+, then HN buzz; arrival order within each."""
     curated = any(m["kind"] == "curator" for m in incident["mentions"])
     score = incident.get("cvss") or 0
-    return (not incident.get("kev"), score < 9.0, not curated, score < 7.0)
+    return (not incident.get("kev"), score < 9.0, not known_label(incident), not curated, score < 7.0)
 
 
 def basis(incident):
