@@ -551,6 +551,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
                             for f in (i.get("summary") or {}).get("fixes") or [] if isinstance(f, dict) and f.get("from_sheet"))
     line.fixes_flagged += sum(1 for i in incidents if i.get("summary") is not before.get(i["id"])
                               and (i.get("summary") or {}).get("fixes_flagged"))
+    line.fixes_carried += sum(1 for i in incidents if i.get("summary") is not before.get(i["id"])
+                              for f in (i.get("summary") or {}).get("fixes") or [] if isinstance(f, dict) and f.get("from_stored"))
 
 
 def bulk_budget(clock, seconds=None):

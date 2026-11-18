@@ -19,7 +19,7 @@ from test_cycle import at, recorded
 
 FIELDS = ("start took read link distros sheets summaries board new summaries_asked summaries_kept_back summaries_failed "
           "summaries_batched sheets_asked sheets_kept_back sheets_failed summaries_deadline titles_kept_back distros_asked "
-          "distros_kept_back refused refused_hosts skipped fixes_lines fixes_flagged result").split()
+          "distros_kept_back refused refused_hosts skipped fixes_lines fixes_flagged fixes_carried result").split()
 
 
 def fields(text):
@@ -58,7 +58,7 @@ class CycleLineTest(unittest.TestCase):
         self.assertEqual((got["distros"], got["sheets"], got["summaries"]), ("off", "off", "off"))
         self.assertEqual((got["refused"], got["refused_hosts"], got["skipped"]), ("1", "www.cisa.gov", "kev"))
         self.assertEqual(int(got["new"]), 2)  # the delta log fixture's two records
-        self.assertEqual((got["fixes_lines"], got["fixes_flagged"], got["result"]), ("0", "0", "ok"))
+        self.assertEqual((got["fixes_lines"], got["fixes_flagged"], got["fixes_carried"], got["result"]), ("0", "0", "0", "ok"))
 
     def test_a_failed_cycle_still_writes_its_line_with_the_stage_it_failed_in(self):
         class Failing(MemoryStore):

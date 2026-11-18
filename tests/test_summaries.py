@@ -1962,8 +1962,11 @@ class LostFixTest(unittest.TestCase):
         self.assertEqual(summaries.lost_fix(java, reply, text), summaries.LOST_FIX + "21.3.20.1")
         self.assertEqual(summaries.lost_fix(java, reply, text, [row]), "")
         self.assertEqual(reply["fixes"], [{"for": "Git", "version": "17.0.21.1", "devices": []}])  # asking changes nothing
-        # A row the union's checks refuse (below the records' first fixed version of its line) adds nothing back.
-        self.assertTrue(summaries.lost_fix(java | {"fix_keys": ["amazon:corretto<21.3.21"]}, reply, text, [row]))
+        # A row the union refuses (the reply names that release under the same label, lower) adds nothing back.
+        lower = reply | {"fixes": reply["fixes"] + [{"for": "Amazon Corretto 21", "version": "21.3.19", "devices": []}]}
+        self.assertEqual(summaries.lost_fix(java, lower, text, [row]), summaries.LOST_FIX + "21.3.20.1")
+        # A stored version below the records' first fixed version of its line is no loss: dropping it is right.
+        self.assertEqual(summaries.lost_fix(java | {"fix_keys": ["amazon:corretto<21.3.21"]}, reply, text, [row]), "")
 
     def test_a_version_without_a_dotted_number_is_lost_only_when_no_fix_is_left(self):
         # Samsung, CVE-2026-21148 (rewritten): the only fix went to the mitigation.
@@ -2003,6 +2006,95 @@ class LostFixTest(unittest.TestCase):
         self.assertEqual(incident["summary"]["fixed"], "10.6.2")  # the stored Summary stays
         self.assertEqual(incident["summary_error"]["reason"], summaries.LOST_FIX + "10.6.2")
         self.assertIn("The input still gives that version as a fix", summaries.retry(incident, text)["note"])
+
+
+class ResummaryHardChecksTest(unittest.TestCase):
+    """A re-summary's hard checks cost the stored Summary nothing it shows rightly (owner, 11-18: ILIAS, CVE-2026-131850,
+    was given up after three replies followed the record's one line and dropped the stored 9.25 its advisory gives)."""
+
+    LEAD = SSHOLE_SUMMARY["lead"]
+    STORED_FIXES = [{"for": "OpenSSH 9", "version": "9.25", "devices": []}, {"for": "OpenSSH 10", "version": "10.6p2", "devices": []}]
+    SEEN = {"cves": ["CVE-2026-1"], "kev": True, "advisories": [], "n": 0}
+
+    def text(self, record="OpenSSH 10.0 before 10.6p2 lets a long password in."):
+        page = json.dumps(SSHOLE_SUMMARY, ensure_ascii=False) + " Fixed Version(s) 9.25, 10.6p2."
+        block = json.dumps({"descriptions": [{"lang": "en", "value": record}]})
+        return f"Text of {self.LEAD}{summary_input.LEAD_MARK}:\n{page}\nCVE record CVE-2026-1:\n{block}"
+
+    def incident(self, error=None, **stored):
+        inc = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "kev": True, "mentions": [{"kind": "writeup", "url": self.LEAD}],
+               "summary": {**SSHOLE_SUMMARY, "fixes": copy.deepcopy(self.STORED_FIXES), "at": "2026-11-10T00:00:00Z"} | stored,
+               "summary_basis": {"cves": ["CVE-2026-1"], "kev": False, "advisories": [], "n": 1}}
+        return inc | ({"summary_error": error} if error else {})
+
+    def save(self, incident, reply, text=None):
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(reply), text or self.text(), self.SEEN, "2026-11-18T12:00:00Z")
+        return incident
+
+    def dropped(self, **over):
+        return SSHOLE_SUMMARY | {"fixes": [{"for": "OpenSSH 10", "version": "10.6p2", "devices": []}]} | over
+
+    def test_a_version_dropped_again_is_carried_from_the_stored_summary(self):
+        first = self.save(self.incident(), self.dropped())
+        self.assertEqual(first["summary_error"]["reason"], summaries.LOST_FIX + "9.25")  # asked once, with the note
+        self.assertEqual(first["summary"]["at"], "2026-11-10T00:00:00Z")
+        second = self.save(first, self.dropped())
+        self.assertNotIn("summary_error", second)
+        self.assertEqual(second["summary"]["at"], "2026-11-18T12:00:00Z")
+        self.assertEqual(second["summary"]["fixes"], [{"for": "OpenSSH 10", "version": "10.6p2", "devices": []},
+                                                      {"for": "OpenSSH 9", "version": "9.25", "devices": [], "from_stored": True}])
+
+    def test_the_last_try_carries_a_first_drop_and_the_headline_fixed_with_it(self):
+        error = {"tries": summaries.MAX_TRIES - 1, "reason": "jargon in the Easy view: ['x']"}
+        inc = self.save(self.incident(error, fixed="9.25"), self.dropped(fixed=""))
+        self.assertNotIn("summary_error", inc)
+        self.assertEqual((inc["summary"]["fixed"], [f["version"] for f in inc["summary"]["fixes"]]), ("9.25", ["10.6p2", "9.25"]))
+
+    def test_a_distributions_package_is_carried_as_a_line_never_as_the_bare_fixed(self):
+        # yggdrasil, CVE-2026-18379 (rewritten): the stored fixed was the package, which parse never keeps as fixed.
+        ygg = {"id": "x", "summary": {"fixed": "0:0.2.3-7.el10_2.9", "fixes": [], "products": ["yggdrasil"]},
+               "fix_keys": ["red_hat:rhel_10:yggdrasil<0:0.2.3-7.el10_2.9"]}
+        reply = {"fixed": "", "fixes": []}
+        summaries.carry_lost(ygg, reply, "yggdrasil 0.2.3 is affected.")
+        self.assertEqual(reply, {"fixed": "", "fixes": [{"for": "yggdrasil", "version": "0:0.2.3-7.el10_2.9", "devices": [],
+                                                         "from_stored": True}]})
+
+    def test_a_version_the_record_calls_affected_is_neither_carried_nor_lost(self):
+        text = self.text("OpenSSH 10.0 before 10.6p2 lets a long password in. OpenSSH 9.25 is affected.")
+        self.assertEqual(summaries.flagged_fixes({"fixed": "9.25", "fixes": []}, text), ["9.25"])
+        inc = self.save(self.incident({"tries": 1, "reason": summaries.LOST_FIX + "9.25"}), self.dropped(), text)
+        self.assertEqual([f["version"] for f in inc["summary"]["fixes"]], ["10.6p2"])
+
+    def last(self, reply, **over):
+        inc = self.incident({"tries": summaries.MAX_TRIES - 1, "reason": "earlier"}) | over
+        return self.save(inc, reply)
+
+    def test_a_last_try_failing_a_hard_check_keeps_a_sound_stored_summary_quietly(self):
+        from collector.incidents import summary_failures
+        # The records bound the 10.6 line at 10.6.2, which the stored Summary names; the reply's 10.6p2 is below it.
+        right = self.incident()["summary"] | {"fixed": "10.6.2", "fixes": [self.STORED_FIXES[0], {"for": "OpenSSH 10", "version": "10.6.2"}]}
+        cases = {"fixed_conflict": (self.dropped(fixes=self.STORED_FIXES), {"fix_keys": ["openbsd:openssh<10.6.2"], "summary": right}),
+                 "stray_script": (self.dropped(fixes=self.STORED_FIXES, ko=SSHOLE_SUMMARY["ko"] | {"mitigation": "버전이 новее인지 확인하세요."}), {})}
+        for case, (reply, over) in cases.items():
+            with self.subTest(case):
+                inc = self.last(reply, **over)
+                self.assertNotIn("summary_error", inc)  # not final: no failure entry, no alert
+                self.assertEqual(inc["summary"]["at"], "2026-11-10T00:00:00Z")
+                self.assertEqual(inc["summary_basis"], self.SEEN | {"n": 2})  # the trigger is spent
+                self.assertFalse(summaries.needs_summary(inc))
+                self.assertTrue(summaries.needs_summary(inc | {"mentions": inc["mentions"] + [
+                    {"kind": "advisory", "url": "https://openssh.example/a"}]}))  # a new trigger asks again
+                self.assertEqual(summary_failures([inc | {"first_seen": "2026-11-18T00:00:00Z"}], "2026-11-01T00:00:00Z"), [])
+
+    def test_a_stored_summary_the_checks_fault_is_still_given_up(self):
+        # The stored 10.6p2 is below the records' bound 10.6.2: the page shows a wrong fact, so the alert stays.
+        wrong = self.last(self.dropped(), fix_keys=["openbsd:openssh<10.6.2"])
+        self.assertTrue(wrong["summary_error"]["final"])
+        stray = SSHOLE_SUMMARY["ko"] | {"mitigation": "버전이 новее인지 확인하세요."}
+        unsourced = self.last(self.dropped(fixes=self.STORED_FIXES, ko=stray),
+                              summary=self.incident()["summary"] | {"exploited": True, "exploited_source": ""})
+        self.assertTrue(unsourced["summary_error"]["final"])
 
 
 class JavaGroupFieldsTest(unittest.TestCase):

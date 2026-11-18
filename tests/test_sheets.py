@@ -464,6 +464,20 @@ class UnionTest(unittest.TestCase):
         self.assertEqual(inc["summary"]["fixes_flagged"], ["1.3"])
         self.assertIn(" fixes_flagged=1 ", line.text())
 
+    def test_the_cycle_line_counts_the_lines_carried_from_the_stored_summary(self):
+        from collector.logfile import CycleLine
+        from test_batch_summaries import plain
+        stored = plain("Widget") | {"fixes": [{"for": "Widget 1", "version": "1.3", "devices": []}], "at": "2026-11-10T00:00:00Z"}
+        inc = incident(1) | {"cvss": 9.8, "kev": True, "kev_cves": {"CVE-2026-1000": "2026-11-18"}, "summary": stored, "fix_keys": ["acme:widget<1.3"],
+                             "summary_basis": {"cves": ["CVE-2026-1000"], "kev": False, "advisories": [], "n": 1},
+                             "summary_error": {"tries": summaries.MAX_TRIES - 1, "reason": summaries.LOST_FIX + "1.3"}}
+        line = CycleLine(STAMP, lambda: 0)
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], FakeClaude(plain("Widget")), lambda url, headers=None: PAGE.encode(), datetime(2026, 11, 18),
+                            STAMP, set(), probe=False, store=MemoryStore(), line=line)
+        self.assertEqual(inc["summary"]["fixes"], [{"for": "Widget 1", "version": "1.3", "devices": [], "from_stored": True}])
+        self.assertIn(" fixes_carried=1 ", line.text())
+
 
 class MustCarryTest(unittest.TestCase):
     """The must-carry list (owner's carry trial, part 2), on a rewritten Java4Shell: the finder's JVM flags, OpenJDK and

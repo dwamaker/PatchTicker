@@ -7,7 +7,11 @@ writes `summary_failures.json` in the store (`web/data/` locally): the Board Inc
 
 - `shows: "summary"`: an older Summary is still on the page. This is the dangerous case: a new trigger (an advisory,
   a KEV listing, a CVE, a fixed version the CVE records call affected) asked for a new one and every reply was
-  rejected, so the page may still say what the check now rejects. Check that Summary first.
+  rejected, so the page may still say what the check now rejects. Check that Summary first. A re-summary whose last
+  reply fails `fixed_conflict`, `lost_fix` or `stray_script` while the stored Summary passes those checks (and reports
+  no attacks without a source) is not listed: the stored Summary stays quietly and the next trigger asks again (`hold`).
+  A fixed version a re-summary drops twice is carried from the stored Summary (`carry_lost`, `from_stored`), never a
+  reason to give up.
 - `shows: "brief"`: the row shows its Brief and the note that only the source text is available. Nothing wrong is
   shown, only nothing better.
 
