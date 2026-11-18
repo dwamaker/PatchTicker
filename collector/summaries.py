@@ -755,8 +755,10 @@ def lost_fix(incident, summary, input_text):
     CVE-2026-18379, whose only fixed version went). Not a loss: the same version without its epoch, or a version of the
     same release line at least as high (a group's widest replacing a narrower one: Qt 6.8.9 -> 6.8.10), except for a
     distribution's package (sheets.distro_build), kept only by its whole string (Cockpit, CVE-2026-91151). Named in the new
-    mitigation only is still lost: the fix line and the Easy action read fixed and fixes. A version with no dotted number ("U/L 95") is not judged. The input gives it as a fix when the
-    CVE records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
+    mitigation only is still lost: the fix line and the Easy action read fixed and fixes. A version with no dotted number
+    ("SMR Nov-2026 Release 1") is judged only when the reply's fixed and fixes are empty: a reply that names any fix may
+    have renamed it ("U/L 95" by its build number). The input gives a version as a fix, by its exact text, when the CVE
+    records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
     and the records' own text does not call it affected (the whole version: a package's "0.2.3-7.el10_2.9" is not the
     upstream 0.2.3). The reason, or ""."""
     stored = incident.get("summary")
@@ -773,11 +775,16 @@ def lost_fix(incident, summary, input_text):
     bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
     for v in dict.fromkeys(versions(stored)):
         dotted = VERSION_RE.search(v)
-        if not dotted or compact(v) in new_text:
+        if compact(v) in new_text:
             continue
-        line = tuple(map(int, dotted[0].split(".")))
+        # Without a dotted number nothing tells a renaming ("U/L 95" against its build number) from a loss, so only a reply
+        # left with no fix at all loses it (Samsung, CVE-2026-21148: "SMR Nov-2026 Release 1", its only fix, went to the
+        # mitigation).
+        if not dotted and new_text:
+            continue
+        line = dotted and tuple(map(int, dotted[0].split(".")))
         # A distribution's package needs its whole string (above): RHEL 9's 366.1.1-1.el9_9 is not RHEL 10's -1.el10_3.
-        if (not page_sheets.distro_build(v) and any(n[:2] == line[:2] and n >= line for n in new_lines)
+        if (line and not page_sheets.distro_build(v) and any(n[:2] == line[:2] and n >= line for n in new_lines)
                 or EPOCH.sub("", v.strip()) in affected):
             continue
         bare = EPOCH.sub("", v.strip())

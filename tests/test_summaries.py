@@ -1822,6 +1822,19 @@ class LostFixTest(unittest.TestCase):
         self.assertEqual(summaries.lost_fix(cockpit, self.reply("", ["0:366.1.1-1.el10_3", "366.1.1-1.el9_9"]),
                                             self.text("cockpit flaw.")), "")  # the epoch aside
 
+    def test_a_version_without_a_dotted_number_is_lost_only_when_no_fix_is_left(self):
+        # Samsung, CVE-2026-21148 (rewritten): the only fix went to the mitigation.
+        samsung = {"id": "x", "summary": {"fixed": "SMR Nov-2026 Release 1", "fixes": []}}
+        text = self.text("Messages before SMR Nov-2026 Release 1 lets a local attacker read files.")
+        self.assertEqual(summaries.lost_fix(samsung, self.reply("", mitigation="Install SMR Nov-2026 Release 1."), text),
+                         summaries.LOST_FIX + "SMR Nov-2026 Release 1")
+        self.assertEqual(summaries.lost_fix(samsung, self.reply("", mitigation="Update."), self.text("Messages flaw.")), "")  # not in the input
+        # Dassault, CVE-2026-19732 (rewritten): a range's affected upper bound the stored Summary took for a fix.
+        dassault = {"id": "x", "summary": {"fixed": "", "fixes": [{"for": "3DEXPERIENCE R2023x", "version": "R2023x.FP.CFA.2613"}]}}
+        self.assertEqual(summaries.lost_fix(dassault, self.reply(""), self.text("Launcher up to R2023x.FP.CFA.2613 is affected.")), "")
+        braun = {"id": "x", "summary": {"fixed": "U/L 95", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(braun, self.reply("build 2041"), self.text("before U/L 95, build 2041")), "")  # a renaming
+
     def test_renamings_and_versions_the_input_no_longer_gives_are_no_loss(self):
         git = {"id": "CVE-2026-105437", "summary": {"fixed": "2.49.1", "fixes": []}}
         self.assertEqual(summaries.lost_fix(git, self.reply("2.49.1"), self.text()), "")
