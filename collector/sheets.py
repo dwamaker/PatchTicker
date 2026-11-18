@@ -298,11 +298,33 @@ def same_party(given_by, publisher):
     return bool(party(publisher)) and party(given_by) == party(publisher)
 
 
+def stated(row):
+    """The score is the page's own, not worked out from a vector: its number stands in the row's words, which are on the
+    page (on_page). elixir-grpc, 11-18: two rows gave 8.7 under CVSS 4.0 with a vector as their words; the GitHub pages
+    say "High 8.2" and "High 7.6"."""
+    number = re.match(r"\s*(\d{1,2}(?:\.\d)?)", row["score"])
+    return bool(number) and bool(re.search(rf"(?<![\d.]){re.escape(number[1])}(?!\d|\.\d)", flat(row["words"])))
+
+
+def stated_version(row):
+    """The CVSS version the row claims, when its words state it ("Under CVSS 4.0, ... scores 9.2"; "CVSSv4"); else "":
+    a page that writes "CVSS Score: 5.2" gives its number, not its version, and the Board then shows "CVSS 5.2"."""
+    found = re.fullmatch(r"\s*([234])\.(\d)\s*", row["cvss_version"])
+    if not found:
+        return ""
+    major, minor = found.groups()
+    words = flat(row["words"])
+    said = (re.search(rf"(?<![\d.]){major}\.{minor}(?!\d)", words)
+            or minor == "0" and re.search(rf"(?:CVSS\s*:?\s*v?|\bv){major}(?![\d.])", words, re.I))
+    return f"{major}.{minor}" if said else ""
+
+
 def page_scores(incident, sheets):
     """The owner's rule "the higher one wins", taken to a finder's own score (Oracle's record: 8.1 under CVSS 3.1; Calif's
     own page: 9.2 under CVSS 4.0). A sheet score counts only when it names one of the Incident's CVE IDs, the page's own
     publisher gives it (by the sheet's word, or its giver is the publisher by name: same_party), the page is a vendor advisory, a CNA record or the finder's disclosure, the page is no news site
-    or curator the collector reads, and its words are on the page letter for letter. It raises that CVE's score (and the
+    or curator the collector reads, and its words are on the page letter for letter and hold its number (stated); its CVSS version is
+    kept only when they state it too (stated_version). It raises that CVE's score (and the
     Incident's) only when higher, with who gave it as "by". Over 66 trial Incidents: one raise, rightly, none wrongly.
     True when a score changed."""
     changed = False
@@ -313,9 +335,9 @@ def page_scores(incident, sheets):
             value, cve = score_value(row["score"]), row["cve"].strip().upper()
             own = row["publisher_gives_it"] or same_party(row["given_by"], f["publisher"])
             if (value is None or cve not in incident["cves"] or not CVE_ID.fullmatch(cve) or not own
-                    or not row.get("on_page") or not f["publisher"].strip()):
+                    or not row.get("on_page") or not f["publisher"].strip() or not stated(row)):
                 continue
-            version = row["cvss_version"].strip() if re.fullmatch(r"\s*[234]\.\d\s*", row["cvss_version"]) else ""
+            version = stated_version(row)
             if merge_score(incident.setdefault("cve_scores", {}), cve, value, "", by=" ".join(f["publisher"].split()), version=version):
                 incident["cvss"] = max(incident.get("cvss", 0), value)
                 changed = True

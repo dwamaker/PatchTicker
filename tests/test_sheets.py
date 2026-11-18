@@ -182,6 +182,29 @@ class PageScoreTest(unittest.TestCase):
             self.assertFalse(sheets.same_party(given_by, "Calif"), given_by)
         self.assertFalse(sheets.same_party("Oracle Cloud Infrastructure", "Oracle"))
 
+    def test_a_score_whose_number_is_not_in_its_words_is_refused(self):
+        # elixir-grpc, CVE-2026-123635 (re-summary dry run 11-18): the model worked 8.7 out of the vector; the GitHub page
+        # says "High 8.2".
+        vector = sheet("https://github.com/elixir-grpc/grpc/security/advisories/GHSA-c2h9-f9cc", "A", page_role="vendor_advisory",
+                       publisher="elixir-grpc", scores=[{"score": "8.7", "cvss_version": "4.0", "cve": "CVE-2026-1000",
+                                                          "given_by": "elixir-grpc", "publisher_gives_it": True, "on_page": True,
+                                                          "words": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"}])
+        inc = self.java()
+        self.assertFalse(sheets.page_scores(inc, [vector]))
+        self.assertEqual(inc["cvss"], 8.1)
+
+    def test_a_version_the_words_do_not_state_is_not_kept(self):
+        # SonicWall's advisory writes "CVSS Score: 5.2": the number counts, the claimed 3.1 is not kept.
+        page = sheet("https://psirt.example/SNWLID-2026-0014", "A", page_role="vendor_advisory", publisher="SonicWall", scores=[
+            {"score": "9.2", "cvss_version": "3.1", "cve": "CVE-2026-1000", "given_by": "SonicWall", "publisher_gives_it": True,
+             "words": "CVSS Score: 9.2", "on_page": True}])
+        inc = self.java()
+        self.assertTrue(sheets.page_scores(inc, [page]))
+        self.assertNotIn("version", inc["cve_scores"]["CVE-2026-1000"])
+        for words, version in (("Under CVSS 4.0, this vulnerability scores 9.2", "4.0"), ("CVSSv4 base score 9.2", "4.0"),
+                               ("CVSS:4.0/AV:N 9.2", "4.0"), ("score 9.2", "")):
+            self.assertEqual(sheets.stated_version({"cvss_version": "4.0", "words": words}), version, words)
+
     def test_a_blog_quoting_another_partys_score_is_refused(self):
         blog = sheet("https://aikido.example/java4shell", "B", "writeup", page_role="blog", publisher="Aikido", scores=[
             {"score": "9.2", "cvss_version": "4.0", "cve": "CVE-2026-1000", "given_by": "Calif", "publisher_gives_it": False,
