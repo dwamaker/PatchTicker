@@ -299,10 +299,9 @@ def focused(text, incident, limit=PAGE_CHARS):
     return " ".join("".join(out).split()) or " ".join(text.split())[:limit]
 
 
-def page_text(page, url="", incident=None):
-    """The page's main content (no navigation, header, footer or forms) on one line, or None when it cannot be parsed:
-    then it counts as a page that failed to load. Given the Incident, a page longer than PAGE_CHARS is focused() on it.
-    page_keys() reads the raw page (fetch_page), never this."""
+def main_text(page, url=""):
+    """The page's main content (no navigation, header, footer or forms), a line per block, or None when it cannot be
+    parsed."""
     if "<" not in page[:2000]:
         text = page  # plain text, e.g. an OpenSSH release note
     else:
@@ -316,6 +315,16 @@ def page_text(page, url="", incident=None):
             # A page held whole in a <form> (ASP.NET) or a <header> lost its content: its text then, furniture and all.
             if len(text.split()) * 10 < len(" ".join(whole.parts).split()):
                 text = "\n".join(whole.parts)
+    return "\n".join(line for line in (" ".join(raw.split()) for raw in text.split("\n")) if line)
+
+
+def page_text(page, url="", incident=None):
+    """main_text() on one line, or None when it cannot be parsed: then it counts as a page that failed to load. Given
+    the Incident, a page longer than PAGE_CHARS is focused() on it. page_keys() reads the raw page (fetch_page), never
+    this."""
+    text = main_text(page, url)
+    if text is None:
+        return None
     flat = " ".join(text.split())
     return focused(text, incident) if incident and len(flat) > PAGE_CHARS else flat
 
