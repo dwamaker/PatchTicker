@@ -780,7 +780,7 @@ def absorb(target, other):
     # Per CVE, only for CVEs the target holds: a narrowed join (link, not trusted) lends no other CVE's score.
     for cve, entry in (other.get("cve_scores") or {}).items():
         if cve in target["cves"]:
-            merge_score(target.setdefault("cve_scores", {}), cve, entry["cvss"], entry["vector"])
+            merge_score(target.setdefault("cve_scores", {}), cve, entry["cvss"], entry["vector"], entry.get("by", ""))
     for cve, day in (other.get("kev_cves") or {}).items():
         if cve in target["cves"]:
             listed = target.setdefault("kev_cves", {})
@@ -914,12 +914,13 @@ def merge_public_dates(incident, dates):
     return changed
 
 
-def merge_score(scores, cve, score, vector):
+def merge_score(scores, cve, score, vector, by=""):
     """Keep `score` and its own vector as `cve`'s entry in a cve_scores map when it has none or this one is strictly
-    higher, so an equal score never flips the vector between cycles. True when the entry changed."""
+    higher, so an equal score never flips the vector between cycles. by: who gave a score read from a page
+    (sheets.page_scores), kept beside it; a record's or NVD's has none. True when the entry changed."""
     if score is None or cve in scores and score <= scores[cve]["cvss"]:
         return False
-    scores[cve] = {"cvss": score, "vector": vector or ""}
+    scores[cve] = {"cvss": score, "vector": vector or ""} | ({"by": by} if by else {})
     return True
 
 

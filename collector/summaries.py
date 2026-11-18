@@ -14,7 +14,7 @@ import sys
 import anthropic
 from anthropic.types.messages.batch_create_params import Request
 
-from collector import hn, review
+from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
 from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
@@ -171,6 +171,7 @@ Output:
 # told a reader of another flaw they were safe).
 GROUP_INSTRUCTIONS = """This Incident holds several CVEs, fixed together. For it, these rules apply instead of two lines above: title, summary and the easy fields are written around the gravest flaw, not only the Lead CVE; and a condition that only some CVEs need is kept in conditions and easy_conditions with their ids, not in easy or easy_title. With the rest of the rule for groups above:
 - The title names the gravest kind of flaw in the group (code execution or an authentication bypass before a slowdown or a cookie leak), usually the Lead CVE's; when another CVE is graver, it names that kind too. The summary's first sentence describes the gravest flaw; its second sentence says, by kind, in a few words and without counting them, what else the same release fixes. When fixed and fixes are empty and mitigation says there is no fix or no source names one, it says by kind what other flaws the group holds, never that a release or an update fixes them.
+- When sources name the gravest flaw's component and the upstream project its code comes from (OpenJDK's Base64 decoder), the summary's first sentence names both; its second sentence still says, by kind, what else the same release fixes.
 - Title, summary, easy, easy_title and easy_action of a group carry NO sentence about who or what is not affected, and NO configuration, role, login, component or version limit that belongs to one CVE. Such limits go only into conditions, each with the ids of the CVEs it holds for (the form the rules above give), and into easy_conditions. A version range in the summary is the group's widest, versions before the fixed version of each product line, never one CVE's range or lower bound.
 - The easy fields warn of the gravest danger.
 - A stopgap that covers only some of the CVEs: mitigation names the ids it covers and says the update is the only fix for the others.
@@ -860,10 +861,10 @@ def is_budget_error(err):
     return status == 402 or status == 400 and bool(re.search(r"credit balance|usage limit|spend limit", err.message, re.I))
 
 
-def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False):
+def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False, sheets=()):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
-    candidates: its same_as_candidates(), listed beside the input."""
-    text, seen = summary_input(incident, http_get), basis(incident)
+    candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill)."""
+    text, seen = summary_input(incident, http_get, sheets), basis(incident)
     asked = params(text, candidates=same_as_text(candidates), **retry(incident, text))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
@@ -897,7 +898,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
     except Rejected as err:
         failed(incident, str(err))
         return
-    name_titles(summary, trusted_names(incident))
+    name_titles(summary, trusted_names(incident, text))
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
     conflict = fixed_conflict(incident, summary) or stray_script(incident, summary, text)
@@ -1147,12 +1148,13 @@ def budget(incident, text=""):
     return MAX_TOKENS_RETRY if cut or pages > 2 else MAX_TOKENS
 
 
-def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
+def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: [], sheets=lambda incident: ()):
     """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
-    candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked."""
+    candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked. sheets: an
+    Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
-    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get), "basis": basis(i)}
+    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get, sheets(i)), "basis": basis(i)}
                 | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
                 for n, i in enumerate(incidents[:limit])}
     by_id = {i["id"]: i for i in incidents[:limit]}
@@ -1405,12 +1407,15 @@ CLOSING_BRACKET = re.compile(r"\s*[(\[]([^()\[\]]+)[)\]]\s*$")
 VERSION_PART = re.compile(r"\d+\.\d")
 
 
-def trusted_names(incident):
-    """The name-looking words that two or more of the Incident's Mention titles (repos left out) carry letter for letter.
-    One title alone is not enough: round 3 then gave advisory titles and "UNIX Hard Link" as names."""
+def trusted_names(incident, input_text=""):
+    """A name the input's fact sheet gives from two or more source hosts (the request's own input: the batch path keeps
+    it), then the name-looking words that two or more of the Incident's Mention titles (repos left out) carry letter for
+    letter. One source alone is not enough: round 3 then gave advisory titles and "UNIX Hard Link" as names."""
+    names = page_sheets.sheet_names(input_text)
     titles = [m.get("title") or "" for m in incident["mentions"] if m["kind"] != "repo"]
     words = sorted({w for t in titles for w in NAME_WORD.findall(t)})
-    return [w for w in words if w.lower() not in NOT_A_NAME and sum(w in t for t in titles) >= 2]
+    return names + [w for w in words if w.lower() not in NOT_A_NAME and sum(w in t for t in titles) >= 2
+                    and w.lower() not in {n.lower() for n in names}]
 
 
 def name_titles(summary, names):

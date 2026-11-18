@@ -32,7 +32,7 @@ INPUT_CHARS_MAX = 400_000  # about 100k tokens; past it the descriptions of the 
 LEAD_MARK = " (the Lead: its numbers win when sources disagree)"
 
 
-def summary_input(incident, http_get):
+def summary_input(incident, http_get, sheets=()):
     # Step 4: a group's CVEs in cve_order (its Lead CVE first, the twelve records read are the highest-scored) with each
     # CVE's score; a one-CVE input stays as it was, byte for byte.
     cves, group = cve_order(incident), len(incident["cves"]) > 1
@@ -66,10 +66,16 @@ def summary_input(incident, http_get):
         if text is not None:
             mark = LEAD_MARK if m["url"] == lead else ""
             lines += [f"Text of {m['url']}{mark}:", text[:PAGE_CHARS]]
+    descriptions = []
     for cve in cves[:CVE_LINES_MAX]:
         record = fetch_page(http_get, cvelist.record_url(cve)) or fetch_page(http_get, CVE_API_RECORD.format(cve=cve))
         if record:
             lines += [f"CVE record {cve}:", cve_fields(record, scores.get(cve))]
+            descriptions += record_descriptions(record)
+    # The pages' sheets (collector.sheets, gated Incidents only), merged and guarded against the records' text.
+    if sheets:
+        from collector.sheets import text_for  # sheets imports this module
+        lines += [text for text in [text_for(sheets, incident, descriptions)] if text]
     # The rest get the Incident's own one-line description and no request. Whitespace is folded so a description
     # cannot start a line that trusted() would read as a Mention or a source block.
     texts = incident.get("cve_texts") or {}
@@ -179,6 +185,15 @@ def cve_fields(raw, score=None):
     if score:
         keep |= {"cvss": score["cvss"], "vector": score["vector"]}
     return json.dumps(keep, ensure_ascii=False)
+
+
+def record_descriptions(raw):
+    """The CNA's description texts of a CVE record, for the sheet's fixed-row guard."""
+    try:
+        cna = json.loads(raw)["containers"]["cna"]
+        return [d["value"] for d in cna.get("descriptions", []) if isinstance(d.get("value"), str)]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return []
 
 
 URL = re.compile(r"https?://\S+")

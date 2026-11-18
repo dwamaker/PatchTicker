@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import anthropic
 
 from collector import (checks, curators, cve_lines, cvelist, discord, distros, github, hn, kev, kisa, model, news, nvd, osssec,
-                       same_event, summaries, summary_input)
+                       same_event, sheets, summaries, summary_input)
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
@@ -127,6 +127,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     index = store.read("index.json") or {"months": []}
     # Every kept month to link against: at most four calendar months, as Incidents leave after PAGE_DAYS.
     incidents = [i for m in index["months"] for i in store.read(f"months/{m}.json")["incidents"]]
+    held = list(incidents)  # to delete the sheets of those that leave this cycle (sheets.forget)
     # Pruned before any source is read: cvelist reads updated records only of CVEs still held, so an aged-out CVE's
     # record updates start nothing; real news about it may (owner, 11-10).
     changed = prune(incidents, stamp_ago(now, days=PAGE_DAYS))
@@ -225,7 +226,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         # "paused" (a budget error; the page shows a notice) or "stopped" (any other API error), as the last cycle left it.
         was = (store.read("status.json") or {}).get("summaries")
         try:
-            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused", review=review)
+            route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused", review=review,
+                            store=store)
             changed.update(month_of(i["first_seen"]) for i in summaries.recheck_exploited(incidents))  # owner 11-16
         except anthropic.APIError as err:
             # Briefs still go out; the next cycle asks again (in full after "stopped", with a probe after "paused").
@@ -301,6 +303,8 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     months = sorted((changed | set(index["months"])) & kept)
     if months != index["months"]:
         store.write("index.json", {"months": months})
+    ids = {i["id"] for i in incidents}
+    sheets.forget(store, [i for i in held if i["id"] not in ids])
     for m in set(index["months"]) - kept:  # after the index drops them, so a cycle cut short here never reads a missing month
         store.delete(f"months/{m}.json")
         store.delete(f"board/{m}.json")
@@ -390,13 +394,14 @@ def prune(incidents, since):
     return {month_of(i["first_seen"]) for i in old}
 
 
-def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False):
+def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False, store=None):
     """Collect ended batches, summarize every Highlight candidate at once, title every row still without a Summary,
     batch the rest's Summaries. Lets API errors
     through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
     instead of building a full one that would likely fail. review (VR_SUMMARY_REVIEW, owner 11-16): every Summary that
     passes the rule checks is reviewed before it is stored: at once on the instant path, in a review batch sent here for
-    a batch reply (it waits in review_pending, shown as it was before, and is not asked again meanwhile)."""
+    a batch reply (it waits in review_pending, shown as it was before, and is not asked again meanwhile). store: where
+    the page sheets are cached (sheets.fill); None makes none."""
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review)
         if touched is not None:
@@ -408,11 +413,18 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
            and (i["id"] not in waiting or summaries.is_candidate(i, now))]
     instant = sorted((i for i in due if summaries.is_candidate(i, now)), key=summaries.priority)
     same_as = lambda incident: same_event.same_as_candidates(incident, incidents, now)  # applied by run_cycle (apply_same_as)
-    for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
-        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review)
-        changed.add(month_of(incident["first_seen"]))
     since = stamp_ago(now, days=summaries.BATCH_DAYS)
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
+    # Page sheets of the gated Incidents due now, the instant ones first, before any Summary is asked. A missing sheet
+    # never holds a Summary back: it is written from what is there. Not on a probe: one request tests the budget.
+    made = sheets.fill(store, instant + rest, claude, http_get, stamp) if store and not probe else {}
+    for incident in instant + rest:
+        if incident["id"] in made and sheets.page_scores(incident, made[incident["id"]]):
+            changed.add(month_of(incident["first_seen"]))
+    sheets_of = lambda incident: made.get(incident["id"], ())
+    for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
+        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident))
+        changed.add(month_of(incident["first_seen"]))
     # Every row still without a Summary gets its titles now, several a request (owner, 2026-11-09): candidates whose
     # Summary failed first, then the rest of the window, those waiting in a batch included. Their Summaries go out
     # together (summaries.BATCH_MIN). A row a reply left out keeps needs_title and is asked again next cycle.
@@ -424,7 +436,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     oldest = min((i["first_seen"] for i in rest), default=None)
     ready = probe or len(rest) >= summaries.BATCH_MIN or (
         oldest is not None and oldest <= stamp_ago(now, hours=summaries.BATCH_WAIT_HOURS))
-    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else model.MAX_PER_BATCH, candidates=same_as)
+    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else model.MAX_PER_BATCH, candidates=same_as,
+                                              sheets=sheets_of)
     if pending:
         batches.append(pending)
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.

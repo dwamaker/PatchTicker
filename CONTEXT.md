@@ -53,8 +53,18 @@ Picked in this order: a CVE reported as exploited, else the one with the highest
 (owner, 2026-11-15). The Incident keeps its address whichever CVE leads. Its score stays the highest among its CVEs,
 shown with the CVE that score belongs to. A CVE's own score is the highest any source gives it: every CVSS 3.x and 4.0
 score in its CVE record (the CNA's and each ADP's, such as CISA's) and at NVD (NVD's own and the CNA's); CVSS 2 only
-when none of those exists (owner, 2026-11-18).
+when none of those exists (owner, 2026-11-18). A page's score counts too when the page is the vendor's advisory, a
+CNA record or the finder's own disclosure, its publisher gives the score itself for one of the Incident's CVEs, and the
+page says it in those words; the score then keeps who gave it (a Page sheet's rule, owner, 2026-11-18).
 _Avoid_: main CVE, primary CVE, top CVE
+
+**Page sheet** (페이지 정리표):
+What one page states about one Incident, filed by the model: the flaw's names, each version with its status (fixed,
+affected, first affected), scores with who gives them, the flawed component and its upstream project, attacks, public
+exploit code, stopgaps. Only an Incident with four or more pages to read and at most twelve CVEs gets them, from its
+first ten pages. Code merges an Incident's sheets, each fact with its sources ranked, drops a fixed version a record or
+an official page calls affected, and puts the result in the Summary's input. A page is read once per Incident.
+_Avoid_: fact sheet (in code: the rendered text), page summary
 
 **Unassigned incident** (CVE 미배정 사건):
 An Incident that has no CVE yet. It joins the same Incident when a CVE appears later.
