@@ -268,6 +268,65 @@ class StoryPageTest(unittest.TestCase):
         own = '<p>We analysed CVE-2026-1006.</p><a href="/blog/cve-2026-1006-rce/?share=x">share</a>'  # a page links itself
         self.assertEqual(page_keys(own, "https://blog.example.org/blog/cve-2026-1006-rce/")["cves"], ["CVE-2026-1006"])
 
+    def test_a_story_whose_page_failed_is_fetched_again_as_it_ages_then_joins(self):
+        # HN 50538199 (11-17 21:10Z): openjdk.org's advisory gave nothing; stored with no Citations and no retry count.
+        from datetime import datetime, timezone
+        from collector.cycle import refetch_pages
+        url = "https://openjdk.org/groups/vulnerability/advisories/2026-11-17"
+        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-114938"}],
+                                   "cves": ["CVE-2026-114938"], "urls": [], "text": "x"}, "2026-11-17T14:50:01Z")
+        story = self.story("", url, 50538199)
+        del story["page"]
+        self.link(self.incidents, story, "2026-11-17T21:10:02Z")
+        asked, answer = [], [None]
+
+        def http_get(u):
+            asked.append(u)
+            if answer[0] is None:
+                raise OSError("timed out")
+            return answer[0].encode()
+
+        cycle = lambda at: refetch_pages(self.incidents, http_get, datetime.fromisoformat(at).replace(tzinfo=timezone.utc))
+        self.assertEqual(cycle("2026-11-17T21:30:00"), set())  # under an hour old: the failed fetch was just now
+        self.assertEqual(cycle("2026-11-17T22:20:00"), {"2026-11"})
+        self.assertEqual(self.incidents[-1]["page_tries"], 1)
+        cycle("2026-11-17T23:00:00")  # the next retry waits until it is 4 hours old
+        self.assertEqual(len(asked), 1)
+        answer[0] = '<p>CVE-2026-114938</p>'
+        cycle("2026-11-18T01:20:00")
+        self.assertEqual(asked, [url, url])
+        self.assertEqual(self.incidents[-1]["cites"]["cves"], ["CVE-2026-114938"])
+        self.assertNotIn("page_tries", self.incidents[-1])
+        self.rejoin()
+        self.assertIn(url, [m["url"] for m in self.incidents[2]["mentions"]])
+        self.assertEqual(self.incidents[2]["id"], "CVE-2026-114938")
+
+    def test_page_retries_are_bounded_per_story_per_cycle_and_to_a_day(self):
+        from datetime import datetime, timezone
+        from collector.cycle import PAGE_RETRIES_PER_CYCLE, refetch_pages
+        for n in range(5):
+            story = self.story("", f"https://blog.example/{n}", 50500000 + n)
+            del story["page"]
+            self.link(self.incidents, story, "2026-11-17T00:00:00Z")
+        asked = []
+
+        def http_get(u):
+            asked.append(u)
+            raise OSError("down")
+
+        cycle = lambda at: refetch_pages(self.incidents, http_get, datetime.fromisoformat(at).replace(tzinfo=timezone.utc))
+        cycle("2026-11-17T13:00:00")
+        self.assertEqual(len(asked), PAGE_RETRIES_PER_CYCLE)
+        for _ in range(10):
+            cycle("2026-11-17T23:00:00")
+        self.assertEqual(len(asked), 15)  # 3 tries each, then none
+        cycle("2026-11-18T00:00:01")
+        self.assertEqual(len(asked), 15)
+        for i in self.incidents[2:]:
+            del i["page_tries"]
+        cycle("2026-11-18T00:00:01")  # over a day old: never again
+        self.assertEqual(len(asked), 15)
+
     def test_citations_are_dropped_after_a_week(self):
         from collector.incidents import rejoin
         self.link(self.incidents, self.story("CVE-2026-123158 and CVE-2026-9999"), "2026-11-08T03:00:00Z")

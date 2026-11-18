@@ -21,7 +21,8 @@ What one source item becomes before linking: its Mentions plus the CVE IDs and U
 _Avoid_: item, record, hit
 
 **Citations** (인용):
-For an HN story with no CVE, the CVE IDs and outside links found in the page it links to. Kept on its
+For an HN story with no CVE, the CVE IDs and outside links found in the page it links to; a page that fails to load
+is tried again three times in the story's first day (`refetch_pages`, 2026-11-18). Kept on its
 Incident for a week; when they point at exactly one other Incident (a CVE ID, or its advisory, write-up
 or repo page), the story is folded into it, whichever arrived first. A CVE ID outranks a link: when the page's CVE
 IDs are held by one Incident, the story joins it whatever its links point at; held by several, it stands alone
