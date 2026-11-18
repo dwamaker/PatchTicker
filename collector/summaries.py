@@ -17,7 +17,7 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
-from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago
+from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago, url_key
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
@@ -1525,6 +1525,11 @@ def parse(reply, input_text, urls):
         conditions, easy = merge_conditions(conditions, easy, own)
         fields["conditions"], fields["easy_conditions"] = ([f"{', '.join(ids)}: {text}" if ids else text for ids, text in filter(None, entries)]
                                                            for entries in (conditions, easy))
+    # A Mention's URL written another way is that Mention, kept as the input writes it (round 2: the KISA notice's
+    # "https://www.boho.or.kr/kr/bbs/view.do?..." came back without www.); any other URL is still refused below.
+    by_key = {url_key(u): u for u in reversed(urls)}
+    for field in ("lead", "exploited_source"):
+        summary[field] = summary[field] and by_key.get(url_key(summary[field]), summary[field])
     if summary["lead"] and summary["lead"] not in urls:
         raise Rejected(f"lead is not an input URL: {summary['lead']}")
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,

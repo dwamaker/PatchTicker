@@ -264,6 +264,12 @@ class InstantSummaryTest(unittest.TestCase):
                 self.assertNotIn("summary", incident)
                 self.assertEqual(incident["summary_error"]["tries"], 1)
 
+    def test_a_lead_written_another_way_is_the_input_url_it_stands_for(self):
+        # Round 2: the KISA notice "https://www.boho.or.kr/...?…&nttId=…" came back without www. and was refused.
+        self.run_at("2026-11-07T12:30:00", FakeClaude(SSHOLE_SUMMARY | {"lead": "http://www.sshhole.com/"}), hn="sshole.json")
+
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["lead"], "https://sshhole.com")
+
     def test_the_easy_action_is_the_write_ups_own_command_and_stopgap(self):
         self.run_at("2026-11-07T12:30:00", FakeClaude(SSHOLE_SUMMARY), hn="sshole.json")
 
