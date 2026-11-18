@@ -1658,6 +1658,28 @@ class RecordSaysAffectedTest(unittest.TestCase):
         self.assertNotIn("summary", incident)
         self.assertTrue(incident["summary_error"]["reason"].startswith(summaries.RECORD_AFFECTED + "6.1.5"), incident["summary_error"])
         self.assertIn("The CVE record's own text calls that version affected", summaries.retry(incident, text)["note"])
+        # The last try keeps the reply as it is, the version marked for the cycle line: never given up.
+        incident["summary_error"]["tries"] = summaries.MAX_TRIES - 1
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY | {"fixed": "6.1.5"}), text,
+                                 {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-18T00:00:00Z")
+        self.assertNotIn("summary_error", incident)
+        self.assertEqual((incident["summary"]["fixed"], incident["summary"]["fixes_flagged"]), ("6.1.5", ["6.1.5"]))
+
+    def test_every_record_of_the_line_must_call_the_version_affected(self):
+        # Rewritten from the live month's three groups: one record's "through 4.1.12" or "4.1.12 and earlier" against
+        # another's "before 4.1.12" is that record's slip (phpMyFAQ, Devolutions); one record naming another product's
+        # 8.0.0 alone speaks of the line too (Fortinet). A record of another line has no say.
+        blocks = lambda *texts: "\n".join(f"CVE record CVE-2026-{n}:\n" + json.dumps({"descriptions": [{"lang": "en", "value": t}]})  # noqa: E731
+                                          for n, t in enumerate(texts))
+        says = summaries.record_says_affected
+        php = ("Acme FAQ through 4.1.12 lets editors read drafts.", "Acme FAQ before 4.1.12 lets anyone read notes.")
+        devo = ("Acme Server 2026.3.13.0 and earlier leaks a password.", "Acme Server before 2026.3.13.0 leaks MFA secrets.")
+        forti = ("Acme Manager 8.0.0 through 8.0.1 lets an admin run code.", "Acme Manager 8.0.0, Acme Manager 7.6.0 through"
+                 " 7.6.7 lets an admin escalate.")
+        for texts, fixed in ((php, "4.1.12"), (devo, "2026.3.13.0"), (forti, "8.0.1")):
+            self.assertEqual(says({"fixed": fixed, "fixes": []}, blocks(*texts)), "", texts)
+            self.assertTrue(says({"fixed": fixed, "fixes": []}, blocks(texts[0], texts[0], "Acme Tool 9.1 is affected.")), texts)
 
 
 class FlawNameTitleTest(unittest.TestCase):

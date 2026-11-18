@@ -730,31 +730,47 @@ PATCH_ON = re.compile(r"(?<![\w.])v?\d+(?:\.\d+)+\s+(?:[A-Za-z]{1,4}\d|(?:interi
                       re.I)
 
 
-def record_texts(input_text):
-    """The descriptions of the input's CVE records."""
-    descriptions = []
+def record_blocks(input_text):
+    """The descriptions of the input's CVE records, one list per "CVE record" block (one CVE each)."""
+    blocks = []
     for block in SOURCE_RE.finditer(input_text):
         if not block[1]:  # a "CVE record" block: cve_fields() JSON on one line
             try:
-                descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
+                blocks.append([d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)])
             except (ValueError, AttributeError, TypeError):
                 continue
-    return descriptions
+    return blocks
 
 
-def record_says_affected(summary, input_text):
-    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
-    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
-    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
-    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
-    affected = page_sheets.record_affected(record_texts(input_text))
+def record_texts(input_text):
+    """The descriptions of the input's CVE records."""
+    return [d for block in record_blocks(input_text) for d in block]
+
+
+def flagged_fixes(summary, input_text):
+    """The fixed versions (whole tokens, sorted) the input's CVE records call affected in their own words (Apache Roller,
+    CVE-2026-129448: the range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends
+    6.1.6; one of two replies gave 6.1.5, and fixed_conflict passes a version equal to a bound), by sheets.record_affected's
+    reading. Only when every CVE whose record speaks of the version's release line (major.minor) calls it affected: in
+    phpMyFAQ's group (CVE-2026-130383) one record of 28 says "through 4.1.12" where the rest say "before 4.1.12", that
+    record's slip. A distribution's package under "fixes" is not checked."""
+    line = lambda v: re.findall(r"\d+", v)[:2]  # noqa: E731
+    blocks = [(set(page_sheets.VERSION.findall(" ".join(b))), page_sheets.record_affected(b)) for b in record_blocks(input_text)]
+    flagged = set()
     for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
                                          if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
         # A patch on an affected release is its own build: IBM's "2.2.1 IF001", "5.0.19 PL1", "5.4.0 Patch 8".
-        named = set(page_sheets.VERSION.findall(PATCH_ON.sub("", text))) if isinstance(text, str) else set()
-        if named & affected:
-            return f"{RECORD_AFFECTED}{sorted(named & affected)[0]} affected, yet the reply names it as fixed"
-    return ""
+        for v in set(page_sheets.VERSION.findall(PATCH_ON.sub("", text))) if isinstance(text, str) else ():
+            speaking = [affected for named, affected in blocks if any(line(n) == line(v) for n in named)]
+            if speaking and all(v in affected for affected in speaking):
+                flagged.add(v)
+    return sorted(flagged)
+
+
+def record_says_affected(summary, input_text):
+    """The reason for flagged_fixes, or ""."""
+    flagged = flagged_fixes(summary, input_text)
+    return f"{RECORD_AFFECTED}{flagged[0]} affected, yet the reply names it as fixed" if flagged else ""  # save_reply's too
 
 
 LOST_FIX = "a fixed version the stored Summary had is missing: "  # retry() gives it its own sentence
@@ -1084,12 +1100,12 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     # (settle_attacks).
     if not summary["exploited"] and stored.get("exploited") is True and stored.get("exploited_source"):
         summary["exploited_disputed"] = True
-    # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
+    # A fixed version below the CVE records' bound, or a word in a script the Incident never had, is never stored, on
     # the last try either.
     # A fixed version the stored Summary had and the input still gives is never lost: asked again, and when the tries
     # run out the stored Summary stays.
     # lost_fix asks the union (sheet_lines) first: a line it adds back costs no try.
-    conflict = (fixed_conflict(incident, summary) or record_says_affected(summary, text) or lost_fix(incident, summary, text, fix_rows)
+    conflict = (fixed_conflict(incident, summary) or lost_fix(incident, summary, text, fix_rows)
                 or stray_script(incident, summary, text))
     if conflict:
         failed(incident, conflict)
@@ -1102,8 +1118,14 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     mismatch = easy_action_mismatch(summary)
     # The must-carry list (carry: sheets.must_carry), a soft check on the first try only: one retry at most.
     left = not incident.get("summary_error", {}).get("tries") and page_sheets.carry_left(summary, carry)
+    # A fixed version the CVE records' own text calls affected costs a retry, never the Summary (owner, 11-18: three
+    # well-known Summaries were given up on this guard's false alarms): the last try is kept with the version marked in
+    # fixes_flagged, which the Board does not read and the cycle line counts.
+    flagged = flagged_fixes(summary, text)
+    if flagged:
+        summary["fixes_flagged"] = flagged
     problem = SEPARATOR.join(p for p in (
-        easy_jargon(summary) and f"{JARGON}: {easy_jargon(summary)}", missing_stopgap_step(summary),
+        flagged and f"{RECORD_AFFECTED}{flagged[0]} affected, yet the reply names it as fixed", easy_jargon(summary) and f"{JARGON}: {easy_jargon(summary)}", missing_stopgap_step(summary),
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
         informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),

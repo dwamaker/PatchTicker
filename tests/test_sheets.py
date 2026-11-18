@@ -447,6 +447,23 @@ class UnionTest(unittest.TestCase):
         self.assertEqual(inc["summary"]["fixes"], [{"for": "Acme Widget", "version": "1.3", "devices": [], "from_sheet": True}])
         self.assertIn(" fixes_lines=1 ", line.text())
 
+    def test_the_cycle_line_counts_a_summary_kept_with_a_flagged_fix(self):
+        from collector import cvelist
+        from collector.logfile import CycleLine
+        from test_batch_summaries import plain
+        inc = incident(1) | {"cvss": 9.8, "kev": True, "kev_cves": {"CVE-2026-1000": "2026-11-18"},
+                             "summary_error": {"tries": summaries.MAX_TRIES - 1, "reason": "x"}}
+        record = json.dumps({"containers": {"cna": {"descriptions": [{"lang": "en", "value": "Widget 1.3 and earlier is affected."}]}}})
+
+        def get(url, headers=None):
+            return record.encode() if url == cvelist.record_url(inc["id"]) else PAGE.encode()
+        line = CycleLine(STAMP, lambda: 0)
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], FakeClaude(plain("Widget") | {"fixed": "1.3"}), get, datetime(2026, 11, 18), STAMP, set(),
+                            probe=False, store=MemoryStore(), line=line)
+        self.assertEqual(inc["summary"]["fixes_flagged"], ["1.3"])
+        self.assertIn(" fixes_flagged=1 ", line.text())
+
 
 class MustCarryTest(unittest.TestCase):
     """The must-carry list (owner's carry trial, part 2), on a rewritten Java4Shell: the finder's JVM flags, OpenJDK and
