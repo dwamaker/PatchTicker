@@ -94,7 +94,9 @@ def make_http_get(user_agent):
     opener = urllib.request.build_opener(PinnedHTTP, PinnedHTTPS, PublicRedirects)
 
     def http_get(url, headers=None):
-        return fetch(opener, url, {"User-Agent": user_agent, **(headers or {})})
+        # Accept as curl sends it: urllib sends none, and openjdk.org's bot screen (Akamai) refused the collector every
+        # cycle while curl from the same server passed with any User-Agent (11-18). A caller's own Accept wins.
+        return fetch(opener, url, {"User-Agent": user_agent, "Accept": "*/*", **(headers or {})})
 
     return http_get
 
