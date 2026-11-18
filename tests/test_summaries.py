@@ -1159,9 +1159,18 @@ class NumberWordTest(unittest.TestCase):
         summary = self.parse("8바이트를 씁니다.", "It writes eight bytes.", "an eight-byte write")
         self.assertTrue(summary["en"]["summary"].endswith("eight bytes."))
 
+    def test_one_before_a_unit_is_the_number(self):
+        """Trial rounds 1 to 4: httpd's mod_vhost_alias "1 byte stack buffer overwrite" was refused under every input
+        ("1바이트" beside "a one-byte overwrite" or "by one byte")."""
+        for en in ("A one-byte stack overwrite can crash it.", "A stack buffer is overwritten by one byte."):
+            with self.subTest(en):
+                summary = self.parse("스택 버퍼를 1바이트 넘겨 씁니다.", en, "mod_vhost_alias 1 byte stack buffer overwrite")
+                self.assertEqual(summary["en"]["summary"].rsplit(". ", 1)[-1], en)
+
     def test_other_korean_and_english_numbers_still_differ(self):
         cases = {"2 is not 3": ("2바이트입니다.", "It is 3 bytes.", "2 or 3 bytes", "['2', '3']"),
-                 "one is not a number word": ("1개입니다.", "It is one flaw.", "1 of the flaws", "['1']")}
+                 "one is not a number word": ("1개입니다.", "It is one flaw.", "1 of the flaws", "['1']"),
+                 "one byte is not 2": ("2바이트를 씁니다.", "It writes one byte.", "1 or 2 bytes", "['2']")}
         for case, (ko, en, source, differ) in cases.items():
             with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
                 self.parse(ko, en, source)
