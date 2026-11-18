@@ -21,7 +21,7 @@ from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKE
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
-from collector.summary_input import CVE_LINES_ONLY, is_hn, mention_kinds, summary_input, trusted
+from collector.summary_input import CVE_LINES_ONLY, SOURCE_RE, is_hn, mention_kinds, summary_input, trusted
 
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
@@ -897,6 +897,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
     except Rejected as err:
         failed(incident, str(err))
         return
+    name_titles(summary, trusted_names(incident))
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
     conflict = fixed_conflict(incident, summary) or stray_script(incident, summary, text)
@@ -1131,14 +1132,19 @@ def failed(incident, reason):
                                  | ({"draft": draft} if draft else {}) | ({"final": True} if tries >= MAX_TRIES else {}))
 
 
-def budget(incident):
-    """max_tokens for this Incident's next Summary request: a group's from the first try, else the larger one once a
-    reply was cut off."""
+def budget(incident, text=""):
+    """max_tokens for this Incident's next Summary request: a group's from the first try; else the larger one when its
+    input (text) carries more than two pages, or once a reply was cut off. It never shrinks between tries: a cut-off
+    try is asked again with the same larger room, and MAX_TRIES ends it."""
     if len(incident.get("cves") or []) > 1:
         return MAX_TOKENS_GROUP
     error = incident.get("summary_error", {})
+    # Owner's trial 11-18: with four pages the model reasons longer; 6 of 9 long one-CVE replies were cut off at
+    # MAX_TOKENS, 0 of 9 at MAX_TOKENS_RETRY. A cap, not a charge: a shorter reply costs the same.
+    pages = sum(1 for block in SOURCE_RE.finditer(text) if block[1])
     # An error stored before "cut" came says so by its reason only.
-    return MAX_TOKENS_RETRY if error.get("cut") or error.get("reason", "").startswith(CUT_OFF) else MAX_TOKENS
+    cut = error.get("cut") or error.get("reason", "").startswith(CUT_OFF)
+    return MAX_TOKENS_RETRY if cut or pages > 2 else MAX_TOKENS
 
 
 def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: []):
@@ -1210,8 +1216,8 @@ def retry(incident, text=""):
     A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
     10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact)."""
     reason = incident.get("summary_error", {}).get("reason", "")
-    # A one-CVE Incident never cut off asks with params()' own MAX_TOKENS, as before.
-    room = {"max_tokens": budget(incident)} if budget(incident) != MAX_TOKENS else {}
+    # A one-CVE Incident never cut off and read from two pages or fewer asks with params()' own MAX_TOKENS, as before.
+    room = {"max_tokens": budget(incident, text)} if budget(incident, text) != MAX_TOKENS else {}
     if not reason:
         return room
     # One sentence per reason, each keyed on the start of its reason; save_reply joins soft ones (audit F3, F4).
@@ -1388,6 +1394,42 @@ def parse(reply, input_text, urls):
     # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
     summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
     return summary
+
+
+# The flaw's own name in a title is set here, never by a prompt line (owner's trial 11-18, 66 Incidents: names right
+# 5 -> 14, closing brackets that were no name 8 -> 0, names missed 13 -> 4). A name-looking word: ...2Shell, ...4Shell,
+# ...Bleed, ...door and the like, or a coinage with a capital inside (regreSSHion).
+NAME_WORD = re.compile(r"\b[\w-]*(?:[24][Ss]hell|SHELL|Bleed|bleed|SSHole|sshole|door|Gate|Hole)\b|\b[a-z]+[A-Z]\w*\b")
+NOT_A_NAME = {"backdoor"}  # a kind of flaw that many titles carry, not one flaw's name
+CLOSING_BRACKET = re.compile(r"\s*[(\[]([^()\[\]]+)[)\]]\s*$")
+VERSION_PART = re.compile(r"\d+\.\d")
+
+
+def trusted_names(incident):
+    """The name-looking words that two or more of the Incident's Mention titles (repos left out) carry letter for letter.
+    One title alone is not enough: round 3 then gave advisory titles and "UNIX Hard Link" as names."""
+    titles = [m.get("title") or "" for m in incident["mentions"] if m["kind"] != "repo"]
+    words = sorted({w for t in titles for w in NAME_WORD.findall(t)})
+    return [w for w in words if w.lower() not in NOT_A_NAME and sum(w in t for t in titles) >= 2]
+
+
+def name_titles(summary, names):
+    """Both titles' closing bracket goes unless each of its parts is a trusted name, a version ("4.0.2 and older"; the
+    numbers check has read it), or one of the Entry's products, names or platforms ("(Red Hat Enterprise Linux)"): the
+    rest is the model's own habit ("(VSA-2026-062)", "(SSRF)", "(not a security flaw)"). Then " (Name, ...)" is added
+    to a title that holds none of the trusted names. The Easy title is left alone: five plain words for a reader who
+    never heard of the product, where a coined name says nothing."""
+    known = [k.lower() for k in (*summary["products"], *summary["ko"]["names"], *summary["en"]["names"],
+                                 *summary["platforms"]) if isinstance(k, str)]
+    for lang in ("ko", "en"):
+        title = summary[lang]["title"]
+        found = CLOSING_BRACKET.search(title)
+        parts = [p.strip() for p in re.split(r",|·", found[1]) if p.strip()] if found else []
+        if found and not all(p in names or VERSION_PART.search(p) or any(p.lower() in k for k in known) for p in parts):
+            title = title[:found.start()].rstrip()
+        if names and not any(n.lower() in title.lower() for n in names):
+            title = f"{title} ({', '.join(names)})"
+        summary[lang]["title"] = title
 
 
 def input_cves(input_text):

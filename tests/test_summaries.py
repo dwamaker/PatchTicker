@@ -1382,3 +1382,94 @@ class LanguageGapsTest(unittest.TestCase):
         for words in ("출처", "수정 버전", "제조사", "never a word of any other language", "empty in both or in neither",
                       '"prior to X"', "a page that could not be read"):
             self.assertIn(words, summaries.INSTRUCTIONS)
+
+
+class PagesBudgetTest(unittest.TestCase):
+    """Owner's trial 11-18: with four pages in the input, 6 of 9 long one-CVE replies were cut off at MAX_TOKENS and 0 of 9
+    at MAX_TOKENS_RETRY, so an input with more than two pages gets the larger room from its first try."""
+
+    def text(self, pages):
+        record = "CVE record CVE-2026-1:\nWidget 1.2 lets anyone in."
+        return "\n\n".join([record, *(f"Text of https://host{n}.example/a:\nPage {n}." for n in range(pages))])
+
+    def test_more_than_two_pages_ask_with_the_larger_budget_and_two_do_not(self):
+        one = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"]}
+        self.assertEqual(summaries.retry(one, self.text(3))["max_tokens"], MAX_TOKENS_RETRY)
+        self.assertNotIn("max_tokens", summaries.retry(one, self.text(2)))  # the CVE record is not a page
+        self.assertEqual(summaries.retry(one | {"cves": ["CVE-2026-1", "CVE-2026-2"]}, self.text(3))["max_tokens"], MAX_TOKENS_GROUP)
+
+    def test_a_cut_off_at_the_larger_budget_is_asked_again_with_the_same_room_never_less(self):
+        one = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"]}
+        for pages in (3, 1, 3):  # the next input may carry fewer pages: the cut-off keeps the room
+            summaries.failed(one, "stop_reason max_tokens")
+            self.assertEqual(summaries.retry(one, self.text(pages))["max_tokens"], MAX_TOKENS_RETRY)
+        self.assertTrue(one["summary_error"]["final"])  # MAX_TRIES ends it
+
+    def test_the_batch_and_the_instant_path_both_send_it(self):
+        hosts = ("vendor.example", "cert.example", "blog.example")
+        incident = {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-11-18T00:00:00Z",
+                    "brief": {"text": "Widget flaw.", "lead": f"https://{hosts[0]}/a"}, "products": [], "urls": [],
+                    "mentions": [{"kind": "advisory", "url": f"https://{h}/a", "title": "Widget"} for h in hosts]}
+        page = lambda url, headers=None: b"<html><body><main><p>Widget 1.2 is affected.</p></main></body></html>"
+        claude = FakeClaude()
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.submit_batch([incident], claude, page)
+        self.assertEqual(claude.batches[0]["requests"][0]["params"]["max_tokens"], MAX_TOKENS_RETRY)
+        claude = FakeClaude(cut("{"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(incident, claude, page, "2026-11-18T00:00:00Z")
+        self.assertEqual((claude.sent[0]["max_tokens"], claude.sent[0].get("timeout")), (MAX_TOKENS_RETRY, None))
+
+
+class FlawNameTitleTest(unittest.TestCase):
+    """The flaw's name in a title comes from code (owner's trial 11-18): a name two Mention titles carry is added, and a
+    closing bracket that is neither such a name, a version nor a product of the entry goes."""
+
+    def mentions(self, *titles):
+        return {"mentions": [{"kind": kind, "url": f"https://h{n}.example/", "title": t} for n, (kind, t) in enumerate(titles)]}
+
+    def summary(self, en, ko="위젯 결함", products=("Widget Server",), platforms=()):
+        return {"ko": {"title": ko, "easy_title": "위젯 해킹 위험", "names": list(products)},
+                "en": {"title": en, "easy_title": "Widget hackable", "names": list(products)},
+                "products": list(products), "platforms": list(platforms)}
+
+    def test_a_name_counts_when_two_titles_carry_it_letter_for_letter(self):
+        two = self.mentions(("writeup", "Java4Shell: a flaw in Base64"), ("advisory", "Patch now for Java4Shell"))
+        self.assertEqual(summaries.trusted_names(two), ["Java4Shell"])
+        self.assertEqual(summaries.trusted_names(self.mentions(("writeup", "Java4Shell"), ("writeup", "java4shell"))), [])
+        self.assertEqual(summaries.trusted_names(self.mentions(("writeup", "Java4Shell"), ("repo", "Java4Shell PoC"))), [])
+        self.assertEqual(summaries.trusted_names(self.mentions(("writeup", "Backdoor found"), ("writeup", "Backdoor in X"))), [])
+
+    def test_the_models_own_brackets_go_and_names_versions_and_products_stay(self):
+        for en, names, want in (
+                ("Widget flaw lets attackers in (VSA-2026-062)", [], "Widget flaw lets attackers in"),
+                ("Widget SSRF [SSRF]", [], "Widget SSRF"),
+                ("Widget flaw (not a security flaw)", [], "Widget flaw"),
+                ("Widget flaw (Java4Shell)", ["Java4Shell"], "Widget flaw (Java4Shell)"),
+                ("Widget flaw (before 16.1.4)", [], "Widget flaw (before 16.1.4)"),
+                ("Widget flaw (Widget Server)", [], "Widget flaw (Widget Server)"),
+                ("Widget flaw (Linux)", [], "Widget flaw (Linux)"),
+                ("Widget flaw (Java4Shell, SSRF)", ["Java4Shell"], "Widget flaw (Java4Shell)"),
+                ("Widget flaw [1.0, 2.0)", [], "Widget flaw [1.0, 2.0)")):
+            with self.subTest(en):
+                summary = self.summary(en, platforms=["Linux"])
+                summaries.name_titles(summary, names)
+                self.assertEqual(summary["en"]["title"], want)
+
+    def test_a_trusted_name_is_added_to_both_titles_that_lack_it_and_never_to_the_easy_title(self):
+        summary = self.summary("Widget decoder flaw runs code (November 2026 CSPU)", ko="위젯 디코더 결함 (Java4Shell)")
+        summaries.name_titles(summary, ["Java4Shell", "Base64Bleed"])
+        self.assertEqual(summary["en"]["title"], "Widget decoder flaw runs code (Java4Shell, Base64Bleed)")
+        self.assertEqual(summary["ko"]["title"], "위젯 디코더 결함 (Java4Shell)")  # already names one: left as it is
+        self.assertEqual((summary["en"]["easy_title"], summary["ko"]["easy_title"]), ("Widget hackable", "위젯 해킹 위험"))
+
+    def test_a_stored_summary_gets_the_name(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"], "title": "SSHole: musl OpenSSH"},
+                                            {"kind": "discussion", "url": "https://news.example/1", "title": "SSHole explained"}]}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        reply = SSHOLE_SUMMARY | {"en": SSHOLE_SUMMARY["en"] | {"title": SSHOLE_SUMMARY["en"]["title"] + " (OSS advisory)"}}
+        summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                             "2026-11-18T00:00:00Z")
+        self.assertNotIn("summary_error", incident, incident.get("summary_error"))
+        self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"] + " (SSHole)")
+        self.assertEqual(incident["summary"]["ko"]["title"], SSHOLE_SUMMARY["ko"]["title"] + " (SSHole)")
