@@ -370,24 +370,35 @@ def attacks_evidenced(summary, kind):
 KEV_YES = re.compile(r"^Exploited in the wild \(CISA KEV\): yes\b", re.M)
 
 
-def input_reports_attacks(input_text, source, reporters):
-    """The reporter whose own words in the input report the attacks a reply claims (attack_reported): the claim's source
-    when it is a reporter and the input's CISA KEV line says yes, or it is an advisory whose text says so; else a CVE
-    record of the input that says so. "" for none. Never a news or curator page's text: their "Related: ... Exploited in
-    Attacks" links match on every page. TYPO3, CVE-2026-125160's record "known to be actively exploited": the flag fell
-    on one review draw's no; Huatian, CVE-2024-58406: the replies cited VulnCheck, a write-up, for what the record says."""
+def first_hand_reports(input_text, finders=()):
+    """The first-hand pages whose own words in the input report attacks (attack_reported), in the input's order: an
+    advisory, a CVE record, and the finder's own disclosure of the flaw (finders: sheets.finders, the pages a sheet reads
+    as finder_disclosure; without sheets no write-up counts, as any HN poster's page can be one). Never a news or curator
+    page's text: their "Related: ... Exploited in Attacks" links match on every page. Rootways, CVE-2026-130583: Sansec's
+    own report ("an attacker used it to take over a Magento store") beside a newsletter issue about another story."""
+    kinds = mention_kinds(input_text)
+    records = {u.rsplit("=", 1)[-1].rsplit("/", 1)[-1]: u for u, k in kinds.items() if k == "cve_record"}
+    got = []
+    for b in SOURCE_RE.finditer(input_text):
+        url = b[1] or records.get(b[0].split(":", 1)[0].split()[-1])
+        first = not b[1] or kinds.get(url) == "advisory" or url in finders and kinds.get(url) != "curator" and not is_news(url)
+        if url and first and attack_reported(b[3]):
+            got.append(url)
+    return list(dict.fromkeys(got))
+
+
+def input_reports_attacks(input_text, source, reporters, finders=()):
+    """The page whose own words in the input report the attacks a reply claims: the claim's source when it is a
+    first-hand page that says so (first_hand_reports), else the first such page; else the claim's source when it is a
+    reporter and the input's CISA KEV line says yes. "" for none. TYPO3, CVE-2026-125160's record "known to be actively
+    exploited": the flag fell on one review draw's no; Huatian, CVE-2024-58406: the replies cited VulnCheck, a write-up,
+    for what the record says."""
     blocks = list(SOURCE_RE.finditer(input_text))
     head = input_text[:blocks[0].start()] if blocks else input_text  # no page text can forge the KEV line
-    kinds = mention_kinds(input_text)
-    if source in reporters and (KEV_YES.search(head) or kinds.get(source) == "advisory"
-                                and any(b[1] == source and attack_reported(b[3]) for b in blocks)):
-        return source
-    records = {u.rsplit("=", 1)[-1].rsplit("/", 1)[-1]: u for u, k in kinds.items() if k == "cve_record" and u in reporters}
-    for b in blocks:
-        cve = b[0].split(":", 1)[0].split()[-1]
-        if not b[1] and cve in records and attack_reported(b[3]):
-            return source if source in reporters else records[cve]
-    return ""
+    first = first_hand_reports(input_text, finders)
+    if first:
+        return source if source in first else first[0]
+    return source if source in reporters and KEV_YES.search(head) else ""
 
 
 def recheck_exploited(incidents):
@@ -1018,6 +1029,7 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
     text, seen = summary_input(incident, http_get, sheets), basis(incident)
     rows = page_sheets.fix_rows(sheets, incident, record_texts(text)) if sheets else []
     carry = page_sheets.must_carry(sheets) if sheets else []
+    finders = page_sheets.finders(sheets) if sheets else []
     asked = params(text, candidates=same_as_text(candidates), **retry(incident, text, carry))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
@@ -1030,13 +1042,13 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
         failed(incident, f"request rejected: {err.status_code} {err.message}")
         return
     save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None,
-               fix_rows=rows, carry=carry)
+               fix_rows=rows, carry=carry, finders=finders)
 
 
 BATCH = "batch"  # save_reply's review_with for a batch reply: its review goes out in the next review batch
 
 
-def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=(), carry=()):
+def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=(), carry=(), finders=()):
     # review_with (owner 11-16, "모든 요약에 검토 추가"): None for no review (VR_SUMMARY_REVIEW=0), a client for the instant
     # path (one review call here), or BATCH (the reply waits in review_pending for a review batch, submit_reviews()).
     # Only a reply that passed every rule check and is not a last try is reviewed: a rule failure already costs the retry,
@@ -1048,7 +1060,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     # (critique 14: n reached 16 in a day, mostly from re-makes).
     due = "summary" not in incident or needs_summary(incident)
     try:
-        summary = parse(reply, text, [m["url"] for m in incident["mentions"]])
+        summary = parse(reply, text, [m["url"] for m in incident["mentions"]], finders)
     except Rejected as err:
         failed(incident, str(err))
         return
@@ -1388,9 +1400,11 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
         text = summary_input(i, http_get, sheets(i))
         rows = page_sheets.fix_rows(sheets(i), i, record_texts(text)) if sheets(i) else []
         carry = page_sheets.must_carry(sheets(i)) if sheets(i) else []
+        finders = page_sheets.finders(sheets(i)) if sheets(i) else []
         requests[f"r{n}"] = ({"incident": i["id"], "input": text, "basis": basis(i)}
                              | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
-                             | ({"fix_rows": rows} if rows else {}) | ({"carry": carry} if carry else {}))
+                             | ({"fix_rows": rows} if rows else {}) | ({"carry": carry} if carry else {})
+                             | ({"finders": finders} if finders else {}))
     by_id = {i["id"]: i for i in incidents[:limit]}
     if not requests:
         return None
@@ -1438,7 +1452,8 @@ def collect_batch(pending, incidents, claude, stamp, review=False):
             continue
         if item.result.type == "succeeded":
             save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, sent.get("candidates", []),
-                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()), carry=sent.get("carry", ()))
+                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()), carry=sent.get("carry", ()),
+                       finders=sent.get("finders", ()))
         elif item.result.type == "errored":
             failed(incident, f"batch request errored: {item.result.error.error.type}")
         touched.append(incident)
@@ -1503,11 +1518,12 @@ def lang_text(fields):
                       fields["easy_action"], fields["command_for"], fields["stopgap_then"], *(line["text"] for line in fields["cve_lines"])])
 
 
-def parse(reply, input_text, urls):
+def parse(reply, input_text, urls, finders=()):
     """The checked Summary from a reply, or Rejected: broken JSON or shape, a number or version not
     in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ (a digit may stand for a number word).
     An Easy command or stopgap that is not one invocation found verbatim in a trusted source (trusted()) is dropped, so the page falls back to
-    "update to version X" and never shows a made-up command. A distribution's package version as `fixed` is emptied."""
+    "update to version X" and never shows a made-up command. A distribution's package version as `fixed` is emptied.
+    finders: the finder's own disclosure pages (sheets.finders), which count among the pages that report attacks."""
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
@@ -1609,10 +1625,14 @@ def parse(reply, input_text, urls):
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
     # never the Summary.
     trusted_text, reporters = trusted(input_text)
+    kinds = mention_kinds(input_text)
     sourced = summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters
-    if sourced and attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"])):
-        pass
-    elif summary["exploited"] and (stated := input_reports_attacks(input_text, summary["exploited_source"] if sourced else "", reporters)):
+    if sourced and attacks_evidenced(summary, kinds.get(summary["exploited_source"])):
+        # A news or curator source gives way to a first-hand page that reports the attacks itself (Rootways: a newsletter
+        # issue titled about Optimizely read on the Board as if it were about Optimizely).
+        if kinds.get(summary["exploited_source"]) not in ("advisory", "cve_record") and (first := first_hand_reports(input_text, finders)):
+            summary["exploited_source"] = first[0]
+    elif summary["exploited"] and (stated := input_reports_attacks(input_text, summary["exploited_source"], reporters, finders)):
         # A reporter in the input says so in plain words: no review draw decides it, and recheck_exploited leaves it.
         summary["exploited_source"], summary["exploited_input"] = stated, True
     elif not sourced:

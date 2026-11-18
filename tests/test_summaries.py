@@ -1685,14 +1685,15 @@ class InputReportsAttacksTest(unittest.TestCase):
     WRITEUP = "https://www.vulncheck.com/advisories/huatian-oa8000"
     NEWS = "https://www.bleepingcomputer.com/news/security/x/"
 
-    def parse(self, source, record_text, kev="no", writeup_text="Nothing here."):
+    def parse(self, source, record_text, kev="no", writeup_text="Nothing here.", finders=(), said=""):
         record = json.dumps({"descriptions": [{"lang": "en", "value": record_text}]})
         text = (f"Incident: CVE-2026-125160\nExploited in the wild (CISA KEV): {kev}\nMentions:\n- writeup {SSHOLE_SUMMARY['lead']}\n"
                 f"- cve_record {self.RECORD}\n- writeup {self.WRITEUP}\n- writeup {self.NEWS}\n"
                 f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n{json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)}\n"
                 f"Text of {self.WRITEUP}:\n{writeup_text}\nCVE record CVE-2026-125160:\n{record}")
-        reply = FakeClaude.message(SSHOLE_SUMMARY | {"exploited": True, "exploited_source": source})
-        return summaries.parse(reply, text, [SSHOLE_SUMMARY["lead"], self.RECORD, self.WRITEUP, self.NEWS])
+        en = SSHOLE_SUMMARY["en"] | {"summary": SSHOLE_SUMMARY["en"]["summary"] + said}
+        reply = FakeClaude.message(SSHOLE_SUMMARY | {"exploited": True, "exploited_source": source, "en": en})
+        return summaries.parse(reply, text, [SSHOLE_SUMMARY["lead"], self.RECORD, self.WRITEUP, self.NEWS], finders)
 
     def keep(self, summary, verdict):
         incident = {"id": "x", "mentions": []}
@@ -1722,6 +1723,23 @@ class InputReportsAttacksTest(unittest.TestCase):
         self.assertTrue(s.get("exploited_unconfirmed"))
         self.assertFalse(self.keep(copy.deepcopy(s), False)["exploited"])
         self.assertTrue(self.keep(s, True)["exploited_review"])
+
+    def test_the_finders_own_disclosure_confirms_and_a_first_hand_page_is_the_source(self):
+        # Rootways, CVE-2026-130583 (rewritten): the sheet reads Sansec's page as the finder's disclosure, and it reports
+        # the attack first-hand; the reply cited a newsletter issue about another story.
+        said = "On November 15, an attacker used it to take over a store."
+        s = self.parse(self.NEWS, "SSRF in the Apple Pay endpoint.", writeup_text=said, finders=[self.WRITEUP])
+        self.assertEqual((s["exploited"], s["exploited_source"], s.get("exploited_input")), (True, self.WRITEUP, True))
+        s = self.parse(self.WRITEUP, "SSRF in the Apple Pay endpoint.", writeup_text=said, finders=[self.WRITEUP])
+        self.assertEqual((s["exploited_source"], s.get("exploited_input")), (self.WRITEUP, True))
+        # A news claim the reply's own words evidence still takes the first-hand page that says so as its source.
+        s = self.parse(self.NEWS, "Files are disclosed. It is known to be actively exploited.", said=" Attackers are exploiting it now.")
+        self.assertEqual((s["exploited"], s["exploited_source"]), (True, self.RECORD))
+        # No first-hand page says so: the news source stays.
+        s = self.parse(self.NEWS, "Files are disclosed.", said=" Attackers are exploiting it now.")
+        self.assertEqual(s["exploited_source"], self.NEWS)
+        # A news page the sheet calls a finder's disclosure is still news.
+        self.assertTrue(self.parse(self.NEWS, "Files are disclosed.", finders=[self.NEWS]).get("exploited_unconfirmed"))
 
 
 class DisputedAttacksTest(unittest.TestCase):

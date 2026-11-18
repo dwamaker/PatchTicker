@@ -486,6 +486,12 @@ def words(text):
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
+def finders(sheets):
+    """The pages a sheet reads as the finder's own disclosure of the flaw: summaries.first_hand_reports counts their plain
+    report of attacks."""
+    return [s["url"] for s, f in facts_of(sheets) if f.get("page_role") == "finder_disclosure"]
+
+
 def must_carry(sheets):
     """[{kind, words, needles, source}]: each stopgap with an option, setting or command from a rank-A page or the
     finder's own; the upstream project two hosts give; the flawed component as the word pair two hosts share, from at
