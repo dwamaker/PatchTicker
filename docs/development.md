@@ -90,7 +90,8 @@ facts), `distros` (the Distribution table), `sheets`, `summaries` (batches, inst
 asks that stored no Summary), `summaries_batched` (requests sent in a Message Batch); `sheets_asked`,
 `sheets_kept_back` (pages past `SHEETS_PER_CYCLE`), `sheets_failed`; `refused` (requests answered 401, 403 or 429) and
 `refused_hosts` (the five most refused); `skipped` (sources that failed and were skipped: `hn`, `github`, `hn_points`,
-`nvd`, `kev`, `distros`); `fixes_lines` (lines added to `fixes`; 0 until that count is written); `result` (`ok`, or
+`nvd`, `kev`, `distros`); `fixes_lines` (lines code added to `fixes` from the page sheets, marked `from_sheet`, in the Summaries stored
+this cycle); `result` (`ok`, or
 `failed:<stage>:<exception type>`).
 
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one

@@ -717,11 +717,8 @@ def fixed_conflict(incident, summary):
 RECORD_AFFECTED = "a CVE record's text calls "  # retry() gives it its own sentence
 
 
-def record_says_affected(summary, input_text):
-    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
-    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
-    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
-    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
+def record_texts(input_text):
+    """The descriptions of the input's CVE records."""
     descriptions = []
     for block in SOURCE_RE.finditer(input_text):
         if not block[1]:  # a "CVE record" block: cve_fields() JSON on one line
@@ -729,7 +726,15 @@ def record_says_affected(summary, input_text):
                 descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
             except (ValueError, AttributeError, TypeError):
                 continue
-    affected = page_sheets.record_affected(descriptions)
+    return descriptions
+
+
+def record_says_affected(summary, input_text):
+    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
+    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
+    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
+    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
+    affected = page_sheets.record_affected(record_texts(input_text))
     for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
                                          if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
         named = set(page_sheets.VERSION.findall(text)) if isinstance(text, str) else set()
@@ -756,20 +761,14 @@ def lost_fix(incident, summary, input_text):
     stored = incident.get("summary")
     if not stored:
         return ""
+    # A line the union added (from_sheet) is not the model's to keep: save_reply adds it again after this check.
     def versions(s):
-        return [v for v in [s.get("fixed"), *(f.get("version") for f in s.get("fixes") or [] if isinstance(f, dict))]
+        return [v for v in [s.get("fixed"), *(f.get("version") for f in s.get("fixes") or [] if isinstance(f, dict) and not f.get("from_sheet"))]
                 if isinstance(v, str) and v.strip()]
     compact = lambda t: re.sub(r"\s+", "", EPOCH.sub("", t)).lower()  # noqa: E731
     new_text = compact(" ".join(versions(summary)))  # the Board's fix line reads these, not the mitigation
     new_lines = [tuple(map(int, m.split("."))) for v in versions(summary) for m in VERSION_RE.findall(v)]
-    descriptions = []
-    for block in SOURCE_RE.finditer(input_text):
-        if not block[1]:
-            try:
-                descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
-            except (ValueError, AttributeError, TypeError):
-                continue
-    affected = page_sheets.record_affected(descriptions)
+    affected = page_sheets.record_affected(record_texts(input_text))
     bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
     for v in dict.fromkeys(versions(stored)):
         dotted = VERSION_RE.search(v)
@@ -1007,6 +1006,7 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
     candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill)."""
     text, seen = summary_input(incident, http_get, sheets), basis(incident)
+    rows = page_sheets.fix_rows(sheets, incident, record_texts(text)) if sheets else []
     asked = params(text, candidates=same_as_text(candidates), **retry(incident, text))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
@@ -1018,13 +1018,14 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
             raise
         failed(incident, f"request rejected: {err.status_code} {err.message}")
         return
-    save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None)
+    save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None,
+               fix_rows=rows)
 
 
 BATCH = "batch"  # save_reply's review_with for a batch reply: its review goes out in the next review batch
 
 
-def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
+def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=()):
     # review_with (owner 11-16, "모든 요약에 검토 추가"): None for no review (VR_SUMMARY_REVIEW=0), a client for the instant
     # path (one review call here), or BATCH (the reply waits in review_pending for a review batch, submit_reviews()).
     # Only a reply that passed every rule check and is not a last try is reviewed: a rule failure already costs the retry,
@@ -1069,6 +1070,12 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
         informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
         hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary),
         affected_label(summary, text)) if p)
+    # The union of fixed versions (owner's carry trial, 11-18), after every check so it costs no retry, and before the
+    # review so the reviewed and stored Summary carry it: each trusted sheet row (fix_rows: sheets.fix_rows) the reply
+    # lacks, marked from_sheet (the Board reads only for and version). Java4Shell kept 14 of 14 lines in all six draws.
+    summary["fixes"] = [*(summary.get("fixes") or []), *(line | {"from_sheet": True} for line in page_sheets.union(summary, [
+        r for r in fix_rows if not fixed_conflict(incident, {"fixed": "", "fixes": [r]})
+        and not record_says_affected({"fixed": "", "fixes": [r]}, text)]))]
     draft = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due, "words": words}
     last = incident.get("summary_error", {}).get("tries", 0) + 1 >= MAX_TRIES
     if problem and not last:
@@ -1352,11 +1359,16 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
     candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked. sheets: an
-    Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text."""
+    Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text, and
+    the request keeps the sheets' fixed rows (sheets.fix_rows) for the union when the result comes in."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
-    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get, sheets(i)), "basis": basis(i)}
-                | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
-                for n, i in enumerate(incidents[:limit])}
+    requests = {}
+    for n, i in enumerate(incidents[:limit]):
+        text = summary_input(i, http_get, sheets(i))
+        rows = page_sheets.fix_rows(sheets(i), i, record_texts(text)) if sheets(i) else []
+        requests[f"r{n}"] = ({"incident": i["id"], "input": text, "basis": basis(i)}
+                             | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
+                             | ({"fix_rows": rows} if rows else {}))
     by_id = {i["id"]: i for i in incidents[:limit]}
     if not requests:
         return None
@@ -1404,7 +1416,7 @@ def collect_batch(pending, incidents, claude, stamp, review=False):
             continue
         if item.result.type == "succeeded":
             save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, sent.get("candidates", []),
-                       review_with=BATCH if review else None)
+                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()))
         elif item.result.type == "errored":
             failed(incident, f"batch request errored: {item.result.error.error.type}")
         touched.append(incident)

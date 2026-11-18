@@ -448,6 +448,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     before, and is not asked again meanwhile). store: where the page sheets are cached (sheets.fill); None makes none.
     line: the cycle's CycleLine (the sheets' time and the counts)."""
     line = line or CycleLine(stamp, clock)
+    before = {i["id"]: i.get("summary") for i in incidents}  # keep() stores a new dict: what changed was stored here
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review)
         if touched is not None:
@@ -516,6 +517,9 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     if reviews:
         batches.append(reviews)
     changed.update(month_of(i["first_seen"]) for i in waiting_review if "review_pending" not in i)  # stored here
+    # The union's lines (summaries.save_reply) in the Summaries stored this cycle, on either path.
+    line.fixes_lines += sum(1 for i in incidents if i.get("summary") is not before.get(i["id"])
+                            for f in (i.get("summary") or {}).get("fixes") or [] if isinstance(f, dict) and f.get("from_sheet"))
 
 
 def bulk_budget(clock, seconds=None):

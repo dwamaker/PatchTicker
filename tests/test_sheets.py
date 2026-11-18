@@ -2,6 +2,7 @@
 cycle that goes on without them."""
 
 import contextlib
+import copy
 import io
 import json
 import unittest
@@ -352,6 +353,82 @@ class CycleTest(unittest.TestCase):
         self.assertEqual(sorted(pages), sorted(m["url"] for m in inc["mentions"]))  # each once, the refused one too
         self.assertIn("Text of https://h0.example/a", claude.sent[-1]["messages"][0]["content"])
         self.assertNotIn("Text of https://h1.example/a", claude.sent[-1]["messages"][0]["content"])
+
+
+def row(vendor, line, v, status="fixed", words="Fixed in", cves=()):
+    return {"vendor": vendor, "product_line": line, "version": v, "status": status, "cves": list(cves), "words": words}
+
+
+class UnionTest(unittest.TestCase):
+    """The union of fixed versions (owner's carry trial, 11-18), on a rewritten Java4Shell: the model kept Oracle's lines
+    and dropped Amazon Corretto's, which only a rank-B blog gives."""
+
+    JAVA = {"id": "CVE-2026-114938", "cves": ["CVE-2026-114938"]}
+
+    def pages(self):
+        return [sheet("https://oracle.example/cpu", "A", versions=[
+                    row("Oracle", "Java SE 17", "17.0.21.0.3", "affected", "Affected versions are"),
+                    row("Oracle", "Java SE 17", "17.0.21.1"), row("Oracle", "Java SE 21", "21.0.13.1"),
+                    row("Oracle", "Java SE 8", "8u513")]),
+                sheet("https://blog.example/java4shell", "B", "writeup", versions=[
+                    row("Amazon", "Amazon Corretto 17", "17.0.21.1.2"), row("Amazon", "Corretto 17", "17.0.21.0.3"),
+                    row("Acme", "Widget", "f9416bea"),  # a commit
+                    row("Acme", "Widget", "13.1.0", words="Fixed versions: <13.1.0"),  # a range bound
+                    row("7-Zip", "7-Zip", "26.02", cves=["CVE-2026-14266"]),  # another CVE's fix
+                    row("Acme", "Desktop", "4.4.8", words="Users who upgraded to 4.4.8 are not affected"),
+                    row("IBM", "cryptography", "48.01", words="OpenSSL included in wheels prior to cryptography 48.01")]),
+                sheet("https://news1.example/a", "C", "writeup", versions=[row("Azul", "Zulu 17", "17.0.21.1-zulu"),
+                                                                          row("BellSoft", "Liberica 17", "17.0.21.1-lib")]),
+                sheet("https://news2.example/a", "C", "writeup", versions=[row("Azul", "Zulu 17", "17.0.21.1-zulu")])]
+
+    def test_only_trusted_rows_pass_the_row_checks(self):
+        rows = sheets.fix_rows(self.pages(), self.JAVA, [])
+        self.assertEqual(rows, [{"for": "Oracle Java SE 17", "version": "17.0.21.1"}, {"for": "Oracle Java SE 21", "version": "21.0.13.1"},
+                                {"for": "Oracle Java SE 8", "version": "8u513"}, {"for": "Amazon Corretto 17", "version": "17.0.21.1.2"},
+                                {"for": "Azul Zulu 17", "version": "17.0.21.1-zulu"}])  # Liberica: one rank-C host only
+
+    def test_a_summary_gains_only_what_it_lacks_and_its_own_lines_stay(self):
+        model = [{"for": "Oracle Java SE 17", "version": "17.0.21.1"}, {"for": "Oracle Java SE 21", "version": "21.0.13.1 or later"},
+                 {"for": "Red Hat Satellite 6.16 for RHEL 9", "version": "0:0.9.3-2.el9sat"}, {"for": "Check Point", "version": "R82.10"}]
+        summary = {"fixed": "17.0.21.1", "fixes": copy.deepcopy(model)}
+        rows = sheets.fix_rows(self.pages(), self.JAVA, []) + [
+            {"for": "Oracle Java SE Embedded 17", "version": "17.0.20.5"},  # older, on a line the model's Oracle 17 fixes
+            {"for": "Red Hat Satellite 6.16 for RHEL 9", "version": "6.16.15"},  # the model's own release label
+            {"for": "Check Point Multi-Domain Security Management", "version": "R82.10 이상"}]  # shown under another label
+        added = sheets.union(summary, rows)
+        self.assertEqual([(a["for"], a["version"]) for a in added],
+                         [("Oracle Java SE 8", "8u513"), ("Amazon Corretto 17", "17.0.21.1.2"), ("Azul Zulu 17", "17.0.21.1-zulu")])
+        self.assertEqual(summary["fixes"], model)  # union() only returns the lines; save_reply appends them
+
+    def test_save_reply_appends_marked_lines_that_pass_the_checks_on_both_paths(self):
+        inc = incident(4) | {"fix_keys": ["acme:widget<1.3.2"]}
+        pages = [sheet("https://acme.example/a", "A", versions=[version("1.3.2", "fixed"), version("1.3.1", "fixed")])]
+        get = lambda url, headers=None: PAGE.encode()  # noqa: E731
+        from test_batch_summaries import plain
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(inc, FakeClaude(plain("Widget")), get, STAMP, sheets=pages)
+        # 1.3.1 is below the records' first fixed 1.3.2 (fixed_conflict): never added.
+        self.assertEqual(inc["summary"]["fixes"], [{"for": "Acme Widget", "version": "1.3.2", "devices": [], "from_sheet": True}])
+        claude, batched = FakeClaude(), incident(4) | {"fix_keys": ["acme:widget<1.3.2"]}
+        pending = summaries.submit_batch([batched], claude, get, sheets=lambda i: pages)
+        self.assertEqual(pending["requests"]["r0"]["fix_rows"], [{"for": "Acme Widget", "version": "1.3.2"}])
+        claude.end_batch({batched["id"]: plain("Widget")})
+        summaries.collect_batch(pending, [batched], claude, STAMP)
+        self.assertEqual(batched["summary"]["fixes"], inc["summary"]["fixes"])
+        # A re-summary that leaves out the added line is no lost fix: the union adds it again.
+        self.assertEqual(summaries.lost_fix(batched, plain("Widget"), "Fixed version: Acme Widget: 1.3.2"), "")
+
+    def test_the_cycle_line_counts_the_lines_added(self):
+        store, inc = MemoryStore(), incident(4) | {"cvss": 9.8, "kev": True, "kev_cves": {"CVE-2026-1000": "2026-11-18"}}
+        from test_batch_summaries import plain
+        from collector.logfile import CycleLine
+        claude = FakeClaude(*[facts(versions=[version("1.3", "fixed")])] * 4, plain("Widget"))
+        line = CycleLine(STAMP, lambda: 0)
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], claude, lambda url, headers=None: PAGE.encode(), datetime(2026, 11, 18), STAMP, set(),
+                            probe=False, store=store, line=line)
+        self.assertEqual(inc["summary"]["fixes"], [{"for": "Acme Widget", "version": "1.3", "devices": [], "from_sheet": True}])
+        self.assertIn(" fixes_lines=1 ", line.text())
 
 
 if __name__ == "__main__":

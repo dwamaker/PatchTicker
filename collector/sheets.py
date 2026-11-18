@@ -370,3 +370,96 @@ def text_for(sheets, incident, descriptions):
     """The rendered sheet for summary_input, or "" without sheets."""
     return render(merge(sheets, incident, descriptions)) if sheets else ""
 
+
+# The union of fixed versions (owner's carry trial, 11-18): every trusted fixed row of the guarded sheet that a Summary
+# lacks is added to its fixes by code (summaries.save_reply). Each row check below stopped a wrong row of the trial.
+A_VERSION = re.compile(r"\d+(?:\.\d+|u\d+)")  # a release number: not a commit ("f9416bea")
+# Not a fix of the product: a not-affected note ("upgraded ... to >= 4.4.8 ... are not affected") or a bundled library's
+# fix ("versions of OpenSSL included in wheels prior to cryptography 48.01").
+NOT_A_FIX = re.compile(r"\b(?:not affected|unaffected|not vulnerable|are not impacted|included in|bundled (?:in|with)|shipped with)\b", re.I)
+
+
+def label_of(vendor, line):
+    """"Amazon Corretto 17", not "Amazon Corretto Corretto 17": the product line's words the vendor already says go."""
+    said = {w.lower() for w in vendor.split()}
+    rest = line.split()
+    while rest and rest[0].lower() in said:
+        rest.pop(0)
+    return " ".join([vendor, *rest]).strip()
+
+
+def fix_rows(sheets, incident, descriptions):
+    """The merged sheet's fixed rows a Summary may gain, as fixes lines {"for", "version"}: past merge()'s guards (no
+    version a rank-A page or the records' text calls affected, none fixed_conflict rejects), with a release number, no
+    range bound ("<13.1.0", or "<" before it in the words), no not-affected or bundled words, and, when the row names
+    CVEs, one of the Incident's (7-Zip's 26.02 fixed another CVE). Trusted at the trial's level 3: a rank-A or rank-B
+    page gives it, or two hosts do (Amazon Corretto's lines come only from a rank-B blog)."""
+    from collector.summaries import fixed_conflict  # summaries imports this module
+    affected = {version_key(r["version"]) for s, f in facts_of(sheets) if s["rank"] == "A"
+                for r in f["versions"] if r["status"] in ("affected", "first_affected")}
+    affected |= {version_key(v) for v in record_affected(descriptions)}
+    rows = {}
+    for s, f in facts_of(sheets):
+        for r in f["versions"]:
+            v, words = r["version"].strip(), r.get("words") or ""
+            if r["status"] != "fixed" or not v or version_key(v) in affected or fixed_conflict(incident, {"fixed": v, "fixes": []}):
+                continue
+            cves = {c.strip().upper() for c in r.get("cves") or [] if c.strip()}
+            if (not A_VERSION.search(v) or v[:1] in "<>≤" or re.search(r"<=?\s*v?" + re.escape(v), words)
+                    or NOT_A_FIX.search(words) or cves and not cves & set(incident["cves"])):
+                continue
+            row = rows.setdefault((norm(r["vendor"]), norm(r["product_line"]), norm(v)),
+                                  {"for": label_of(r["vendor"].strip(), r["product_line"].strip()), "version": v, "sources": set()})
+            row["sources"].add((s["rank"], host(s["url"])))
+    return [{"for": row["for"], "version": row["version"]} for row in rows.values()
+            if {rank for rank, _ in row["sources"]} & {"A", "B"} or len({h for _, h in row["sources"]}) >= 2]
+
+
+NOISE = {"lts", "elts", "or", "above", "later", "newer", "higher", "and", "version", "build", "이상", "esr"}
+LABEL_STOP = {"the", "for", "and", "edition", "version", "versions", "release", "series", "update", "server", "product", "software"}
+
+
+def vcore(v):
+    """A version as a line compares it: no bracket, no "or above", no package name before it ("cockpit-366.1.1-1.el10_3"
+    is the model's "366.1.1-1.el10_3")."""
+    v = re.sub(r"\s*\(.*?\)", "", str(v)).strip().lower().lstrip("v")
+    v = re.sub(r"\s*(?:or (?:above|later|newer|higher)|and later|\+)$", "", v)
+    return re.sub(r"^[a-z][\w.+]*?-(?=\d)", "", v).strip()
+
+
+def signature(v):
+    """The version's digits and letter groups without noise words ("10.4.63 ELTS" is 10.4.63; "R82.20 Jumbo Hotfix Take
+    14 이상" is the model's "R82.20 Jumbo Hotfix Take 14"; "8u513-perf" stays apart from "8u513")."""
+    return tuple(w for w in re.findall(r"\d+|[a-z]+|[가-힣]+", v.lower()) if w not in NOISE)
+
+
+def release_line(v):
+    found = re.match(r"\D{0,2}(\d+)\.(\d+)\.\d", v)
+    return found and found.groups()
+
+
+def label_words(label):
+    return {w for w in re.findall(r"[a-z][a-z0-9+]{2,}", label.lower()) if w not in LABEL_STOP}
+
+
+def union(summary, rows):
+    """The rows (fix_rows) the summary lacks, as new fixes lines; the model's lines and its fixed are never touched. Not
+    added: a version the summary already shows under any label (KISA's "Multi-Domain Security Management R82.10 ... 이상"
+    beside the model's "Check Point R82.10"); an older fix on a release line (major.minor) a labelled line of the same
+    product already fixes (Coder's 2.38.2 beside the model's 2.38.4; the headline fixed has no label and never counts:
+    Java's "17.0.21.1" kept Corretto's 17.0.21.1.2 out); and any row under a label of the model's own that names a
+    release (Red Hat Satellite's "... 6.16 for RHEL 9" with its package build, where the sheet gives 6.16.15)."""
+    model = [(vcore(f.get("version", "")), f.get("for") or "") for f in summary.get("fixes") or [] if isinstance(f, dict)]
+    have = model + ([(vcore(summary["fixed"]), "")] if summary.get("fixed") else [])
+    added = []
+    for row in rows:
+        v, label = vcore(row["version"]), row["for"]
+        line = release_line(v)
+        if (any(signature(h) == signature(v) for h, _ in have)
+                or line and any(release_line(h) == line and l and label_words(label) & label_words(l) for h, l in have)
+                or re.search(r"\d", label) and any(l and l.lower().split() == label.lower().split() for _, l in model)):
+            continue
+        added.append({"for": label, "version": row["version"], "devices": []})
+        have.append((v, label))
+    return added
+

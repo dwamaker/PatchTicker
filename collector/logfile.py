@@ -113,6 +113,7 @@ class CycleLine:
         self.stage, self.times, self.marks = STAGES[0], {}, {}
         self.counts = dict.fromkeys(COUNTS, 0)
         self.skipped, self.refused = [], Counter()
+        self.fixes_lines = 0  # lines the union added to fixes in the Summaries stored this cycle (cycle.route_summaries)
 
     def lap(self, stage, then=None):
         """The time since the last lap goes to `stage`; `then` is the stage running from here."""
@@ -148,5 +149,5 @@ class CycleLine:
             "cycle", f"start={self.start}", f"took={round(self.clock() - self.began)}",
             *(f"{s}={stage(s)}" for s in STAGES), *(f"{k}={v}" for k, v in self.counts.items()),
             f"refused={sum(self.refused.values())}", f"refused_hosts={hosts}", f"skipped={','.join(self.skipped) or '-'}",
-            "fixes_lines=0",  # lines added to fixes (ledger item 32 fills it)
+            f"fixes_lines={self.fixes_lines}",
             f"result={result}"])
