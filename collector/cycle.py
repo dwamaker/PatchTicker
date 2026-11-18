@@ -166,9 +166,11 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     changed = prune(incidents, stamp_ago(now, days=PAGE_DAYS))
 
     held_cves = {cve for i in incidents for cve in i["cves"]}
-    records, checkpoints["cvelist"] = cvelist.fetch(checkpoints.get("cvelist"), http_get, held_cves)
+    records, checkpoints["cvelist"], checkpoints["cvelist_missing"] = cvelist.fetch(
+        checkpoints.get("cvelist"), http_get, held_cves, pending=checkpoints.get("cvelist_missing"))
+    line.records_missing = len(checkpoints["cvelist_missing"])
     # CVEs of the last month's rows whose record no cycle has read (no cve_record Mention for them yet)
-    read = {r["cveMetadata"]["cveId"] for r in records}
+    read = {r["cveMetadata"]["cveId"] for r in records} | checkpoints["cvelist_missing"].keys()
     since = stamp_ago(now, days=summaries.BATCH_DAYS)
     missing = {cve for i in incidents if i["first_seen"] >= since for cve in i["cves"]
                if cve not in read and {"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"} not in i["mentions"]}

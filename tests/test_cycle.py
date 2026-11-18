@@ -270,12 +270,52 @@ class CycleTest(unittest.TestCase):
         # 11-09: a 7-day backfill (about 3,760 new CVEs) in one cycle would run for hours with every 위험+ row
         # summarized at once; whole delta entries are read oldest first until the limit, and the checkpoint stops there.
         get = recorded()
-        first, checkpoint = cvelist.fetch("2026-11-07T12:00:00.000Z", get, limit=1)
+        first, checkpoint, _ = cvelist.fetch("2026-11-07T12:00:00.000Z", get, limit=1)
         self.assertEqual([r["cveMetadata"]["cveId"] for r in first], ["CVE-2026-120839"])
         self.assertEqual(checkpoint, "2026-11-07T12:47:54.668Z")
-        rest, checkpoint = cvelist.fetch(checkpoint, get, limit=1)
+        rest, checkpoint, _ = cvelist.fetch(checkpoint, get, limit=1)
         self.assertCountEqual([r["cveMetadata"]["cveId"] for r in rest], ["CVE-2026-120984", "CVE-2026-120839"])
         self.assertEqual(checkpoint, "2026-11-07T13:22:16.396Z")  # caught up: the newest entry
+
+    def test_a_record_that_fails_is_left_out_and_asked_again_until_given_up(self):
+        # 11-18: the delta log named a record the raw path still answered 404 for, and the whole cycle failed.
+        cve, other = "CVE-2026-120984", "CVE-2026-120839"
+        gone = recorded(unpublished=(cve,))
+        with redirect_stderr(io.StringIO()) as err:
+            run_cycle(self.store, gone, at("2026-11-07T13:30:00"), "test-box")
+        checkpoints = self.store.read("checkpoints.json")
+        self.assertEqual(checkpoints["cvelist"], "2026-11-07T13:22:16.396Z")  # moved on
+        self.assertEqual(checkpoints["cvelist_missing"], {cve: 1})
+        held = [i["id"] for i in self.store.read("months/2026-11.json")["incidents"]]
+        self.assertIn(other, held)
+        self.assertNotIn(cve, held)
+        # Next cycle, nothing new in the delta log: the record is asked by itself and joins.
+        run_cycle(self.store, recorded(delta_log=None), at("2026-11-07T13:40:00"), "test-box")
+        self.assertEqual(self.store.read("checkpoints.json")["cvelist_missing"], {})
+        self.assertIn(cve, [i["id"] for i in self.store.read("months/2026-11.json")["incidents"]])
+        # A record that never comes out is given up after MISSING_TRIES cycles, with one line.
+        _, _, pending = cvelist.fetch(None, recorded(delta_log=None, unpublished=(cve,)), pending={cve: cvelist.MISSING_TRIES - 2})
+        self.assertEqual(pending, {cve: cvelist.MISSING_TRIES - 1})
+        with redirect_stderr(io.StringIO()) as err:
+            _, _, pending = cvelist.fetch(None, recorded(delta_log=None, unpublished=(cve,)), pending=pending)
+        self.assertEqual(pending, {})
+        self.assertEqual(len([l for l in err.getvalue().splitlines() if l.startswith(f"cvelist: gave up record {cve}")]), 1)
+
+    def test_a_record_server_error_is_left_out_and_after_a_few_the_rest_wait_unasked(self):
+        asked, get = [], recorded()
+
+        def failing(url, headers=None):
+            if url.startswith("https://raw.githubusercontent.com/") and url.endswith(".json") and "deltaLog" not in url:
+                asked.append(url)
+                raise urllib.error.HTTPError(url, 503, "Service Unavailable", {}, None)
+            return get(url, headers)
+        pending = {f"CVE-2026-{n}": 1 for n in range(10001, 10001 + cvelist.MISSING_STOP + 2)}
+        records, checkpoint, pending = cvelist.fetch("2026-11-07T12:00:00.000Z", failing, pending=pending)
+        self.assertEqual(records, [])
+        self.assertEqual(checkpoint, "2026-11-07T13:22:16.396Z")
+        self.assertEqual(len(asked), cvelist.MISSING_STOP)
+        self.assertEqual(len(pending), cvelist.MISSING_STOP + 4)  # seven held over, two new from the delta log
+        self.assertEqual(sorted(pending.values()).count(2), cvelist.MISSING_STOP)  # only the asked ones took a try
 
     def test_a_cve_cited_before_its_record_was_read_gets_the_record(self):
         # oss-security named the CVE first and the record came out before this store's first delta (11-09: nine Apache
