@@ -91,10 +91,11 @@ def ko_numbers(text):
 # Owner, 2026-11-10: a per-CVE line may write as a digit a number its CVE's description spells ("division by zero",
 # "eight-byte" -> "0", "8"); the check stays exact otherwise. Owner, 2026-11-11: the Summary's check (parse) and the
 # quick titles' (title_now) allow it too, from their own input (CVE-2026-58805: "zero arbitrary secure memory" -> "0").
-# No "one": it is a pronoun far too often ("one of", "no one") and would let any "1" through.
+# No "one": it is a pronoun far too often ("one of", "no one") and would let any "1" through; only before a unit it is
+# the number (httpd's "1바이트" beside "a one-byte overwrite", "by one byte" was refused in every trial round).
 NUMBER_WORDS = {w: str(n) for n, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split()) if w != "one"}
-NUMBER_WORD_RE = re.compile(rf"\b(?:{'|'.join(NUMBER_WORDS)})\b", re.I)
+NUMBER_WORD_RE = re.compile(rf"\b(?:{'|'.join(NUMBER_WORDS)}|one(?=[\s-](?:byte|bit|character)s?\b))\b", re.I)
 
 
 def number_words(text):
-    return {NUMBER_WORDS[w.lower()] for w in NUMBER_WORD_RE.findall(text)}
+    return {NUMBER_WORDS.get(w.lower(), "1") for w in NUMBER_WORD_RE.findall(text)}

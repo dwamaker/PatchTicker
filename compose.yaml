@@ -15,6 +15,10 @@ services:
     env_file: .env  # VR_COLLECTOR_ID, VR_CONTACT, the four VR_R2_* settings, ANTHROPIC_API_KEY; leave VR_STORE_DIR empty
     environment:
       VR_BACKUP_DB: /backup/store.sqlite
+      # The lasting log: everything the collector prints, one file a UTC day kept 30 days, in ./backup/logs on the host,
+      # so it outlives a recreate; `docker compose logs` shows the same lines as before. A day's cycles:
+      #   grep -E ' cycle(_end)? \w+=' backup/logs/collector-2026-11-18.log        (docs/development.md, "The lasting log")
+      VR_LOG_DIR: /backup/logs
     volumes:
       - ./backup:/backup
     restart: unless-stopped

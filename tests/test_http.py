@@ -31,6 +31,7 @@ class Fixture(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.server.paths.append(self.path)
+        self.server.got_headers.append(dict(self.headers))
         try:
             if self.path == "/":
                 self.send_response(302)
@@ -74,7 +75,7 @@ class FakeNetwork(unittest.TestCase):
 
     def setUp(self):
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Fixture)
-        self.server.paths, self.server.posted = [], []
+        self.server.paths, self.server.posted, self.server.got_headers = [], [], []
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
@@ -138,6 +139,15 @@ class RebindingTest(FakeNetwork):
             self.http_get(f"https://start.test:{self.port}/")
         self.assertEqual(self.connected, ["93.184.216.10"])
         self.assertEqual(names, ["start.test"])
+
+
+class HeadersTest(FakeNetwork):
+    def test_a_get_sends_accept_as_curl_does_and_a_callers_own_wins(self):
+        # 11-18: openjdk.org's bot screen refused the collector every cycle while curl (Accept: */*) passed.
+        self.http_get(f"http://drip.test:{self.port}/secret")
+        self.http_get(f"http://drip.test:{self.port}/secret", {"Accept": "application/json"})
+        self.assertEqual([(h["User-Agent"], h["Accept"]) for h in self.server.got_headers],
+                         [("vuln-radar/test", "*/*"), ("vuln-radar/test", "application/json")])
 
 
 class PostTest(FakeNetwork):

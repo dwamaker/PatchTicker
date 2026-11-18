@@ -10,6 +10,7 @@ import anthropic
 
 from collector import (checks, curators, cve_lines, cvelist, discord, distros, github, hn, kev, kisa, model, news, nvd, osssec,
                        same_event, sheets, summaries, summary_input)
+from collector.logfile import CycleLine
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
@@ -44,6 +45,12 @@ MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 # added to every check document made one cycle rewrite all 3,252 one PUT after another (~2.3 a second, 25 min), so
 # status.json stood still 35 min and two cycles never ran. A usual cycle takes about 3 min of its 10; 120 s is ~280 PUTs.
 BULK_SECONDS = 120
+# Seconds a cycle spends on instant Summaries (owner's ledger, 11-18: Oracle's patch day brought 96 Incidents at 06:40
+# KST, every one a candidate, asked one after another at 16-24 s each; that cycle took 25 min 53 s and the next two never
+# ran). A Summary starts only inside the budget, so one may run past it by its own length. 180 s is about 9 Summaries:
+# with the sources (~2 min), the sheets (at most 10, ~36 s), the titles and BULK_SECONDS, a cycle stays inside its 10
+# minutes and the Board is written before the next mark. The rest wait for the next cycle, most urgent first (priority).
+INSTANT_SECONDS = 180
 
 
 # A CVE-less story's page that failed to load is fetched again (11-17: openjdk.org's advisory gave nothing at 21:10Z
@@ -116,13 +123,29 @@ def highlights(views, since, now=None):
     return (lead + [v for v in top if v["id"] not in chosen])[:min(HIGHLIGHTS_MAX, max(HIGHLIGHTS, len(lead)))]
 
 
-def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-              curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False,
-              review=False, clock=time.monotonic):
+emit = print  # where the `cycle` line goes: stdout, so the container's output and the lasting log; tests quiet it
+
+
+def run_cycle(store, http_get, now, collector_id, clock=time.monotonic, **options):
+    """One cycle (steps), then its one `cycle` line (logfile.CycleLine), also when the cycle fails."""
+    line = CycleLine(now.strftime(STAMP), clock)
+    try:
+        steps(store, line.counting(http_get), now, collector_id, clock=clock, line=line, **options)
+    except BaseException as err:
+        emit(line.text(err))
+        raise
+    emit(line.text())
+
+
+def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
+          curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False,
+          review=False, clock=time.monotonic, line=None):
     """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None.
     ping: indexnow.make_pinger's function, or None. distro_table: look up the Distribution table (step 10); off by
-    default, as its pauses and requests would reach every test cycle. clock: what times BULK_SECONDS."""
+    default, as its pauses and requests would reach every test cycle. clock: what times BULK_SECONDS. line: the cycle's
+    CycleLine, told each stage's end, counts and skipped sources."""
     stamp = now.strftime(STAMP)
+    line = line or CycleLine(stamp, clock)
     checkpoints = store.read("checkpoints.json") or {}
     index = store.read("index.json") or {"months": []}
     # Every kept month to link against: at most four calendar months, as Incidents leave after PAGE_DAYS.
@@ -147,12 +170,14 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         stories, checkpoints["hn"] = hn.fetch(checkpoints.get("hn"), http_get)
     except (OSError, ValueError, KeyError) as err:
         print(f"hn: skipped this cycle: {err!r}", file=sys.stderr)
+        line.skip("hn")
         stories = []
     try:
         repos, checkpoints["github"] = github.fetch(checkpoints.get("github"), http_get, sleep, github_token)
     except (OSError, ValueError, KeyError) as err:
         # 2026-11-11: a rate-limited search (no token) ended a cycle. Repos only join Incidents.
         print(f"github: skipped this cycle: {err!r}", file=sys.stderr)
+        line.skip("github")
         repos = []
     articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds, stamp)
 
@@ -164,6 +189,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
             if page:
                 story["page"] = page_keys(page, writeup)
 
+    line.lap("read", "link")
     # Join-only repos go last, so they can join Incidents that started this cycle.
     for group in cvelist.mention_groups(records) + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
@@ -174,21 +200,26 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         changed |= hn.refresh_points(incidents, now, http_get)
     except (OSError, ValueError, KeyError) as err:  # it reads its one answer whole before changing any points
         print(f"hn points: skipped this cycle: {err!r}", file=sys.stderr)
+        line.skip("hn_points")
 
+    line.lap("link", "read")
     try:
         enriched, checkpoints["nvd"] = nvd.fetch(checkpoints.get("nvd"), now, http_get, sleep, nvd_api_key)
     except (OSError, ValueError, KeyError) as err:
         # NVD is often down; Briefs still go out and the next cycle retries the same range.
         print(f"nvd: skipped this cycle: {err!r}", file=sys.stderr)
+        line.skip("nvd")
         enriched = {}
     try:
         exploited = kev.fetch(http_get)
     except (OSError, ValueError, KeyError) as err:  # flags are only ever set below, so an empty catalog clears none
         print(f"kev: skipped this cycle: {err!r}", file=sys.stderr)
+        line.skip("kev")
         exploited = {}
     citations, checkpoints["curators"] = curators.fetch(checkpoints.get("curators"), http_get, curator_feeds, stamp)
     notices, checkpoints["kisa"] = kisa.fetch(checkpoints.get("kisa"), http_get, kisa_feed)
     citations += notices
+    line.lap("read", "link")
     for incident in incidents:
         before = json.dumps(incident)
         for cve in incident["cves"]:
@@ -210,14 +241,21 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
             cite(incident, c)
         if json.dumps(incident) != before:
             changed.add(month_of(incident["first_seen"]))
+    line.count("new", sum(1 for i in incidents if i["first_seen"] == stamp))
+    line.lap("link", "distros")
 
     distro_state = None
     try:
         if distro_table:
             months, distro_state = refresh_distros(store, incidents, http_get, now, sleep)
             changed |= months
+        else:
+            line.mark("distros", "off")
     except Exception as err:  # noqa: BLE001 - six outside sources and an unfinished API: any surprise costs the table only
         print(f"distros: skipped this cycle: {err!r}"[:300], file=sys.stderr)
+        line.mark("distros", "skipped")
+        line.skip("distros")
+    line.lap("distros", "summaries")
 
     status = {"updated": stamp, "collector": collector_id}
     batches = store.read("batches.json") or []
@@ -227,12 +265,13 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         was = (store.read("status.json") or {}).get("summaries")
         try:
             route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused", review=review,
-                            store=store)
+                            store=store, clock=clock, line=line)
             changed.update(month_of(i["first_seen"]) for i in summaries.recheck_exploited(incidents))  # owner 11-16
         except anthropic.APIError as err:
             # Briefs still go out; the next cycle asks again (in full after "stopped", with a probe after "paused").
             print(f"summaries: stopped this cycle: {err!r}", file=sys.stderr)
             status["summaries"] = "paused" if summaries.is_budget_error(err) else "stopped"
+            line.mark("summaries", status["summaries"])
             # 2026-11-11: a rejected schema stopped every Summary for two cycles and only stderr said so. Told once.
             stopped = None if was else err
         resumed = bool(was) and "summaries" not in status
@@ -242,6 +281,10 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
         changed |= merged
         if decisions:
             store.write("merge_log.json", (decisions[::-1] + (store.read("merge_log.json") or []))[:MERGE_LOG_SIZE])
+    else:
+        line.mark("sheets", "off")
+        line.mark("summaries", "off")
+    line.lap("summaries", "board")
 
     kept = {month_of(i["first_seen"]) for i in incidents}  # a month left with none (pruned or merged away) is deleted below
     for m in changed & kept:
@@ -318,6 +361,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     if ping:
         # Search-worthy pages written this cycle only (the rest say noindex): never the whole set, even on a first run.
         ping(sorted(slug for slug in sitemap["pages"] if pages[slug] != had_page.get(slug)))
+    line.lap("board")
 
 
 def refresh_distros(store, incidents, http_get, now, sleep):
@@ -394,14 +438,17 @@ def prune(incidents, since):
     return {month_of(i["first_seen"]) for i in old}
 
 
-def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False, store=None):
-    """Collect ended batches, summarize every Highlight candidate at once, title every row still without a Summary,
-    batch the rest's Summaries. Lets API errors
-    through. probe: Summaries were paused last cycle, so send a one-request batch to test the budget
-    instead of building a full one that would likely fail. review (VR_SUMMARY_REVIEW, owner 11-16): every Summary that
-    passes the rule checks is reviewed before it is stored: at once on the instant path, in a review batch sent here for
-    a batch reply (it waits in review_pending, shown as it was before, and is not asked again meanwhile). store: where
-    the page sheets are cached (sheets.fill); None makes none."""
+def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False, store=None,
+                    clock=time.monotonic, line=None):
+    """Collect ended batches, summarize Highlight candidates at once (within INSTANT_SECONDS by clock), title every row
+    still without a Summary, batch the rest's Summaries. Lets API errors through. probe: Summaries were paused last
+    cycle, so send a one-request batch to test the budget instead of building a full one that would likely fail. review
+    (VR_SUMMARY_REVIEW, owner 11-16): every Summary that passes the rule checks is reviewed before it is stored: at once
+    on the instant path, in a review batch sent here for a batch reply (it waits in review_pending, shown as it was
+    before, and is not asked again meanwhile). store: where the page sheets are cached (sheets.fill); None makes none.
+    line: the cycle's CycleLine (the sheets' time and the counts)."""
+    line = line or CycleLine(stamp, clock)
+    before = {i["id"]: i.get("summary") for i in incidents}  # keep() stores a new dict: what changed was stored here
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review)
         if touched is not None:
@@ -417,14 +464,27 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     rest = [i for i in due if i not in instant and i["first_seen"] >= since]
     # Page sheets of the gated Incidents due now, the instant ones first, before any Summary is asked. A missing sheet
     # never holds a Summary back: it is written from what is there. Not on a probe: one request tests the budget.
-    made = sheets.fill(store, instant + rest, claude, http_get, stamp) if store and not probe else {}
+    # The Summaries take the pages the sheets fetched, not fetching them again (shared_pages).
+    keep, http_get = summary_input.shared_pages(http_get)
+    line.lap("summaries", "sheets")
+    made = sheets.fill(store, instant + rest, claude, keep, stamp, counts=line.counts) if store and not probe else {}
+    line.lap("sheets", "summaries")
     for incident in instant + rest:
         if incident["id"] in made and sheets.page_scores(incident, made[incident["id"]]):
             changed.add(month_of(incident["first_seen"]))
     sheets_of = lambda incident: made.get(incident["id"], ())
-    for incident in instant:  # every candidate in the cycle that sees it: a breaking-news board (owner, 2026-11-09)
+    # Every candidate in the cycle that sees it (a breaking-news board, owner 2026-11-09), inside INSTANT_SECONDS: the
+    # rest keep their Brief and quick title until a later cycle.
+    more = bulk_budget(clock, INSTANT_SECONDS)
+    for n, incident in enumerate(instant):
+        if not more():
+            line.count("summaries_kept_back", len(instant) - n)
+            break
+        line.count("summaries_asked")
         summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident))
         changed.add(month_of(incident["first_seen"]))
+        if (incident.get("summary") or {}).get("at") != stamp:
+            line.count("summaries_failed")  # a try counted (summary_error), the stored Summary or Brief stays
     # Every row still without a Summary gets its titles now, several a request (owner, 2026-11-09): candidates whose
     # Summary failed first, then the rest of the window, those waiting in a batch included. Their Summaries go out
     # together (summaries.BATCH_MIN). A row a reply left out keeps needs_title and is asked again next cycle.
@@ -440,6 +500,7 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
                                               sheets=sheets_of)
     if pending:
         batches.append(pending)
+        line.count("summaries_batched", len(pending["requests"]))
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.
     asked = {r["incident"] for b in batches for r in b["requests"].values() if "lines" in r}
     lines = not probe and cve_lines.submit_lines(
@@ -456,11 +517,14 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     if reviews:
         batches.append(reviews)
     changed.update(month_of(i["first_seen"]) for i in waiting_review if "review_pending" not in i)  # stored here
+    # The union's lines (summaries.save_reply) in the Summaries stored this cycle, on either path.
+    line.fixes_lines += sum(1 for i in incidents if i.get("summary") is not before.get(i["id"])
+                            for f in (i.get("summary") or {}).get("fixes") or [] if isinstance(f, dict) and f.get("from_sheet"))
 
 
-def bulk_budget(clock):
-    """A function that answers True until BULK_SECONDS after this call."""
-    deadline = clock() + BULK_SECONDS
+def bulk_budget(clock, seconds=None):
+    """A function that answers True until `seconds` (BULK_SECONDS by default) after this call."""
+    deadline = clock() + (BULK_SECONDS if seconds is None else seconds)
     return lambda: clock() < deadline
 
 

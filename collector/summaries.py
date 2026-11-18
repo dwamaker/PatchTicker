@@ -17,7 +17,7 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
-from collector.incidents import DISTRO_PACKAGE, is_news, published_at, stamp_ago
+from collector.incidents import DISTRO_PACKAGE, is_news, known_label, published_at, stamp_ago, url_key
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
@@ -311,9 +311,14 @@ ATTACK_SEEN = re.compile(r"in the wild|zero-day|actively (?:exploited|attacked)|
                          r"\b(?:have|has|had|are|were) (?:already |now )?(?!expected|anticipated|predicted|likely|possible|feared)"
                          r"(?:been \w+|\w+ed|\w+ing|hit|struck|underway|ongoing)\b"
                          r"|exploited in (?:[\w-]+,? ){0,3}attacks|under (?:active |ongoing )?attack|attack campaign"
-                         r"|exploitation (?:(?:was|has been|have been|is|were|had been) )?(?!not\b|never\b)(?:\w+ )?"
+                         # Huatian's record: "Exploitation evidence was first observed by the Shadowserver Foundation"
+                         r"|exploitation (?:evidence )?(?:(?:was|has been|have been|is|were|had been) )?(?!not\b|never\b)(?:\w+ )?"
                          r"(?:seen|observed|reported|detected|confirmed)"
                          r"|(?:observed|seen|detected|reported|confirmed) (?:active |ongoing |limited )?exploitation", re.I)
+# The Korean text's report of attacks that happened ("실제 공격 시도도 확인되었습니다", "악용 사례가 보고됐습니다"): the verb
+# in a past, positive form, so "확인되지 않았습니다" and "악용될 수 있습니다" never match.
+ATTACK_SEEN_KO = re.compile(r"(?:공격|악용|침해)[^.。!?]{0,20}?(?:확인되었|확인됐|관측되었|관측됐|보고되었|보고됐|발생했|이어지고 있|진행 중이)"
+                            r"|(?:악용되고|공격받고|공격을 받고|노려지고) 있")
 # Words just before a match that turn it into a denial ("no evidence it has been exploited in the wild", "has not observed
 # exploitation") or a warning ("could be exploited in attacks", "could come under attack"); "may have been" stays a report.
 DENIED = re.compile(r"\b(?:no|not|never|none|nor|without)\b|n't", re.I)
@@ -362,6 +367,40 @@ def attacks_evidenced(summary, kind):
                                              for p in DELIVERED for m in p.finditer(text)))
 
 
+KEV_YES = re.compile(r"^Exploited in the wild \(CISA KEV\): yes\b", re.M)
+
+
+def first_hand_reports(input_text, finders=()):
+    """The first-hand pages whose own words in the input report attacks (attack_reported), in the input's order: an
+    advisory, a CVE record, and the finder's own disclosure of the flaw (finders: sheets.finders, the pages a sheet reads
+    as finder_disclosure; without sheets no write-up counts, as any HN poster's page can be one). Never a news or curator
+    page's text: their "Related: ... Exploited in Attacks" links match on every page. Rootways, CVE-2026-130583: Sansec's
+    own report ("an attacker used it to take over a Magento store") beside a newsletter issue about another story."""
+    kinds = mention_kinds(input_text)
+    records = {u.rsplit("=", 1)[-1].rsplit("/", 1)[-1]: u for u, k in kinds.items() if k == "cve_record"}
+    got = []
+    for b in SOURCE_RE.finditer(input_text):
+        url = b[1] or records.get(b[0].split(":", 1)[0].split()[-1])
+        first = not b[1] or kinds.get(url) == "advisory" or url in finders and kinds.get(url) != "curator" and not is_news(url)
+        if url and first and attack_reported(b[3]):
+            got.append(url)
+    return list(dict.fromkeys(got))
+
+
+def input_reports_attacks(input_text, source, reporters, finders=()):
+    """The page whose own words in the input report the attacks a reply claims: the claim's source when it is a
+    first-hand page that says so (first_hand_reports), else the first such page; else the claim's source when it is a
+    reporter and the input's CISA KEV line says yes. "" for none. TYPO3, CVE-2026-125160's record "known to be actively
+    exploited": the flag fell on one review draw's no; Huatian, CVE-2024-58406: the replies cited VulnCheck, a write-up,
+    for what the record says."""
+    blocks = list(SOURCE_RE.finditer(input_text))
+    head = input_text[:blocks[0].start()] if blocks else input_text  # no page text can forge the KEV line
+    first = first_hand_reports(input_text, finders)
+    if first:
+        return source if source in first else first[0]
+    return source if source in reporters and KEV_YES.search(head) else ""
+
+
 def recheck_exploited(incidents):
     """Each cycle, the stored Summaries' exploited flags by attacks_evidenced(), the source's kind read from the
     Incident's Mentions; one that fails is cleared (exploited, exploited_source, exploited_cves), as parse() clears a
@@ -369,7 +408,8 @@ def recheck_exploited(incidents):
     changed = []
     for i in incidents:
         summary = i.get("summary") or {}
-        if i.get("kev") or not summary.get("exploited") or summary.get("exploited_review") or not isinstance(summary.get("en"), dict):
+        if (i.get("kev") or not summary.get("exploited") or summary.get("exploited_review") or summary.get("exploited_input")
+                or not isinstance(summary.get("en"), dict)):
             continue
         kind = next((m["kind"] for m in i.get("mentions", []) if m["url"] == summary.get("exploited_source")), None)
         if not attacks_evidenced(summary, kind):
@@ -402,6 +442,19 @@ def release_without_fix(summary):
                for lang in ("ko", "en")) or UPDATE_OUT_RE.search(summary["en"]["mitigation"]):
         return ""
     return NO_FIX_RELEASE if any(RELEASE_FIXES_RE.search(summary[lang]["summary"]) for lang in ("ko", "en")) else ""
+
+
+def update_out_finding(finding, summary):
+    """A review finding that the summary's "the same update also fixes" contradicts the mitigation's "no source names a
+    fixed version", while that mitigation names an update to apply: release_without_fix's case, which it lets through
+    (11-18 dry run: 5 of the 17 kept back, all Oracle Critical Patch Update entries). The review is wrong there."""
+    if summary["fixed"] or summary["fixes"] or not UPDATE_OUT_RE.search(summary["en"]["mitigation"]):
+        return False
+    quote, against = (re.sub(r"\s+", " ", finding.get(k) or "").strip() for k in ("quote", "against"))
+    says_fixes = [s for lang in ("ko", "en") for s in re.split(r"(?<=[.!?])\s+", summary[lang]["summary"])
+                  if re.search(r"고치|고칩|고쳐|\bfix(?:es|ed)?\b", s, re.I)]
+    return bool(quote and any(quote in s for s in says_fixes) and re.search(r"출처|\bsources?\b", against, re.I)
+                and any(against in summary[lang]["mitigation"] for lang in ("ko", "en")))
 
 
 INFORMAL = "a Korean per-CVE line in 해요 style"
@@ -598,13 +651,21 @@ KO_FORBIDDEN = ((re.compile(r"(?<![가-힣])소스(?:에는|에서는|에서|에
                 (re.compile(r"(?<![가-힣])벤더"), "벤더", "제조사"),
                 # "release line" put word for word (owner 11-16, Git "2.50 줄은 2.50.2"): 줄 right after a dotted version,
                 # an R-numbered release or 버전. A plain number before 줄 is a count of lines ("10 줄짜리"), and 줄바꿈 is no line.
-                (re.compile(r"(?:\d+(?:\.\d+)+[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![가-힣])버전)\s?(?P<w>줄)(?!바꿈)"), "줄", "계열"),
-                # 라인 likewise (owner 11-16, "계열로 통일"), after a version, a codename ("Ulmo 라인"), a release word or a
-                # modifier ("해당 라인", "있는 라인"); never glued to a syllable (온라인, 파이프라인, 메인라인, 카메라인지), never
-                # 라인업, and not after a plain word or an acronym ("기본 라인", "DNS 라인": a DNS feature, CVE-2026-129468).
-                (re.compile(r"(?:(?:\d+(?:\.\d+)*(?:\.x)?[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![A-Za-z])[A-Z][a-z]+)\s?"
-                            r"|(?:(?<![가-힣])(?:버전|해당|제품|여러|각|다른|같은|최신|기존|이전|모든)|[가-힣]*(?:는|인|된))\s"
-                            r"|(?<![가-힣A-Za-z])(?=라인별))(?P<w>라인)(?!업)"), "라인", "계열"))
+                # A product's line (round 2 and live, Java: "Java 줄마다", "Java 8과 11 줄", "17 줄"): 줄 a space after a
+                # product name or a release number, or after 제품/해당/그/각/쓰는 when a version or an update follows;
+                # never a count glued to it ("5줄"), "한 줄", "아래 줄", the verb ("줄 수 있습니다", "줄이세요").
+                (re.compile(r"(?:\d+(?:\.\d+)+[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![가-힣])버전)\s?줄(?!바꿈)"
+                            r"|(?:(?<![A-Za-z])[A-Z][a-z]+[A-Za-z]*|(?<![\d.-])\d+(?:\s?[·,]\s?\d+)*)\s줄(?!바꿈|짜리|일|여|\s수\s)"
+                            r"|(?<![가-힣])(?:제품|해당|그|각|쓰는|사용하는|중인)\s줄"
+                            r"(?=마다|별|[의을를은도만]?[^.]{0,15}?(?:버전|최신|업데이트|올리))"), "줄", "계열"),
+                # 라인 likewise (owner 11-16, "계열로 통일"), after a version, a codename ("Ulmo 라인", "GraalVM 라인"), a
+                # release word or a modifier ("해당 라인", "그 라인", "21 이상 라인"), or opening "라인별"/"라인마다"; never
+                # glued to a syllable (온라인, 파이프라인, 메인라인, 카메라인지), never 라인업, and not after a plain word or an
+                # acronym ("기본 라인", "DNS 라인": a DNS feature, CVE-2026-129468).
+                (re.compile(r"(?:(?:\d+(?:\.\d+)*(?:\.x)?[A-Za-z0-9.-]*|(?<![A-Za-z])R\d+|(?<![A-Za-z])[A-Z][a-z]+[A-Za-z]*)\s?"
+                            r"|(?:(?<![가-힣])(?:버전|해당|제품(?:과|이나)?|여러|각|그|다른|같은|최신|기존|이전|이상|이하|모든)"
+                            r"|[가-힣]*(?:는|인|된))\s"
+                            r"|(?<![가-힣A-Za-z])(?=라인(?:별|마다)))라인(?!업)"), "라인", "계열"))
 
 
 def language_gaps(summary):
@@ -667,11 +728,8 @@ def fixed_conflict(incident, summary):
 RECORD_AFFECTED = "a CVE record's text calls "  # retry() gives it its own sentence
 
 
-def record_says_affected(summary, input_text):
-    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
-    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
-    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
-    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
+def record_texts(input_text):
+    """The descriptions of the input's CVE records."""
     descriptions = []
     for block in SOURCE_RE.finditer(input_text):
         if not block[1]:  # a "CVE record" block: cve_fields() JSON on one line
@@ -679,12 +737,82 @@ def record_says_affected(summary, input_text):
                 descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
             except (ValueError, AttributeError, TypeError):
                 continue
-    affected = page_sheets.record_affected(descriptions)
+    return descriptions
+
+
+def record_says_affected(summary, input_text):
+    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
+    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
+    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
+    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
+    affected = page_sheets.record_affected(record_texts(input_text))
     for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
                                          if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
         named = set(page_sheets.VERSION.findall(text)) if isinstance(text, str) else set()
         if named & affected:
             return f"{RECORD_AFFECTED}{sorted(named & affected)[0]} affected, yet the reply names it as fixed"
+    return ""
+
+
+LOST_FIX = "a fixed version the stored Summary had is missing: "  # retry() gives it its own sentence
+AFFECTED_LABEL = "a fixes entry is named after an affected build: "  # retry() gives it its own sentence
+EPOCH = re.compile(r"(?<![\w.:])\d+:(?=\d)")  # "0:" of "0:1.21.1-10.el9_8.3": the same package without it
+FIX_WORDS = r"(?:fixed|patched|resolved|upgrade to|update to|updating to|before|prior to|<\s?)"
+
+
+def sheet_lines(incident, summary, fix_rows, text):
+    """The union's lines for a reply (sheets.union), marked from_sheet: each trusted sheet row (fix_rows: sheets.fix_rows)
+    it lacks that neither fixed_conflict nor record_says_affected rejects."""
+    return [line | {"from_sheet": True} for line in page_sheets.union(summary, [
+        r for r in fix_rows if not fixed_conflict(incident, {"fixed": "", "fixes": [r]})
+        and not record_says_affected({"fixed": "", "fixes": [r]}, text)])]
+
+
+def lost_fix(incident, summary, input_text, fix_rows=()):
+    """A re-summary that drops a fixed version the stored Summary had while the input still gives it as a fix (Git in the
+    integrated test, 11-18: the stored 2.49.1, the record's "before 2.49.1", a draw that named none; yggdrasil,
+    CVE-2026-18379, whose only fixed version went). Not a loss: the same version without its epoch, or a version of the
+    same release line at least as high (a group's widest replacing a narrower one: Qt 6.8.9 -> 6.8.10), except for a
+    distribution's package (sheets.distro_build), kept only by its whole string (Cockpit, CVE-2026-91151). Named in the new
+    mitigation only is still lost: the fix line and the Easy action read fixed and fixes. A version with no dotted number
+    ("SMR Nov-2026 Release 1") is judged only when the reply's fixed and fixes are empty: a reply that names any fix may
+    have renamed it ("U/L 95" by its build number). The input gives a version as a fix, by its exact text, when the CVE
+    records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
+    and the records' own text does not call it affected (the whole version: a package's "0.2.3-7.el10_2.9" is not the
+    upstream 0.2.3). A line the union adds back from the sheet (sheet_lines on fix_rows) is no loss: Java4Shell's draws
+    spent every try when the model dropped 21.3.20.1 or 17.0.21.1.2, which a trusted row gives. The reason, or ""."""
+    stored = incident.get("summary")
+    if not stored:
+        return ""
+    # A line the union added (from_sheet) is not the model's to keep: save_reply adds it again after this check.
+    def versions(s):
+        return [v for v in [s.get("fixed"), *(f.get("version") for f in s.get("fixes") or [] if isinstance(f, dict) and not f.get("from_sheet"))]
+                if isinstance(v, str) and v.strip()]
+    kept = versions(summary) + [line["version"] for line in sheet_lines(incident, summary, fix_rows, input_text)]
+    compact = lambda t: re.sub(r"\s+", "", EPOCH.sub("", t)).lower()  # noqa: E731
+    new_text = compact(" ".join(kept))  # the Board's fix line reads these, not the mitigation
+    new_lines = [tuple(map(int, m.split("."))) for v in kept for m in VERSION_RE.findall(v)]
+    affected = page_sheets.record_affected(record_texts(input_text))
+    bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
+    for v in dict.fromkeys(versions(stored)):
+        dotted = VERSION_RE.search(v)
+        if compact(v) in new_text:
+            continue
+        # Without a dotted number nothing tells a renaming ("U/L 95" against its build number) from a loss, so only a reply
+        # left with no fix at all loses it (Samsung, CVE-2026-21148: "SMR Nov-2026 Release 1", its only fix, went to the
+        # mitigation).
+        if not dotted and new_text:
+            continue
+        line = dotted and tuple(map(int, dotted[0].split(".")))
+        # A distribution's package needs its whole string (above): RHEL 9's 366.1.1-1.el9_9 is not RHEL 10's -1.el10_3.
+        if (line and not page_sheets.distro_build(v) and any(n[:2] == line[:2] and n >= line for n in new_lines)
+                or EPOCH.sub("", v.strip()) in affected):
+            continue
+        bare = EPOCH.sub("", v.strip())
+        given = bare in bounds or any(re.search(rf"{FIX_WORDS}[^.\n]{{0,60}}?(?<![\w.]){re.escape(form)}(?![\w.]|-\d)",
+                                                input_text, re.I) for form in {v.strip(), bare})
+        if given:
+            return f"{LOST_FIX}{v.strip()}"
     return ""
 
 
@@ -757,18 +885,35 @@ def hn_points(incident):
 
 
 def priority(incident):
-    """Sort key for instant candidates (all are summarized each cycle; the order decides who goes first if the API
-    stops midway): KEV, then CVSS 9.0+, then a curator's pick, then CVSS 7.0+, then HN buzz; arrival order within each."""
+    """Sort key for instant candidates (the order decides who goes first when the cycle's INSTANT_SECONDS run out or the
+    API stops midway): KEV, then CVSS 9.0+, then a well-known product (collector/well_known.json), then a curator's
+    pick, then CVSS 7.0+, then HN buzz; arrival order within each."""
     curated = any(m["kind"] == "curator" for m in incident["mentions"])
     score = incident.get("cvss") or 0
-    return (not incident.get("kev"), score < 9.0, not curated, score < 7.0)
+    return (not incident.get("kev"), score < 9.0, not known_label(incident), not curated, score < 7.0)
 
 
 def basis(incident):
-    """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing)."""
+    """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing). repos: the repo
+    Mentions it saw; poc_asked: a Summary was once asked again for them (new_repos), so they never ask again."""
     return {"cves": sorted(incident["cves"]), "kev": bool(incident.get("kev")),
             "advisories": sorted(m["url"] for m in incident["mentions"] if m["kind"] == "advisory"),
-            **({"merged": sorted(incident["merged"])} if incident.get("merged") else {})}
+            **({"merged": sorted(incident["merged"])} if incident.get("merged") else {}),
+            "repos": repo_count(incident),
+            **({"poc_asked": True} if (incident.get("summary_basis") or {}).get("poc_asked") or new_repos(incident) else {})}
+
+
+def repo_count(incident):
+    return sum(1 for m in incident["mentions"] if m["kind"] == "repo")
+
+
+def new_repos(incident):
+    """Repos joined since the stored Summary, which says no PoC is public (owner, 11-18: Java4Shell's poc_public stayed
+    false for hours as five PoC repositories joined). Asks once: a basis written from it holds poc_asked. A basis from
+    before this rule counts no repos. Only an Incident with a CVE: a CVE-less HN story's repo is the story's own project."""
+    seen = incident.get("summary_basis") or {}
+    return (bool(incident["cves"]) and (incident.get("summary") or {}).get("poc_public") is False and not seen.get("poc_asked")
+            and repo_count(incident) > seen.get("repos", 0))
 
 
 TITLE_FIELDS = ("ko_title", "en_title", "ko_easy_title", "en_easy_title")
@@ -859,7 +1004,8 @@ def needs_summary(incident):
     """No Summary yet, or a re-summary trigger since the last one: a new official advisory, a new
     KEV listing, a newly attached CVE, reported attacks without the source that reports them (written before
     critique 14), a fixed version the CVE records call affected (fixed_conflict), a word in a script the Incident's own
-    text never writes (stray_script), or an Incident merged in by same_as
+    text never writes (stray_script), repos joined while the Summary says no PoC is public (new_repos, once), or an
+    Incident merged in by same_as
     (apply_same_as; news stories bring write-ups, which no other trigger reads), at most MAX_SUMMARIES in all; past that,
     only CVEs the last Summary did not see (a merge) ask once more."""
     if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
@@ -877,7 +1023,8 @@ def needs_summary(incident):
     unsourced = incident["summary"].get("exploited") and not incident["summary"].get("exploited_source")
     return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
                 or set(now["advisories"]) - set(seen["advisories"]) or set(now.get("merged", [])) - set(seen.get("merged", [])) or unsourced
-                or fixed_conflict(incident, incident["summary"]) or stray_script(incident, incident["summary"]))
+                or fixed_conflict(incident, incident["summary"]) or stray_script(incident, incident["summary"])
+                or new_repos(incident))
 
 
 def is_budget_error(err):
@@ -890,7 +1037,10 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
     candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill)."""
     text, seen = summary_input(incident, http_get, sheets), basis(incident)
-    asked = params(text, candidates=same_as_text(candidates), **retry(incident, text))
+    rows = page_sheets.fix_rows(sheets, incident, record_texts(text)) if sheets else []
+    carry = page_sheets.must_carry(sheets) if sheets else []
+    finders = page_sheets.finders(sheets) if sheets else []
+    asked = params(text, candidates=same_as_text(candidates), **retry(incident, text, carry))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
         reply = claude.messages.create(**asked, **({"timeout": REQUEST_TIMEOUT} if asked["max_tokens"] > MAX_TOKENS_RETRY else {}))
@@ -901,13 +1051,14 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
             raise
         failed(incident, f"request rejected: {err.status_code} {err.message}")
         return
-    save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None)
+    save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None,
+               fix_rows=rows, carry=carry, finders=finders)
 
 
 BATCH = "batch"  # save_reply's review_with for a batch reply: its review goes out in the next review batch
 
 
-def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
+def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=(), carry=(), finders=()):
     # review_with (owner 11-16, "모든 요약에 검토 추가"): None for no review (VR_SUMMARY_REVIEW=0), a client for the instant
     # path (one review call here), or BATCH (the reply waits in review_pending for a review batch, submit_reviews()).
     # Only a reply that passed every rule check and is not a last try is reviewed: a rule failure already costs the retry,
@@ -919,14 +1070,24 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
     # (critique 14: n reached 16 in a day, mostly from re-makes).
     due = "summary" not in incident or needs_summary(incident)
     try:
-        summary = parse(reply, text, [m["url"] for m in incident["mentions"]])
+        summary = parse(reply, text, [m["url"] for m in incident["mentions"]], finders)
     except Rejected as err:
         failed(incident, str(err))
         return
     name_titles(summary, trusted_names(incident, text))
+    stored = incident.get("summary") or {}
+    # A new reply that says "not exploited" never takes down attacks the Board shows with a source (owner, 11-18: ARTEX,
+    # N-central in the re-summary dry run): the review is asked whether attacks happened, and only its no drops the flag
+    # (settle_attacks).
+    if not summary["exploited"] and stored.get("exploited") is True and stored.get("exploited_source"):
+        summary["exploited_disputed"] = True
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
-    conflict = fixed_conflict(incident, summary) or record_says_affected(summary, text) or stray_script(incident, summary, text)
+    # A fixed version the stored Summary had and the input still gives is never lost: asked again, and when the tries
+    # run out the stored Summary stays.
+    # lost_fix asks the union (sheet_lines) first: a line it adds back costs no try.
+    conflict = (fixed_conflict(incident, summary) or record_says_affected(summary, text) or lost_fix(incident, summary, text, fix_rows)
+                or stray_script(incident, summary, text))
     if conflict:
         failed(incident, conflict)
         return
@@ -936,12 +1097,19 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
     words = sorted({r for r in script_runs(summary) if r not in own_text(incident)})  # stray_script passed: from the input
     # Every one is reported, so the retry note answers each (audit F4).
     mismatch = easy_action_mismatch(summary)
+    # The must-carry list (carry: sheets.must_carry), a soft check on the first try only: one retry at most.
+    left = not incident.get("summary_error", {}).get("tries") and page_sheets.carry_left(summary, carry)
     problem = SEPARATOR.join(p for p in (
         easy_jargon(summary) and f"{JARGON}: {easy_jargon(summary)}", missing_stopgap_step(summary),
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
         informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
-        hangul_in_english(summary, text), attacked_unnamed(summary, text)) if p)
+        hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary),
+        affected_label(summary, text), left and CARRY_LEFT + ", ".join(f"{c['kind']} {c['words']}" for c in left)) if p)
+    # The union of fixed versions (owner's carry trial, 11-18), after every check so it costs no retry, and before the
+    # review so the reviewed and stored Summary carry it: each trusted sheet row (fix_rows: sheets.fix_rows) the reply
+    # lacks, marked from_sheet (the Board reads only for and version). Java4Shell kept 14 of 14 lines in all six draws.
+    summary["fixes"] = [*(summary.get("fixes") or []), *sheet_lines(incident, summary, fix_rows, text)]
     draft = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due, "words": words}
     last = incident.get("summary_error", {}).get("tries", 0) + 1 >= MAX_TRIES
     if problem and not last:
@@ -972,7 +1140,8 @@ def review_params(summary, incident, ttl=None):
         summary = summary | {lang: summary[lang] | {"cve_lines": []} for lang in ("ko", "en")}
         if len(review.entry_text(summary, incident)) > REVIEW_MAX_CHARS:
             return None
-    return review.params(summary, incident, ttl=ttl, ask_attacks=bool(summary.get("exploited_unconfirmed")))
+    return review.params(summary, incident, ttl=ttl,
+                         ask_attacks=bool(summary.get("exploited_unconfirmed") or summary.get("exploited_disputed")))
 
 
 def review_now(incident, draft, claude):
@@ -998,9 +1167,9 @@ def finish_review(incident, draft, reply):
     to keep(): it is no finding."""
     incident.pop("review_pending", None)
     draft = draft | {"event_date": review.event_date(reply)}  # owner 11-17: an old event is no Highlight
-    if draft["summary"].get("exploited_unconfirmed"):
+    if draft["summary"].get("exploited_unconfirmed") or draft["summary"].get("exploited_disputed"):
         draft = draft | {"verdict": review.attacks_happened(reply)}
-    why = review.reason(review.findings_of(reply, draft["summary"]))
+    why = review.reason([f for f in review.findings_of(reply, draft["summary"]) if not update_out_finding(f, draft["summary"])])
     if why:
         failed(incident, why)
         incident["summary_error"]["draft"] = draft
@@ -1042,16 +1211,53 @@ def release_reviews(incidents, batches):
     return released
 
 
-def settle_attacks(summary, verdict):
+ATTACK_FIELDS = ("exploited", "exploited_source", "exploited_cves", "exploited_review", "exploited_input")
+
+
+ATTACKS_UNFLAGGED = "the text reports attacks but exploited is false"
+
+
+def attacks_unflagged(summary):
+    """A reply that takes down a stored attack (exploited_disputed) while its own text still reports one (N-central, 11-18
+    dry run: the Korean said "실제 공격 시도도 확인되었습니다", the flag false) contradicts itself: another try. The
+    reason, or ""."""
+    if not summary.get("exploited_disputed"):
+        return ""
+    en = f"{summary['en'].get('title', '')}\n{summary['en'].get('summary', '')}"
+    ko = f"{summary['ko'].get('title', '')}\n{summary['ko'].get('summary', '')}"
+    return ATTACKS_UNFLAGGED if attack_reported(en) or ATTACK_SEEN_KO.search(ko) else ""
+
+
+def settle_attacks(summary, verdict, stored=None):
     """An exploited flag parse() left unconfirmed (ATTACK_SEEN and DELIVERED miss its wording) stands only on the
-    review's yes, marked exploited_review so recheck_exploited leaves it; a no, or no review at all, drops it."""
+    review's yes, marked exploited_review so recheck_exploited leaves it; a no drops it, unless the stored Summary shows
+    the attacks with a source: those fall only when the new reply and the review both say no. No answer (the review left the
+    question out, was cut off or unreadable, or none was asked) is not a no: the Incident keeps the attacks its stored
+    Summary already shows, with that Summary's source (Huatian OA8000, CVE-2024-58406, re-summary dry run 11-18: the
+    review replied without attacks_happened and the Incident fell from the highest level). Without such a Summary the
+    unconfirmed flag drops, as before. A disputed flag (save_reply: the new reply says not exploited, the stored Summary
+    shows attacks with a source) is the stored one's unless the review answers no."""
+    if summary.pop("exploited_disputed", False):
+        # The new reply says not exploited where the stored Summary shows attacks: only the review's no takes them down.
+        if verdict is not False:
+            for field in ATTACK_FIELDS:
+                summary.pop(field, None)
+            summary.update({field: stored[field] for field in ATTACK_FIELDS if field in (stored or {})})
+        return
     if not summary.pop("exploited_unconfirmed", False):
         return
     if verdict is True:
         summary["exploited_review"] = True
+        return
+    for field in ATTACK_FIELDS:
+        summary.pop(field, None)
+    # The reply says exploited and the review says no (or gave no answer): a stored attack with a source stays, since
+    # it falls only when the reply and the review both say no (owner 11-18: Optimizely fell on one review draw's no; the
+    # dry run's draw said yes).
+    if stored and stored.get("exploited") is True and stored.get("exploited_source"):
+        summary.update({field: stored[field] for field in ATTACK_FIELDS if field in stored})
     else:
         summary["exploited"], summary["exploited_source"] = False, ""
-        summary.pop("exploited_cves", None)
 
 
 def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None, event_date=""):
@@ -1059,10 +1265,13 @@ def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None, ev
     shows the mitigation. words: the runs of other letters only the request's input had, kept so the stored Summary
     passes stray_script() in needs_summary(), which has no input. verdict: the review's attacks_happened, None when no
     review answered it. event_date: the review's day of the reported attack or incident (YYYY-MM-DD), stored with the
-    Summary it was read from; cycle.highlights keeps an event more than 14 days old out of the Highlights."""
-    settle_attacks(summary, verdict)
-    if event_date:
-        summary["event_date"] = event_date
+    Summary it was read from; cycle.highlights keeps an event more than 14 days old out of the Highlights. A review that
+    gives no day keeps the stored Summary's (HN 50496937, re-summary dry run 11-18: the Cursor extension's 2026-10-29
+    attack came back into the Highlights); a different day replaces it."""
+    stored = incident.get("summary") or {}
+    settle_attacks(summary, verdict, stored)
+    if event_date or stored.get("event_date"):
+        summary["event_date"] = event_date or stored["event_date"]
     if words:
         incident["script_words"] = sorted(set(incident.get("script_words", [])) | set(words))
     for lang in easy_action_mismatch(summary):
@@ -1082,6 +1291,12 @@ CUT_OFF = "stop_reason max_tokens"  # parse()'s reason for a reply cut off at ma
 SEPARATOR = "; "  # between the soft problems of one reply
 JARGON = "jargon in the Easy view"
 EASY_MISMATCH = "Easy action disagrees with the mitigation"
+CARRY_LEFT = "the reply leaves out what the pages give: "
+# The must-carry note's wording as the carry trial sent it (part 2): beside the input, never in the cached instructions.
+CARRY_HEAD = ("Carry these from the pages, in the summary or the mitigation, in both languages, in the input's words"
+              " (each is in the input; leave one out only if the input contradicts it):")
+CARRY_LINE = {"stopgap": "the stopgap ", "upstream_project": "the upstream project the flawed code comes from: ",
+              "flawed_component": "the flawed component: "}
 NUMBER_SENTENCE = (" Write every number and version exactly as the input writes it: never shorten or round one (not 10.86"
                    " for 10.86.51, not 4.2 for 4.2.16), never add one the input does not have, and use the same numbers in"
                    " Korean and English.")
@@ -1099,6 +1314,10 @@ RETRY_SENTENCES = [
     # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
     # 11-15: the bound comes from the CVE records' fix keys, which the input may not hold (CVE-2026-125712, 1.28.4);
     # naming it as the version to write sent the model to it, and the number check rejected it.
+    (AFFECTED_LABEL, " A `fixes` entry's `for` names the product line (\"Oracle Java SE 8\"), never an affected build;"
+                     " the fixed version goes under `version`."),
+    (LOST_FIX, " The input still gives that version as a fix, and the entry shown today names it: keep it in `fixed` or"
+               " `fixes` (with its product line) unless the input now says it does not fix the flaw."),
     (RECORD_AFFECTED, " The CVE record's own text calls that version affected, so it is not a fixed version: in `fixed`"
                       " and `fixes` name only a version a source says fixes the flaw, such as the one the record"
                       " recommends upgrading to."),
@@ -1141,6 +1360,7 @@ RETRY_SENTENCES = [
     ("cve_lines names a CVE not in the input", " In cve_lines name only CVEs of the input's Incident line (only those of"
                                                " its \"Per-CVE lines only for:\" line when it has one), copied exactly."),
     (CUT_OFF, " Keep every field as short as the rules say, so the reply ends within its budget."),
+    (CARRY_LEFT, " Carry every item of the list above, in the summary or the mitigation, in both languages."),
 ]
 
 
@@ -1180,17 +1400,26 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
     candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked. sheets: an
-    Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text."""
+    Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text, and
+    the request keeps the sheets' fixed rows (sheets.fix_rows) and must-carry list (sheets.must_carry) for the union and
+    the carry check when the result comes in."""
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
-    requests = {f"r{n}": {"incident": i["id"], "input": summary_input(i, http_get, sheets(i)), "basis": basis(i)}
-                | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
-                for n, i in enumerate(incidents[:limit])}
+    requests = {}
+    for n, i in enumerate(incidents[:limit]):
+        text = summary_input(i, http_get, sheets(i))
+        rows = page_sheets.fix_rows(sheets(i), i, record_texts(text)) if sheets(i) else []
+        carry = page_sheets.must_carry(sheets(i)) if sheets(i) else []
+        finders = page_sheets.finders(sheets(i)) if sheets(i) else []
+        requests[f"r{n}"] = ({"incident": i["id"], "input": text, "basis": basis(i)}
+                             | ({"candidates": [c["id"] for c in listed[i["id"]]]} if listed[i["id"]] else {})
+                             | ({"fix_rows": rows} if rows else {}) | ({"carry": carry} if carry else {})
+                             | ({"finders": finders} if finders else {}))
     by_id = {i["id"]: i for i in incidents[:limit]}
     if not requests:
         return None
     batch = claude.messages.batches.create(requests=[
         Request(custom_id=cid, params=params(r["input"], ttl="1h", candidates=same_as_text(listed[r["incident"]]),
-                                             **retry(by_id[r["incident"]], r["input"]))) for cid, r in requests.items()])
+                                             **retry(by_id[r["incident"]], r["input"], r.get("carry", ())))) for cid, r in requests.items()])
     return {"id": batch.id, "requests": requests}
 
 
@@ -1232,24 +1461,33 @@ def collect_batch(pending, incidents, claude, stamp, review=False):
             continue
         if item.result.type == "succeeded":
             save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, sent.get("candidates", []),
-                       review_with=BATCH if review else None)
+                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()), carry=sent.get("carry", ()),
+                       finders=sent.get("finders", ()))
         elif item.result.type == "errored":
             failed(incident, f"batch request errored: {item.result.error.error.type}")
         touched.append(incident)
     return touched
 
 
-def retry(incident, text=""):
+def carry_note(items):
+    """The must-carry list (sheets.must_carry) as the note gives it, or ""."""
+    return "\n".join([CARRY_HEAD, *(f"- {CARRY_LINE[c['kind']]}{c['words']} ({c['source']})" for c in items)]) if items else ""
+
+
+def retry(incident, text="", carry=()):
     """What the last rejected try of this Incident got wrong, for the next request (owner, 2026-11-10: three blind tries
     failed the same way; Netpbm's "10.86.51" kept coming back as "10.86"). The note is sent beside the input, never
     inside it: a reply is checked against the input alone, so a number named here does not become allowed.
     A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
-    10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact)."""
+    10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact).
+    carry: the must-carry list (sheets.must_carry), which starts the note on the first try and on every later one (carry
+    trial part 2: Java4Shell carried every item in 6 of 6 runs, against 4 of 12 with the list only in a retry)."""
     reason = incident.get("summary_error", {}).get("reason", "")
     # A one-CVE Incident never cut off and read from two pages or fewer asks with params()' own MAX_TOKENS, as before.
     room = {"max_tokens": budget(incident, text)} if budget(incident, text) != MAX_TOKENS else {}
+    head = carry_note(carry)
     if not reason:
-        return room
+        return ({"note": head} if head else {}) | room
     # One sentence per reason, each keyed on the start of its reason; save_reply joins soft ones (audit F3, F4).
     parts = reason.split(SEPARATOR)
     sentences = dict.fromkeys(sentence for key, sentence in RETRY_SENTENCES for part in parts
@@ -1264,7 +1502,7 @@ def retry(incident, text=""):
             lines.append(f"- {token}: the input has {', '.join(behind)}; write one of them exactly, or the range as the input"
                          " writes it" if behind else f"- {token}: not in the input, leave it out")
         note += " For each rejected number:\n" + "\n".join(lines)
-    return {"note": note} | room
+    return {"note": "\n\n".join(p for p in (head, note) if p)} | room
 
 
 def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):
@@ -1289,11 +1527,12 @@ def lang_text(fields):
                       fields["easy_action"], fields["command_for"], fields["stopgap_then"], *(line["text"] for line in fields["cve_lines"])])
 
 
-def parse(reply, input_text, urls):
+def parse(reply, input_text, urls, finders=()):
     """The checked Summary from a reply, or Rejected: broken JSON or shape, a number or version not
     in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ (a digit may stand for a number word).
     An Easy command or stopgap that is not one invocation found verbatim in a trusted source (trusted()) is dropped, so the page falls back to
-    "update to version X" and never shows a made-up command. A distribution's package version as `fixed` is emptied."""
+    "update to version X" and never shows a made-up command. A distribution's package version as `fixed` is emptied.
+    finders: the finder's own disclosure pages (sheets.finders), which count among the pages that report attacks."""
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
@@ -1382,16 +1621,32 @@ def parse(reply, input_text, urls):
         # The Easy entry takes its twin's ids (the easy rules ban ids, so the model may leave them out, and the Easy
         # view would then read it as holding for every CVE); unpaired, the page falls back to the conditions.
         easy = [c and e and (c[0], e[1]) for c, e in zip(conditions, easy)] if len(easy) == len(conditions) else []
+        conditions, easy = merge_conditions(conditions, easy, own)
         fields["conditions"], fields["easy_conditions"] = ([f"{', '.join(ids)}: {text}" if ids else text for ids, text in filter(None, entries)]
                                                            for entries in (conditions, easy))
+    # A Mention's URL written another way is that Mention, kept as the input writes it (round 2: the KISA notice's
+    # "https://www.boho.or.kr/kr/bbs/view.do?..." came back without www.); any other URL is still refused below.
+    by_key = {url_key(u): u for u in reversed(urls)}
+    for field in ("lead", "exploited_source"):
+        summary[field] = summary[field] and by_key.get(url_key(summary[field]), summary[field])
     if summary["lead"] and summary["lead"] not in urls:
         raise Rejected(f"lead is not an input URL: {summary['lead']}")
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
     # never the Summary.
     trusted_text, reporters = trusted(input_text)
-    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters):
+    kinds = mention_kinds(input_text)
+    sourced = summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters
+    if sourced and attacks_evidenced(summary, kinds.get(summary["exploited_source"])):
+        # A news or curator source gives way to a first-hand page that reports the attacks itself (Rootways: a newsletter
+        # issue titled about Optimizely read on the Board as if it were about Optimizely).
+        if kinds.get(summary["exploited_source"]) not in ("advisory", "cve_record") and (first := first_hand_reports(input_text, finders)):
+            summary["exploited_source"] = first[0]
+    elif summary["exploited"] and (stated := input_reports_attacks(input_text, summary["exploited_source"], reporters, finders)):
+        # A reporter in the input says so in plain words: no review draw decides it, and recheck_exploited leaves it.
+        summary["exploited_source"], summary["exploited_input"] = stated, True
+    elif not sourced:
         summary["exploited"], summary["exploited_source"] = False, ""
-    elif not attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"])):
+    else:
         # Wording the pattern misses: the review decides (owner 11-17), else keep() drops it (settle_attacks)
         summary["exploited_unconfirmed"] = True
     # Step 4: the attacked CVEs of a group, each one of the Incident's own by exact id; none once exploited is dropped.
@@ -1422,6 +1677,7 @@ def parse(reply, input_text, urls):
         summary[lang]["names"] = [html.unescape(n) if isinstance(n, str) else n for n in summary[lang]["names"]]
     summary["products"] = [html.unescape(p) for p in summary["products"]]
     # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
+    lead_fixed(summary, input_text)
     summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
     return summary
 
@@ -1457,6 +1713,83 @@ def name_titles(summary, names):
         title = summary[lang]["title"]
         if names and not any(n.lower() in title.lower() for n in names):
             summary[lang]["title"] = f"{title.rstrip()} ({', '.join(names)})"
+
+
+def merge_conditions(conditions, easy, own):
+    """One entry per condition sentence: the same text for several CVE lists becomes one entry with the CVEs of all of
+    them, in the Incident's order, or none when together they are every CVE (Java, integrated test 11-18: "웹 서비스 등으로
+    외부 데이터를 API에 전달하는 경우" twice, once for 114938/41/42/45 and once for 114940/43/44/46). conditions, easy:
+    per_cve() entries ((ids, text) or None), easy paired by index (or [] unpaired); the Easy twin follows its condition."""
+    out, twins, at = [], [], {}
+    for n, entry in enumerate(conditions):
+        twin = easy[n] if easy else None
+        if entry and entry[1] in at:
+            k = at[entry[1]]
+            ids = [] if not out[k][0] or not entry[0] else [c for c in own if c in out[k][0] or c in entry[0]]
+            ids = [] if len(ids) == len(own) else ids
+            out[k] = (ids, entry[1])
+            if easy and twins[k]:
+                twins[k] = (ids, twins[k][1])
+            continue
+        if entry:
+            at[entry[1]] = len(out)
+        out.append(entry)
+        twins.append(twin)
+    return out, (twins if easy else [])
+
+
+def lead_fixed(summary, input_text):
+    """A group's `fixed` is its Lead CVE's fix (the feed's "Fixed", the product pages, /api/check's fixed, the Easy action
+    when there is no list): when the reply's `fixed` is on a release line the Lead CVE's record does not name, the first
+    `fixes` entry on a line it names takes its place (Java4Shell: "8u513-perf", a line CVE-2026-114938 does not touch,
+    where its own first fix is 17.0.21.1). Left alone when the record names no line of any entry."""
+    own = input_cves(input_text)
+    record = re.search(rf"^CVE record {re.escape(own[0])}:\n(.*)$", input_text, re.M) if len(own) > 1 else None
+    if not record or not summary["fixes"] or not summary["fixed"]:
+        return
+    lines = {tuple(v.split(".")[:2]) for v in VERSION_RE.findall(record[1])}
+
+    def line(version):
+        found = VERSION_RE.search(str(version))
+        return tuple(found[0].split(".")[:2]) if found else None
+    if line(summary["fixed"]) in lines:
+        return
+    pick = next((f["version"] for f in summary["fixes"] if line(f.get("version")) in lines), None)
+    if pick:
+        summary["fixed"] = pick
+
+
+BUILD = re.compile(r"(?<![\w.])\d+(?:u\d+|(?:\.\d+)+)(?:\([\w.]+\))?[\w.+-]*")  # Zyxel's "5.63(ACLD.2)b3_D0" whole
+
+
+def affected_label(summary, input_text):
+    """A `fixes` entry whose `for` holds a version the input calls affected (round 2, Java4Shell: "Oracle Java SE
+    8u511b33-perf" for 8u513-perf): the label must name the product line, not the vulnerable build. Affected: a CVE
+    record's affected versions, or a version its text calls affected, or the fact sheet's "Affected" lines. The reason,
+    or ""."""
+    affected, descriptions = set(), []
+    for block in SOURCE_RE.finditer(input_text):
+        if block[1]:
+            continue
+        try:
+            record = json.loads(block[3])
+        except ValueError:
+            continue
+        descriptions += [d.get("value", "") for d in record.get("descriptions", []) if isinstance(d, dict)]
+        for product in record.get("affected", []) if isinstance(record.get("affected"), list) else []:
+            for v in (product.get("versions") or []) if isinstance(product, dict) else []:
+                # A single affected build, never a range's start ("7.2.2" with lessThan "7.2.2-72806" names a line).
+                if (isinstance(v, dict) and v.get("status", "affected") == "affected" and isinstance(v.get("version"), str)
+                        and not v.get("lessThan") and not v.get("lessThanOrEqual")):
+                    affected.add(v["version"].strip())
+    affected |= page_sheets.record_affected(descriptions)
+    affected |= {b for line in re.findall(r"^- Affected: (.*) \[", input_text, re.M) for b in BUILD.findall(line)}
+    for fix in summary.get("fixes") or []:
+        label = str(fix.get("for", ""))
+        hit = [b for b in BUILD.findall(label) if b in affected and b != fix.get("version")]
+        if hit:
+            return f"{AFFECTED_LABEL}{label}"
+    return ""
 
 
 def input_cves(input_text):

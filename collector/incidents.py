@@ -668,17 +668,26 @@ MAX_CITED_LINKS = 50  # the public monthly file carries these for a week; most p
 
 def page_keys(page, page_url):
     """CVE IDs and outside link keys in a story's linked page (raw HTML or text). Links back to the page's
-    own site are its navigation, not citations."""
+    own site are its navigation, not citations. Also the page's title and the cited CVEs named more than once in its
+    text and its links to other sites (many: SecurityWeek's N-central story names the Axis CVE once and links its NVD
+    page; fortirix's Optimjack post names Java4Shell once), for cited_by."""
     own = url_key(page_url).split("/", 1)[0]
     urls = {url_key(u) for u in urls_in(page)}
-    return {"cves": page_cves(page, page_url), "urls": sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]}
+    cves = page_cves(page, page_url)
+    parser = _Links()
+    if "<" in page[:2000]:
+        parser.feed(page)
+    outside = [h for h, _ in parser.links if h.lower().startswith(("http://", "https://")) and url_key(h).split("/", 1)[0] != own]
+    text = " ".join(parser.text + outside) if "<" in page[:2000] else page
+    return {"cves": cves, "urls": sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS],
+            "title": " ".join(parser.title.split())[:300], "many": [c for c in cves if len(re.findall(re.escape(c), text, re.I)) > 1]}
 
 
 class _Links(html.parser.HTMLParser):
-    """A page's text (no script or style) and its links as [href, text]."""
+    """A page's text (no script or style), its links as [href, text] and its <title>."""
     def __init__(self):
         super().__init__()
-        self.text, self.links, self.skip, self.open = [], [], 0, False
+        self.text, self.links, self.skip, self.open, self.title, self.in_title = [], [], 0, False, "", False
 
     def handle_starttag(self, tag, attrs):
         if tag in ("script", "style", "template"):
@@ -686,18 +695,24 @@ class _Links(html.parser.HTMLParser):
         elif tag == "a":
             self.links.append([dict(attrs).get("href") or "", ""])
             self.open = True
+        elif tag == "title":
+            self.in_title = True
 
     def handle_endtag(self, tag):
         if tag in ("script", "style", "template") and self.skip:
             self.skip -= 1
         elif tag == "a":
             self.open = False
+        elif tag == "title":
+            self.in_title = False
 
     def handle_data(self, data):
         if not self.skip:
             self.text.append(data)
             if self.open:
                 self.links[-1][1] += data
+            if self.in_title and not self.title:
+                self.title = data
 
 
 def page_cves(page, page_url):
@@ -722,16 +737,40 @@ def page_cves(page, page_url):
     return list(dict.fromkeys(elsewhere + [c for c in cves_in(" ".join(parser.text)) if c not in siblings or c in whole]))
 
 
-def cited_by(incidents, keys):
+# A title about many flaws: a round-up names one CVE of many (SecurityWeek "Fortinet Patches Nearly 100
+# Vulnerabilities", "Chipmaker Patch Tuesday: Over 200 Vulnerabilities ...", "Git 2.56.1 fixes six vulnerabilities").
+ROUNDUP = re.compile(r"\b(?:nearly|over|more than|almost|about|around|dozens? of|several|multiple|\d+|two|three|four|five|six"
+                     r"|seven|eight|nine|ten|eleven|twelve|dozen)\s+(?:[\w.-]+\s+){0,2}?(?:vulnerabilities|flaws|bugs|cves"
+                     r"|security (?:holes|issues|defects)|zero-days)\b", re.I)
+
+
+def about(incident, keys, titles):
+    """Whether a story's page, which names one of the Incident's CVEs, is about it and not about something wider (11-18:
+    4 of the month's 21 folds were a round-up or a passing mention, fortirix's Optimjack post naming Java4Shell once): no
+    title speaks of many flaws, and a title (the page's or the story's) names the CVE or a word of the Incident's
+    product, or the page names the CVE more than once (keys["many"]), or it names several of the Incident's CVEs (the
+    OpenJDK advisory of 11-17, all ten of the Java group's). Unsure stands alone: a fold cannot be undone."""
+    from collector.summary_input import GENERIC_PRODUCT_WORDS  # summary_input imports this module
+    heads = [t.lower() for t in (*titles, keys.get("title")) if t]
+    if any(ROUNDUP.search(t) for t in heads):
+        return False
+    terms = {c.lower() for c in incident["cves"]} | {w.lower() for p in incident.get("products", []) for w in re.split(r"[\s/,()]+", p["name"])
+                                                     if len(w) >= 4 and w.lower() not in GENERIC_PRODUCT_WORDS}
+    return (any(t in h for h in heads for t in terms) or bool(set(keys.get("many", [])) & set(incident["cves"]))
+            or len(set(keys["cves"]) & set(incident["cves"])) > 1)
+
+
+def cited_by(incidents, keys, titles=()):
     """The one Incident a CVE-less story's page is about (a blog on sshole links sshhole.com): matched by a
     CVE ID or by a link to one of its advisory, write-up or repo pages. Several or none: [] (stands alone).
     A CVE ID outranks a link: when the page's CVE IDs are held by one Incident, that is the one whatever its links hit
-    (11-18, the Java4Shell story also linked two other stories' write-ups); held by several, it stands alone. Only with
-    no CVE hit do links decide, and the one must be named by a page no other Incident links; an advisory with no
-    identifier (a vendor's list of notices, a changelog, a product page) names none."""
+    (11-18, the Java4Shell story also linked two other stories' write-ups), if the page is about it (about(); titles: the
+    story's own); held by several, it stands alone. Only with no CVE hit do links decide, and the one must be named by a
+    page no other Incident links; an advisory with no identifier (a vendor's list of notices, a changelog, a product
+    page) names none."""
     by_cve = [i for i in incidents if set(i["cves"]) & set(keys["cves"])]
     if by_cve:
-        return by_cve if len(by_cve) == 1 else []
+        return by_cve if len(by_cve) == 1 and about(by_cve[0], keys, titles) else []
     urls = set(keys["urls"])
     pages = lambda i: {url_key(m["url"]): m for m in i["mentions"] if m["kind"] in ("advisory", "writeup", "repo")}
     hits = [i for i in incidents if pages(i).keys() & urls]
@@ -752,7 +791,7 @@ def rejoin(incidents, since):
             del story["cites"]
             changed.add(month_of(story["first_seen"]))
             continue
-        hits = cited_by([i for i in incidents if i is not story], story["cites"])
+        hits = cited_by([i for i in incidents if i is not story], story["cites"], [m.get("title") for m in story["mentions"]])
         if hits:
             fold(incidents, hits[0], story)
             changed |= {month_of(story["first_seen"]), month_of(hits[0]["first_seen"])}

@@ -2,6 +2,7 @@
 cycle that goes on without them."""
 
 import contextlib
+import copy
 import io
 import json
 import unittest
@@ -23,7 +24,7 @@ PAGE = "<html><body><main><p>" + "Widget 1.2 is affected; update to Widget 1.3. 
 def incident(pages=4, cves=1, kinds=None):
     kinds = kinds or ["advisory"] * pages
     ids = [f"CVE-2026-{1000 + n}" for n in range(cves)]
-    return {"id": ids[0], "cves": ids, "first_seen": STAMP, "products": [{"name": "Widget"}], "urls": [],
+    return {"id": ids[0], "cves": ids, "first_seen": STAMP, "products": [{"id": "acme:widget", "name": "Widget"}], "urls": [],
             "brief": {"text": "Widget flaw.", "lead": "https://h0.example/a"},
             "mentions": [{"kind": kind, "url": f"https://h{n}.example/a", "title": "Widget"} for n, kind in enumerate(kinds)]}
 
@@ -182,6 +183,29 @@ class PageScoreTest(unittest.TestCase):
             self.assertFalse(sheets.same_party(given_by, "Calif"), given_by)
         self.assertFalse(sheets.same_party("Oracle Cloud Infrastructure", "Oracle"))
 
+    def test_a_score_whose_number_is_not_in_its_words_is_refused(self):
+        # elixir-grpc, CVE-2026-123635 (re-summary dry run 11-18): the model worked 8.7 out of the vector; the GitHub page
+        # says "High 8.2".
+        vector = sheet("https://github.com/elixir-grpc/grpc/security/advisories/GHSA-c2h9-f9cc", "A", page_role="vendor_advisory",
+                       publisher="elixir-grpc", scores=[{"score": "8.7", "cvss_version": "4.0", "cve": "CVE-2026-1000",
+                                                          "given_by": "elixir-grpc", "publisher_gives_it": True, "on_page": True,
+                                                          "words": "CVSS:4.0/AV:N/AC:L/AT:P/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"}])
+        inc = self.java()
+        self.assertFalse(sheets.page_scores(inc, [vector]))
+        self.assertEqual(inc["cvss"], 8.1)
+
+    def test_a_version_the_words_do_not_state_is_not_kept(self):
+        # SonicWall's advisory writes "CVSS Score: 5.2": the number counts, the claimed 3.1 is not kept.
+        page = sheet("https://psirt.example/SNWLID-2026-0014", "A", page_role="vendor_advisory", publisher="SonicWall", scores=[
+            {"score": "9.2", "cvss_version": "3.1", "cve": "CVE-2026-1000", "given_by": "SonicWall", "publisher_gives_it": True,
+             "words": "CVSS Score: 9.2", "on_page": True}])
+        inc = self.java()
+        self.assertTrue(sheets.page_scores(inc, [page]))
+        self.assertNotIn("version", inc["cve_scores"]["CVE-2026-1000"])
+        for words, version in (("Under CVSS 4.0, this vulnerability scores 9.2", "4.0"), ("CVSSv4 base score 9.2", "4.0"),
+                               ("CVSS:4.0/AV:N 9.2", "4.0"), ("score 9.2", "")):
+            self.assertEqual(sheets.stated_version({"cvss_version": "4.0", "words": words}), version, words)
+
     def test_a_blog_quoting_another_partys_score_is_refused(self):
         blog = sheet("https://aikido.example/java4shell", "B", "writeup", page_role="blog", publisher="Aikido", scores=[
             {"score": "9.2", "cvss_version": "4.0", "cve": "CVE-2026-1000", "given_by": "Calif", "publisher_gives_it": False,
@@ -234,9 +258,11 @@ class CacheTest(unittest.TestCase):
                 raise OSError("down")
             return PAGE.encode()
         claude = FakeClaude(*[self.reply()] * 6)
+        counts = {"sheets_asked": 0, "sheets_failed": 0, "sheets_kept_back": 0}
         with contextlib.redirect_stderr(io.StringIO()):
-            got = sheets.fill(store, [inc], claude, get, STAMP, limit=3)
+            got = sheets.fill(store, [inc], claude, get, STAMP, limit=3, counts=counts)
         self.assertEqual(len(claude.sent), 3)
+        self.assertEqual(counts, {"sheets_asked": 3, "sheets_failed": 0, "sheets_kept_back": 2})  # the cycle's log line
         self.assertNotIn("https://h1.example/a", {s["url"] for s in got[inc["id"]]})
         with contextlib.redirect_stderr(io.StringIO()):
             sheets.fill(store, [inc], claude, lambda url, headers=None: PAGE.encode(), STAMP)
@@ -311,6 +337,158 @@ class CycleTest(unittest.TestCase):
             route_summaries([incident(4) | {"id": "CVE-2026-7777", "cves": ["CVE-2026-7777"]}], [], probe,
                             lambda url, headers=None: PAGE.encode(), datetime(2026, 11, 18), STAMP, set(), probe=True, store=store)
         self.assertFalse(any(p["system"][0]["text"] == sheets.INSTRUCTIONS for p in probe.sent))
+
+    def test_a_page_the_sheets_fetched_is_not_fetched_again_for_the_summary(self):
+        store, inc, fetched = MemoryStore(), self.candidate(), []
+
+        def get(url, headers=None):
+            fetched.append(url)
+            if "h1." in url:
+                raise OSError("HTTP Error 403: Forbidden")
+            return PAGE.encode()
+        claude = FakeClaude(*[facts()] * 3, "{")
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], claude, get, datetime(2026, 11, 18), STAMP, set(), probe=False, store=store)
+        pages = [u for u in fetched if ".example/" in u]
+        self.assertEqual(sorted(pages), sorted(m["url"] for m in inc["mentions"]))  # each once, the refused one too
+        self.assertIn("Text of https://h0.example/a", claude.sent[-1]["messages"][0]["content"])
+        self.assertNotIn("Text of https://h1.example/a", claude.sent[-1]["messages"][0]["content"])
+
+
+def row(vendor, line, v, status="fixed", words="Fixed in", cves=()):
+    return {"vendor": vendor, "product_line": line, "version": v, "status": status, "cves": list(cves), "words": words}
+
+
+class UnionTest(unittest.TestCase):
+    """The union of fixed versions (owner's carry trial, 11-18), on a rewritten Java4Shell: the model kept Oracle's lines
+    and dropped Amazon Corretto's, which only a rank-B blog gives."""
+
+    JAVA = {"id": "CVE-2026-114938", "cves": ["CVE-2026-114938"]}
+
+    def pages(self):
+        return [sheet("https://oracle.example/cpu", "A", versions=[
+                    row("Oracle", "Java SE 17", "17.0.21.0.3", "affected", "Affected versions are"),
+                    row("Oracle", "Java SE 17", "17.0.21.1"), row("Oracle", "Java SE 21", "21.0.13.1"),
+                    row("Oracle", "Java SE 8", "8u513")]),
+                sheet("https://blog.example/java4shell", "B", "writeup", versions=[
+                    row("Amazon", "Amazon Corretto 17", "17.0.21.1.2"), row("Amazon", "Corretto 17", "17.0.21.0.3"),
+                    row("Acme", "Widget", "f9416bea"),  # a commit
+                    row("Acme", "Widget", "13.1.0", words="Fixed versions: <13.1.0"),  # a range bound
+                    row("7-Zip", "7-Zip", "26.02", cves=["CVE-2026-14266"]),  # another CVE's fix
+                    row("Acme", "Desktop", "4.4.8", words="Users who upgraded to 4.4.8 are not affected"),
+                    row("IBM", "cryptography", "48.01", words="OpenSSL included in wheels prior to cryptography 48.01")]),
+                sheet("https://news1.example/a", "C", "writeup", versions=[row("Azul", "Zulu 17", "17.0.21.1-zulu"),
+                                                                          row("BellSoft", "Liberica 17", "17.0.21.1-lib")]),
+                sheet("https://news2.example/a", "C", "writeup", versions=[row("Azul", "Zulu 17", "17.0.21.1-zulu")])]
+
+    def test_only_trusted_rows_pass_the_row_checks(self):
+        rows = sheets.fix_rows(self.pages(), self.JAVA, [])
+        self.assertEqual(rows, [{"for": "Oracle Java SE 17", "version": "17.0.21.1"}, {"for": "Oracle Java SE 21", "version": "21.0.13.1"},
+                                {"for": "Oracle Java SE 8", "version": "8u513"}, {"for": "Amazon Corretto 17", "version": "17.0.21.1.2"},
+                                {"for": "Azul Zulu 17", "version": "17.0.21.1-zulu"}])  # Liberica: one rank-C host only
+
+    def test_a_summary_gains_only_what_it_lacks_and_its_own_lines_stay(self):
+        model = [{"for": "Oracle Java SE 17", "version": "17.0.21.1"}, {"for": "Oracle Java SE 21", "version": "21.0.13.1 or later"},
+                 {"for": "Red Hat Satellite 6.16 for RHEL 9", "version": "0:0.9.3-2.el9sat"}, {"for": "Check Point", "version": "R82.10"}]
+        summary = {"fixed": "17.0.21.1", "fixes": copy.deepcopy(model)}
+        rows = sheets.fix_rows(self.pages(), self.JAVA, []) + [
+            {"for": "Oracle Java SE Embedded 17", "version": "17.0.20.5"},  # older, on a line the model's Oracle 17 fixes
+            {"for": "Red Hat Satellite 6.16 for RHEL 9", "version": "6.16.15"},  # the model's own release label
+            {"for": "Check Point Multi-Domain Security Management", "version": "R82.10 이상"}]  # shown under another label
+        added = sheets.union(summary, rows)
+        self.assertEqual([(a["for"], a["version"]) for a in added],
+                         [("Oracle Java SE 8", "8u513"), ("Amazon Corretto 17", "17.0.21.1.2"), ("Azul Zulu 17", "17.0.21.1-zulu")])
+        self.assertEqual(summary["fixes"], model)  # union() only returns the lines; save_reply appends them
+
+    def test_a_distributions_package_is_a_line_of_its_own(self):
+        # Cockpit, CVE-2026-91151 (rewritten): the RHEL 9 build of the same upstream version does not cover RHEL 10's.
+        summary = {"fixed": "", "fixes": [{"for": "Red Hat Enterprise Linux 9", "version": "366.1.1-1.el9_9"}]}
+        rows = [{"for": "Red Hat Enterprise Linux 10", "version": "cockpit-366.1.1-1.el10_3"},
+                {"for": "Red Hat Enterprise Linux 9", "version": "cockpit-366.1.1-1.el9_9"}]
+        self.assertEqual([a["version"] for a in sheets.union(summary, rows)], ["cockpit-366.1.1-1.el10_3"])
+
+    def test_save_reply_appends_marked_lines_that_pass_the_checks_on_both_paths(self):
+        inc = incident(4) | {"fix_keys": ["acme:widget<1.3.2"]}
+        pages = [sheet("https://acme.example/a", "A", versions=[version("1.3.2", "fixed"), version("1.3.1", "fixed")])]
+        get = lambda url, headers=None: PAGE.encode()  # noqa: E731
+        from test_batch_summaries import plain
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(inc, FakeClaude(plain("Widget")), get, STAMP, sheets=pages)
+        # 1.3.1 is below the records' first fixed 1.3.2 (fixed_conflict): never added.
+        self.assertEqual(inc["summary"]["fixes"], [{"for": "Acme Widget", "version": "1.3.2", "devices": [], "from_sheet": True}])
+        claude, batched = FakeClaude(), incident(4) | {"fix_keys": ["acme:widget<1.3.2"]}
+        pending = summaries.submit_batch([batched], claude, get, sheets=lambda i: pages)
+        self.assertEqual(pending["requests"]["r0"]["fix_rows"], [{"for": "Acme Widget", "version": "1.3.2"}])
+        claude.end_batch({batched["id"]: plain("Widget")})
+        summaries.collect_batch(pending, [batched], claude, STAMP)
+        self.assertEqual(batched["summary"]["fixes"], inc["summary"]["fixes"])
+        # A re-summary that leaves out the added line is no lost fix: the union adds it again.
+        self.assertEqual(summaries.lost_fix(batched, plain("Widget"), "Fixed version: Acme Widget: 1.3.2"), "")
+
+    def test_the_cycle_line_counts_the_lines_added(self):
+        store, inc = MemoryStore(), incident(4) | {"cvss": 9.8, "kev": True, "kev_cves": {"CVE-2026-1000": "2026-11-18"}}
+        from test_batch_summaries import plain
+        from collector.logfile import CycleLine
+        claude = FakeClaude(*[facts(versions=[version("1.3", "fixed")])] * 4, plain("Widget"))
+        line = CycleLine(STAMP, lambda: 0)
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], claude, lambda url, headers=None: PAGE.encode(), datetime(2026, 11, 18), STAMP, set(),
+                            probe=False, store=store, line=line)
+        self.assertEqual(inc["summary"]["fixes"], [{"for": "Acme Widget", "version": "1.3", "devices": [], "from_sheet": True}])
+        self.assertIn(" fixes_lines=1 ", line.text())
+
+
+class MustCarryTest(unittest.TestCase):
+    """The must-carry list (owner's carry trial, part 2), on a rewritten Java4Shell: the finder's JVM flags, OpenJDK and
+    its Base64 decoder, which draws kept leaving out."""
+
+    NOTE = ("Carry these from the pages, in the summary or the mitigation, in both languages, in the input's words (each is"
+            " in the input; leave one out only if the input contradicts it):\n"
+            "- the stopgap -XX:-UseBASE64Intrinsics (calif.example)\n"
+            "- the stopgap -XX:UseAVX=2 (calif.example)\n"
+            "- the upstream project the flawed code comes from: OpenJDK (calif.example, mikiri.example)\n"
+            "- the flawed component: Base64 decoder (calif.example, mikiri.example)")
+
+    def pages(self):
+        return [sheet("https://calif.example/java4shell", "B", "writeup", page_role="finder_disclosure", upstream_project="OpenJDK",
+                      flawed_component="Base64 decoder",
+                      mitigations=["Run Java with -XX:-UseBASE64Intrinsics", "Or start the JVM with -XX:UseAVX=2"]),
+                sheet("https://mikiri.example/a", "B", "writeup", upstream_project="OpenJDK",
+                      flawed_component="the Base64 decoder of OpenJDK (x86-64)", mitigations=["Set `-XX:UseAVX=0`"]),  # no finder
+                sheet("https://oracle.example/cpu", "A", mitigations=["See the suggested fix: `hash_equals()`",  # a developer's fix
+                                                                      "Segment it behind a VPN"]),  # prose
+                sheet("https://news.example/a", "C", "writeup", upstream_project="OpenJ9")]  # one host
+
+    def test_the_list_and_its_wording(self):
+        carry = sheets.must_carry(self.pages())
+        self.assertEqual(summaries.carry_note(carry), self.NOTE)
+        self.assertEqual(summaries.retry({"id": "x", "cves": ["CVE-2026-1000"]}, "", carry)["note"], self.NOTE)
+        said = {"en": {"summary": "OpenJDK's Base64 decoder ...", "mitigation": "Until then use -XX:-UseBASE64Intrinsics or -XX:UseAVX=2."}}
+        self.assertEqual(sheets.carry_left(said, carry), [])
+        self.assertEqual([c["words"] for c in sheets.carry_left({"en": {"summary": "A Base64 decoder flaw in OpenJDK."}}, carry)],
+                         ["-XX:-UseBASE64Intrinsics", "-XX:UseAVX=2"])
+
+    def test_a_first_reply_that_leaves_an_item_out_is_kept_back_once_and_the_list_goes_with_every_try(self):
+        from test_batch_summaries import plain
+        inc, get = incident(4), lambda url, headers=None: PAGE.encode()
+        claude = FakeClaude(plain("Widget"), plain("Widget"))
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.summarize_now(inc, claude, get, STAMP, sheets=self.pages())
+            self.assertTrue(inc["summary_error"]["reason"].startswith(summaries.CARRY_LEFT + "stopgap -XX:-UseBASE64Intrinsics, "))
+            summaries.summarize_now(inc, claude, get, STAMP, sheets=self.pages())
+        self.assertTrue(claude.user_text(0).endswith("\n\n" + self.NOTE))
+        second = claude.user_text(1)
+        self.assertIn("\n\n" + self.NOTE + "\n\nYour previous reply for this Incident was rejected: " + summaries.CARRY_LEFT, second)
+        self.assertIn("Carry every item of the list above", second)
+        self.assertIn("summary", inc)  # a later try is never kept back for the list
+        self.assertEqual(claude.sent[0]["system"][0]["text"], summaries.INSTRUCTIONS)  # the cached instructions stay as they were
+        # The batch path sends and checks the same list.
+        batch, batched = FakeClaude(), incident(4)
+        pending = summaries.submit_batch([batched], batch, get, sheets=lambda i: self.pages())
+        self.assertTrue(batch.batch_inputs()[0].endswith("\n\n" + self.NOTE))
+        batch.end_batch({batched["id"]: plain("Widget")})
+        summaries.collect_batch(pending, [batched], batch, STAMP)
+        self.assertTrue(batched["summary_error"]["reason"].startswith(summaries.CARRY_LEFT))
 
 
 if __name__ == "__main__":

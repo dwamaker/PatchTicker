@@ -59,6 +59,41 @@ so it survives a failing R2. The posted text never carries an environment value 
 exits 0 and never changes a cycle's outcome. After a deploy, send one marked test line by hand, without touching the
 count: `docker compose exec collector python -m collector --alert-test` (exit 1 when nothing was sent).
 
+### The lasting log
+
+The container's output goes when the container is recreated (owner, 11-18), so with `VR_LOG_DIR` set every line the
+collector prints also goes into `collector-YYYY-MM-DD.log` there (one file a UTC day, each line led by its UTC time;
+`collector/logfile.py`). Compose sets `VR_LOG_DIR=/backup/logs`: `./backup/logs` on the host, made by the collector
+in the backup folder it can already write. Files older than 30 days are deleted and a day's file stops at 20 MB; a
+setting holding a secret (the API keys, the R2 keys and endpoint, the Discord webhook) is written as `…`.
+`docker compose logs` shows the same lines as before. Unset (a laptop), no file is written.
+
+```sh
+less backup/logs/collector-2026-11-18.log                          # a day
+grep -E ' cycle(_end)? \w+=' backup/logs/collector-2026-11-18.log  # its cycles, one line each
+grep -c 'result=ok' backup/logs/collector-2026-11-18.log           # cycles that ended well
+```
+
+Each cycle ends with one line, also when it fails (a cycle killed by the 3000 s timeout writes none; the `--cycle-end`
+step after it then writes `cycle_end exit=124 result=timed_out`, or `result=failed` for another non-zero exit):
+
+```
+cycle start=2026-11-18T06:40:01Z took=212 read=58 link=6 distros=off sheets=31 summaries=96 board=21 new=96 summaries_asked=9 summaries_kept_back=84 summaries_failed=1 summaries_batched=0 sheets_asked=10 sheets_kept_back=4 sheets_failed=0 refused=3 refused_hosts=openjdk.org,www.reuters.com skipped=- fixes_lines=0 result=ok
+```
+
+Fields, in this order (times in whole seconds; a stage shows `off` when not set up, `skipped` when its source failed,
+`stopped` or `paused` when an API error ended the Summary step, `-` when a failed cycle never got to it):
+`start` (UTC), `took`; the stages `read` (every source read), `link` (joining Mentions into Incidents, NVD and KEV
+facts), `distros` (the Distribution table), `sheets`, `summaries` (batches, instant Summaries, titles, batch requests),
+`board` (every document written); `new` (Incidents first seen this cycle); `summaries_asked` (instant),
+`summaries_kept_back` (instant candidates left for the next cycle by `INSTANT_SECONDS`), `summaries_failed` (instant
+asks that stored no Summary), `summaries_batched` (requests sent in a Message Batch); `sheets_asked`,
+`sheets_kept_back` (pages past `SHEETS_PER_CYCLE`), `sheets_failed`; `refused` (requests answered 401, 403 or 429) and
+`refused_hosts` (the five most refused); `skipped` (sources that failed and were skipped: `hn`, `github`, `hn_points`,
+`nvd`, `kev`, `distros`); `fixes_lines` (lines code added to `fixes` from the page sheets, marked `from_sheet`, in the Summaries stored
+this cycle); `result` (`ok`, or
+`failed:<stage>:<exception type>`).
+
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one
 of its URLs (`collector/incidents.py`, ADR 0001).
 CVE-less stories of one event share neither (owner, 11-10), so a CVE-less Incident's Summary request also lists, beside

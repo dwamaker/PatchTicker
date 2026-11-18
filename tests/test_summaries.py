@@ -4,6 +4,7 @@ pages/sshhole.com.html and pages/release-10.6p2.txt are the real pages (2026-11-
 """
 
 import contextlib
+import copy
 import io
 import json
 import re
@@ -263,6 +264,12 @@ class InstantSummaryTest(unittest.TestCase):
                 self.assertNotIn("summary", incident)
                 self.assertEqual(incident["summary_error"]["tries"], 1)
 
+    def test_a_lead_written_another_way_is_the_input_url_it_stands_for(self):
+        # Round 2: the KISA notice "https://www.boho.or.kr/...?…&nttId=…" came back without www. and was refused.
+        self.run_at("2026-11-07T12:30:00", FakeClaude(SSHOLE_SUMMARY | {"lead": "http://www.sshhole.com/"}), hn="sshole.json")
+
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["lead"], "https://sshhole.com")
+
     def test_the_easy_action_is_the_write_ups_own_command_and_stopgap(self):
         self.run_at("2026-11-07T12:30:00", FakeClaude(SSHOLE_SUMMARY), hn="sshole.json")
 
@@ -379,6 +386,29 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertFalse(summaries.needs_summary(incident | {"summary": {"exploited": False, "exploited_source": ""}}))
         self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
 
+    def test_repos_joined_after_a_no_poc_summary_ask_once_more(self):
+        # 11-18: PoC repositories joined Java4Shell after its Summary; poc_public stayed false for hours.
+        repo = lambda n: {"kind": "repo", "url": f"https://github.com/someone/CVE-2026-114938-poc{n}"}  # noqa: E731
+        incident = {"id": "CVE-2026-114938", "cves": ["CVE-2026-114938"], "mentions": [repo(1)]}
+        incident["summary_basis"] = summaries.basis(incident) | {"n": 1}  # as the first Summary stores it
+        incident["summary"] = {"poc_public": False}
+        self.assertEqual(incident["summary_basis"], {"cves": ["CVE-2026-114938"], "kev": False, "advisories": [], "repos": 1, "n": 1})
+        self.assertFalse(summaries.needs_summary(incident))  # the Summary saw this repo
+        incident["mentions"].append(repo(2))
+        self.assertTrue(summaries.needs_summary(incident))
+        self.assertFalse(summaries.needs_summary(incident | {"summary": {"poc_public": True}}))
+        self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
+        # Once: the next Summary still says no PoC, and a third repo asks nothing.
+        incident["summary_basis"] = summaries.basis(incident) | {"n": 2}
+        self.assertTrue(incident["summary_basis"]["poc_asked"])
+        incident["mentions"].append(repo(3))
+        self.assertFalse(summaries.needs_summary(incident))
+        self.assertTrue(summaries.basis(incident)["poc_asked"])  # carried into every later basis
+        # A basis from before the rule counts no repos; a CVE-less story's repo is its own project.
+        old = {"cves": ["CVE-2026-114938"], "kev": False, "advisories": [], "n": 1}
+        self.assertTrue(summaries.needs_summary(incident | {"summary_basis": old}))
+        self.assertFalse(summaries.needs_summary(incident | {"cves": [], "summary_basis": old | {"cves": []}}))
+
     def test_the_easy_stopgap_carries_the_step_that_makes_it_work(self):
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"stopgap_then": "바꾼 뒤 sshd를 다시 시작하세요."},
                                   "en": SSHOLE_SUMMARY["en"] | {"stopgap_then": "Then restart sshd."}}
@@ -491,6 +521,42 @@ class InstantSummaryTest(unittest.TestCase):
         buzz_only = {**row(None), "mentions": [{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=1", "points": 500}]}
         ranked = sorted([buzz_only, row(7.5), row(9.8)], key=summaries.priority)
         self.assertEqual([i["cvss"] for i in ranked], [9.8, 7.5, None])
+        # A well-known product (collector/well_known.json) goes before a lesser one of its band.
+        chrome = row(9.6) | {"products": [{"id": "google:chrome", "name": "Google Chrome"}]}
+        ranked = sorted([row(9.8), chrome], key=summaries.priority)
+        self.assertEqual([i["cvss"] for i in ranked], [9.6, 9.8])
+
+    def test_the_instant_path_stops_at_its_budget_and_the_rest_wait_for_the_next_cycle(self):
+        # 11-18 06:40 KST: 96 Incidents at once, every candidate asked one after another; the cycle took 25 min 53 s.
+        from datetime import datetime
+        from collector.cycle import INSTANT_SECONDS, route_summaries
+        from collector.logfile import CycleLine
+        now, t = datetime(2026, 11, 9, 12, 0), [0]
+        row = lambda n, cvss, **more: {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss, "mentions": [],  # noqa: E731
+                                       "first_seen": "2026-11-09T11:00:00Z", "published": "2026-11-09T10:00:00Z",
+                                       "products": [], "brief": {"text": "A flaw.", "lead": ""}, **more}
+        rows = [row(1, 7.5), row(2, 9.8), row(3, 7.0, kev=True), row(4, 8.0)]
+        claude = FakeClaude(*["{"] * 8)
+        create = claude.messages.create
+
+        def slow(**params):  # each Summary takes 70 s of the clock; the titles request none
+            t[0] += 70 if "Incident:" in params["messages"][0]["content"] else 0
+            return create(**params)
+        claude.messages.create = slow
+        asked = lambda: [p["messages"][0]["content"].split("\n")[0] for p in claude.sent if "Incident:" in p["messages"][0]["content"]]  # noqa: E731
+        line = CycleLine("2026-11-09T12:00:00Z", lambda: t[0])
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries(rows, [], claude, lambda url, headers=None: b"", now, "2026-11-09T12:00:00Z", set(), probe=False,
+                            clock=lambda: t[0], line=line)
+        # The cycle's log line counts them: three asked (each reply unreadable, so failed), one kept back.
+        self.assertEqual({k: line.counts[k] for k in ("summaries_asked", "summaries_kept_back", "summaries_failed")},
+                         {"summaries_asked": 3, "summaries_kept_back": 1, "summaries_failed": 3})
+        # KEV, then CVSS 9+, then arrival order inside the 7+ band; started at 0, 70 and 140 s of the 180.
+        self.assertEqual(asked(), ["Incident: CVE-2026-3", "Incident: CVE-2026-2", "Incident: CVE-2026-1"])
+        self.assertEqual(INSTANT_SECONDS, 180)
+        # Kept back, not failed: no try counted, still due, and still an instant candidate for the next cycle.
+        self.assertNotIn("summary_error", rows[3])
+        self.assertTrue(summaries.needs_summary(rows[3]) and summaries.is_candidate(rows[3], now))
 
     def test_a_group_summary_gives_each_cve_one_line_and_names_only_cves_from_the_input(self):
         lines = {"ko": [{"cve": "CVE-2026-123158", "text": "긴 비밀번호로 로그인 우회"}], "en": [{"cve": "CVE-2026-123158", "text": "Login bypass with a long password"}]}
@@ -1152,9 +1218,18 @@ class NumberWordTest(unittest.TestCase):
         summary = self.parse("8바이트를 씁니다.", "It writes eight bytes.", "an eight-byte write")
         self.assertTrue(summary["en"]["summary"].endswith("eight bytes."))
 
+    def test_one_before_a_unit_is_the_number(self):
+        """Trial rounds 1 to 4: httpd's mod_vhost_alias "1 byte stack buffer overwrite" was refused under every input
+        ("1바이트" beside "a one-byte overwrite" or "by one byte")."""
+        for en in ("A one-byte stack overwrite can crash it.", "A stack buffer is overwritten by one byte."):
+            with self.subTest(en):
+                summary = self.parse("스택 버퍼를 1바이트 넘겨 씁니다.", en, "mod_vhost_alias 1 byte stack buffer overwrite")
+                self.assertEqual(summary["en"]["summary"].rsplit(". ", 1)[-1], en)
+
     def test_other_korean_and_english_numbers_still_differ(self):
         cases = {"2 is not 3": ("2바이트입니다.", "It is 3 bytes.", "2 or 3 bytes", "['2', '3']"),
-                 "one is not a number word": ("1개입니다.", "It is one flaw.", "1 of the flaws", "['1']")}
+                 "one is not a number word": ("1개입니다.", "It is one flaw.", "1 of the flaws", "['1']"),
+                 "one byte is not 2": ("2바이트를 씁니다.", "It writes one byte.", "1 or 2 bytes", "['2']")}
         for case, (ko, en, source, differ) in cases.items():
             with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
                 self.parse(ko, en, source)
@@ -1317,7 +1392,14 @@ class LanguageGapsTest(unittest.TestCase):
                        ("2.56.0 줄의 Git이 해당합니다.", "Git 2.56.0 is affected."),
                        ("8.0.0줄은 수정 버전이 없습니다.", "The 8.0.0 line has no fix."),
                        ("최신 버전(2026 R2 줄 등)으로 업데이트하세요.", "Update to the newest version."),
-                       ("해당 버전 줄의 수정 버전으로 업데이트하세요.", "Update to your line's fixed version.")):
+                       ("해당 버전 줄의 수정 버전으로 업데이트하세요.", "Update to your line's fixed version."),
+                       # A product's line (round 2 and live, Java).
+                       ("쓰는 Java 줄마다 수정 버전으로 업데이트하세요.", "Update each Java line you run."),
+                       ("Java 8과 11 줄도 고칩니다.", "It also fixes Java 8 and 11."),
+                       ("Java 17 줄은 아래 목록을 보세요.", "For Java 17 see the list."),
+                       ("Java 21·25·27 줄만 해당합니다.", "Only Java 21, 25 and 27."),
+                       ("쓰는 Java를 해당 줄의 수정 버전으로 올리세요.", "Update Java to its fixed version."),
+                       ("그 줄도 최신으로 두세요.", "Keep those current too.")):
             with self.subTest(ko):
                 self.assertEqual(self.gaps(ko={"easy": ko}, en={"easy": en}), "Korean wording: 줄 (write 계열)")
 
@@ -1329,7 +1411,12 @@ class LanguageGapsTest(unittest.TestCase):
                        ("FortiOS 여러 라인이 해당합니다.", "Several FortiOS lines are affected."),
                        ("수정 버전이 있는 라인으로 옮기세요.", "Move to a line that has a fix."),
                        ("Ulmo 라인은 업데이트하세요.", "Update Ulmo."),
-                       ("라인별 수정 버전을 확인하세요.", "Check each line's fix.")):
+                       ("라인별 수정 버전을 확인하세요.", "Check each line's fix."),
+                       # Round 2, Java draw 2 (passed before): a product name ending in capitals, then 그 라인.
+                       ("쓰는 GraalVM 라인을 각각 그 라인의 수정 버전으로 올리세요.", "Update the GraalVM you run."),
+                       ("Java 21 이상 라인 사용", "Java 21 or later"),
+                       ("라인마다 수정 버전이 다릅니다.", "Each line has its own fix."),
+                       ("쓰는 제품이나 라인의 수정 버전으로 올리세요.", "Update what you run.")):
             with self.subTest(ko):
                 self.assertEqual(self.gaps(ko={"easy": ko}, en={"easy": en}), "Korean wording: 라인 (write 계열)")
 
@@ -1344,7 +1431,10 @@ class LanguageGapsTest(unittest.TestCase):
     def test_lines_of_text_and_the_verb_jul_pass(self):
         for text in ("명령 한 줄로 업데이트하세요.", "CVE별 줄에 적힌 내용입니다.", "피해를 줄일 수 있습니다.", "로그 줄을 꾸밀 수 있습니다.",
                      "여러 줄을 한 번에 넣을 수 있습니다.", "명령줄에 비밀번호가 남습니다.", "설정에 줄바꿈을 넣을 수 있습니다.",
-                     "공격자에게 영향을 줄 수 있습니다.", "10 줄짜리 파일입니다.", "첫 줄이 잘립니다.", "작업 스케줄러가 멈춥니다."):
+                     "공격자에게 영향을 줄 수 있습니다.", "10 줄짜리 파일입니다.", "첫 줄이 잘립니다.", "작업 스케줄러가 멈춥니다.",
+                     "5줄짜리 스크립트입니다.", "줄 바꿈 문자를 넣습니다.", "아래 줄을 설정에 추가하세요.", "루프에 한 줄 수정을 적용하세요.",
+                     "Vim에서 악성 줄을 고르면 실행됩니다.", "CVE-2026-1234만 줄일 수 있습니다.", "파일의 줄 길이를 잘못 계산합니다.",
+                     "@import 줄에서 실행됩니다.", "각 줄의 길이를 셉니다."):
             with self.subTest(text):
                 self.assertEqual(self.gaps(ko={"easy": text}), "")
 
@@ -1446,6 +1536,37 @@ class RecordSaysAffectedTest(unittest.TestCase):
         self.assertEqual(summaries.record_says_affected({"fixed": "6.1.5", "fixes": []},
                                                         "Incident: x\nText of https://a.example/:\n6.1.5 is affected"), "")
 
+    def test_a_bound_with_the_product_name_between_and_its_list_stay_fixes(self):
+        # PostgreSQL, CVE-2026-116303: every try naming a fix was rejected. FreeSWITCH's 1.11.2 stays affected.
+        postgres = ("Use after free in PostgreSQL plperl allows an object creator to execute arbitrary code.  Versions"
+                    " before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected.")
+        freeswitch = ("FreeSWITCH is a Software Defined Telecom Stack. In 1.11.2 and earlier, rtp_common_read() in"
+                      " src/switch_rtp.c uses one session-wide autoadj_tally. FreeSWITCH 1.11.2 adds two opt-in controls,"
+                      " but both default to zero and the release remains affected unless both are configured before RTP"
+                      " session creation. This vulnerability is fixed in 1.11.2.")
+        self.assertEqual(summaries.page_sheets.record_affected([postgres]), set())
+        self.assertEqual(summaries.record_says_affected({"fixed": "", "fixes": [{"for": "PostgreSQL 17", "version": "17.12"}]},
+                                                        self.text(postgres)), "")
+        self.assertEqual(summaries.page_sheets.record_affected([freeswitch]), {"1.11.2"})
+        self.assertEqual(summaries.page_sheets.record_affected(["Versions prior to version 2.3 or 2.4.1 are vulnerable."]), set())
+        self.assertEqual(summaries.page_sheets.record_affected(["Versions <= 3.1 and 3.2 are affected."]), {"3.1", "3.2"})
+        # A fix list after its fix words, a product name between, and "not affected" (GHES, Revive, Rails records).
+        self.assertEqual(summaries.page_sheets.record_affected([
+            "This vulnerability affected all versions of GitHub Enterprise Server prior to 3.23 and was fixed in versions"
+            " 3.19.14, 3.20.10, 3.21.8, and 3.22.3.", "The issue is fixed in Revive Adserver 6.0.9 by HTML-encoding the"
+            " affected values.", "Rails 8.0 and earlier do not serialize SafeBuffer with MessagePack and are not affected."]), set())
+
+    def test_a_vendors_bracketed_build_is_compared_whole(self):
+        # Zyxel, CVE-2026-12487 (rewritten): the affected build's bare 5.63 made the fix "affected" three tries running.
+        zyxel = self.text("A flaw in the SNMP parameter of Zyxel EE5301-00 firmware version 5.63(ACLD.2)b3_D0 could let an"
+                          " attacker crash an affected device.")
+        self.assertEqual(summaries.record_says_affected({"fixed": "5.63(ACLD.3.4)D0", "fixes": []}, zyxel), "")
+        self.assertTrue(summaries.record_says_affected({"fixed": "5.63(ACLD.2)b3_D0", "fixes": []}, zyxel))
+        self.assertEqual(summaries.page_sheets.record_affected(["Firmware 5.63(ACLD.2) is affected; fixed in 5.63(ACLD.3)."]),
+                         {"5.63(ACLD.2)"})
+        self.assertEqual(summaries.affected_label({"fixes": [{"for": "Zyxel EE5301-00 5.63(ACLD.3.4)D0", "version": "5.63(ACLD.3.4)D0"}]},
+                                                  zyxel), "")
+
     def test_the_reply_is_kept_back_with_its_own_retry_sentence(self):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
         # The Lead's text holds every number the borrowed reply uses; the record's text calls 6.1.5 affected.
@@ -1515,3 +1636,312 @@ class FlawNameTitleTest(unittest.TestCase):
         self.assertNotIn("summary_error", incident, incident.get("summary_error"))
         self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"] + " (OSS advisory) (SSHole)")
         self.assertEqual(incident["summary"]["ko"]["title"], SSHOLE_SUMMARY["ko"]["title"] + " (SSHole)")
+
+
+class ReSummaryKeepsWhatTheReviewLeftOutTest(unittest.TestCase):
+    """Re-summary dry run, 11-18: a review that gives no attacks answer or no event day takes nothing from the stored
+    Summary."""
+
+    CVE_RECORD = "https://www.cve.org/CVERecord?id=CVE-2024-58406"
+    VULNCHECK = "https://www.vulncheck.com/advisories/huatian-oa8000"
+
+    def store(self, stored, verdict=None, event_date="", **new):
+        incident = {"id": "CVE-2024-58406", "cves": ["CVE-2024-58406"], "mentions": [], "summary": stored}
+        summary = copy.deepcopy(SSHOLE_SUMMARY) | {"same_as": ""} | new
+        summaries.keep(incident, summary, {}, "2026-11-18T12:00:00Z", [], True, verdict=verdict, event_date=event_date)
+        return incident["summary"]
+
+    def test_a_stored_sourced_attack_stays_unless_reply_and_review_both_say_no(self):
+        stored = {"exploited": True, "exploited_source": self.CVE_RECORD, "event_date": "2024-11-20"}
+        new = {"exploited": True, "exploited_source": self.VULNCHECK, "exploited_unconfirmed": True}
+        kept = self.store(stored, None, "2024-11-20", **new)
+        self.assertEqual((kept["exploited"], kept["exploited_source"]), (True, self.CVE_RECORD))
+        self.assertNotIn("exploited_unconfirmed", kept)
+        # The reply says yes, the review no: a stored attack with a source stays (Optimizely, HN 50524767, integration
+        # test 11-18: one review draw's no took it from the highest level; another draw said yes).
+        held = self.store(stored, False, **new)
+        self.assertEqual((held["exploited"], held["exploited_source"]), (True, self.CVE_RECORD))
+        # Nothing stored, or stored without a source: the review's no decides, as before.
+        self.assertFalse(self.store({}, False, **new)["exploited"])
+        self.assertFalse(self.store({"exploited": True, "exploited_source": ""}, False, **new)["exploited"])
+        yes = self.store(stored, True, **new)
+        self.assertEqual((yes["exploited"], yes["exploited_source"], yes["exploited_review"]), (True, self.VULNCHECK, True))
+        # Nothing stored to keep: an unconfirmed flag without an answer drops, as before.
+        self.assertFalse(self.store({}, None, **new)["exploited"])
+
+    def test_a_review_with_no_event_day_keeps_the_stored_one_and_a_new_day_replaces_it(self):
+        # HN 50496937, the Cursor marketplace extension: attacked 2026-10-29.
+        stored = {"event_date": "2026-10-29"}
+        self.assertEqual(self.store(stored)["event_date"], "2026-10-29")
+        self.assertEqual(self.store(stored, event_date="2026-10-30")["event_date"], "2026-10-30")
+        self.assertNotIn("event_date", self.store({}))
+
+
+class InputReportsAttacksTest(unittest.TestCase):
+    """A claimed attack that a reporter in the input states in plain words stands without a review draw (re-summary
+    re-check 11-18: TYPO3, Huatian); one the input's reporters do not state still goes to the review (Rootways)."""
+
+    RECORD = "https://www.cve.org/CVERecord?id=CVE-2026-125160"
+    WRITEUP = "https://www.vulncheck.com/advisories/huatian-oa8000"
+    NEWS = "https://www.bleepingcomputer.com/news/security/x/"
+
+    def parse(self, source, record_text, kev="no", writeup_text="Nothing here.", finders=(), said=""):
+        record = json.dumps({"descriptions": [{"lang": "en", "value": record_text}]})
+        text = (f"Incident: CVE-2026-125160\nExploited in the wild (CISA KEV): {kev}\nMentions:\n- writeup {SSHOLE_SUMMARY['lead']}\n"
+                f"- cve_record {self.RECORD}\n- writeup {self.WRITEUP}\n- writeup {self.NEWS}\n"
+                f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n{json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)}\n"
+                f"Text of {self.WRITEUP}:\n{writeup_text}\nCVE record CVE-2026-125160:\n{record}")
+        en = SSHOLE_SUMMARY["en"] | {"summary": SSHOLE_SUMMARY["en"]["summary"] + said}
+        reply = FakeClaude.message(SSHOLE_SUMMARY | {"exploited": True, "exploited_source": source, "en": en})
+        return summaries.parse(reply, text, [SSHOLE_SUMMARY["lead"], self.RECORD, self.WRITEUP, self.NEWS], finders)
+
+    def keep(self, summary, verdict):
+        incident = {"id": "x", "mentions": []}
+        summaries.keep(incident, summary | {"same_as": ""}, {}, "2026-11-18T12:00:00Z", [], True, verdict=verdict)
+        return incident["summary"]
+
+    def test_a_record_that_says_actively_exploited_needs_no_review(self):
+        # TYPO3, CVE-2026-125160: the first review said yes, the second no, and the flag fell.
+        s = self.parse(self.RECORD, "Files are disclosed. This vulnerability is known to be actively exploited.")
+        self.assertEqual((s["exploited"], s.get("exploited_input"), s.get("exploited_unconfirmed")), (True, True, None))
+        self.assertFalse(summaries.review_params(s, {"id": "x", "mentions": []})["messages"][0]["content"].endswith(summaries.review.ATTACKS_QUESTION))
+        self.assertTrue(self.keep(s, None)["exploited"])
+        self.assertEqual(summaries.recheck_exploited([{"summary": self.keep(s, None)}]), [])
+        # The input's CISA KEV line: a reporter's claim stands; a write-up's still does not.
+        self.assertTrue(self.parse(self.NEWS, "Files are disclosed.", kev="yes").get("exploited_input"))
+        self.assertFalse(self.parse(self.WRITEUP, "Files are disclosed.", kev="yes")["exploited"])
+
+    def test_a_write_up_claim_takes_the_record_that_says_so_as_its_source(self):
+        # Huatian, CVE-2024-58406: the replies cited VulnCheck; the record says the same.
+        s = self.parse(self.WRITEUP, "Exploitation evidence was first observed by the Shadowserver Foundation on 2024-11-20.")
+        self.assertEqual((s["exploited"], s["exploited_source"], s.get("exploited_input")), (True, self.RECORD, True))
+
+    def test_a_claim_the_reporters_do_not_state_still_falls_on_the_review_no(self):
+        # Rootways, CVE-2026-130583: only Sansec's write-up says "Exploited in the wild"; a write-up is no reporter.
+        self.assertFalse(self.parse(self.WRITEUP, "SSRF in the Apple Pay endpoint.", writeup_text="Exploited in the wild.")["exploited"])
+        s = self.parse(self.RECORD, "SSRF in the Apple Pay endpoint. It could be exploited in the wild.")
+        self.assertTrue(s.get("exploited_unconfirmed"))
+        self.assertFalse(self.keep(copy.deepcopy(s), False)["exploited"])
+        self.assertTrue(self.keep(s, True)["exploited_review"])
+
+    def test_the_finders_own_disclosure_confirms_and_a_first_hand_page_is_the_source(self):
+        # Rootways, CVE-2026-130583 (rewritten): the sheet reads Sansec's page as the finder's disclosure, and it reports
+        # the attack first-hand; the reply cited a newsletter issue about another story.
+        said = "On November 15, an attacker used it to take over a store."
+        s = self.parse(self.NEWS, "SSRF in the Apple Pay endpoint.", writeup_text=said, finders=[self.WRITEUP])
+        self.assertEqual((s["exploited"], s["exploited_source"], s.get("exploited_input")), (True, self.WRITEUP, True))
+        s = self.parse(self.WRITEUP, "SSRF in the Apple Pay endpoint.", writeup_text=said, finders=[self.WRITEUP])
+        self.assertEqual((s["exploited_source"], s.get("exploited_input")), (self.WRITEUP, True))
+        # A news claim the reply's own words evidence still takes the first-hand page that says so as its source.
+        s = self.parse(self.NEWS, "Files are disclosed. It is known to be actively exploited.", said=" Attackers are exploiting it now.")
+        self.assertEqual((s["exploited"], s["exploited_source"]), (True, self.RECORD))
+        # No first-hand page says so: the news source stays.
+        s = self.parse(self.NEWS, "Files are disclosed.", said=" Attackers are exploiting it now.")
+        self.assertEqual(s["exploited_source"], self.NEWS)
+        # A news page the sheet calls a finder's disclosure is still news.
+        self.assertTrue(self.parse(self.NEWS, "Files are disclosed.", finders=[self.NEWS]).get("exploited_unconfirmed"))
+
+
+class DisputedAttacksTest(unittest.TestCase):
+    """A new reply that says "not exploited" never takes down attacks the Board shows with a source (owner 11-18, the
+    re-summary dry run's ARTEX and N-central): only the review's no does, and a reply whose own text still reports the
+    attacks goes back for another try."""
+
+    SOURCE = "https://www.securityweek.com/hackers-target-n-central-zero-days-as-n-able-rushes-patches/"
+    STORED = {"exploited": True, "exploited_source": SOURCE}
+
+    def save(self, reply, tries=0):
+        incident = {"id": "nc", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}], "summary": dict(self.STORED)}
+        if tries:
+            incident["summary_error"] = {"tries": tries, "reason": "earlier"}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                                 "2026-11-18T12:00:00Z", review_with=summaries.BATCH)
+        return incident
+
+    def test_a_reply_whose_text_still_reports_the_attacks_goes_back(self):
+        # N-central: the Korean said "실제 공격 시도도 확인되었습니다" while the flag was false.
+        ko = SSHOLE_SUMMARY["ko"] | {"summary": SSHOLE_SUMMARY["ko"]["summary"] + " 실제 공격 시도도 확인되었습니다."}
+        incident = self.save(SSHOLE_SUMMARY | {"ko": ko})
+        self.assertEqual(incident["summary"], self.STORED)  # nothing replaced
+        self.assertIn(summaries.ATTACKS_UNFLAGGED, incident["summary_error"]["reason"])
+
+    def test_the_review_is_asked_and_only_its_no_takes_the_attacks_down(self):
+        # ARTEX: the new text says nothing of attacks and the flag is false.
+        incident = self.save(SSHOLE_SUMMARY)
+        draft = incident["review_pending"]
+        params = summaries.review_params(draft["summary"], incident)
+        self.assertIn("attacks_happened", params["output_config"]["format"]["schema"]["required"])
+        for answer, kept in ((False, False), (True, True), (None, True)):
+            reply = {"findings": [], "event_date": ""} | ({} if answer is None else {"attacks_happened": answer})
+            target = copy.deepcopy(incident)
+            summaries.finish_review(target, copy.deepcopy(draft), FakeClaude.message(reply))
+            self.assertEqual(target["summary"]["exploited"], kept, answer)
+            self.assertEqual(target["summary"]["exploited_source"], self.SOURCE if kept else "", answer)
+            self.assertNotIn("exploited_disputed", target["summary"])
+
+    def test_a_first_summary_or_one_that_keeps_the_flag_is_not_disputed(self):
+        incident = self.save(SSHOLE_SUMMARY)
+        self.assertTrue(incident["review_pending"]["summary"].get("exploited_disputed"))
+        first = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(first, FakeClaude.message(SSHOLE_SUMMARY), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                                 "2026-11-18T12:00:00Z", review_with=summaries.BATCH)
+        self.assertNotIn("exploited_disputed", first["review_pending"]["summary"])
+
+
+class UpdateOutFindingTest(unittest.TestCase):
+    """11-18 dry run: the review kept back five Oracle entries for "the same update also fixes" beside "no source names a
+    fixed version", though each mitigation says to apply the November patch update (release_without_fix's case)."""
+
+    def summary(self, fixed="", en_mitigation="No source names a fixed version yet. Apply Oracle's November 2026 Critical Patch Update."):
+        return {"fixed": fixed, "fixes": [],
+                "ko": {"summary": "공격자가 Foo를 장악할 수 있습니다. 같은 업데이트는 데이터 노출 결함도 고칩니다.",
+                       "mitigation": "수정 버전을 밝힌 출처가 아직 없습니다. Oracle 11월 패치를 적용하세요."},
+                "en": {"summary": "An attacker can take over Foo. The same update also fixes a data exposure flaw.",
+                       "mitigation": en_mitigation}}
+
+    FINDING = {"field": "summary", "lang": "both", "quote": "같은 업데이트는 데이터 노출 결함도", "against": "수정 버전을 밝힌 출처가 아직 없습니다",
+               "problem": "Readers think a fix exists.", "severity": "high"}
+
+    def test_the_finding_is_dropped_when_the_mitigation_names_an_update_to_apply(self):
+        self.assertTrue(summaries.update_out_finding(self.FINDING, self.summary()))
+
+    def test_it_stays_when_there_is_nothing_to_apply_or_a_version_is_named_or_it_is_another_finding(self):
+        cases = {"nothing to apply": (self.FINDING, self.summary(en_mitigation="No source names a fixed version yet.")),
+                 "a fixed version": (self.FINDING, self.summary(fixed="1.2.3")),
+                 "a graver flaw left out (OpenMage)": (self.FINDING | {"against": "서버에서 코드를 실행할 수 있음"}, self.summary()),
+                 "another sentence": (self.FINDING | {"quote": "공격자가 Foo를 장악할 수 있습니다."}, self.summary())}
+        for case, (finding, summary) in cases.items():
+            with self.subTest(case):
+                self.assertFalse(summaries.update_out_finding(finding, summary))
+
+
+class LostFixTest(unittest.TestCase):
+    """A re-summary never drops a fixed version the stored Summary had while the input still gives it as a fix (owner
+    11-18: Git's 2.49.1 in the integrated test, yggdrasil's only package in the re-summary dry run)."""
+
+    GIT_RECORD = "Git versions before 2.49.1 are affected by a heap buffer overflow in three-way merge."
+
+    def text(self, description=GIT_RECORD):
+        record = json.dumps({"descriptions": [{"lang": "en", "value": description}]})
+        return f"Incident: CVE-2026-105437\nMentions:\nCVE record CVE-2026-105437:\n{record}"
+
+    def reply(self, fixed, fixes=(), mitigation="Update."):
+        return {"fixed": fixed, "fixes": [{"for": "Git", "version": v, "devices": []} for v in fixes],
+                "ko": {"mitigation": mitigation}, "en": {"mitigation": mitigation}}
+
+    def test_a_dropped_version_the_input_still_gives_goes_back(self):
+        git = {"id": "CVE-2026-105437", "summary": {"fixed": "2.49.1", "fixes": [{"for": "Git", "version": "2.49.1"}]}}
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.50.2", ["2.50.2", "2.51.3"]), self.text()),
+                         summaries.LOST_FIX + "2.49.1")
+        # yggdrasil, CVE-2026-18379: the record's fix key bounds at the package; the new mitigation alone naming it is a loss.
+        ygg = {"id": "CVE-2026-18379", "summary": {"fixed": "0:0.2.3-7.el10_2.9", "fixes": []},
+               "fix_keys": ["red_hat:red_hat_enterprise_linux_10:yggdrasil-worker-package-manager<0:0.2.3-7.el10_2.9"]}
+        self.assertTrue(summaries.lost_fix(ygg, self.reply("", mitigation="Update to 0.2.3-7.el10_2.9 or later."),
+                                           self.text("yggdrasil-worker-package-manager 0.2.3 is affected.")))
+        # Cockpit, CVE-2026-91151: RHEL 9's build of the same upstream version is another distribution release.
+        cockpit = {"id": "x", "summary": {"fixed": "", "fixes": [{"for": "RHEL 10", "version": "366.1.1-1.el10_3"},
+                                                                 {"for": "RHEL 9", "version": "366.1.1-1.el9_9"}]},
+                   "fix_keys": ["red_hat:enterprise_linux_10:cockpit<0:366.1.1-1.el10_3"]}
+        self.assertEqual(summaries.lost_fix(cockpit, self.reply("", ["366.1.1-1.el9_9"]), self.text("cockpit flaw.")),
+                         summaries.LOST_FIX + "366.1.1-1.el10_3")
+        self.assertEqual(summaries.lost_fix(cockpit, self.reply("", ["0:366.1.1-1.el10_3", "366.1.1-1.el9_9"]),
+                                            self.text("cockpit flaw.")), "")  # the epoch aside
+
+    def test_a_line_the_union_adds_back_from_the_sheet_is_no_loss(self):
+        # Java4Shell (rewritten): the draw dropped Corretto's line it wrote before; a trusted sheet row gives it.
+        java = {"id": "x", "summary": {"fixed": "17.0.21.1", "fixes": [{"for": "Oracle Java SE 17", "version": "17.0.21.1"},
+                                                                       {"for": "Amazon Corretto 21", "version": "21.3.20.1"}]}}
+        reply, text = self.reply("17.0.21.1", ["17.0.21.1"]), self.text("Java SE flaw. Fixed in Amazon Corretto 21.3.20.1 and later.")
+        row = {"for": "Amazon Corretto 21", "version": "21.3.20.1"}
+        self.assertEqual(summaries.lost_fix(java, reply, text), summaries.LOST_FIX + "21.3.20.1")
+        self.assertEqual(summaries.lost_fix(java, reply, text, [row]), "")
+        self.assertEqual(reply["fixes"], [{"for": "Git", "version": "17.0.21.1", "devices": []}])  # asking changes nothing
+        # A row the union's checks refuse (below the records' first fixed version of its line) adds nothing back.
+        self.assertTrue(summaries.lost_fix(java | {"fix_keys": ["amazon:corretto<21.3.21"]}, reply, text, [row]))
+
+    def test_a_version_without_a_dotted_number_is_lost_only_when_no_fix_is_left(self):
+        # Samsung, CVE-2026-21148 (rewritten): the only fix went to the mitigation.
+        samsung = {"id": "x", "summary": {"fixed": "SMR Nov-2026 Release 1", "fixes": []}}
+        text = self.text("Messages before SMR Nov-2026 Release 1 lets a local attacker read files.")
+        self.assertEqual(summaries.lost_fix(samsung, self.reply("", mitigation="Install SMR Nov-2026 Release 1."), text),
+                         summaries.LOST_FIX + "SMR Nov-2026 Release 1")
+        self.assertEqual(summaries.lost_fix(samsung, self.reply("", mitigation="Update."), self.text("Messages flaw.")), "")  # not in the input
+        # Dassault, CVE-2026-19732 (rewritten): a range's affected upper bound the stored Summary took for a fix.
+        dassault = {"id": "x", "summary": {"fixed": "", "fixes": [{"for": "3DEXPERIENCE R2023x", "version": "R2023x.FP.CFA.2613"}]}}
+        self.assertEqual(summaries.lost_fix(dassault, self.reply(""), self.text("Launcher up to R2023x.FP.CFA.2613 is affected.")), "")
+        braun = {"id": "x", "summary": {"fixed": "U/L 95", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(braun, self.reply("build 2041"), self.text("before U/L 95, build 2041")), "")  # a renaming
+
+    def test_renamings_and_versions_the_input_no_longer_gives_are_no_loss(self):
+        git = {"id": "CVE-2026-105437", "summary": {"fixed": "2.49.1", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.49.1"), self.text()), "")
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.49.2"), self.text()), "")  # the same line, higher
+        self.assertEqual(summaries.lost_fix(git, self.reply("2.50.2"), self.text("Git has a heap overflow.")), "")
+        self.assertEqual(summaries.lost_fix({"id": "x"}, self.reply(""), self.text()), "")  # a first Summary
+        krb5 = {"id": "x", "summary": {"fixed": "0:1.21.1-10.el9_8.3", "fixes": []}, "fix_keys": ["red_hat:x:krb5<0:1.21.1-10.el9_8.3"]}
+        self.assertEqual(summaries.lost_fix(krb5, self.reply("1.21.1-10.el9_8.3"), self.text("krb5 flaw.")), "")  # the epoch
+        braun = {"id": "x", "summary": {"fixed": "U/L 95", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(braun, self.reply("U/L 95 build 2041"), self.text("before U/L 95")), "")
+        qt = {"id": "x", "summary": {"fixed": "6.8.9", "fixes": []}}
+        self.assertEqual(summaries.lost_fix(qt, self.reply("6.8.10"), self.text("Qt before 6.8.9 is affected.")), "")
+
+    def test_the_reply_is_kept_back_with_a_note_naming_the_version(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}],
+                    "summary": {"fixed": "10.6p2", "fixes": []}, "fix_keys": ["openbsd:openssh<10.6.2"]}
+        text = (f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+                + " Upgrade to 10.6.2 fixes it.")
+        incident["summary"]["fixed"] = "10.6.2"
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY | {"fixed": "", "fixes": []}), text,
+                                 {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-18T12:00:00Z")
+        self.assertEqual(incident["summary"]["fixed"], "10.6.2")  # the stored Summary stays
+        self.assertEqual(incident["summary_error"]["reason"], summaries.LOST_FIX + "10.6.2")
+        self.assertIn("The input still gives that version as a fix", summaries.retry(incident, text)["note"])
+
+
+class JavaGroupFieldsTest(unittest.TestCase):
+    """Java4Shell (CVE-2026-114938), 11-18: the headline fixed version, a fixes label and a repeated condition."""
+
+    OWN = ["CVE-2026-114938", "CVE-2026-114940", "CVE-2026-114941", "CVE-2026-114942", "CVE-2026-114943"]
+    RECORD = json.dumps({"descriptions": [{"lang": "en", "value": "Vulnerability in Oracle Java SE. Supported versions that are affected are Oracle Java SE: 8u511b33-perf, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3."}],
+                         "affected": [{"product": "Java SE", "versions": [{"version": "8u511b33-perf", "status": "affected"},
+                                                                           {"version": "17.0.21.0.3", "status": "affected"}]}]})
+
+    def text(self):
+        return f"Incident: {', '.join(self.OWN)}\nLead CVE: {self.OWN[0]}\nMentions:\nCVE record {self.OWN[0]}:\n{self.RECORD}"
+
+    def test_a_groups_fixed_is_on_the_lead_cves_line(self):
+        fixes = [{"for": "Oracle Java SE 8 performance build", "version": "8u513-perf"}, {"for": "Oracle Java SE 11", "version": "11.0.33.1"},
+                 {"for": "Oracle Java SE 17", "version": "17.0.21.1"}]
+        summary = {"fixed": "8u513-perf", "fixes": fixes}
+        summaries.lead_fixed(summary, self.text())
+        self.assertEqual(summary["fixed"], "17.0.21.1")
+        kept = {"fixed": "17.0.21.1", "fixes": fixes}
+        summaries.lead_fixed(kept, self.text())
+        self.assertEqual(kept["fixed"], "17.0.21.1")
+        one = {"fixed": "8u513-perf", "fixes": fixes}
+        summaries.lead_fixed(one, f"Incident: {self.OWN[0]}\nCVE record {self.OWN[0]}:\n{self.RECORD}")  # one CVE: as written
+        self.assertEqual(one["fixed"], "8u513-perf")
+
+    def test_a_fixes_label_naming_an_affected_build_goes_back(self):
+        bad = {"fixes": [{"for": "Oracle Java SE 8u511b33-perf", "version": "8u513-perf"}]}
+        self.assertEqual(summaries.affected_label(bad, self.text()), summaries.AFFECTED_LABEL + "Oracle Java SE 8u511b33-perf")
+        good = {"fixes": [{"for": "Oracle Java SE 8 performance build", "version": "8u513-perf"},
+                          {"for": "Synology DSM 7.2.2", "version": "7.2.2-72806"}]}
+        self.assertEqual(summaries.affected_label(good, self.text()), "")
+
+    def test_one_condition_sentence_keeps_one_line_with_every_cve_it_holds_for(self):
+        own = self.OWN
+        text = "웹 서비스 등으로 외부 데이터를 API에 전달하는 경우"
+        conditions = [(own[:1], "Java 17 이상"), ([own[0], own[2]], text), ([own[1], own[4]], text), ([own[3]], "TLS")]
+        easy = [(c[0], f"쉬운 {c[1]}") for c in conditions]
+        merged, twins = summaries.merge_conditions(conditions, easy, own)
+        self.assertEqual(merged, [(own[:1], "Java 17 이상"), ([own[0], own[1], own[2], own[4]], text), ([own[3]], "TLS")])
+        self.assertEqual([t[1] for t in twins], ["쉬운 Java 17 이상", f"쉬운 {text}", "쉬운 TLS"])
+        self.assertEqual(twins[1][0], [own[0], own[1], own[2], own[4]])
+        everyone, _ = summaries.merge_conditions([(own[:3], text), (own[3:], text)], [], own)
+        self.assertEqual(everyone, [([], text)])  # together every CVE: no ids

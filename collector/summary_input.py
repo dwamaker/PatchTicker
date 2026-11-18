@@ -159,6 +159,29 @@ def fetch_page(http_get, url):
     return raw.decode("utf-8", errors="replace")
 
 
+def shared_pages(http_get):
+    """(keep, take), two http_gets for one cycle: a page keep() fetched (the sheets', collector.sheets.fill) is handed to
+    the next take() of it (the Summary's) instead of being fetched again, its error too; take() drops it, so the cycle
+    holds at most the sheets' pages. Any other take() is a plain fetch."""
+    held = {}
+
+    def keep(url):
+        try:
+            held[url] = http_get(url)
+        except (OSError, ValueError, http.client.HTTPException) as err:  # what fetch_page skips
+            held[url] = err
+            raise
+        return held[url]
+
+    def take(url):
+        got = held.pop(url) if url in held else None
+        if isinstance(got, Exception):
+            raise got
+        return got if got is not None else http_get(url)
+
+    return keep, take
+
+
 def sonicwall_advisory(http_get, advisory_id):
     """The advisory's own fields (already HTML) under plain headings, so page_text reads it like any page."""
     raw = fetch_page(http_get, SONICWALL_API.format(advisory_id))

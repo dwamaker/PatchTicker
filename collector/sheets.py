@@ -12,7 +12,7 @@ from collections import defaultdict
 
 import anthropic
 
-from collector.incidents import is_news, merge_score, page_slug
+from collector.incidents import DISTRO_PACKAGE, is_news, merge_score, page_slug
 from collector.model import CVE_ID, EFFORT, MAX_TOKENS, MODEL, reply_json
 from collector.summary_input import CVE_LINES_MAX, fetch_page, host, main_text, page_mentions
 
@@ -121,24 +121,31 @@ def read_sheet(incident, mention, claude, http_get, stamp):
     return {"kind": mention["kind"], "facts": facts, "at": stamp}
 
 
-def fill(store, incidents, claude, http_get, stamp, limit=SHEETS_PER_CYCLE):
+def fill(store, incidents, claude, http_get, stamp, limit=SHEETS_PER_CYCLE, counts=None):
     """Sheets for these Incidents (those due a Summary, most urgent first), the gated ones only, at most `limit` requests:
     a page already read for an Incident is never asked again. Returns {incident id: [sheet, ...]} in page order, each sheet
     with its url and rank. A sheet request that fails (not a budget error) ends the sheets for this cycle and the Summaries
-    go on with what is there; a budget error goes up like a Summary's (is_budget_error)."""
-    got, asked = {}, 0
+    go on with what is there; a budget error goes up like a Summary's (is_budget_error). counts: a dict whose
+    sheets_asked, sheets_failed (a failed request, or a reply that is no sheet) and sheets_kept_back (pages past the
+    limit) are added to (the cycle's log line)."""
+    got, asked, counts = {}, 0, {"sheets_asked": 0, "sheets_failed": 0, "sheets_kept_back": 0} if counts is None else counts
     for incident in incidents:
         if not gated(incident):
             continue
         doc = store.read(doc_name(incident["id"])) or {"incident": incident["id"], "sheets": {}}
         before = len(doc["sheets"])
         for m in page_mentions(incident)[:SHEET_PAGES]:
-            if m["url"] in doc["sheets"] or asked >= limit:
+            if m["url"] in doc["sheets"]:
+                continue
+            if asked >= limit:
+                counts["sheets_kept_back"] += 1
                 continue
             try:
                 sheet = read_sheet(incident, m, claude, http_get, stamp)
             except anthropic.APIError as err:
                 from collector.summaries import is_budget_error  # summaries imports this module
+                counts["sheets_asked"] += 1
+                counts["sheets_failed"] += 1
                 if is_budget_error(err):
                     raise
                 print(f"sheets: stopped this cycle: {err!r}"[:300], file=sys.stderr)
@@ -146,6 +153,8 @@ def fill(store, incidents, claude, http_get, stamp, limit=SHEETS_PER_CYCLE):
                 continue
             asked += 1 if sheet else 0
             if sheet:
+                counts["sheets_asked"] += 1
+                counts["sheets_failed"] += 1 if sheet.get("unread") else 0
                 doc["sheets"][m["url"]] = sheet
         if len(doc["sheets"]) != before:
             store.write(doc_name(incident["id"]), doc)
@@ -176,10 +185,18 @@ def facts_of(sheets):
     return [(s, s["facts"]) for s in sheets if not s.get("unread") and s.get("facts") and s["facts"].get("about_incident")]
 
 
-AFFECTED_WORDS = re.compile(r"\b(?:affected|vulnerable|still (?:affected|vulnerable)|is impacted)\b", re.I)
-# A version a sentence calls fixed, or the bound of a range ("before 6.1.6", "prior to", "< 6.1.6"): the fix, not affected.
-FIXED_IN = re.compile(r"(?:(?:fixed|patched|upgrade to|resolved) (?:in |to )?(?:version )?|\bbefore |\bprior to |<\s?)v?(\d+(?:\.\d+)+)", re.I)
-VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3})(?![\w.])")
+# "not affected" calls nothing affected (Rails, "8.0 and earlier ... are not affected").
+AFFECTED_WORDS = re.compile(r"(?<!\bnot )\b(?:affected|vulnerable|still (?:affected|vulnerable)|is impacted)\b", re.I)
+# A version a sentence calls fixed, or the bound of a range, and every version listed after it in the same clause, with
+# up to four words (a product name, "version(s)") before the first number: the fix, not affected. PostgreSQL,
+# CVE-2026-116303, "Versions before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected" bounds all five;
+# GitHub Enterprise Server's "fixed in versions 3.19.14, 3.20.10, 3.21.8, and 3.22.3" fixes all four. "<=" is inclusive.
+FIXED_IN = re.compile(r"(?:\b(?:fixed|patched|resolved|upgrade to|update to)(?:\s+in|\s+to)?|\bbefore|\bprior to|\bearlier than"
+                      r"|<(?!=))\s*(?:[A-Za-z][\w+-]*\s+){0,4}?v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?"
+                      r"(?:\s*,\s*(?:(?:and|or)\s+)?v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?|\s+(?:and|or)\s+v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?)*", re.I)
+# The whole version token, a vendor's bracketed build included: Zyxel's record calls "5.63(ACLD.2)b3_D0" affected, which
+# is not the fix "5.63(ACLD.3.4)D0" (CVE-2026-12487); a bracketed token never reads as its bare number.
+VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3}(?:\([\w.]+\)(?:[\w.]*\w)?(?!\w)|(?![\w.(])))")
 
 
 def record_affected(descriptions):
@@ -189,7 +206,7 @@ def record_affected(descriptions):
     for text in descriptions:
         for sentence in re.split(r"(?<=[.;])\s+", text):
             if AFFECTED_WORDS.search(sentence):
-                fixed_here = set(FIXED_IN.findall(sentence))
+                fixed_here = {v for m in FIXED_IN.findall(sentence) for v in VERSION.findall(m)}
                 got |= {v for v in VERSION.findall(sentence) if v not in fixed_here}
     return got
 
@@ -298,11 +315,33 @@ def same_party(given_by, publisher):
     return bool(party(publisher)) and party(given_by) == party(publisher)
 
 
+def stated(row):
+    """The score is the page's own, not worked out from a vector: its number stands in the row's words, which are on the
+    page (on_page). elixir-grpc, 11-18: two rows gave 8.7 under CVSS 4.0 with a vector as their words; the GitHub pages
+    say "High 8.2" and "High 7.6"."""
+    number = re.match(r"\s*(\d{1,2}(?:\.\d)?)", row["score"])
+    return bool(number) and bool(re.search(rf"(?<![\d.]){re.escape(number[1])}(?!\d|\.\d)", flat(row["words"])))
+
+
+def stated_version(row):
+    """The CVSS version the row claims, when its words state it ("Under CVSS 4.0, ... scores 9.2"; "CVSSv4"); else "":
+    a page that writes "CVSS Score: 5.2" gives its number, not its version, and the Board then shows "CVSS 5.2"."""
+    found = re.fullmatch(r"\s*([234])\.(\d)\s*", row["cvss_version"])
+    if not found:
+        return ""
+    major, minor = found.groups()
+    words = flat(row["words"])
+    said = (re.search(rf"(?<![\d.]){major}\.{minor}(?!\d)", words)
+            or minor == "0" and re.search(rf"(?:CVSS\s*:?\s*v?|\bv){major}(?![\d.])", words, re.I))
+    return f"{major}.{minor}" if said else ""
+
+
 def page_scores(incident, sheets):
     """The owner's rule "the higher one wins", taken to a finder's own score (Oracle's record: 8.1 under CVSS 3.1; Calif's
     own page: 9.2 under CVSS 4.0). A sheet score counts only when it names one of the Incident's CVE IDs, the page's own
     publisher gives it (by the sheet's word, or its giver is the publisher by name: same_party), the page is a vendor advisory, a CNA record or the finder's disclosure, the page is no news site
-    or curator the collector reads, and its words are on the page letter for letter. It raises that CVE's score (and the
+    or curator the collector reads, and its words are on the page letter for letter and hold its number (stated); its CVSS version is
+    kept only when they state it too (stated_version). It raises that CVE's score (and the
     Incident's) only when higher, with who gave it as "by". Over 66 trial Incidents: one raise, rightly, none wrongly.
     True when a score changed."""
     changed = False
@@ -313,9 +352,9 @@ def page_scores(incident, sheets):
             value, cve = score_value(row["score"]), row["cve"].strip().upper()
             own = row["publisher_gives_it"] or same_party(row["given_by"], f["publisher"])
             if (value is None or cve not in incident["cves"] or not CVE_ID.fullmatch(cve) or not own
-                    or not row.get("on_page") or not f["publisher"].strip()):
+                    or not row.get("on_page") or not f["publisher"].strip() or not stated(row)):
                 continue
-            version = row["cvss_version"].strip() if re.fullmatch(r"\s*[234]\.\d\s*", row["cvss_version"]) else ""
+            version = stated_version(row)
             if merge_score(incident.setdefault("cve_scores", {}), cve, value, "", by=" ".join(f["publisher"].split()), version=version):
                 incident["cvss"] = max(incident.get("cvss", 0), value)
                 changed = True
@@ -332,4 +371,175 @@ def forget(store, gone):
 def text_for(sheets, incident, descriptions):
     """The rendered sheet for summary_input, or "" without sheets."""
     return render(merge(sheets, incident, descriptions)) if sheets else ""
+
+
+# The union of fixed versions (owner's carry trial, 11-18): every trusted fixed row of the guarded sheet that a Summary
+# lacks is added to its fixes by code (summaries.save_reply). Each row check below stopped a wrong row of the trial.
+A_VERSION = re.compile(r"\d+(?:\.\d+|u\d+)")  # a release number: not a commit ("f9416bea")
+# Not a fix of the product: a not-affected note ("upgraded ... to >= 4.4.8 ... are not affected") or a bundled library's
+# fix ("versions of OpenSSL included in wheels prior to cryptography 48.01").
+NOT_A_FIX = re.compile(r"\b(?:not affected|unaffected|not vulnerable|are not impacted|included in|bundled (?:in|with)|shipped with)\b", re.I)
+
+
+def label_of(vendor, line):
+    """"Amazon Corretto 17", not "Amazon Corretto Corretto 17": the product line's words the vendor already says go."""
+    said = {w.lower() for w in vendor.split()}
+    rest = line.split()
+    while rest and rest[0].lower() in said:
+        rest.pop(0)
+    return " ".join([vendor, *rest]).strip()
+
+
+def fix_rows(sheets, incident, descriptions):
+    """The merged sheet's fixed rows a Summary may gain, as fixes lines {"for", "version"}: past merge()'s guards (no
+    version a rank-A page or the records' text calls affected, none fixed_conflict rejects), with a release number, no
+    range bound ("<13.1.0", or "<" before it in the words), no not-affected or bundled words, and, when the row names
+    CVEs, one of the Incident's (7-Zip's 26.02 fixed another CVE). Trusted at the trial's level 3: a rank-A or rank-B
+    page gives it, or two hosts do (Amazon Corretto's lines come only from a rank-B blog)."""
+    from collector.summaries import fixed_conflict  # summaries imports this module
+    affected = {version_key(r["version"]) for s, f in facts_of(sheets) if s["rank"] == "A"
+                for r in f["versions"] if r["status"] in ("affected", "first_affected")}
+    affected |= {version_key(v) for v in record_affected(descriptions)}
+    rows = {}
+    for s, f in facts_of(sheets):
+        for r in f["versions"]:
+            v, words = r["version"].strip(), r.get("words") or ""
+            if r["status"] != "fixed" or not v or version_key(v) in affected or fixed_conflict(incident, {"fixed": v, "fixes": []}):
+                continue
+            cves = {c.strip().upper() for c in r.get("cves") or [] if c.strip()}
+            if (not A_VERSION.search(v) or v[:1] in "<>≤" or re.search(r"<=?\s*v?" + re.escape(v), words)
+                    or NOT_A_FIX.search(words) or cves and not cves & set(incident["cves"])):
+                continue
+            row = rows.setdefault((norm(r["vendor"]), norm(r["product_line"]), norm(v)),
+                                  {"for": label_of(r["vendor"].strip(), r["product_line"].strip()), "version": v, "sources": set()})
+            row["sources"].add((s["rank"], host(s["url"])))
+    return [{"for": row["for"], "version": row["version"]} for row in rows.values()
+            if {rank for rank, _ in row["sources"]} & {"A", "B"} or len({h for _, h in row["sources"]}) >= 2]
+
+
+NOISE = {"lts", "elts", "or", "above", "later", "newer", "higher", "and", "version", "build", "이상", "esr"}
+LABEL_STOP = {"the", "for", "and", "edition", "version", "versions", "release", "series", "update", "server", "product", "software"}
+
+
+def vcore(v):
+    """A version as a line compares it: no bracket, no "or above", no package name before it ("cockpit-366.1.1-1.el10_3"
+    is the model's "366.1.1-1.el10_3")."""
+    v = re.sub(r"\s*\(.*?\)", "", str(v)).strip().lower().lstrip("v")
+    v = re.sub(r"\s*(?:or (?:above|later|newer|higher)|and later|\+)$", "", v)
+    return re.sub(r"^[a-z][\w.+]*?-(?=\d)", "", v).strip()
+
+
+def signature(v):
+    """The version's digits and letter groups without noise words ("10.4.63 ELTS" is 10.4.63; "R82.20 Jumbo Hotfix Take
+    14 이상" is the model's "R82.20 Jumbo Hotfix Take 14"; "8u513-perf" stays apart from "8u513")."""
+    return tuple(w for w in re.findall(r"\d+|[a-z]+|[가-힣]+", v.lower()) if w not in NOISE)
+
+
+def distro_build(v):
+    """A distribution's package build ("366.1.1-1.el10_3", "1.2-3+deb12u1", "...+esm1"): its release line is the whole
+    package, since the RHEL 9 build of the same upstream version fixes nothing on RHEL 10 (Cockpit, CVE-2026-91151)."""
+    return bool(DISTRO_PACKAGE.search(str(v)) or "+esm" in str(v).lower())
+
+
+def release_line(v):
+    found = not distro_build(v) and re.match(r"\D{0,2}(\d+)\.(\d+)\.\d", v)
+    return found and found.groups()
+
+
+def label_words(label):
+    return {w for w in re.findall(r"[a-z][a-z0-9+]{2,}", label.lower()) if w not in LABEL_STOP}
+
+
+def union(summary, rows):
+    """The rows (fix_rows) the summary lacks, as new fixes lines; the model's lines and its fixed are never touched. Not
+    added: a version the summary already shows under any label (KISA's "Multi-Domain Security Management R82.10 ... 이상"
+    beside the model's "Check Point R82.10"); an older fix on a release line (major.minor) a labelled line of the same
+    product already fixes (Coder's 2.38.2 beside the model's 2.38.4; the headline fixed has no label and never counts:
+    Java's "17.0.21.1" kept Corretto's 17.0.21.1.2 out; a distribution's package is a line of its own, distro_build);
+    and any row under a label of the model's own that names a
+    release (Red Hat Satellite's "... 6.16 for RHEL 9" with its package build, where the sheet gives 6.16.15)."""
+    model = [(vcore(f.get("version", "")), f.get("for") or "") for f in summary.get("fixes") or [] if isinstance(f, dict)]
+    have = model + ([(vcore(summary["fixed"]), "")] if summary.get("fixed") else [])
+    added = []
+    for row in rows:
+        v, label = vcore(row["version"]), row["for"]
+        line = release_line(v)
+        if (any(signature(h) == signature(v) for h, _ in have)
+                or line and any(release_line(h) == line and l and label_words(label) & label_words(l) for h, l in have)
+                or re.search(r"\d", label) and any(l and l.lower().split() == label.lower().split() for _, l in model)):
+            continue
+        added.append({"for": label, "version": row["version"], "devices": []})
+        have.append((v, label))
+    return added
+
+
+# The must-carry list (owner's carry trial, part 2): what a Summary must carry from the pages, sent beside the input on
+# every try. A stopgap a reader can type: an option ("-XX:UseAVX=2", not the "-line" of "one-line"), a setting
+# ("key = value") or a command in backticks; prose advice and a developer's code fix ("hash_equals()") are not carried.
+OPTION = re.compile(r"(?:(?<![\w-])-{1,2}[A-Za-z][\w:.+=-]*|[\w.\[\]'$]+\s?=\s?[\w.:/'-]+|`[^`]+`)")
+DEV_FIX = re.compile(r"(?:suggested fix|one-line fix|patch the|line \d+|commit)", re.I)
+FILLER = {"the", "and", "for", "with", "via", "in", "of", "x86", "64", "flaw", "vulnerability", "component", "function", "module",
+          "file", "endpoint", "handler", "api", "php", "java", "src", "lib"}
+
+
+def words(text):
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def finders(sheets):
+    """The pages a sheet reads as the finder's own disclosure of the flaw: summaries.first_hand_reports counts their plain
+    report of attacks."""
+    return [s["url"] for s, f in facts_of(sheets) if f.get("page_role") == "finder_disclosure"]
+
+
+def must_carry(sheets):
+    """[{kind, words, needles, source}]: each stopgap with an option, setting or command from a rank-A page or the
+    finder's own; the upstream project two hosts give; the flawed component as the word pair two hosts share, from at
+    least half the pages that name a component (a group's pages may each name another CVE's: SunEditor had eight). The
+    component's words are the shortest page wording that holds the pair."""
+    out, seen = [], set()
+    for s, f in facts_of(sheets):
+        if s["rank"] != "A" and f.get("page_role") != "finder_disclosure":
+            continue
+        for m in f["mitigations"]:
+            found = tuple(x.strip("`") for x in OPTION.findall(m))
+            if found and not DEV_FIX.search(m) and found not in seen:
+                seen.add(found)
+                out.append({"kind": "stopgap", "words": " / ".join(found), "needles": list(found), "source": host(s["url"])})
+    hosts = defaultdict(set)
+    for s, f in facts_of(sheets):
+        if norm(f.get("upstream_project") or ""):
+            hosts[norm(f["upstream_project"])].add(host(s["url"]))
+    out += [{"kind": "upstream_project", "words": v, "needles": [v], "source": ", ".join(sorted(hs))} for v, hs in hosts.items() if len(hs) >= 2]
+    pairs, at, pages = defaultdict(set), defaultdict(list), defaultdict(set)
+    for s, f in facts_of(sheets):
+        w = words(f.get("flawed_component") or "")
+        for n, (a, b) in enumerate(zip(w, w[1:])):
+            if a == b or a in FILLER or b in FILLER or min(len(a), len(b)) < 3:
+                continue
+            pairs[f"{a} {b}"].add(host(s["url"]))
+            pages[f"{a} {b}"].add(s["url"])
+            at[f"{a} {b}"].append(n)
+    named = [s for s, f in facts_of(sheets) if (f.get("flawed_component") or "").strip()]
+    # The pair the most hosts share, then the one nearest the start (the head noun: "base64 decoder" before "base64
+    # intrinsic").
+    best = sorted((-len(h), sum(at[p]) / len(at[p]), p) for p, h in pairs.items() if len(h) >= 2 and 2 * len(pages[p]) >= len(named))
+    if best:
+        p = best[0][2]
+        said = sorted((f["flawed_component"] for _, f in facts_of(sheets) if p in " ".join(words(f.get("flawed_component") or ""))), key=len)
+        out.append({"kind": "flawed_component", "words": said[0].split("(")[0].strip() if said else p, "needles": [p],
+                    "source": ", ".join(sorted(pairs[p]))})
+    return out
+
+
+def carry_left(summary, items):
+    """The items a reply leaves out: a stopgap's every option or setting, the project's name, the component's every word
+    by its first five letters ("users profile" is in "users.profile.php"), in either language's text."""
+    text = "\n".join([*(str((summary.get(lang) or {}).get(k, "")) for lang in ("en", "ko")
+                        for k in ("title", "summary", "mitigation", "stopgap_then")),
+                      *(" ".join((summary.get(lang) or {}).get("conditions") or []) for lang in ("en", "ko")),
+                      str(summary.get("stopgap", "")), str(summary.get("command", ""))]).lower()
+    flat_text, have = " ".join(text.split()), {w[:5] for w in words(text)}
+    return [c for c in items if not (all(w[:5] in have for w in c["needles"][0].split()) if c["kind"] == "flawed_component"
+                                     else all(n.lower() in flat_text for n in c["needles"]))]
 
