@@ -1550,3 +1550,53 @@ class ReSummaryKeepsWhatTheReviewLeftOutTest(unittest.TestCase):
         self.assertEqual(self.store(stored)["event_date"], "2026-10-29")
         self.assertEqual(self.store(stored, event_date="2026-10-30")["event_date"], "2026-10-30")
         self.assertNotIn("event_date", self.store({}))
+
+
+class DisputedAttacksTest(unittest.TestCase):
+    """A new reply that says "not exploited" never takes down attacks the Board shows with a source (owner 11-18, the
+    re-summary dry run's ARTEX and N-central): only the review's no does, and a reply whose own text still reports the
+    attacks goes back for another try."""
+
+    SOURCE = "https://www.securityweek.com/hackers-target-n-central-zero-days-as-n-able-rushes-patches/"
+    STORED = {"exploited": True, "exploited_source": SOURCE}
+
+    def save(self, reply, tries=0):
+        incident = {"id": "nc", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}], "summary": dict(self.STORED)}
+        if tries:
+            incident["summary_error"] = {"tries": tries, "reason": "earlier"}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                                 "2026-11-18T12:00:00Z", review_with=summaries.BATCH)
+        return incident
+
+    def test_a_reply_whose_text_still_reports_the_attacks_goes_back(self):
+        # N-central: the Korean said "실제 공격 시도도 확인되었습니다" while the flag was false.
+        ko = SSHOLE_SUMMARY["ko"] | {"summary": SSHOLE_SUMMARY["ko"]["summary"] + " 실제 공격 시도도 확인되었습니다."}
+        incident = self.save(SSHOLE_SUMMARY | {"ko": ko})
+        self.assertEqual(incident["summary"], self.STORED)  # nothing replaced
+        self.assertIn(summaries.ATTACKS_UNFLAGGED, incident["summary_error"]["reason"])
+
+    def test_the_review_is_asked_and_only_its_no_takes_the_attacks_down(self):
+        # ARTEX: the new text says nothing of attacks and the flag is false.
+        incident = self.save(SSHOLE_SUMMARY)
+        draft = incident["review_pending"]
+        params = summaries.review_params(draft["summary"], incident)
+        self.assertIn("attacks_happened", params["output_config"]["format"]["schema"]["required"])
+        for answer, kept in ((False, False), (True, True), (None, True)):
+            reply = {"findings": [], "event_date": ""} | ({} if answer is None else {"attacks_happened": answer})
+            target = copy.deepcopy(incident)
+            summaries.finish_review(target, copy.deepcopy(draft), FakeClaude.message(reply))
+            self.assertEqual(target["summary"]["exploited"], kept, answer)
+            self.assertEqual(target["summary"]["exploited_source"], self.SOURCE if kept else "", answer)
+            self.assertNotIn("exploited_disputed", target["summary"])
+
+    def test_a_first_summary_or_one_that_keeps_the_flag_is_not_disputed(self):
+        incident = self.save(SSHOLE_SUMMARY)
+        self.assertTrue(incident["review_pending"]["summary"].get("exploited_disputed"))
+        first = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        text = f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(first, FakeClaude.message(SSHOLE_SUMMARY), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
+                                 "2026-11-18T12:00:00Z", review_with=summaries.BATCH)
+        self.assertNotIn("exploited_disputed", first["review_pending"]["summary"])

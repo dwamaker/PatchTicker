@@ -314,6 +314,10 @@ ATTACK_SEEN = re.compile(r"in the wild|zero-day|actively (?:exploited|attacked)|
                          r"|exploitation (?:(?:was|has been|have been|is|were|had been) )?(?!not\b|never\b)(?:\w+ )?"
                          r"(?:seen|observed|reported|detected|confirmed)"
                          r"|(?:observed|seen|detected|reported|confirmed) (?:active |ongoing |limited )?exploitation", re.I)
+# The Korean text's report of attacks that happened ("실제 공격 시도도 확인되었습니다", "악용 사례가 보고됐습니다"): the verb
+# in a past, positive form, so "확인되지 않았습니다" and "악용될 수 있습니다" never match.
+ATTACK_SEEN_KO = re.compile(r"(?:공격|악용|침해)[^.。!?]{0,20}?(?:확인되었|확인됐|관측되었|관측됐|보고되었|보고됐|발생했|이어지고 있|진행 중이)"
+                            r"|(?:악용되고|공격받고|공격을 받고|노려지고) 있")
 # Words just before a match that turn it into a denial ("no evidence it has been exploited in the wild", "has not observed
 # exploitation") or a warning ("could be exploited in attacks", "could come under attack"); "may have been" stays a report.
 DENIED = re.compile(r"\b(?:no|not|never|none|nor|without)\b|n't", re.I)
@@ -924,6 +928,12 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
         failed(incident, str(err))
         return
     name_titles(summary, trusted_names(incident, text))
+    stored = incident.get("summary") or {}
+    # A new reply that says "not exploited" never takes down attacks the Board shows with a source (owner, 11-18: ARTEX,
+    # N-central in the re-summary dry run): the review is asked whether attacks happened, and only its no drops the flag
+    # (settle_attacks).
+    if not summary["exploited"] and stored.get("exploited") is True and stored.get("exploited_source"):
+        summary["exploited_disputed"] = True
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
     conflict = fixed_conflict(incident, summary) or record_says_affected(summary, text) or stray_script(incident, summary, text)
@@ -941,7 +951,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
         informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
-        hangul_in_english(summary, text), attacked_unnamed(summary, text)) if p)
+        hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary)) if p)
     draft = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due, "words": words}
     last = incident.get("summary_error", {}).get("tries", 0) + 1 >= MAX_TRIES
     if problem and not last:
@@ -972,7 +982,8 @@ def review_params(summary, incident, ttl=None):
         summary = summary | {lang: summary[lang] | {"cve_lines": []} for lang in ("ko", "en")}
         if len(review.entry_text(summary, incident)) > REVIEW_MAX_CHARS:
             return None
-    return review.params(summary, incident, ttl=ttl, ask_attacks=bool(summary.get("exploited_unconfirmed")))
+    return review.params(summary, incident, ttl=ttl,
+                         ask_attacks=bool(summary.get("exploited_unconfirmed") or summary.get("exploited_disputed")))
 
 
 def review_now(incident, draft, claude):
@@ -998,7 +1009,7 @@ def finish_review(incident, draft, reply):
     to keep(): it is no finding."""
     incident.pop("review_pending", None)
     draft = draft | {"event_date": review.event_date(reply)}  # owner 11-17: an old event is no Highlight
-    if draft["summary"].get("exploited_unconfirmed"):
+    if draft["summary"].get("exploited_unconfirmed") or draft["summary"].get("exploited_disputed"):
         draft = draft | {"verdict": review.attacks_happened(reply)}
     why = review.reason(review.findings_of(reply, draft["summary"]))
     if why:
@@ -1045,13 +1056,35 @@ def release_reviews(incidents, batches):
 ATTACK_FIELDS = ("exploited", "exploited_source", "exploited_cves", "exploited_review")
 
 
+ATTACKS_UNFLAGGED = "the text reports attacks but exploited is false"
+
+
+def attacks_unflagged(summary):
+    """A reply that takes down a stored attack (exploited_disputed) while its own text still reports one (N-central, 11-18
+    dry run: the Korean said "실제 공격 시도도 확인되었습니다", the flag false) contradicts itself: another try. The
+    reason, or ""."""
+    if not summary.get("exploited_disputed"):
+        return ""
+    en = f"{summary['en'].get('title', '')}\n{summary['en'].get('summary', '')}"
+    ko = f"{summary['ko'].get('title', '')}\n{summary['ko'].get('summary', '')}"
+    return ATTACKS_UNFLAGGED if attack_reported(en) or ATTACK_SEEN_KO.search(ko) else ""
+
+
 def settle_attacks(summary, verdict, stored=None):
     """An exploited flag parse() left unconfirmed (ATTACK_SEEN and DELIVERED miss its wording) stands only on the
     review's yes, marked exploited_review so recheck_exploited leaves it; a no drops it. No answer (the review left the
     question out, was cut off or unreadable, or none was asked) is not a no: the Incident keeps the attacks its stored
     Summary already shows, with that Summary's source (Huatian OA8000, CVE-2024-58406, re-summary dry run 11-18: the
     review replied without attacks_happened and the Incident fell from the highest level). Without such a Summary the
-    unconfirmed flag drops, as before."""
+    unconfirmed flag drops, as before. A disputed flag (save_reply: the new reply says not exploited, the stored Summary
+    shows attacks with a source) is the stored one's unless the review answers no."""
+    if summary.pop("exploited_disputed", False):
+        # The new reply says not exploited where the stored Summary shows attacks: only the review's no takes them down.
+        if verdict is not False:
+            for field in ATTACK_FIELDS:
+                summary.pop(field, None)
+            summary.update({field: stored[field] for field in ATTACK_FIELDS if field in (stored or {})})
+        return
     if not summary.pop("exploited_unconfirmed", False):
         return
     if verdict is True:
