@@ -1072,7 +1072,8 @@ def attacks_unflagged(summary):
 
 def settle_attacks(summary, verdict, stored=None):
     """An exploited flag parse() left unconfirmed (ATTACK_SEEN and DELIVERED miss its wording) stands only on the
-    review's yes, marked exploited_review so recheck_exploited leaves it; a no drops it. No answer (the review left the
+    review's yes, marked exploited_review so recheck_exploited leaves it; a no drops it, unless the stored Summary shows
+    the attacks with a source: those fall only when the new reply and the review both say no. No answer (the review left the
     question out, was cut off or unreadable, or none was asked) is not a no: the Incident keeps the attacks its stored
     Summary already shows, with that Summary's source (Huatian OA8000, CVE-2024-58406, re-summary dry run 11-18: the
     review replied without attacks_happened and the Incident fell from the highest level). Without such a Summary the
@@ -1092,7 +1093,10 @@ def settle_attacks(summary, verdict, stored=None):
         return
     for field in ATTACK_FIELDS:
         summary.pop(field, None)
-    if verdict is None and stored and stored.get("exploited") is True:
+    # The reply says exploited and the review says no (or gave no answer): a stored attack with a source stays, since
+    # it falls only when the reply and the review both say no (owner 11-18: Optimizely fell on one review draw's no; the
+    # dry run's draw said yes).
+    if stored and stored.get("exploited") is True and stored.get("exploited_source"):
         summary.update({field: stored[field] for field in ATTACK_FIELDS if field in stored})
     else:
         summary["exploited"], summary["exploited_source"] = False, ""

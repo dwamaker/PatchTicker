@@ -1531,14 +1531,19 @@ class ReSummaryKeepsWhatTheReviewLeftOutTest(unittest.TestCase):
         summaries.keep(incident, summary, {}, "2026-11-18T12:00:00Z", [], True, verdict=verdict, event_date=event_date)
         return incident["summary"]
 
-    def test_no_attacks_answer_keeps_the_stored_summarys_flag_and_a_real_no_drops_it(self):
+    def test_a_stored_sourced_attack_stays_unless_reply_and_review_both_say_no(self):
         stored = {"exploited": True, "exploited_source": self.CVE_RECORD, "event_date": "2024-11-20"}
         new = {"exploited": True, "exploited_source": self.VULNCHECK, "exploited_unconfirmed": True}
         kept = self.store(stored, None, "2024-11-20", **new)
         self.assertEqual((kept["exploited"], kept["exploited_source"]), (True, self.CVE_RECORD))
         self.assertNotIn("exploited_unconfirmed", kept)
-        dropped = self.store(stored, False, **new)
-        self.assertEqual((dropped["exploited"], dropped["exploited_source"]), (False, ""))
+        # The reply says yes, the review no: a stored attack with a source stays (Optimizely, HN 50524767, integration
+        # test 11-18: one review draw's no took it from the highest level; another draw said yes).
+        held = self.store(stored, False, **new)
+        self.assertEqual((held["exploited"], held["exploited_source"]), (True, self.CVE_RECORD))
+        # Nothing stored, or stored without a source: the review's no decides, as before.
+        self.assertFalse(self.store({}, False, **new)["exploited"])
+        self.assertFalse(self.store({"exploited": True, "exploited_source": ""}, False, **new)["exploited"])
         yes = self.store(stored, True, **new)
         self.assertEqual((yes["exploited"], yes["exploited_source"], yes["exploited_review"]), (True, self.VULNCHECK, True))
         # Nothing stored to keep: an unconfirmed flag without an answer drops, as before.
