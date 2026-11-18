@@ -393,3 +393,70 @@ class NotHtmlPageTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertIsNone(summary_input.page_text(self.JUNK.decode("utf-8", errors="replace"), LEAD))
             self.assertEqual(summary_input.cell_text("<p>x</p>" + self.JUNK.decode("utf-8", errors="replace")), "")
+
+
+class PageChoiceAndCutTest(unittest.TestCase):
+    """The Summary input's pages (owner's trial, 11-18, variant C): which are read, in what order, and how a long one is cut."""
+
+    INCIDENT = {"id": "CVE-2026-114938", "cves": ["CVE-2026-114938"], "products": [{"id": "oracle:jdk", "name": "Oracle JDK"}]}
+
+    def mentions(self, *pairs, lead=None):
+        ms = [{"kind": kind, "url": url} for kind, url in pairs]
+        return {**self.INCIDENT, "mentions": ms, "brief": {"text": "x", "lead": lead or ms[0]["url"]}}
+
+    def test_the_lead_then_advisories_and_notices_then_write_ups_news_newsletters_and_discussions(self):
+        incident = self.mentions(("discussion", "https://seclists.org/oss-sec/2026/q4/9"),
+                                 ("writeup", "https://www.bleepingcomputer.com/news/java4shell"),
+                                 ("discussion", "https://news.ycombinator.com/item?id=50538240"),
+                                 ("curator", "https://news.risky.biz/rbn-2026-11-18"),
+                                 ("repo", "https://github.com/x/java4shell-poc"),
+                                 ("writeup", "https://www.cve.org/CVERecord?id=CVE-2026-114938"),
+                                 ("writeup", "https://calif.io/blog/java4shell"),
+                                 ("notice", "https://www.boho.or.kr/kr/bbs/view.do?nttId=1"),
+                                 ("advisory", "https://www.oracle.com/security-alerts/alert-cve-2026-114938.html"),
+                                 lead="https://calif.io/blog/java4shell")
+        self.assertEqual([m["url"].split("/")[2] for m in summary_input.page_mentions(incident)],
+                         ["calif.io", "www.boho.or.kr", "www.oracle.com", "www.bleepingcomputer.com", "news.risky.biz", "seclists.org"])
+
+    def test_one_page_per_host_before_a_second_from_the_same_host(self):
+        incident = self.mentions(("advisory", "https://www.oracle.com/a"), ("advisory", "https://oracle.com/b"),
+                                 ("writeup", "https://calif.io/c"), ("writeup", "https://openjdk.org/d"))
+        self.assertEqual([m["url"] for m in summary_input.page_mentions(incident)],
+                         ["https://www.oracle.com/a", "https://calif.io/c", "https://openjdk.org/d", "https://oracle.com/b"])
+
+    def test_a_short_page_is_kept_whole_without_navigation_header_footer_or_forms(self):
+        page = ("<html><body><nav>Products Support Sign in</nav><header>Oracle Blogs</header><main><h1>Alert</h1>"
+                "<p>A flaw in the <code>Base64</code> decoder. Nothing else.</p></main><form>Search <button>Go</button>"
+                "</form><footer>Copyright</footer></body></html>")
+        self.assertEqual(summary_input.page_text(page, "https://x.example/", self.INCIDENT),
+                         "Alert A flaw in the Base64 decoder. Nothing else.")
+
+    def test_a_page_held_whole_in_a_form_still_gives_its_text(self):
+        body = " ".join(f"Word{n}" for n in range(80))
+        self.assertIn("Word79", summary_input.page_text(f"<html><body><form id='f1'><p>{body}</p></form></body></html>"))
+
+    def test_a_long_navigation_heavy_bulletin_keeps_its_opening_and_the_sentences_about_the_incident(self):
+        menu = "<nav><ul>" + "".join(f"<li>Menu item {n}</li>" for n in range(2000)) + "</ul></nav>"
+        filler = "".join(f"<p>Paragraph {n} talks about the weather in general terms.</p>" for n in range(400))
+        page = (f"<html><body>{menu}<main><h1>Critical Patch Update Alert</h1><p>Oracle released this alert.</p>"
+                f"{filler}<p>Background on nothing.</p><p>CVE-2026-114938 lets a remote attacker run code.</p>"
+                f"<p>Java SE 21.0.14 is the fixed version.</p>{filler}</main></body></html>")
+        text = summary_input.page_text(page, "https://www.oracle.com/alert", self.INCIDENT)
+        self.assertLessEqual(len(text), summary_input.PAGE_CHARS)
+        self.assertTrue(text.startswith("Critical Patch Update Alert Oracle released this alert."))
+        self.assertIn("… Background on nothing. CVE-2026-114938 lets a remote attacker run code. Java SE 21.0.14 is the fixed version.", text)
+        self.assertNotIn("Menu item", text)
+        self.assertNotIn("\n", text)  # SOURCE_RE reads a page as one line
+
+    def test_a_long_page_with_no_matching_sentence_keeps_its_opening_text(self):
+        page = "<html><body>" + "".join(f"<p>Paragraph {n} talks about the weather in general terms.</p>" for n in range(400)) + "</body></html>"
+        text = summary_input.page_text(page, "https://x.example/", self.INCIDENT)
+        self.assertTrue(text.startswith("Paragraph 0 talks"))
+        self.assertGreater(len(text), summary_input.PAGE_CHARS - 100)
+
+    def test_the_join_still_reads_the_raw_page(self):
+        page = ('<html><body><nav><a href="https://sshhole.com/">CVE-2026-123158</a></nav>'
+                + "<p>" + "filler words here. " * 1000 + "</p></body></html>")
+        got = summary_input.fetch_page(lambda url: page.encode(), "https://blog.example/post")
+        self.assertEqual(got, page)
+        self.assertEqual(incidents.page_keys(got, "https://blog.example/post")["urls"], ["sshhole.com"])
