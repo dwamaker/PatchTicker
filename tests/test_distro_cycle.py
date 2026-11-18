@@ -85,6 +85,33 @@ class DistroCycleTest(unittest.TestCase):
         run(self.store, incidents, NOW + timedelta(minutes=10), Counting(many))
         self.assertIn("CVE-2026-20000", asked(self.store))  # the backlog's turn once new CVEs are asked
 
+    def test_lookups_stop_starting_past_distro_seconds_and_the_rest_stay_due_in_order(self):
+        # 11-18: 15 lookups took 192-223 s a cycle. The clock moves 40 s a lookup: three start inside the 90 s.
+        cves = [f"CVE-2026-{n}" for n in range(10000, 10005)]
+        listed = {c: {"releases": {"trixie": {"status": "open"}}} for c in cves}
+        many = ALL | {distros.DEBIAN_JSON: json.dumps({"pkg": listed}).encode()}
+        incidents = [incident([c], days_ago=n % 3) for n, c in enumerate(cves)]
+        get, t, counts = Counting(many), [0], {}
+
+        def lookup(cve, *args):
+            t[0] += 40
+            return {"lines": [], "failed": []}
+        with unittest.mock.patch.object(distros, "lookup", lookup):
+            _, state = cycle.refresh_distros(self.store, incidents, get, NOW, lambda s: None, lambda: t[0], counts)
+            self.store.write("distros/state.json", state)
+            first = asked(self.store)
+            self.assertEqual(len(first), 3)
+            self.assertEqual(counts, {"distros_asked": 3, "distros_kept_back": 2})
+            self.assertEqual(first, {"CVE-2026-10000", "CVE-2026-10003", "CVE-2026-10001"})  # the newest seen first
+            t[0], counts = 0, {}
+            cycle.refresh_distros(self.store, incidents, get, NOW + timedelta(minutes=10), lambda s: None, lambda: t[0], counts)
+        self.assertEqual(counts, {"distros_asked": 2, "distros_kept_back": 0})  # the next cycle asks the two left
+        # A clock already past the budget still lets one lookup start: the table never stops for good.
+        t[0], counts = 0, {}
+        with unittest.mock.patch.object(cycle, "DISTRO_SECONDS", 0), unittest.mock.patch.object(distros, "lookup", lookup):
+            cycle.refresh_distros(MemoryStore(), incidents, get, NOW, lambda s: None, lambda: t[0], counts)
+        self.assertEqual(counts, {"distros_asked": 1, "distros_kept_back": 4})
+
     def test_a_new_cve_that_folds_into_an_older_incident_is_new_by_its_own_day(self):
         listed = {c: {"releases": {"trixie": {"status": "open"}}} for c in ("CVE-2026-30000", "CVE-2026-30001")}
         many = Counting(ALL | {distros.DEBIAN_JSON: json.dumps({"pkg": listed}).encode()})

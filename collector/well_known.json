@@ -45,7 +45,7 @@
     "SharePoint Server": {"ids": ["microsoft:sharepoint_server*", "microsoft:microsoft_sharepoint_server*", "microsoft:microsoft_sharepoint_enterprise_server*"], "names": ["Microsoft SharePoint Server", "SharePoint"], "tier": 2},
     "LibreOffice": {"ids": ["the_document_foundation:libreoffice", "libreoffice:libreoffice"], "tier": 2},
     "OpenOffice": {"ids": ["apache:openoffice", "apache_software_foundation:apache_openoffice"], "names": ["Apache OpenOffice"], "tier": 3},
-    "Hancom Office": {"ids": ["hancom:*", "hancom_inc.:hancom_office*"], "names": ["한컴오피스", "한글", "Hancom Office Hwp", "Hancom Office 2024", "Hancom Office 2022"], "tier": 1},
+    "Hancom Office": {"ids": ["hancom:hancom_office*", "hancom:hangul*", "hancom:hwp*", "hancom:hanword*", "hancom:hcell", "hancom:office_*", "hancom:thinkfree*", "hancom_inc.:hancom_office*"], "names": ["한컴오피스", "한글", "Hancom Office Hwp", "Hancom Office 2024", "Hancom Office 2022"], "tier": 1},
     "Adobe Acrobat": {"ids": ["adobe:acrobat*", "adobe:adobe_acrobat*", "adobe:adobe_reader", "adobe:reader"], "names": ["Acrobat", "Acrobat Reader", "Adobe Acrobat Reader", "Adobe Reader"], "tier": 1},
     "Photoshop": {"ids": ["adobe:photoshop*", "adobe:adobe_photoshop"], "names": ["Adobe Photoshop"], "tier": 2},
     "Illustrator": {"ids": ["adobe:illustrator*", "adobe:adobe_illustrator*"], "names": ["Adobe Illustrator"], "tier": 2},
@@ -149,14 +149,22 @@
     "Keeper": {"ids": ["keepersecurity:keeper*"], "tier": 3, "names": ["Keeper Password Manager"]},
     "Dell SupportAssist": {"ids": ["dell:supportassist*", "dell:dell_supportassist*"], "tier": 2, "names": ["SupportAssist"]},
     "KMPlayer": {"ids": ["pandora.tv:kmplayer*", "kmplayer:kmplayer", "pandora:kmplayer"], "tier": 3, "names": ["The KMPlayer", "KM플레이어"]},
-    "TouchEn nxKey": {"ids": [], "tier": 2, "names": ["터치엔 엔엑스키"]},
-    "INISAFE CrossWeb EX": {"ids": [], "tier": 2, "names": ["CrossWeb EX", "이니세이프 크로스웹 EX"]},
-    "AnySign4PC": {"ids": ["hancomwith:anysign4pc", "hancom:anysign4pc"], "tier": 2, "names": ["AnySign", "애니사인"]},
-    "MagicLine4NX": {"ids": ["dream_security:magicline*", "dreamsecurity:magicline*"], "tier": 2, "names": ["MagicLine", "매직라인"]},
-    "Veraport": {"ids": ["wizvera:veraport*"], "tier": 2, "names": ["WIZVERA Veraport", "베라포트"]},
-    "IPinside": {"ids": [], "tier": 2, "names": ["IPinside LWS Agent"]},
-    "AhnLab Safe Transaction": {"ids": [], "tier": 2, "names": ["Safe Transaction", "ASTx", "안랩 세이프 트랜잭션"]},
+    "TouchEn nxKey": {"ids": ["raon*:touchen*", "raon*:*nxkey*"], "tier": 1, "names": ["터치엔 엔엑스키", "RaonSecure TouchEn nxKey"]},
+    "INISAFE CrossWeb EX": {"ids": ["initech*:*crossweb*"], "tier": 1, "names": ["CrossWeb EX", "이니세이프 크로스웹 EX", "INISAFE CrossWeb EX V3"]},
+    "AnySign4PC": {"ids": ["hancom*:anysign*"], "tier": 1, "names": ["AnySign", "애니사인"]},
+    "MagicLine4NX": {"ids": ["dream*security*:magicline*"], "tier": 2, "names": ["MagicLine", "매직라인"]},
+    "Veraport": {"ids": ["wizvera:veraport*"], "tier": 1, "names": ["WIZVERA Veraport", "Veraport V3", "Veraport G3", "베라포트"]},
+    "IPinside": {"ids": ["interezen:*ipinside*"], "tier": 1, "names": ["IPinside LWS Agent", "IPinside LWS", "아이피인사이드"]},
+    "AhnLab Safe Transaction": {"ids": ["ahnlab:*safe_transaction*", "ahnlab:astx*"], "tier": 2, "names": ["Safe Transaction", "ASTx", "안랩 세이프 트랜잭션"]},
     "nProtect Online Security": {"ids": ["inca:nprotect", "inca:nprotect_avs"], "tier": 2, "names": ["nProtect", "엔프로텍트"]},
+    "CrossEX": {"ids": ["iniline:crossex*", "initech*:crossex*"], "tier": 1, "names": ["CrossEXService", "CrossEX Service"]},
+    "VestCert": {"ids": ["yettiesoft*:vestcert*"], "tier": 2, "names": ["Yettiesoft VestCert", "베스트서트"]},
+    "Delfino": {"ids": ["wizvera:delfino*"], "tier": 2, "names": ["WIZVERA Delfino", "Delfino G3", "델피노"]},
+    "UniSign": {"ids": ["crosscert:unisign*", "unisign:unisign*"], "tier": 2, "names": ["CrossCert UniSign", "유니사인"]},
+    "SKCertService": {"ids": ["signkorea*:skcert*"], "tier": 2, "names": ["SignKorea SKCertService"]},
+    "ezPDF Reader": {"ids": ["unidocs:ezpdf*"], "tier": 2, "names": ["ezPDFReader", "ezPDF DRM Reader", "ezPDF Editor"]},
+    "MaEPSBroker": {"ids": ["markany*:*epsbroker*"], "tier": 2, "names": ["MarkAny MaEPSBroker", "MarkAny EPSBroker"]},
+    "TCO!stream": {"ids": ["mlsoft:tco*"], "tier": 3, "names": ["MLSoft TCO!stream", "TCOstream"]},
     "PlayStation": {"ids": ["sony:playstation*", "sony:ps4", "sony:ps5"], "tier": 2, "names": ["PlayStation 5", "PlayStation 4", "PS5", "플레이스테이션"]},
     "Nintendo Switch": {"ids": ["nintendo:nintendo_switch*"], "tier": 2, "names": ["닌텐도 스위치"]},
     "Sogou Input Method": {"ids": ["sogou:sogou_input*"], "tier": 2, "names": ["Sogou Pinyin", "Sogou Keyboard", "搜狗输入法"]},
@@ -245,7 +253,9 @@
     "Tenda routers": {"ids": ["tenda:*", "tendacn:*"], "tier": 3, "names": ["Tenda"]},
     "Axis network cameras": {"ids": ["axis_communications_ab:*", "axis:axis_os*", "axis:camera_station", "axis_communications_ab:axis_os*"], "names": ["AXIS Camera Station", "AXIS OS", "Axis camera firmware"], "tier": 3},
     "Hanwha Vision": {"ids": ["hanwha-security:*", "hanwhasecurity:*", "hanwhavision:*"], "tier": 2, "names": ["Wisenet", "Hanwha Techwin", "한화비전"]},
-    "Milestone XProtect": {"ids": ["milestonesys:xprotect*"], "tier": 3, "names": ["XProtect"]}
+    "Milestone XProtect": {"ids": ["milestonesys:xprotect*"], "tier": 3, "names": ["XProtect"]},
+    "Genian NAC": {"ids": ["genians*:*"], "tier": 3, "names": ["Genians", "Genian ZTNA", "Genian SSL PNS", "지니언스"]},
+    "SECUI": {"ids": ["secui:*"], "tier": 3, "names": ["SECUI MF2", "SECUI BLUEMAX", "시큐아이"]}
   },
   "Server software": {
     "OpenSSH": {"ids": ["openbsd:openssh"], "tier": 1},
@@ -298,7 +308,9 @@
     "chrony": {"ids": ["tuxfamily:chrony", "chrony_project:chrony"], "tier": 3},
     "NTPsec": {"ids": ["ntpsec:ntpsec"], "tier": 3},
     "FRRouting": {"ids": ["frrouting:frrouting"], "tier": 3, "names": ["FRR"]},
-    "Cockpit web console": {"ids": ["cockpit-project:cockpit"], "tier": 3, "names": ["Cockpit Project"]}
+    "Cockpit web console": {"ids": ["cockpit-project:cockpit"], "tier": 3, "names": ["Cockpit Project"]},
+    "JEUS": {"ids": ["tmax*:jeus*"], "tier": 2, "names": ["TmaxSoft JEUS", "제우스"]},
+    "WebtoB": {"ids": ["tmax*:webtob*"], "tier": 3, "names": ["TmaxSoft WebtoB", "웹투비"]}
   },
   "Languages and runtimes": {
     "PHP": {"ids": ["php:php", "php_group:php"], "tier": 2},
@@ -593,7 +605,10 @@
     "phpseclib": {"ids": ["phpseclib:phpseclib"], "tier": 3},
     "league/commonmark": {"ids": ["thephpleague:commonmark"], "tier": 3},
     "PhpSpreadsheet": {"ids": ["phpoffice:phpspreadsheet"], "tier": 3},
-    "Livewire": {"ids": ["laravel:livewire"], "tier": 3}
+    "Livewire": {"ids": ["laravel:livewire"], "tier": 3},
+    "eGovFrame": {"ids": ["egovframe*:*", "*:egovframe*"], "tier": 2, "names": ["eGovFramework", "eGovFrame Common Components", "egovframe-common-components", "eGovFramework/egovframe-common-components", "전자정부 표준프레임워크", "전자정부표준프레임워크", "표준프레임워크"]},
+    "Nexacro": {"ids": ["tobesoft*:nexacro*", "nexaweb:nexacro*"], "tier": 3, "names": ["Nexacro Platform", "Nexacro 17", "Nexacro N", "넥사크로"]},
+    "XPLATFORM": {"ids": ["tobesoft*:xplatform*", "tobesoft*:miplatform*"], "tier": 3, "names": ["MiPlatform", "엑스플랫폼", "마이플랫폼"]}
   },
   "Databases and data": {
     "MySQL": {"ids": ["oracle:mysql_server", "oracle:mysql", "mysql:mysql"], "names": ["MySQL Server"], "tier": 2},
@@ -634,7 +649,10 @@
     "pgAdmin": {"ids": ["pgadmin:pgadmin*", "postgresql:pgadmin_4"], "tier": 3, "names": ["pgAdmin 4"]},
     "Adminer": {"ids": ["adminer:adminer"], "tier": 3},
     "PgBouncer": {"ids": ["pgbouncer:pgbouncer", "pgbouncer_project:pgbouncer"], "tier": 3},
-    "Ceph": {"ids": ["redhat:ceph", "redhat:ceph_storage*", "linuxfoundation:ceph", "ceph:ceph"], "tier": 3, "names": ["Red Hat Ceph Storage"]}
+    "Ceph": {"ids": ["redhat:ceph", "redhat:ceph_storage*", "linuxfoundation:ceph", "ceph:ceph"], "tier": 3, "names": ["Red Hat Ceph Storage"]},
+    "Tibero": {"ids": ["tmax*:tibero*", "tibero:*"], "tier": 3, "names": ["Tmax Tibero", "TmaxTibero", "티베로"]},
+    "CUBRID": {"ids": ["cubrid:*"], "tier": 3, "names": ["큐브리드"]},
+    "Altibase": {"ids": ["altibase:*"], "tier": 3, "names": ["알티베이스"]}
   },
   "Containers, virtualisation, operations": {
     "Docker": {"ids": ["docker:desktop", "docker:docker_desktop", "docker:docker_engine", "moby:moby", "docker:docker_buildx", "moby:buildkit", "docker:docker_sandboxes", "docker:docker", "docker:engine", "mobyproject:moby", "mobyproject:buildkit"], "names": ["Docker Desktop", "Docker Engine", "Moby", "Docker Buildx", "BuildKit"], "tier": 2},
@@ -863,7 +881,9 @@
     "OpenCart": {"ids": ["opencart:opencart"], "tier": 3},
     "1C-Bitrix": {"ids": ["bitrix:bitrix24", "bitrix24:bitrix24", "bitrix_project:bitrix", "bitrix24:bitrix_framework", "bitrix24:bitrix_site_manager"], "tier": 3, "names": ["Bitrix", "Bitrix24"]},
     "MODX": {"ids": ["modx:modx_revolution", "modx:revolution"], "tier": 3, "names": ["MODX Revolution"]},
-    "Gnuboard": {"ids": ["sir:gnuboard"], "tier": 3, "names": ["그누보드", "GNUBOARD5"]},
+    "Gnuboard": {"ids": ["sir:gnuboard*", "gnuboard:*", "sir:youngcart*"], "tier": 3, "names": ["그누보드", "GNUBOARD5", "Gnuboard g6", "Youngcart", "영카트"]},
+    "Rhymix": {"ids": ["rhymix:*", "poesis:rhymix*"], "tier": 3, "names": ["Rhymix CMS", "라이믹스"]},
+    "XpressEngine": {"ids": ["xpressengine:*", "xehub:*", "zeroboard:*"], "tier": 3, "names": ["XE3", "Zeroboard", "제로보드"]},
     "Classic Editor": {"ids": [], "tier": 2},
     "Site Kit by Google": {"ids": ["google:site_kit"], "tier": 2, "names": ["Site Kit"]},
     "Akismet": {"ids": ["automattic:akismet"], "tier": 2, "names": ["Akismet Anti-spam"]},
@@ -1024,7 +1044,10 @@
     "Adobe ColdFusion": {"ids": ["adobe:coldfusion*", "adobe:adobe_coldfusion*", "macromedia:coldfusion"], "tier": 3, "names": ["ColdFusion"]},
     "Dolibarr": {"ids": ["dolibarr:*"], "tier": 3, "names": ["Dolibarr ERP CRM"]},
     "QuickBooks": {"ids": ["intuit:quickbooks*"], "tier": 3, "names": ["QuickBooks Desktop", "Intuit QuickBooks"]},
-    "LimeSurvey": {"ids": ["limesurvey:limesurvey*"], "tier": 3, "names": ["LimeSurvey Community Edition"]}
+    "LimeSurvey": {"ids": ["limesurvey:limesurvey*"], "tier": 3, "names": ["LimeSurvey Community Edition"]},
+    "Handy Groupware": {"ids": ["handysoft*:*"], "tier": 3, "names": ["핸디 그룹웨어"]},
+    "Douzone": {"ids": ["douzone*:*"], "tier": 3, "names": ["Douzone Bizon", "NeoRS", "더존"]},
+    "AhnLab EPP": {"ids": ["ahnlab:epp*", "ahnlab:*policy_center*"], "tier": 3, "names": ["AhnLab EPP Management", "AhnLab Policy Center", "안랩 EPP"]}
   },
   "Industrial control systems": {
     "Siemens SIMATIC": {"ids": ["siemens:simatic*"], "tier": 3, "names": ["SIMATIC", "SIMATIC WinCC", "SIMATIC S7"]}

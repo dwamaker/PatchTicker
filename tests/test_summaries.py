@@ -558,6 +558,58 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertNotIn("summary_error", rows[3])
         self.assertTrue(summaries.needs_summary(rows[3]) and summaries.is_candidate(rows[3], now))
 
+    def test_past_the_cycle_deadline_only_the_first_summary_titles_request_and_batch_request_go_out(self):
+        # 11-18: cycles took 600-612 s, the Summary step 244-295 s of them; past CYCLE_SECONDS nothing new starts.
+        from datetime import datetime
+        from collector.cycle import route_summaries
+        from collector.logfile import CycleLine
+        now, t, fetched = datetime(2026, 11, 9, 12, 0), [0], []
+        row = lambda n, cvss: {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss, "mentions": [],  # noqa: E731
+                               "first_seen": "2026-11-09T10:00:00Z", "published": "2026-11-09T10:00:00Z",
+                               "products": [], "brief": {"text": "A flaw.", "lead": ""}}
+        rows = [row(1, 9.8), row(2, 8.0), row(3, 7.5), row(4, 5.0), row(5, 5.0), row(6, 5.0)]
+        claude = FakeClaude(*["{"] * 20)
+        create = claude.messages.create
+
+        def slow(**params):  # every request takes 30 s of the clock
+            t[0] += 30
+            return create(**params)
+        claude.messages.create = slow
+        line = CycleLine("2026-11-09T12:00:00Z", lambda: t[0])
+        with unittest.mock.patch.multiple(summaries, QUICK_TITLES=True, TITLES_PER_CALL=2, BATCH_MIN=100), \
+                contextlib.redirect_stderr(io.StringIO()):
+            route_summaries(rows, [], claude, lambda url, headers=None: fetched.append(url) or b"", now,
+                            "2026-11-09T12:00:00Z", set(), probe=False, clock=lambda: t[0], line=line, deadline=20)
+        asked = [p["messages"][0]["content"].split("\n")[0] for p in claude.sent]
+        self.assertEqual(asked, ["Incident: CVE-2026-1", "Titles for these Incidents:"])  # the most urgent, then one titles request
+        self.assertEqual([r["params"]["messages"][0]["content"].split("\n")[0] for r in claude.batches[0]["requests"]],
+                         ["Incident: CVE-2026-4"])
+        # Only those two inputs fetched their records: the rest wait, untouched, for the next cycle.
+        self.assertEqual({re.search(r"CVE-2026-\d", url)[0] for url in fetched}, {"CVE-2026-1", "CVE-2026-4"})
+        self.assertEqual({k: line.counts[k] for k in ("summaries_asked", "summaries_kept_back", "summaries_deadline",
+                                                     "summaries_batched", "titles_kept_back")},
+                         {"summaries_asked": 1, "summaries_kept_back": 2, "summaries_deadline": 4, "summaries_batched": 1,
+                          "titles_kept_back": 4})
+        self.assertTrue(all("summary_error" not in r for r in rows[1:]))  # kept back, no try counted
+
+    def test_a_cycle_past_its_deadline_still_asks_one_summary_and_writes_the_board(self):
+        from collector import cycle
+        t, lines = [0], []
+
+        def clock():  # every reading moves the clock on by 100 s: the deadline passes before the Summaries
+            t[0] += 100
+            return t[0]
+        claude = FakeClaude(SSHOLE_SUMMARY)
+        with unittest.mock.patch.object(cycle, "emit", lines.append):
+            run_cycle(self.store, recorded(web=PAGES, delta_log=None, hn="sshole.json"), at("2026-11-07T12:30:00"), "test-box",
+                      claude=claude, clock=clock)
+        self.assertEqual(len(claude.sent), 1)
+        self.assertEqual(board(self.store)[HN_STORY]["summary"]["at"], "2026-11-07T12:30:00Z")
+        self.assertEqual(self.store.read("status.json")["updated"], "2026-11-07T12:30:00Z")
+        self.assertIn(HN_STORY, {i["id"] for i in self.store.read("board/recent.json")["incidents"]})
+        self.assertIn(" summaries_asked=1 ", lines[0])
+        self.assertTrue(lines[0].endswith(" result=ok"))
+
     def test_a_group_summary_gives_each_cve_one_line_and_names_only_cves_from_the_input(self):
         lines = {"ko": [{"cve": "CVE-2026-123158", "text": "긴 비밀번호로 로그인 우회"}], "en": [{"cve": "CVE-2026-123158", "text": "Login bypass with a long password"}]}
         reply = SSHOLE_SUMMARY | {lang: SSHOLE_SUMMARY[lang] | {"cve_lines": lines[lang]} for lang in ("ko", "en")}

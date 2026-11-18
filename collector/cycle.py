@@ -19,6 +19,10 @@ RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older mont
 # The Distribution table (step 10). CVEs looked up a cycle: each costs about 4 s and 3 to 6 requests, and changes at
 # most one Incident, so this bounds both the cycle's time and the pages it rewrites (about 2,100 lookups a day).
 DISTRO_PER_CYCLE = 15
+# Seconds a cycle starts lookups in (11-18: 15 lookups took 192-223 s a cycle, 13-15 s each against the 4 s measured,
+# from Oracle's patch day; a lookup's six sources each may take net.DEADLINE). A lookup starts only inside it, the
+# first always; the rest stay due for the next cycle, in the same order.
+DISTRO_SECONDS = 90
 DISTRO_PAUSE = 1  # seconds between two CVEs' lookups: no distribution's server sees a burst
 # Owner, 2026-11-15: a CVE is asked once a day for 7 days; one that got a line is followed 30 days more, until every
 # line is fixed or not affected. That rule holds for CVEs the day's Debian or Alpine index knows; a CVE neither knows
@@ -51,6 +55,12 @@ BULK_SECONDS = 120
 # with the sources (~2 min), the sheets (at most 10, ~36 s), the titles and BULK_SECONDS, a cycle stays inside its 10
 # minutes and the Board is written before the next mark. The rest wait for the next cycle, most urgent first (priority).
 INSTANT_SECONDS = 180
+# Seconds from a cycle's start after which the Summary step starts no new work: no page sheet, instant Summary, titles
+# request or batch request (11-18: cycles took 600-612 s, so every other mark was skipped; the Summary step ran 244-295
+# s, the batch inputs alone fetching pages and records for 46 Incidents). At least one instant Summary, one titles
+# request and one batch request still go out a cycle, so a slow source never stops them all; the rest wait, most urgent
+# first. With the last Summary's own length (~50 s) and the Board (~60 s), a cycle ends near 8 1/2 minutes at worst.
+CYCLE_SECONDS = 400
 
 
 # A CVE-less story's page that failed to load is fetched again (11-17: openjdk.org's advisory gave nothing at 21:10Z
@@ -247,7 +257,7 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     distro_state = None
     try:
         if distro_table:
-            months, distro_state = refresh_distros(store, incidents, http_get, now, sleep)
+            months, distro_state = refresh_distros(store, incidents, http_get, now, sleep, clock, line.counts)
             changed |= months
         else:
             line.mark("distros", "off")
@@ -265,7 +275,7 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
         was = (store.read("status.json") or {}).get("summaries")
         try:
             route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe=was == "paused", review=review,
-                            store=store, clock=clock, line=line)
+                            store=store, clock=clock, line=line, deadline=line.began + CYCLE_SECONDS)
             changed.update(month_of(i["first_seen"]) for i in summaries.recheck_exploited(incidents))  # owner 11-16
         except anthropic.APIError as err:
             # Briefs still go out; the next cycle asks again (in full after "stopped", with a probe after "paused").
@@ -364,9 +374,11 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     line.lap("board")
 
 
-def refresh_distros(store, incidents, http_get, now, sleep):
-    """Step 10: look up at most DISTRO_PER_CYCLE due CVEs in the distributions' data. Returns the months changed and the
-    state for distros/state.json (the caller writes it after the months), or None when it did not change.
+def refresh_distros(store, incidents, http_get, now, sleep, clock=time.monotonic, counts=None):
+    """Step 10: look up at most DISTRO_PER_CYCLE due CVEs in the distributions' data, starting none past DISTRO_SECONDS
+    by clock (the first always). Returns the months changed and the
+    state for distros/state.json (the caller writes it after the months), or None when it did not change. counts: the
+    cycle line's, given distros_asked and distros_kept_back (due CVEs left for a later cycle).
 
     distros/index.json holds the day's Debian and Alpine answers for the CVEs held (rebuilt on the day's first cycle; a
     distribution whose files fail keeps the last). The state holds, for every CVE held, the day it was first seen and
@@ -376,6 +388,8 @@ def refresh_distros(store, incidents, http_get, now, sleep):
     its own seen day. An Incident
     holds only its lines ("distro_lines", {cve: lines}), changed only when a line changes, so a lookup that finds
     nothing new rewrites no page. A distribution that fails keeps the lines it gave before."""
+    more = bulk_budget(clock, DISTRO_SECONDS)  # from the step's start: the day's first builds the index inside it
+    counts = {} if counts is None else counts
     today = now.strftime("%Y-%m-%d")
     held = {cve: i for i in incidents for cve in i["cves"]}
     index = store.read("distros/index.json") or {}
@@ -403,12 +417,15 @@ def refresh_distros(store, incidents, http_get, now, sleep):
                 or lines and not distros.settled(lines) and age(entry["first"]) < DISTRO_FOLLOW_DAYS):
             follow[cve] = entry["asked"]
     due = (sorted(new, key=new.get, reverse=True) + sorted(follow, key=follow.get)
-           + sorted(backfill, key=backfill.get, reverse=True))[:DISTRO_PER_CYCLE]
+           + sorted(backfill, key=backfill.get, reverse=True))
     bulk = {d: index[d] for d in distros.BULK if d in index}
-    changed = set()
-    for n, cve in enumerate(due):
+    changed, asked = set(), 0
+    for n, cve in enumerate(due[:DISTRO_PER_CYCLE]):
+        if n and not more():
+            break
         if n:
             sleep(DISTRO_PAUSE)
+        asked += 1
         incident = held[cve]
         old = (incident.get("distro_lines") or {}).get(cve, [])
         try:
@@ -422,6 +439,8 @@ def refresh_distros(store, incidents, http_get, now, sleep):
             incident.setdefault("distro_lines", {})[cve] = lines
             changed.add(month_of(incident["first_seen"]))
         state[cve] = state[cve] | {"first": state[cve].get("first", today), "asked": today}
+    counts["distros_asked"] = counts.get("distros_asked", 0) + asked
+    counts["distros_kept_back"] = counts.get("distros_kept_back", 0) + len(due) - asked
     return changed, (state if state != stored else None)
 
 
@@ -439,15 +458,18 @@ def prune(incidents, since):
 
 
 def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, probe, review=False, store=None,
-                    clock=time.monotonic, line=None):
+                    clock=time.monotonic, line=None, deadline=None):
     """Collect ended batches, summarize Highlight candidates at once (within INSTANT_SECONDS by clock), title every row
     still without a Summary, batch the rest's Summaries. Lets API errors through. probe: Summaries were paused last
     cycle, so send a one-request batch to test the budget instead of building a full one that would likely fail. review
     (VR_SUMMARY_REVIEW, owner 11-16): every Summary that passes the rule checks is reviewed before it is stored: at once
     on the instant path, in a review batch sent here for a batch reply (it waits in review_pending, shown as it was
     before, and is not asked again meanwhile). store: where the page sheets are cached (sheets.fill); None makes none.
-    line: the cycle's CycleLine (the sheets' time and the counts)."""
+    line: the cycle's CycleLine (the sheets' time and the counts). deadline: the clock reading (CYCLE_SECONDS into the
+    cycle) past which no page sheet, instant Summary, titles request or batch request starts, but the first of each;
+    None, no deadline. A try that fails waits for a later cycle, never runs twice in one."""
     line = line or CycleLine(stamp, clock)
+    open_ = (lambda: True) if deadline is None else (lambda: clock() < deadline)  # noqa: E731
     before = {i["id"]: i.get("summary") for i in incidents}  # keep() stores a new dict: what changed was stored here
     for pending in list(batches):
         touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review)
@@ -467,18 +489,20 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     # The Summaries take the pages the sheets fetched, not fetching them again (shared_pages).
     keep, http_get = summary_input.shared_pages(http_get)
     line.lap("summaries", "sheets")
-    made = sheets.fill(store, instant + rest, claude, keep, stamp, counts=line.counts) if store and not probe else {}
+    made = sheets.fill(store, instant + rest, claude, keep, stamp, counts=line.counts, more=open_) if store and not probe else {}
     line.lap("sheets", "summaries")
     for incident in instant + rest:
         if incident["id"] in made and sheets.page_scores(incident, made[incident["id"]]):
             changed.add(month_of(incident["first_seen"]))
     sheets_of = lambda incident: made.get(incident["id"], ())
     # Every candidate in the cycle that sees it (a breaking-news board, owner 2026-11-09), inside INSTANT_SECONDS: the
-    # rest keep their Brief and quick title until a later cycle.
+    # rest keep their Brief and quick title until a later cycle. The first is asked even past the cycle's deadline.
     more = bulk_budget(clock, INSTANT_SECONDS)
     for n, incident in enumerate(instant):
-        if not more():
+        if n and not (more() and open_()):
             line.count("summaries_kept_back", len(instant) - n)
+            if not open_():
+                line.count("summaries_deadline", len(instant) - n)
             break
         line.count("summaries_asked")
         summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident))
@@ -491,16 +515,21 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     untitled = [i for i in instant + [i for i in incidents if i not in instant and i["first_seen"] >= since]
                 if summaries.needs_title(i)]
     for n in range(0, len(untitled), summaries.TITLES_PER_CALL):
+        if n and not open_():
+            line.count("titles_kept_back", len(untitled) - n)
+            break
         summaries.title_now(untitled[n:n + summaries.TITLES_PER_CALL], claude, stamp)
         changed.update(month_of(i["first_seen"]) for i in untitled[n:n + summaries.TITLES_PER_CALL])
     oldest = min((i["first_seen"] for i in rest), default=None)
     ready = probe or len(rest) >= summaries.BATCH_MIN or (
         oldest is not None and oldest <= stamp_ago(now, hours=summaries.BATCH_WAIT_HOURS))
-    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=1 if probe else model.MAX_PER_BATCH, candidates=same_as,
-                                              sheets=sheets_of)
+    limit = 1 if probe else model.MAX_PER_BATCH
+    # Each request's input fetches its pages and records: the requests built past the deadline wait for a later batch.
+    pending = ready and summaries.submit_batch(rest, claude, http_get, limit=limit, candidates=same_as, sheets=sheets_of, more=open_)
     if pending:
         batches.append(pending)
         line.count("summaries_batched", len(pending["requests"]))
+        line.count("summaries_deadline", min(len(rest), limit) - len(pending["requests"]))
     # Per-CVE lines past the Summary's own (owner, 2026-11-10), at once: a batch is cheap and they wait for nothing else.
     asked = {r["incident"] for b in batches for r in b["requests"].values() if "lines" in r}
     lines = not probe and cve_lines.submit_lines(

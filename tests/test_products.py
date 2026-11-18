@@ -181,6 +181,50 @@ class WellKnownTest(unittest.TestCase):
         self.assertEqual(self.known([{"id": "x:y", "name": "VS Code"}]), "Visual Studio Code")
         self.assertEqual(self.known(products=["카카오톡"]), "KakaoTalk")
 
+    def test_korean_national_software_matches_the_ids_its_records_carry(self):
+        # Ids read from CVE records (the CNA's vendor:product) and NVD's CPE dictionary, 2026-11-18; the name is a dummy,
+        # so only the id can match.
+        cases = {
+            "Hancom Office": ["hancom_inc.:hancom_office_2024", "hancom:hancom_office_2020", "hancom:hangul_word_processor",
+                              "hancom:hcell", "hancom:thinkfree_office_neo", "hancom:hwp_2014", "hancom:hanword_viewer_2010",
+                              "hancom:office_word"],
+            "AnySign4PC": ["hancom:anysign4pc", "hancomwith:anysign4pc"],
+            "MagicLine4NX": ["dream_security_co.,ltd:magicline4nx.exe", "dream_security:magicline4nx", "dreamsecurity:magicline_4.0"],
+            "Veraport": ["wizvera:veraport", "wizvera:veraport_g3"],
+            "JEUS": ["tmaxsoft:jeus"],
+            "eGovFrame": ["egovframework/egovframe-common-components:egovframework/egovframe-common-components"],
+            "Nexacro": ["tobesoft_co.,ltd:nexacro_17", "tobesoft:nexacro17", "tobesoft:nexacro14/17_excommonapiv13", "nexaweb:nexacro_14"],
+            "XPLATFORM": ["tobesoft_co.,ltd:xplatform", "tobesoft:xplatform", "tobesoft:miplatform_320,_320u,_330,_330u"],
+            "VestCert": ["yettiesoft:vestcert"],
+            "UniSign": ["crosscert:unisign", "unisign:unisign"],
+            "SKCertService": ["signkorea:skcertservice"],
+            "ezPDF Reader": ["unidocs:ezpdfreader", "unidocs:ezpdf_drm_reader", "unidocs:ezpdf_reader", "unidocs:ezpdf_editor"],
+            "MaEPSBroker": ["markany:maepsbroker"],
+            "TCO!stream": ["mlsoft:tco!stream"],
+            "Handy Groupware": ["handysoft_co.,ltd:handy_groupware", "handysoft:hshell.dll", "handysoft:groupware",
+                                "handysoft:handysoft_groupware(hshell.dll)_for__for_windows_7,_8,_10"],
+            "Douzone": ["douzone_bizon_co.,ltd:neors", "douzone:nbbdownloader.ocx"],
+            "Genian NAC": ["genians:genian_nac_v5.0", "genians,_inc:genian_nac_5.0.86_release", "genians,_inc:genian_ssl_pns_(frodo-core)",
+                           "genians:genian_ztna"],
+            "Gnuboard": ["sir:gnuboard", "sir:youngcart5", "gnuboard:gnuboard5", "gnuboard:g6"],
+            "Rhymix": ["rhymix:rhymix", "poesis:rhymix_cms"],
+            "XpressEngine": ["xehub:xe3_xpresesengine", "xpressengine:xpressengine", "zeroboard:zeroboard"],
+        }
+        for label, ids in cases.items():
+            for pid in ids:
+                with self.subTest(pid):
+                    self.assertEqual(self.known([{"id": pid, "name": "x"}]), label)
+
+    def test_korean_vendor_patterns_leave_the_vendors_other_products_alone(self):
+        # Other products in NVD's CPE dictionary under the same vendor stems, and products of the same makers that are not
+        # the label (MarkAny's DRM, Initech's server INISAFE, AhnLab's firewall).
+        for pid in ("raonwiz:raon_k_upload", "raonwiz:dext5", "dream-theme:the7", "dreamreport:dream_report", "tmax:tooffice",
+                    "sir:gnucommerce", "markany:document_safer", "signkorea:skcommax", "yettiesoft:other", "initech:inisafe_netpro",
+                    "ahnlab:trusguard"):
+            with self.subTest(pid):
+                self.assertIsNone(self.known([{"id": pid, "name": "x"}]))
+        self.assertEqual(self.known([{"id": "ahnlab:v3_lite", "name": "x"}]), "AhnLab V3")
+
     def test_an_operating_system_tag_is_never_matched(self):
         self.assertIsNone(self.known(products=["Windows"], platforms=["Windows"]))
 
@@ -214,7 +258,7 @@ class WellKnownTest(unittest.TestCase):
 
 
 class WellKnownListTest(unittest.TestCase):
-    """collector/well_known.json (owner, 11-17: 1,012 labels, each with a tier of reach): every entry has lower-case ids and
+    """collector/well_known.json (1,023 labels, each with a tier of reach): every entry has lower-case ids and
     a tier of 1, 2 or 3; no label or alias is written twice, as the first would silently win; the id pattern compiles."""
 
     def test_the_list_has_its_shape(self):
@@ -227,7 +271,7 @@ class WellKnownListTest(unittest.TestCase):
             for name in (label, *entry.get("names", [])):
                 self.assertFalse(name.lower() in seen, f"{name!r} in {label!r} and {seen.get(name.lower())!r}")
                 seen[name.lower()] = label
-        self.assertGreaterEqual(len(incidents.WELL_KNOWN), 1000)
+        self.assertGreaterEqual(len(incidents.WELL_KNOWN), 1023)
         self.assertEqual(incidents.KNOWN_IDS.groups, len(incidents.WELL_KNOWN))
 
 

@@ -50,5 +50,15 @@ since 11-11) counts as tier 3. Give the lowest tier that is true: a tier-1 label
 Reach is counted for the site's readers, who are Korean: Java is tier 1 (owner, 2026-11-17, "한국은 자바공화국"), since
 66.3% of the public IT projects put out to tender use the Java-based eGovFrame (MOIS, end of 2025) and a ministry
 notice tells agencies to consider it first.
+National software is counted by its reach in its own country (owner, 2026-11-18): a server-side national standard
+(JEUS, eGovFrame) is tier 2 at most; a program installed on most users' PCs there (TouchEn nxKey, Veraport, IPinside,
+AnySign4PC, CrossEX, INISAFE CrossWeb EX: the Korean banking and certificate programs) is tier 1.
+
+Some labels carry `ids` that no record has shown yet: no CVE record and no CPE existed for the product on 2026-11-18,
+so the pattern is a guess at how a future record will spell it, and the `names` do the matching until then. They are
+TouchEn nxKey, INISAFE CrossWeb EX, IPinside, AhnLab Safe Transaction, CrossEX, Delfino, WebtoB, Tibero, CUBRID,
+Altibase, SECUI and AhnLab EPP (whose two records name vendor and product `n/a`). Check such a pattern against the
+first real record and correct it.
+
 To add one, add a line under its kind with its tier, check that it parses (`python -c "import collector.incidents"`),
 and run both test suites; the next cycle stamps `known` and `known_tier` on the week's rows.
