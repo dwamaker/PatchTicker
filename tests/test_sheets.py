@@ -268,6 +268,16 @@ class CacheTest(unittest.TestCase):
             sheets.fill(store, [inc], claude, lambda url, headers=None: PAGE.encode(), STAMP)
         self.assertEqual(len(claude.sent), 6)  # h1 now, and the two the cap left
 
+    def test_past_the_cycles_deadline_no_page_is_fetched_or_asked_and_each_counts_as_kept_back(self):
+        store, inc, fetched = MemoryStore(), incident(4), []
+        claude = FakeClaude(*[self.reply()] * 4)
+        counts = {"sheets_asked": 0, "sheets_failed": 0, "sheets_kept_back": 0}
+        got = sheets.fill(store, [inc], claude, lambda url, headers=None: fetched.append(url) or PAGE.encode(), STAMP,
+                          counts=counts, more=lambda: len(claude.sent) < 1)
+        self.assertEqual((len(claude.sent), len(fetched)), (1, 1))
+        self.assertEqual(counts, {"sheets_asked": 1, "sheets_failed": 0, "sheets_kept_back": 3})
+        self.assertEqual(len(got[inc["id"]]), 1)  # the next cycle asks the other three
+
     def test_an_ungated_incident_gets_no_sheet_and_a_gone_one_loses_its_document(self):
         store = MemoryStore()
         claude = FakeClaude()

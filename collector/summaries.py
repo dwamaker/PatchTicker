@@ -1396,8 +1396,10 @@ def budget(incident, text=""):
     return MAX_TOKENS_RETRY if cut or pages > 2 else MAX_TOKENS
 
 
-def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: [], sheets=lambda incident: ()):
-    """Send one Message Batch for these Incidents; return what collect_batch needs, or None.
+def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=lambda incident: [], sheets=lambda incident: (),
+                 more=lambda: True):
+    """Send one Message Batch for these Incidents; return what collect_batch needs, or None. more(): False once no
+    further request may be built (each input fetches pages and records); the first always is, the rest wait.
     The input is kept so the reply can be checked against it when the result comes in, and the ids of the same_as
     candidates listed beside it (candidates: an Incident's same_as_candidates()) so its same_as can be checked. sheets: an
     Incident's page sheets, made before the batch is sent (collector.sheets.fill); the batch carries the rendered text, and
@@ -1406,6 +1408,8 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     listed = {i["id"]: candidates(i) for i in incidents[:limit]}
     requests = {}
     for n, i in enumerate(incidents[:limit]):
+        if n and not more():
+            break
         text = summary_input(i, http_get, sheets(i))
         rows = page_sheets.fix_rows(sheets(i), i, record_texts(text)) if sheets(i) else []
         carry = page_sheets.must_carry(sheets(i)) if sheets(i) else []

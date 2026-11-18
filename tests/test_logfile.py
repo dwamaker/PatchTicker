@@ -18,7 +18,8 @@ from collector.store import MemoryStore
 from test_cycle import at, recorded
 
 FIELDS = ("start took read link distros sheets summaries board new summaries_asked summaries_kept_back summaries_failed "
-          "summaries_batched sheets_asked sheets_kept_back sheets_failed refused refused_hosts skipped fixes_lines result").split()
+          "summaries_batched sheets_asked sheets_kept_back sheets_failed summaries_deadline titles_kept_back distros_asked "
+          "distros_kept_back refused refused_hosts skipped fixes_lines result").split()
 
 
 def fields(text):

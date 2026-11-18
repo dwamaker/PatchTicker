@@ -99,7 +99,7 @@ def start(settings, now=None, clock=lambda: datetime.now(timezone.utc)):
 
 STAGES = ("read", "link", "distros", "sheets", "summaries", "board")
 COUNTS = ("new", "summaries_asked", "summaries_kept_back", "summaries_failed", "summaries_batched", "sheets_asked",
-          "sheets_kept_back", "sheets_failed")
+          "sheets_kept_back", "sheets_failed", "summaries_deadline", "titles_kept_back", "distros_asked", "distros_kept_back")
 
 
 class CycleLine:

@@ -121,13 +121,14 @@ def read_sheet(incident, mention, claude, http_get, stamp):
     return {"kind": mention["kind"], "facts": facts, "at": stamp}
 
 
-def fill(store, incidents, claude, http_get, stamp, limit=SHEETS_PER_CYCLE, counts=None):
+def fill(store, incidents, claude, http_get, stamp, limit=SHEETS_PER_CYCLE, counts=None, more=lambda: True):
     """Sheets for these Incidents (those due a Summary, most urgent first), the gated ones only, at most `limit` requests:
     a page already read for an Incident is never asked again. Returns {incident id: [sheet, ...]} in page order, each sheet
     with its url and rank. A sheet request that fails (not a budget error) ends the sheets for this cycle and the Summaries
     go on with what is there; a budget error goes up like a Summary's (is_budget_error). counts: a dict whose
     sheets_asked, sheets_failed (a failed request, or a reply that is no sheet) and sheets_kept_back (pages past the
-    limit) are added to (the cycle's log line)."""
+    limit, or past more(), the cycle's deadline: a page that fails to load counts toward no limit) are added to (the
+    cycle's log line)."""
     got, asked, counts = {}, 0, {"sheets_asked": 0, "sheets_failed": 0, "sheets_kept_back": 0} if counts is None else counts
     for incident in incidents:
         if not gated(incident):
@@ -137,7 +138,7 @@ def fill(store, incidents, claude, http_get, stamp, limit=SHEETS_PER_CYCLE, coun
         for m in page_mentions(incident)[:SHEET_PAGES]:
             if m["url"] in doc["sheets"]:
                 continue
-            if asked >= limit:
+            if asked >= limit or not more():
                 counts["sheets_kept_back"] += 1
                 continue
             try:
