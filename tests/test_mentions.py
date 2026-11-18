@@ -172,9 +172,9 @@ class StoryPageTest(unittest.TestCase):
                                                     {"kind": "writeup", "url": writeup}],
                                        "cves": [cve], "urls": [], "text": cve}, "2026-11-05T16:00:00Z")
 
-    def story(self, page, url="https://sunshowers.io/posts/sshole/", item=50399400):
+    def story(self, page, url="https://sunshowers.io/posts/sshole/", item=50399400, title=None):
         from collector.incidents import page_keys
-        return {"mentions": [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={item}"},
+        return {"mentions": [{"kind": "discussion", "url": f"https://news.ycombinator.com/item?id={item}", **({"title": title} if title else {})},
                              {"kind": "writeup", "url": url}],
                 "cves": [], "urls": [], "text": "*sshole, or when are we going to get rid of C?", "join_only": False,
                 "page": page_keys(page, url)}
@@ -231,15 +231,35 @@ class StoryPageTest(unittest.TestCase):
                           (50538123, "https://www.nytimes.com/2026/11/17/us/politics/ai-security-bug-java.html")):
             self.link(self.incidents, self.story("", url, item), "2026-11-17T21:00:00Z")
         self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-114938"}],
-                                   "cves": ["CVE-2026-114938"], "urls": [], "text": "x"}, "2026-11-17T22:00:00Z")
+                                   "cves": ["CVE-2026-114938"], "urls": [], "text": "x", "products": [{"id": "oracle:java_se", "name": "Oracle Java SE"}]},
+                  "2026-11-17T22:00:00Z")
         page = ('Java4Shell, CVE-2026-114938. <a href="https://openjdk.org/groups/vulnerability/advisories/2026-11-17">a</a>'
                 ' <a href="https://www.nytimes.com/2026/11/17/us/politics/ai-security-bug-java.html">b</a>')
-        self.link(self.incidents, self.story(page, "https://java4shell.example/", 50538240), "2026-11-18T01:00:00Z")
+        self.link(self.incidents, self.story(page, "https://java4shell.example/", 50538240, "Java4Shell: RCE in OpenJDK when processing Base64"),
+                  "2026-11-18T01:00:00Z")
         self.assertEqual(len(self.incidents), 6)
         self.rejoin()
         java = next(i for i in self.incidents if i["id"] == "CVE-2026-114938")
         self.assertIn("https://java4shell.example/", [m["url"] for m in java["mentions"]])
         self.assertEqual(len(self.incidents), 5)  # the two linked stories stay apart: their pages cited nothing
+
+    def test_a_round_up_or_a_passing_mention_stands_alone_and_a_page_about_the_incident_joins(self):
+        # The month of 11-18: 4 of 21 folds were a page about something wider naming one CVE one Incident holds.
+        self.incidents[0]["products"] = [{"id": "sonicwall:sonicos", "name": "SonicWall SonicOS"}]
+        cases = (  # (title, page, joins)
+            ("Fortinet Patches Nearly 100 Vulnerabilities", "<p>CVE-2026-123158</p><p>CVE-2026-123158</p>", False),
+            ("Git 2.56.1 fixes six vulnerabilities, including RCE on recursive clone", "<p>CVE-2026-123158</p>", False),
+            # fortirix's Optimjack post: about the Optimizely attack, Java4Shell named once as a contrast
+            ("Optimjack from the Outside", "<p>The script was hijacked. This week also brought a JVM flaw (CVE-2026-123158).</p>", False),
+            # SecurityWeek's N-central story: the Axis CVE named once and linked to its NVD page
+            ("Hackers Exploit New N-central Zero-Day", '<p>An Apache Axis flaw (<a href="https://nvd.nist.gov/vuln/detail/'
+             'CVE-2026-123158">CVE-2026-123158</a>).</p>', True),
+            ("SonicWall warns of new SSL-VPN MFA bypass flaw exploited in attacks", "<p>CVE-2026-123158</p>", True))
+        for n, (title, page, joins) in enumerate(cases):
+            url = f"https://news.example/{n}"
+            self.link(self.incidents, self.story(page, url, 50600000 + n, title), "2026-11-08T03:00:00Z")
+            self.rejoin()
+            self.assertEqual(url in [m["url"] for m in self.incidents[0]["mentions"]], joins, title)
 
     def test_a_page_naming_cves_of_two_incidents_stands_alone_whatever_its_links_hit(self):
         self.link(self.incidents, self.story('CVE-2026-123158 CVE-2026-9999 <a href="https://sshhole.com/">yet</a>'),
@@ -274,7 +294,7 @@ class StoryPageTest(unittest.TestCase):
         from collector.cycle import refetch_pages
         url = "https://openjdk.org/groups/vulnerability/advisories/2026-11-17"
         self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-114938"}],
-                                   "cves": ["CVE-2026-114938"], "urls": [], "text": "x"}, "2026-11-17T14:50:01Z")
+                                   "cves": ["CVE-2026-114938", "CVE-2026-114939"], "urls": [], "text": "x"}, "2026-11-17T14:50:01Z")
         story = self.story("", url, 50538199)
         del story["page"]
         self.link(self.incidents, story, "2026-11-17T21:10:02Z")
@@ -292,10 +312,10 @@ class StoryPageTest(unittest.TestCase):
         self.assertEqual(self.incidents[-1]["page_tries"], 1)
         cycle("2026-11-17T23:00:00")  # the next retry waits until it is 4 hours old
         self.assertEqual(len(asked), 1)
-        answer[0] = '<p>CVE-2026-114938</p>'
+        answer[0] = '<p>CVE-2026-114938</p><p>CVE-2026-114939</p>'  # the advisory lists the group's CVEs
         cycle("2026-11-18T01:20:00")
         self.assertEqual(asked, [url, url])
-        self.assertEqual(self.incidents[-1]["cites"]["cves"], ["CVE-2026-114938"])
+        self.assertEqual(self.incidents[-1]["cites"]["cves"], ["CVE-2026-114938", "CVE-2026-114939"])
         self.assertNotIn("page_tries", self.incidents[-1])
         self.rejoin()
         self.assertIn(url, [m["url"] for m in self.incidents[2]["mentions"]])
