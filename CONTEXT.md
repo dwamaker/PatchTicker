@@ -51,7 +51,9 @@ _Avoid_: main link, primary source
 The one CVE an Incident with several CVEs is written around: its title, Summary and Easy view speak of this CVE first.
 Picked in this order: a CVE reported as exploited, else the one with the highest score, else the one that arrived first
 (owner, 2026-11-15). The Incident keeps its address whichever CVE leads. Its score stays the highest among its CVEs,
-shown with the CVE that score belongs to.
+shown with the CVE that score belongs to. A CVE's own score is the highest any source gives it: every CVSS 3.x and 4.0
+score in its CVE record (the CNA's and each ADP's, such as CISA's) and at NVD (NVD's own and the CNA's); CVSS 2 only
+when none of those exists (owner, 2026-11-18).
 _Avoid_: main CVE, primary CVE, top CVE
 
 **Unassigned incident** (CVE 미배정 사건):

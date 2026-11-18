@@ -182,7 +182,8 @@ def mention_group(record):
     }
 
 
-# CVSS versions in the order the Board reads them: its bands (9.0 / 7.0 / 4.0) are v3's; v4 uses the same.
+# CVSS versions a record's score is read from, in tie order (record_cvss takes the highest): the Board's bands
+# (9.0 / 7.0 / 4.0) are v3's; v4 uses the same. A record's CVSS 2 is not read.
 CVSS_KEYS = ("cvssV3_1", "cvssV3_0", "cvssV4_0")
 
 
@@ -292,17 +293,17 @@ def record_products(record):
 
 
 def record_cvss(containers):
-    """(score, vector) of the record's own base score (the CNA's, else an ADP's such as CISA's), or (None, ""). NVD often
-    defers its analysis, so this is the only score most new CVEs have; enrich() keeps the higher when NVD adds one. The
-    vector is the same metric's vectorString as given ("" when the record has none)."""
-    for key in CVSS_KEYS:
-        for c in containers:
-            for metric in c.get("metrics", []):
-                score = metric.get(key, {}).get("baseScore")
-                if isinstance(score, (int, float)):
-                    vector = metric[key].get("vectorString")
-                    return score, vector if isinstance(vector, str) else ""
-    return None, ""
+    """(score, vector) of the record's highest base score among every CVSS 3.x and 4.0 metric of every container (the
+    CNA's and each ADP's, such as CISA's), or (None, ""). Owner, 2026-11-18: of several scores the higher wins. On equal
+    scores the first in CVSS_KEYS order, then container order, so a cycle never flips the vector. NVD often defers its
+    analysis, so this is the only score most new CVEs have; enrich() keeps the higher when NVD adds one. The vector is the
+    same metric's vectorString as given ("" when the record has none)."""
+    found = [(metric[key]["baseScore"], metric[key].get("vectorString")) for key in CVSS_KEYS for c in containers
+             for metric in c.get("metrics", []) if isinstance(metric.get(key, {}).get("baseScore"), (int, float))]
+    if not found:
+        return None, ""
+    score, vector = max(found, key=lambda f: f[0])  # max keeps the first of equal scores
+    return score, vector if isinstance(vector, str) else ""
 
 
 def one_line_description(record):

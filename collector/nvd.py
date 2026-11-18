@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlencode
 API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 PAGE_SIZE = 2000  # the API maximum
 MAX_RANGE = timedelta(days=120)  # the API rejects longer last-modified ranges
-# CVSS 3.x first: most sources, and our 9.0 / 7.0 thresholds, speak CVSS 3.
+# The tie order of cvss(): CVSS 3.x first, as most sources and our 9.0 / 7.0 thresholds speak it; v2 only without the rest.
 METRICS = ("cvssMetricV31", "cvssMetricV30", "cvssMetricV40", "cvssMetricV2")
 
 
@@ -46,16 +46,19 @@ def stamp(when):
 
 
 def cvss(cve):
-    """(score, vector) of the first metric version present, NVD's Primary first; (None, "") when none. A v2 vector has no
-    "CVSS:" prefix ("AV:N/AC:L/Au:N") and is kept as given."""
-    for key in METRICS:
-        scores = cve.get("metrics", {}).get(key)
-        if scores:
-            primary = [s for s in scores if s["type"] == "Primary"]  # NVD's own score beats the CNA's
-            data = (primary or scores)[0]["cvssData"]
-            vector = data.get("vectorString")
-            return data["baseScore"], vector if isinstance(vector, str) else ""
-    return None, ""
+    """(score, vector) of the highest base score among the CVSS 3.x and 4.0 metrics, NVD's Primary and the CNA's
+    Secondary alike (owner, 2026-11-18: of several scores the higher wins); CVSS 2, another scale, only when none of those
+    exists. (None, "") when there is no score. On equal scores the first in METRICS order, Primary before Secondary, so a
+    cycle never flips the vector. A v2 vector has no "CVSS:" prefix ("AV:N/AC:L/Au:N") and is kept as given."""
+    metrics = cve.get("metrics", {})
+    ranked = lambda keys: [s["cvssData"] for key in keys
+                           for s in sorted(metrics.get(key) or [], key=lambda s: s["type"] != "Primary")]
+    found = ranked(METRICS[:3]) or ranked(METRICS[3:])
+    if not found:
+        return None, ""
+    data = max(found, key=lambda d: d["baseScore"])  # max keeps the first of equal scores
+    vector = data.get("vectorString")
+    return data["baseScore"], vector if isinstance(vector, str) else ""
 
 
 def products(cve):

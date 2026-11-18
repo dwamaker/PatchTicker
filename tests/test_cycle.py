@@ -537,11 +537,19 @@ class NvdEnrichmentTest(unittest.TestCase):
         # Vendors not in web/vendors.json whose Product names lack them, with an example, for a person or agent to add.
         self.assertEqual(self.store.read("unknown_vendors.json"), {"openbsd": "OpenSSH", "totolink": "Ca300-poe Firmware"})
 
-    def test_nvds_primary_score_comes_with_its_vector(self):
+    def test_nvds_highest_score_comes_with_its_vector(self):
         cve = {"metrics": {"cvssMetricV31": [
             {"type": "Secondary", "cvssData": {"baseScore": 9.8, "vectorString": "CVSS:3.1/AV:N/AC:L"}},
             {"type": "Primary", "cvssData": {"baseScore": 7.5, "vectorString": "CVSS:3.1/AV:N/AC:H"}}]}}
-        self.assertEqual(nvd.cvss(cve), (7.5, "CVSS:3.1/AV:N/AC:H"))
+        self.assertEqual(nvd.cvss(cve), (9.8, "CVSS:3.1/AV:N/AC:L"))  # the CNA's Secondary, as the higher
+        cve["metrics"]["cvssMetricV31"][0]["cvssData"]["baseScore"] = 7.5
+        self.assertEqual(nvd.cvss(cve), (7.5, "CVSS:3.1/AV:N/AC:H"))  # a tie: NVD's Primary
+        cve["metrics"]["cvssMetricV40"] = [{"type": "Secondary", "cvssData": {"baseScore": 8.7, "vectorString": "CVSS:4.0/AV:N"}}]
+        self.assertEqual(nvd.cvss(cve), (8.7, "CVSS:4.0/AV:N"))
+        cve["metrics"]["cvssMetricV40"][0]["cvssData"]["baseScore"] = 7.5
+        self.assertEqual(nvd.cvss(cve), (7.5, "CVSS:3.1/AV:N/AC:H"))  # a tie: 3.1 before 4.0
+        cve["metrics"]["cvssMetricV2"] = [{"type": "Primary", "cvssData": {"baseScore": 10.0, "vectorString": "AV:N/AC:L/Au:N"}}]
+        self.assertEqual(nvd.cvss(cve)[0], 7.5)  # v2, another scale, never beats a newer score
         # v2 is the last fallback; its vector has no "CVSS:" prefix and is kept as given.
         self.assertEqual(nvd.cvss({"metrics": {"cvssMetricV2": [{"type": "Primary", "cvssData": {"baseScore": 5.0, "vectorString": "AV:N/AC:L/Au:N"}}]}}),
                          (5.0, "AV:N/AC:L/Au:N"))
