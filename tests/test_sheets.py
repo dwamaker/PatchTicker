@@ -72,7 +72,7 @@ class MergeTest(unittest.TestCase):
     def test_a_version_the_records_text_calls_affected_is_never_a_fixed_row(self):
         # Apache Roller, CVE-2026-129448: oss-security filed 6.1.5 as fixed; the record recommends 6.1.6.
         pages = [sheet("https://seclists.example/a", "D", "discussion", versions=[version("6.1.5", "fixed"), version("6.1.6", "fixed")])]
-        record = ["Apache Roller versions before 6.1.6, including 6.1.5, are affected. Users are recommended to upgrade to 6.1.6."]
+        record = ["An earlier record listed only Apache Roller 6.1.5 as affected. Users are recommended to upgrade to 6.1.6."]
         self.assertEqual([v[2] for v, _ in sheets.merge(pages, None, record)["fixed"]], ["6.1.6"])
 
     def test_a_fixed_row_below_the_records_first_fixed_version_of_its_line_is_dropped(self):
@@ -446,6 +446,23 @@ class UnionTest(unittest.TestCase):
                             probe=False, store=store, line=line)
         self.assertEqual(inc["summary"]["fixes"], [{"for": "Acme Widget", "version": "1.3", "devices": [], "from_sheet": True}])
         self.assertIn(" fixes_lines=1 ", line.text())
+
+    def test_the_cycle_line_counts_a_summary_kept_with_a_flagged_fix(self):
+        from collector import cvelist
+        from collector.logfile import CycleLine
+        from test_batch_summaries import plain
+        inc = incident(1) | {"cvss": 9.8, "kev": True, "kev_cves": {"CVE-2026-1000": "2026-11-18"},
+                             "summary_error": {"tries": summaries.MAX_TRIES - 1, "reason": "x"}}
+        record = json.dumps({"containers": {"cna": {"descriptions": [{"lang": "en", "value": "Widget 1.3 and earlier is affected."}]}}})
+
+        def get(url, headers=None):
+            return record.encode() if url == cvelist.record_url(inc["id"]) else PAGE.encode()
+        line = CycleLine(STAMP, lambda: 0)
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([inc], [], FakeClaude(plain("Widget") | {"fixed": "1.3"}), get, datetime(2026, 11, 18), STAMP, set(),
+                            probe=False, store=MemoryStore(), line=line)
+        self.assertEqual(inc["summary"]["fixes_flagged"], ["1.3"])
+        self.assertIn(" fixes_flagged=1 ", line.text())
 
 
 class MustCarryTest(unittest.TestCase):

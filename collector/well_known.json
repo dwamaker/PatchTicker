@@ -16,7 +16,8 @@
     "Samsung Smart TV (Tizen)": {"ids": ["samsung:smarttv", "samsung:smart_tv*", "tizen:tizen*", "linux:tizen*"], "tier": 2, "names": ["Tizen", "Tizen OS", "삼성 스마트TV", "타이젠"]},
     "LG webOS": {"ids": ["lg:webos*"], "tier": 2, "names": ["webOS", "webOS TV"]},
     "QNX": {"ids": ["blackberry_ltd:qnx*", "blackberry:qnx*"], "tier": 3, "names": ["BlackBerry QNX", "QNX Neutrino"]},
-    "VIDAA": {"ids": ["hisense:vidaa*"], "tier": 3, "names": ["VIDAA OS", "Hisense VIDAA"]}
+    "VIDAA": {"ids": ["hisense:vidaa*"], "tier": 3, "names": ["VIDAA OS", "Hisense VIDAA"]},
+    "Pardus": {"ids": ["t?bi*tak*:pardus*", "t?bi*tak*:liderahenk*", "t?bi*tak*:eta*", "pardus:*"], "tier": 2, "names": ["Pardus Linux", "LiderAhenk"]}
   },
   "Browsers": {
     "Chrome": {"ids": ["google:chrome", "google:chrome_for_*", "google:google_chrome"], "names": ["Google Chrome", "Chrome for Android", "Chrome for iOS"], "tier": 1},
@@ -30,7 +31,8 @@
     "Samsung Internet": {"ids": ["samsung*:samsung_internet*", "samsung:internet*"], "names": ["Samsung Internet Browser"], "tier": 2},
     "Tor Browser": {"ids": ["torproject:tor_browser*"], "tier": 3},
     "UC Browser": {"ids": ["ucweb:uc_browser*", "ucweb:ucweb_uc"], "tier": 3},
-    "Mi Browser": {"ids": ["xiaomi:mi_browser*", "mi:mi_browser"], "tier": 3, "names": ["Xiaomi Mi Browser"]}
+    "Mi Browser": {"ids": ["xiaomi:mi_browser*", "mi:mi_browser"], "tier": 3, "names": ["Xiaomi Mi Browser"]},
+    "Yandex Browser": {"ids": ["yandex:yandex_browser*", "yandex:yandex.browser*"], "tier": 3, "names": ["Яндекс Браузер"]}
   },
   "Office, mail, documents": {
     "Microsoft Office": {"ids": ["microsoft:office*", "microsoft:microsoft_office*", "microsoft:microsoft_365_apps*", "microsoft:365_apps"], "names": ["Office", "Microsoft 365 Apps"], "tier": 1},
@@ -63,17 +65,18 @@
     "draw.io": {"ids": ["jgraph:drawio*", "diagrams:drawio", "jgraph:drawio"], "tier": 3, "names": ["drawio", "draw.io Desktop", "diagrams.net"]},
     "Logseq": {"ids": ["logseq:logseq"], "tier": 3},
     "SiYuan": {"ids": ["siyuan-note:siyuan", "b3log:siyuan"], "tier": 3, "names": ["SiYuan Note"]},
-    "WPS Office": {"ids": ["kingsoft*:wps*", "wps:wps_office*", "kingsoftstore:kingsoft_wps_office", "ksosoft:wps_office"], "tier": 2, "names": ["Kingsoft WPS Office", "WPS 오피스"]},
+    "WPS Office": {"ids": ["kingsoft*:wps*", "wps:wps_office*", "kingsoftstore:kingsoft_wps_office", "ksosoft:wps_office"], "tier": 1, "names": ["Kingsoft WPS Office", "WPS 오피스"]},
     "Polaris Office": {"ids": ["polarisoffice:polaris_office*"], "tier": 2, "names": ["폴라리스 오피스"]},
     "Adobe After Effects": {"ids": ["adobe:after_effects*"], "tier": 2, "names": ["After Effects"]},
-    "SketchUp": {"ids": ["trimble:sketchup*", "google:sketchup"], "tier": 3, "names": ["Trimble SketchUp"]}
+    "SketchUp": {"ids": ["trimble:sketchup*", "google:sketchup"], "tier": 3, "names": ["Trimble SketchUp"]},
+    "Ichitaro": {"ids": ["justsystems*:ichitaro*", "justsystems*:just_government*", "justsystems*:just_office*"], "tier": 3, "names": ["JustSystems Ichitaro", "一太郎"]}
   },
   "Messaging and meetings": {
     "Zoom": {"ids": ["zoom_communications:zoom*", "zoom:zoom*", "zoom:workplace"], "names": ["Zoom Workplace", "Zoom Workplace for Windows", "Zoom Client"], "tier": 2},
     "Slack": {"ids": ["slack:slack*"], "tier": 2},
     "Discord": {"ids": ["discord:discord*"], "tier": 2},
     "KakaoTalk": {"ids": ["kakao*:kakaotalk*"], "names": ["카카오톡"], "tier": 1},
-    "LINE": {"ids": ["line*:line", "line:line@", "linecorp:line@"], "names": ["라인"], "tier": 2},
+    "LINE": {"ids": ["line*:line", "line:line@", "linecorp:line@"], "names": ["라인"], "tier": 1},
     "WhatsApp": {"ids": ["whatsapp:whatsapp*", "meta:whatsapp*"], "names": ["WhatsApp Desktop"], "tier": 1},
     "Telegram": {"ids": ["telegram:telegram*", "telegram_desktop:telegram_desktop"], "names": ["Telegram Desktop"], "tier": 1},
     "Signal": {"ids": ["signal:signal*"], "names": ["Signal Desktop"], "tier": 2},
@@ -97,7 +100,8 @@
     "QQ": {"ids": ["tencent:qq", "tencent:mobileqq"], "tier": 2, "names": ["Tencent QQ"]},
     "NateOn": {"ids": ["nateon:nateon*"], "tier": 3, "names": ["네이트온", "NateOn Messenger"]},
     "Yealink": {"ids": ["yealink:*", "yeahlink:*", "zoom:yealink_*", "zoom:yealink*"], "tier": 3, "names": ["Yealink IP phones"]},
-    "Cisco Unified Communications Manager": {"ids": ["cisco:cisco_unified_communications_manager*", "cisco:unified_communications_manager*", "cisco:call_manager"], "tier": 3, "names": ["CUCM", "Cisco CallManager", "Unified CM"]}
+    "Cisco Unified Communications Manager": {"ids": ["cisco:cisco_unified_communications_manager*", "cisco:unified_communications_manager*", "cisco:call_manager"], "tier": 3, "names": ["CUCM", "Cisco CallManager", "Unified CM"]},
+    "Zalo": {"ids": ["vng*:zalo*", "zalo:*"], "tier": 1, "names": ["Zalo Desktop", "Zalo PC"]}
   },
   "Everyday apps and utilities": {
     "7-Zip": {"ids": ["7-zip:7-zip"], "tier": 2},
@@ -168,7 +172,20 @@
     "PlayStation": {"ids": ["sony:playstation*", "sony:ps4", "sony:ps5"], "tier": 2, "names": ["PlayStation 5", "PlayStation 4", "PS5", "플레이스테이션"]},
     "Nintendo Switch": {"ids": ["nintendo:nintendo_switch*"], "tier": 2, "names": ["닌텐도 스위치"]},
     "Sogou Input Method": {"ids": ["sogou:sogou_input*"], "tier": 2, "names": ["Sogou Pinyin", "Sogou Keyboard", "搜狗输入法"]},
-    "mpv": {"ids": ["mpv-player:mpv", "mpv:mpv"], "tier": 3}
+    "mpv": {"ids": ["mpv-player:mpv", "mpv:mpv"], "tier": 3},
+    "BankID": {"ids": ["bankid:*", "finansiell_id-teknik*:*"], "tier": 1, "names": ["BankID säkerhetsapp", "BankID säkerhetsprogram", "BankID Security Application", "Mobilt BankID"]},
+    "DigiLocker": {"ids": ["digilocker:*", "meity:digilocker*", "negd:digilocker*"], "tier": 2, "names": ["DigiLocker app"]},
+    "mAadhaar": {"ids": ["uidai:*"], "tier": 3, "names": ["Aadhaar app"]},
+    "Estonian ID software": {"ids": ["id:libdigidoc", "ria:*", "open-eid:*"], "tier": 2, "names": ["DigiDoc4", "DigiDoc4 Client", "Web eID", "ID-software", "ID-tarkvara"]},
+    "Warsaw (GAS Tecnologia)": {"ids": ["gas_tecnologia:*", "gastecnologia:*", "topaz*:warsaw*", "diebold*:warsaw*"], "tier": 2, "names": ["Warsaw", "GAS Tecnologia Warsaw", "Módulo de Segurança Warsaw"]},
+    "Trusteer Rapport": {"ids": ["trusteer:rapport*", "ibm:*trusteer_rapport*", "ibm:trusteer"], "tier": 3, "names": ["IBM Trusteer Rapport", "IBM Security Trusteer Rapport"]},
+    "ELSTER": {"ids": ["elster:*"], "tier": 3, "names": ["ElsterAuthenticator", "ElsterSecure", "Mein ELSTER", "ElsterFormular"]},
+    "AusweisApp": {"ids": ["governikus:ausweisapp*", "bsi:ausweisapp*"], "tier": 3, "names": ["AusweisApp2", "AusweisApp Bund"]},
+    "e-Tax software": {"ids": ["nta:e-tax*", "e-tax.nta:*"], "tier": 2, "names": ["e-Tax", "e-Taxソフト"]},
+    "JPKI user software": {"ids": ["jpki:*", "j-lis:*"], "tier": 3, "names": ["JPKI", "The Public Certification Service for Individuals", "公的個人認証サービス 利用者クライアントソフト"]},
+    "Changing ServiSign": {"ids": ["changing*:*"], "tier": 3, "names": ["ServiSign", "CGServiSign"]},
+    "HiCOS": {"ids": ["hinet:hicos*", "chunghwa*:hicos*"], "tier": 3, "names": ["HiCOS Natural Person Credential Component Client"]},
+    "Płatnik": {"ids": ["zak*ad_ubezpiecze*:*"], "tier": 3, "names": ["Platnik"]}
   },
   "VPN and remote access": {
     "WireGuard": {"ids": ["wireguard:*"], "tier": 2},
@@ -255,7 +272,17 @@
     "Hanwha Vision": {"ids": ["hanwha-security:*", "hanwhasecurity:*", "hanwhavision:*"], "tier": 2, "names": ["Wisenet", "Hanwha Techwin", "한화비전"]},
     "Milestone XProtect": {"ids": ["milestonesys:xprotect*"], "tier": 3, "names": ["XProtect"]},
     "Genian NAC": {"ids": ["genians*:*"], "tier": 3, "names": ["Genians", "Genian ZTNA", "Genian SSL PNS", "지니언스"]},
-    "SECUI": {"ids": ["secui:*"], "tier": 3, "names": ["SECUI MF2", "SECUI BLUEMAX", "시큐아이"]}
+    "SECUI": {"ids": ["secui:*"], "tier": 3, "names": ["SECUI MF2", "SECUI BLUEMAX", "시큐아이"]},
+    "Buffalo AirStation": {"ids": ["buffalo_inc*:*", "buffalotech:*", "buffalo:w*", "buffalo:*_firmware", "buffalo:bhr*", "buffalo:ls*", "buffalo:ts*", "buffalo:airstation*", "buffalo:terastation*", "buffalo-technology:*"], "tier": 2, "names": ["Buffalo", "AirStation", "LinkStation", "TeraStation", "バッファロー"]},
+    "ELECOM routers": {"ids": ["elecom*:*"], "tier": 3, "names": ["ELECOM", "エレコム"]},
+    "NEC Aterm": {"ids": ["nec*:aterm*"], "tier": 3, "names": ["Aterm"]},
+    "I-O DATA": {"ids": ["i-o_data*:*", "iodata:*"], "tier": 3, "names": ["IODATA", "アイ・オー・データ"]},
+    "Yamaha routers": {"ids": ["yamaha*:rt*", "yamaha*:nvr*", "yamaha*:wlx*", "yamaha*:nwr*", "yamaha*:fwx*", "yamaha*:swx*", "yamaha*:srt*"], "tier": 3, "names": ["Yamaha RTX", "Yamaha NVR"]},
+    "FRITZ!Box": {"ids": ["avm:*", "fritz!*:*"], "tier": 2, "names": ["FRITZ!OS", "AVM FRITZ!Box"]},
+    "Sangfor": {"ids": ["sangfor:*"], "tier": 3, "names": ["Sangfor NGAF", "深信服"]},
+    "Ruijie": {"ids": ["ruijie*:*"], "tier": 3, "names": ["Ruijie Networks", "Reyee", "Reyee OS", "锐捷"]},
+    "H3C": {"ids": ["h3c:*"], "tier": 3, "names": ["H3C Magic", "新华三"]},
+    "Stormshield": {"ids": ["stormshield:*"], "tier": 3, "names": ["Stormshield Network Security"]}
   },
   "Server software": {
     "OpenSSH": {"ids": ["openbsd:openssh"], "tier": 1},
@@ -310,7 +337,8 @@
     "FRRouting": {"ids": ["frrouting:frrouting"], "tier": 3, "names": ["FRR"]},
     "Cockpit web console": {"ids": ["cockpit-project:cockpit"], "tier": 3, "names": ["Cockpit Project"]},
     "JEUS": {"ids": ["tmax*:jeus*"], "tier": 2, "names": ["TmaxSoft JEUS", "제우스"]},
-    "WebtoB": {"ids": ["tmax*:webtob*"], "tier": 3, "names": ["TmaxSoft WebtoB", "웹투비"]}
+    "WebtoB": {"ids": ["tmax*:webtob*"], "tier": 3, "names": ["TmaxSoft WebtoB", "웹투비"]},
+    "X-Road": {"ids": ["niis:*", "nordic_institute*:*", "*:x-road*"], "tier": 2, "names": ["X-Road Security Server", "X-tee"]}
   },
   "Languages and runtimes": {
     "PHP": {"ids": ["php:php", "php_group:php"], "tier": 2},
@@ -932,7 +960,10 @@
     "Disable Comments": {"ids": ["disable_comments:disable_comments_project"], "tier": 3},
     "Advanced Editor Tools": {"ids": [], "tier": 3, "names": ["TinyMCE Advanced"]},
     "Astra theme": {"ids": ["brainstormforce:astra"], "tier": 3, "names": ["Astra"]},
-    "Hello Elementor theme": {"ids": [], "tier": 3, "names": ["Hello Elementor"]}
+    "Hello Elementor theme": {"ids": [], "tier": 3, "names": ["Hello Elementor"]},
+    "Movable Type": {"ids": ["six*apart*:movable*"], "tier": 3, "names": ["Movable Type Premium", "Movable Type Advanced", "ムーバブルタイプ"]},
+    "EC-CUBE": {"ids": ["ec-cube*:*", "lockon:ec-cube*"], "tier": 3, "names": ["ECCUBE", "イーシーキューブ"]},
+    "a-blog cms": {"ids": ["appleple*:*"], "tier": 3, "names": ["a-blogcms"]}
   },
   "Self-hosted and home": {
     "Home Assistant": {"ids": ["home-assistant:core", "home_assistant:*", "home-assistant:home-assistant"], "names": ["Home Assistant Core"], "tier": 3},
@@ -1047,7 +1078,28 @@
     "LimeSurvey": {"ids": ["limesurvey:limesurvey*"], "tier": 3, "names": ["LimeSurvey Community Edition"]},
     "Handy Groupware": {"ids": ["handysoft*:*"], "tier": 3, "names": ["핸디 그룹웨어"]},
     "Douzone": {"ids": ["douzone*:*"], "tier": 3, "names": ["Douzone Bizon", "NeoRS", "더존"]},
-    "AhnLab EPP": {"ids": ["ahnlab:epp*", "ahnlab:*policy_center*"], "tier": 3, "names": ["AhnLab EPP Management", "AhnLab Policy Center", "안랩 EPP"]}
+    "AhnLab EPP": {"ids": ["ahnlab:epp*", "ahnlab:*policy_center*"], "tier": 3, "names": ["AhnLab EPP Management", "AhnLab Policy Center", "안랩 EPP"]},
+    "SKYSEA Client View": {"ids": ["sky*:skysea*"], "tier": 2, "names": ["SKYSEA"]},
+    "Hitachi JP1": {"ids": ["hitachi*:jp1*"], "tier": 2, "names": ["JP1"]},
+    "Cybozu Office": {"ids": ["cybozu*:office*", "cybozu*:cybozu_office*"], "tier": 2, "names": ["サイボウズ Office"]},
+    "Cybozu Garoon": {"ids": ["cybozu*:*garoon*"], "tier": 3, "names": ["Garoon", "サイボウズ Garoon", "ガルーン"]},
+    "kintone": {"ids": ["cybozu*:*kintone*"], "tier": 3, "names": ["Cybozu kintone", "キントーン"]},
+    "desknet's NEO": {"ids": ["desknets:*", "neojapan*:*"], "tier": 3, "names": ["desknets NEO"]},
+    "FileZen": {"ids": ["soliton*:filezen*"], "tier": 3, "names": ["Soliton FileZen"]},
+    "1C:Enterprise": {"ids": ["1c:*"], "tier": 2, "names": ["1C Enterprise", "1С:Предприятие"]},
+    "DATEV": {"ids": ["datev:*"], "tier": 3},
+    "Openfind Mail2000": {"ids": ["openfind:*"], "tier": 3, "names": ["Mail2000", "MailGates", "SecuShare Pro"]},
+    "HGiga OAKlouds": {"ids": ["hgiga:*"], "tier": 3, "names": ["OAKlouds", "C&Cm@il"]},
+    "Digiwin EasyFlow": {"ids": ["digiwin:*"], "tier": 3, "names": ["EasyFlow .NET", "EasyFlow"]},
+    "Weaver e-cology": {"ids": ["weaver:*"], "tier": 3, "names": ["e-cology", "Weaver E-Office", "泛微"]},
+    "Seeyon OA": {"ids": ["seeyon*:*"], "tier": 3, "names": ["Zhiyuan OA", "Zhiyuan OA Web Application System", "致远OA"]},
+    "Yonyou": {"ids": ["yonyou:*"], "tier": 3, "names": ["UFIDA ERP-NC", "Yonyou NC", "用友"]},
+    "Kingdee": {"ids": ["kingdee:*"], "tier": 3, "names": ["金蝶"]},
+    "Tongda OA": {"ids": ["tongda*:*"], "tier": 3, "names": ["Office Anywhere", "通达OA"]},
+    "Centreon": {"ids": ["centreon:*"], "tier": 3},
+    "TOTVS": {"ids": ["totvs:*"], "tier": 3, "names": ["TOTVS Fluig", "Fluig"]},
+    "CompuGroup Medical": {"ids": ["compugroup*:*"], "tier": 3, "names": ["CGM"]},
+    "C-DAC e-Sushrut": {"ids": ["cdac*:*", "c-dac*:*"], "tier": 3, "names": ["e-Sushrut", "e-Sushrut HMIS"]}
   },
   "Industrial control systems": {
     "Siemens SIMATIC": {"ids": ["siemens:simatic*"], "tier": 3, "names": ["SIMATIC", "SIMATIC WinCC", "SIMATIC S7"]}

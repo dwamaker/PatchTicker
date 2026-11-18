@@ -186,29 +186,53 @@ def facts_of(sheets):
     return [(s, s["facts"]) for s in sheets if not s.get("unread") and s.get("facts") and s["facts"].get("about_incident")]
 
 
-# "not affected" calls nothing affected (Rails, "8.0 and earlier ... are not affected").
-AFFECTED_WORDS = re.compile(r"(?<!\bnot )\b(?:affected|vulnerable|still (?:affected|vulnerable)|is impacted)\b", re.I)
-# A version a sentence calls fixed, or the bound of a range, and every version listed after it in the same clause, with
-# up to four words (a product name, "version(s)") before the first number: the fix, not affected. PostgreSQL,
-# CVE-2026-116303, "Versions before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected" bounds all five;
-# GitHub Enterprise Server's "fixed in versions 3.19.14, 3.20.10, 3.21.8, and 3.22.3" fixes all four. "<=" is inclusive.
-FIXED_IN = re.compile(r"(?:\b(?:fixed|patched|resolved|upgrade to|update to)(?:\s+in|\s+to)?|\bbefore|\bprior to|\bearlier than"
-                      r"|<(?!=))\s*(?:[A-Za-z][\w+-]*\s+){0,4}?v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?"
-                      r"(?:\s*,\s*(?:(?:and|or)\s+)?v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?|\s+(?:and|or)\s+v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?)*", re.I)
 # The whole version token, a vendor's bracketed build included: Zyxel's record calls "5.63(ACLD.2)b3_D0" affected, which
-# is not the fix "5.63(ACLD.3.4)D0" (CVE-2026-12487); a bracketed token never reads as its bare number.
-VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3}(?:\([\w.]+\)(?:[\w.]*\w)?(?!\w)|(?![\w.(])))")
+# is not the fix "5.63(ACLD.3.4)D0" (CVE-2026-12487); a bracketed token never reads as its bare number, nor a build
+# ("7.3.2-86009-5", Synology) as its release.
+VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3}(?:\([\w.]+\)(?:[\w.]*\w)?(?!\w)|(?![\w.(]|-\d)))")
+# Atomic: a token is read whole once, so a long dotted string cannot backtrack. A sentence's closing period is not its own.
+_TOKEN = r"(?>v?\d+(?:\.\d+)+(?:\([\w.]+\))?(?:[\w+~-]|\.(?=\w))*)"
+_LIST = rf"{_TOKEN}(?:\s*,\s*(?:(?:and|or)\s+)?{_TOKEN}|\s+(?:and|or)\s+{_TOKEN})*"
+# A version the record gives as a fix or as a range's exclusive bound, alone or listed, with up to four words (a product
+# name, "version(s)") before the first: PostgreSQL's "Versions before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are
+# affected" bounds all five; React's "From 19.0.0 until 19.0.9, 19.1.10, 19.2.9, and 19.3.1" too. "<=" is inclusive.
+FIX = re.compile(r"(?:\b(?:fixed|patched|resolved|addressed|remediated)(?:\s+in)?|\b(?:upgrad|updat)(?:e|ing)\s+to|\buntil"
+                 r"|\bup\s+to\s+but\s+not\s+including|\bup\s+to\s+\(?excluding\)?|\bbefore|\bprior\s+to|\bearlier\s+than|<(?!=))"
+                 rf"\s*(?:[A-Za-z][\w+-]*\s+){{0,4}}?({_LIST})"
+                 rf"|\bfrom\s+{_TOKEN}\s+to\s+({_TOKEN})\s*\(?(?:excluded|exclusive|not\s+included)", re.I)
+# The plain forms that name one version as vulnerable: "6.1.5 is affected", "only Apache Roller 6.1.5 as affected",
+# "1.11.2 and earlier", "through 6.1.4", "up to and including 2.3", "<= 3.1". Nothing else in an "affected" sentence counts.
+AFFECTED = re.compile(rf"({_LIST})\s+(?:(?:is|are|was|were|remains?)\s+(?:still\s+)?|as\s+)(?:affected|vulnerable)\b"
+                      rf"|({_TOKEN})\s+(?:and|or)\s+(?:earlier|below|lower|older|prior(?!\s+to))\b"
+                      rf"|(?:\bthrough|\bup\s+to\s+and\s+including|<=|≤)\s*(?:versions?\s+)?({_TOKEN})", re.I)
+NOT_AFFECTED = re.compile(r"\bnot\s+(?:be(?:en)?\s+)?(?:affected|vulnerable)\b|\bunaffected\b", re.I)
 
 
 def record_affected(descriptions):
-    """Versions a CVE record's description names in a sentence that calls something affected or vulnerable, minus any
-    the same sentence calls fixed or gives as a range's bound ("fixed in 6.1.6", "versions before 6.1.6" stay a fix)."""
+    """Versions a CVE record's description names as vulnerable in one of the plain forms (AFFECTED), minus every version the
+    same description gives as a fix or a range's bound (FIX), which wins whatever else it says. A sentence that calls
+    anything not affected (Rails, "8.0 and earlier ... are not affected") names nothing."""
     got = set()
     for text in descriptions:
+        fixes = {v for m in FIX.finditer(text) for group in m.groups() if group for v in VERSION.findall(group)}
         for sentence in re.split(r"(?<=[.;])\s+", text):
-            if AFFECTED_WORDS.search(sentence):
-                fixed_here = {v for m in FIXED_IN.findall(sentence) for v in VERSION.findall(m)}
-                got |= {v for v in VERSION.findall(sentence) if v not in fixed_here}
+            if NOT_AFFECTED.search(sentence):
+                continue
+            stated, bounds = set(), defaultdict(set)
+            for m in AFFECTED.finditer(sentence):
+                for i, group in enumerate(m.groups()):
+                    for v in VERSION.findall(group or ""):
+                        if v in fixes:
+                            continue
+                        if i == 0:
+                            stated.add(v)
+                        else:
+                            bounds[tuple(re.findall(r"\d+", v)[:2])].add(v)
+            # Several products' ranges in one sentence bound one line differently (Fortinet: "FortiManager 7.6.1 through
+            # 7.6.7, FortiManager Cloud 7.6.1 through 7.6.8"): only the lowest bound of a line is affected whatever the product.
+            # shortcut: product names are not read, upgrade if a product's own bound must reach the guard.
+            key = lambda v: tuple(int(n) for n in re.match(r"v?([\d.]+)", v)[1].strip(".").split("."))  # noqa: E731
+            got |= stated | {v for vs in bounds.values() for v in vs if key(v) == min(map(key, vs))}
     return got
 
 

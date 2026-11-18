@@ -1599,7 +1599,8 @@ class RecordSaysAffectedTest(unittest.TestCase):
         self.assertEqual(summaries.page_sheets.record_affected([postgres]), set())
         self.assertEqual(summaries.record_says_affected({"fixed": "", "fixes": [{"for": "PostgreSQL 17", "version": "17.12"}]},
                                                         self.text(postgres)), "")
-        self.assertEqual(summaries.page_sheets.record_affected([freeswitch]), {"1.11.2"})
+        # The record's own "fixed in 1.11.2" wins over its "1.11.2 and earlier" (FalseAlarmTest has the form alone).
+        self.assertEqual(summaries.page_sheets.record_affected([freeswitch]), set())
         self.assertEqual(summaries.page_sheets.record_affected(["Versions prior to version 2.3 or 2.4.1 are vulnerable."]), set())
         self.assertEqual(summaries.page_sheets.record_affected(["Versions <= 3.1 and 3.2 are affected."]), {"3.1", "3.2"})
         # A fix list after its fix words, a product name between, and "not affected" (GHES, Revive, Rails records).
@@ -1610,14 +1611,41 @@ class RecordSaysAffectedTest(unittest.TestCase):
 
     def test_a_vendors_bracketed_build_is_compared_whole(self):
         # Zyxel, CVE-2026-12487 (rewritten): the affected build's bare 5.63 made the fix "affected" three tries running.
-        zyxel = self.text("A flaw in the SNMP parameter of Zyxel EE5301-00 firmware version 5.63(ACLD.2)b3_D0 could let an"
-                          " attacker crash an affected device.")
+        zyxel = self.text("A flaw in the SNMP parameter of Zyxel EE5301-00 firmware version 5.63(ACLD.2)b3_D0 and earlier could"
+                          " let an attacker crash an affected device.")
         self.assertEqual(summaries.record_says_affected({"fixed": "5.63(ACLD.3.4)D0", "fixes": []}, zyxel), "")
         self.assertTrue(summaries.record_says_affected({"fixed": "5.63(ACLD.2)b3_D0", "fixes": []}, zyxel))
         self.assertEqual(summaries.page_sheets.record_affected(["Firmware 5.63(ACLD.2) is affected; fixed in 5.63(ACLD.3)."]),
                          {"5.63(ACLD.2)"})
         self.assertEqual(summaries.affected_label({"fixes": [{"for": "Zyxel EE5301-00 5.63(ACLD.3.4)D0", "version": "5.63(ACLD.3.4)D0"}]},
                                                   zyxel), "")
+
+    def test_only_the_plain_forms_call_a_version_affected_and_a_named_fix_never(self):
+        # Rewritten from the three live false alarms (PostgreSQL, Synology, React) and the two true cases (Roller, FreeSWITCH).
+        affected, says = summaries.page_sheets.record_affected, summaries.record_says_affected
+        postgres = "Versions before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected by a plperl flaw."
+        synology = "A flaw in the Sharing API in Synology DSM before 7.2.2-72806-5 and 7.3.1-86003-1 lets users read files."
+        react = ("From 19.0.0 until 19.0.9, 19.1.10, 19.2.9, and 19.3.1, the react-server-dom-webpack and"
+                 " react-server-dom-parcel packages are vulnerable to remote code execution. This issue is fixed in versions"
+                 " 19.0.9, 19.1.10, 19.2.9, and 19.3.1.")
+        freeswitch = "In 1.11.2 and earlier, rtp_common_read() lets an attacker take over the media path."
+        for text, fixed in ((postgres, "17.12"), (synology, "7.3.1-86003-1"), (synology, "7.2.2"), (react, "19.1.10")):
+            self.assertEqual(affected([text]), set(), text)
+            self.assertEqual(says({"fixed": "", "fixes": [{"for": "x", "version": fixed}]}, self.text(text)), "", text)
+        self.assertEqual(affected([self.ROLLER]), {"6.1.4", "6.1.5"})
+        self.assertTrue(says({"fixed": "6.1.5", "fixes": []}, self.text(self.ROLLER)))
+        self.assertEqual(affected([freeswitch]), {"1.11.2"})
+        self.assertTrue(says({"fixed": "1.11.2", "fixes": []}, self.text(freeswitch)))
+        # A version merely in an "affected" sentence names nothing; "through", "up to and including", "<=" do.
+        self.assertEqual(affected(["An attacker on 2.4.1 can crash an affected device."]), set())
+        self.assertEqual(affected(["Versions 1.0 through 1.4.2 and up to and including 2.3 are vulnerable."]), {"1.4.2", "2.3"})
+        self.assertEqual(affected(["Builds from 3.0 to 3.2.1 (excluded) are affected; 3.0.9 is still vulnerable."]), {"3.0.9"})
+        # Audit of the live month: two products' bounds of one line (Fortinet), and a patch on an affected release (IBM).
+        fortinet = "A flaw in Acme Manager 7.6.1 through 7.6.7, Acme Manager Cloud 7.6.1 through 7.6.8 lets an admin run code."
+        self.assertEqual(affected([fortinet]), {"7.6.7"})
+        ibm = self.text("IBM Widget 2.0.0 through 2.2.1 could allow a remote attacker to read files.")
+        self.assertEqual(says({"fixed": "2.2.1 IF001", "fixes": [{"for": "x", "version": "5.4.0 Patch 8"}]}, ibm), "")
+        self.assertTrue(says({"fixed": "2.2.1", "fixes": []}, ibm))
 
     def test_the_reply_is_kept_back_with_its_own_retry_sentence(self):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
@@ -1630,6 +1658,28 @@ class RecordSaysAffectedTest(unittest.TestCase):
         self.assertNotIn("summary", incident)
         self.assertTrue(incident["summary_error"]["reason"].startswith(summaries.RECORD_AFFECTED + "6.1.5"), incident["summary_error"])
         self.assertIn("The CVE record's own text calls that version affected", summaries.retry(incident, text)["note"])
+        # The last try keeps the reply as it is, the version marked for the cycle line: never given up.
+        incident["summary_error"]["tries"] = summaries.MAX_TRIES - 1
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY | {"fixed": "6.1.5"}), text,
+                                 {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-18T00:00:00Z")
+        self.assertNotIn("summary_error", incident)
+        self.assertEqual((incident["summary"]["fixed"], incident["summary"]["fixes_flagged"]), ("6.1.5", ["6.1.5"]))
+
+    def test_every_record_of_the_line_must_call_the_version_affected(self):
+        # Rewritten from the live month's three groups: one record's "through 4.1.12" or "4.1.12 and earlier" against
+        # another's "before 4.1.12" is that record's slip (phpMyFAQ, Devolutions); one record naming another product's
+        # 8.0.0 alone speaks of the line too (Fortinet). A record of another line has no say.
+        blocks = lambda *texts: "\n".join(f"CVE record CVE-2026-{n}:\n" + json.dumps({"descriptions": [{"lang": "en", "value": t}]})  # noqa: E731
+                                          for n, t in enumerate(texts))
+        says = summaries.record_says_affected
+        php = ("Acme FAQ through 4.1.12 lets editors read drafts.", "Acme FAQ before 4.1.12 lets anyone read notes.")
+        devo = ("Acme Server 2026.3.13.0 and earlier leaks a password.", "Acme Server before 2026.3.13.0 leaks MFA secrets.")
+        forti = ("Acme Manager 8.0.0 through 8.0.1 lets an admin run code.", "Acme Manager 8.0.0, Acme Manager 7.6.0 through"
+                 " 7.6.7 lets an admin escalate.")
+        for texts, fixed in ((php, "4.1.12"), (devo, "2026.3.13.0"), (forti, "8.0.1")):
+            self.assertEqual(says({"fixed": fixed, "fixes": []}, blocks(*texts)), "", texts)
+            self.assertTrue(says({"fixed": fixed, "fixes": []}, blocks(texts[0], texts[0], "Acme Tool 9.1 is affected.")), texts)
 
 
 class FlawNameTitleTest(unittest.TestCase):
