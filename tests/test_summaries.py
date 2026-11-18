@@ -1556,6 +1556,17 @@ class RecordSaysAffectedTest(unittest.TestCase):
             " 3.19.14, 3.20.10, 3.21.8, and 3.22.3.", "The issue is fixed in Revive Adserver 6.0.9 by HTML-encoding the"
             " affected values.", "Rails 8.0 and earlier do not serialize SafeBuffer with MessagePack and are not affected."]), set())
 
+    def test_a_vendors_bracketed_build_is_compared_whole(self):
+        # Zyxel, CVE-2026-12487 (rewritten): the affected build's bare 5.63 made the fix "affected" three tries running.
+        zyxel = self.text("A flaw in the SNMP parameter of Zyxel EE5301-00 firmware version 5.63(ACLD.2)b3_D0 could let an"
+                          " attacker crash an affected device.")
+        self.assertEqual(summaries.record_says_affected({"fixed": "5.63(ACLD.3.4)D0", "fixes": []}, zyxel), "")
+        self.assertTrue(summaries.record_says_affected({"fixed": "5.63(ACLD.2)b3_D0", "fixes": []}, zyxel))
+        self.assertEqual(summaries.page_sheets.record_affected(["Firmware 5.63(ACLD.2) is affected; fixed in 5.63(ACLD.3)."]),
+                         {"5.63(ACLD.2)"})
+        self.assertEqual(summaries.affected_label({"fixes": [{"for": "Zyxel EE5301-00 5.63(ACLD.3.4)D0", "version": "5.63(ACLD.3.4)D0"}]},
+                                                  zyxel), "")
+
     def test_the_reply_is_kept_back_with_its_own_retry_sentence(self):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
         # The Lead's text holds every number the borrowed reply uses; the record's text calls 6.1.5 affected.

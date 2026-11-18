@@ -192,9 +192,11 @@ AFFECTED_WORDS = re.compile(r"(?<!\bnot )\b(?:affected|vulnerable|still (?:affec
 # CVE-2026-116303, "Versions before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected" bounds all five;
 # GitHub Enterprise Server's "fixed in versions 3.19.14, 3.20.10, 3.21.8, and 3.22.3" fixes all four. "<=" is inclusive.
 FIXED_IN = re.compile(r"(?:\b(?:fixed|patched|resolved|upgrade to|update to)(?:\s+in|\s+to)?|\bbefore|\bprior to|\bearlier than"
-                      r"|<(?!=))\s*(?:[A-Za-z][\w+-]*\s+){0,4}?v?\d+(?:\.\d+)+"
-                      r"(?:\s*,\s*(?:(?:and|or)\s+)?v?\d+(?:\.\d+)+|\s+(?:and|or)\s+v?\d+(?:\.\d+)+)*", re.I)
-VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3})(?![\w.])")
+                      r"|<(?!=))\s*(?:[A-Za-z][\w+-]*\s+){0,4}?v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?"
+                      r"(?:\s*,\s*(?:(?:and|or)\s+)?v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?|\s+(?:and|or)\s+v?\d+(?:\.\d+)+(?:\([\w.]+\)[\w.]*)?)*", re.I)
+# The whole version token, a vendor's bracketed build included: Zyxel's record calls "5.63(ACLD.2)b3_D0" affected, which
+# is not the fix "5.63(ACLD.3.4)D0" (CVE-2026-12487); a bracketed token never reads as its bare number.
+VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3}(?:\([\w.]+\)(?:[\w.]*\w)?(?!\w)|(?![\w.(])))")
 
 
 def record_affected(descriptions):

@@ -1730,7 +1730,7 @@ def lead_fixed(summary, input_text):
         summary["fixed"] = pick
 
 
-BUILD = re.compile(r"(?<![\w.])\d+(?:u\d+|(?:\.\d+)+)[\w.+-]*")
+BUILD = re.compile(r"(?<![\w.])\d+(?:u\d+|(?:\.\d+)+)(?:\([\w.]+\))?[\w.+-]*")  # Zyxel's "5.63(ACLD.2)b3_D0" whole
 
 
 def affected_label(summary, input_text):
