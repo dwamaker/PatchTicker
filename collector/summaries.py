@@ -863,10 +863,26 @@ def priority(incident):
 
 
 def basis(incident):
-    """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing)."""
+    """What a Summary was written from, as far as re-summary triggers go (spec: Summary routing). repos: the repo
+    Mentions it saw; poc_asked: a Summary was once asked again for them (new_repos), so they never ask again."""
     return {"cves": sorted(incident["cves"]), "kev": bool(incident.get("kev")),
             "advisories": sorted(m["url"] for m in incident["mentions"] if m["kind"] == "advisory"),
-            **({"merged": sorted(incident["merged"])} if incident.get("merged") else {})}
+            **({"merged": sorted(incident["merged"])} if incident.get("merged") else {}),
+            "repos": repo_count(incident),
+            **({"poc_asked": True} if (incident.get("summary_basis") or {}).get("poc_asked") or new_repos(incident) else {})}
+
+
+def repo_count(incident):
+    return sum(1 for m in incident["mentions"] if m["kind"] == "repo")
+
+
+def new_repos(incident):
+    """Repos joined since the stored Summary, which says no PoC is public (owner, 11-18: Java4Shell's poc_public stayed
+    false for hours as five PoC repositories joined). Asks once: a basis written from it holds poc_asked. A basis from
+    before this rule counts no repos. Only an Incident with a CVE: a CVE-less HN story's repo is the story's own project."""
+    seen = incident.get("summary_basis") or {}
+    return (bool(incident["cves"]) and (incident.get("summary") or {}).get("poc_public") is False and not seen.get("poc_asked")
+            and repo_count(incident) > seen.get("repos", 0))
 
 
 TITLE_FIELDS = ("ko_title", "en_title", "ko_easy_title", "en_easy_title")
@@ -957,7 +973,8 @@ def needs_summary(incident):
     """No Summary yet, or a re-summary trigger since the last one: a new official advisory, a new
     KEV listing, a newly attached CVE, reported attacks without the source that reports them (written before
     critique 14), a fixed version the CVE records call affected (fixed_conflict), a word in a script the Incident's own
-    text never writes (stray_script), or an Incident merged in by same_as
+    text never writes (stray_script), repos joined while the Summary says no PoC is public (new_repos, once), or an
+    Incident merged in by same_as
     (apply_same_as; news stories bring write-ups, which no other trigger reads), at most MAX_SUMMARIES in all; past that,
     only CVEs the last Summary did not see (a merge) ask once more."""
     if incident.get("summary_error", {}).get("tries", 0) >= MAX_TRIES:
@@ -975,7 +992,8 @@ def needs_summary(incident):
     unsourced = incident["summary"].get("exploited") and not incident["summary"].get("exploited_source")
     return bool(set(now["cves"]) - set(seen["cves"]) or now["kev"] > seen["kev"]
                 or set(now["advisories"]) - set(seen["advisories"]) or set(now.get("merged", [])) - set(seen.get("merged", [])) or unsourced
-                or fixed_conflict(incident, incident["summary"]) or stray_script(incident, incident["summary"]))
+                or fixed_conflict(incident, incident["summary"]) or stray_script(incident, incident["summary"])
+                or new_repos(incident))
 
 
 def is_budget_error(err):

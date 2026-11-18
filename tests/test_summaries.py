@@ -386,6 +386,29 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertFalse(summaries.needs_summary(incident | {"summary": {"exploited": False, "exploited_source": ""}}))
         self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
 
+    def test_repos_joined_after_a_no_poc_summary_ask_once_more(self):
+        # 11-18: PoC repositories joined Java4Shell after its Summary; poc_public stayed false for hours.
+        repo = lambda n: {"kind": "repo", "url": f"https://github.com/someone/CVE-2026-114938-poc{n}"}  # noqa: E731
+        incident = {"id": "CVE-2026-114938", "cves": ["CVE-2026-114938"], "mentions": [repo(1)]}
+        incident["summary_basis"] = summaries.basis(incident) | {"n": 1}  # as the first Summary stores it
+        incident["summary"] = {"poc_public": False}
+        self.assertEqual(incident["summary_basis"], {"cves": ["CVE-2026-114938"], "kev": False, "advisories": [], "repos": 1, "n": 1})
+        self.assertFalse(summaries.needs_summary(incident))  # the Summary saw this repo
+        incident["mentions"].append(repo(2))
+        self.assertTrue(summaries.needs_summary(incident))
+        self.assertFalse(summaries.needs_summary(incident | {"summary": {"poc_public": True}}))
+        self.assertFalse(summaries.needs_summary(incident | {"summary_basis": incident["summary_basis"] | {"n": summaries.MAX_SUMMARIES}}))
+        # Once: the next Summary still says no PoC, and a third repo asks nothing.
+        incident["summary_basis"] = summaries.basis(incident) | {"n": 2}
+        self.assertTrue(incident["summary_basis"]["poc_asked"])
+        incident["mentions"].append(repo(3))
+        self.assertFalse(summaries.needs_summary(incident))
+        self.assertTrue(summaries.basis(incident)["poc_asked"])  # carried into every later basis
+        # A basis from before the rule counts no repos; a CVE-less story's repo is its own project.
+        old = {"cves": ["CVE-2026-114938"], "kev": False, "advisories": [], "n": 1}
+        self.assertTrue(summaries.needs_summary(incident | {"summary_basis": old}))
+        self.assertFalse(summaries.needs_summary(incident | {"cves": [], "summary_basis": old | {"cves": []}}))
+
     def test_the_easy_stopgap_carries_the_step_that_makes_it_work(self):
         reply = SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"stopgap_then": "바꾼 뒤 sshd를 다시 시작하세요."},
                                   "en": SSHOLE_SUMMARY["en"] | {"stopgap_then": "Then restart sshd."}}
