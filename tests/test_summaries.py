@@ -1577,6 +1577,53 @@ class ReSummaryKeepsWhatTheReviewLeftOutTest(unittest.TestCase):
         self.assertNotIn("event_date", self.store({}))
 
 
+class InputReportsAttacksTest(unittest.TestCase):
+    """A claimed attack that a reporter in the input states in plain words stands without a review draw (re-summary
+    re-check 11-18: TYPO3, Huatian); one the input's reporters do not state still goes to the review (Rootways)."""
+
+    RECORD = "https://www.cve.org/CVERecord?id=CVE-2026-125160"
+    WRITEUP = "https://www.vulncheck.com/advisories/huatian-oa8000"
+    NEWS = "https://www.bleepingcomputer.com/news/security/x/"
+
+    def parse(self, source, record_text, kev="no", writeup_text="Nothing here."):
+        record = json.dumps({"descriptions": [{"lang": "en", "value": record_text}]})
+        text = (f"Incident: CVE-2026-125160\nExploited in the wild (CISA KEV): {kev}\nMentions:\n- writeup {SSHOLE_SUMMARY['lead']}\n"
+                f"- cve_record {self.RECORD}\n- writeup {self.WRITEUP}\n- writeup {self.NEWS}\n"
+                f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n{json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)}\n"
+                f"Text of {self.WRITEUP}:\n{writeup_text}\nCVE record CVE-2026-125160:\n{record}")
+        reply = FakeClaude.message(SSHOLE_SUMMARY | {"exploited": True, "exploited_source": source})
+        return summaries.parse(reply, text, [SSHOLE_SUMMARY["lead"], self.RECORD, self.WRITEUP, self.NEWS])
+
+    def keep(self, summary, verdict):
+        incident = {"id": "x", "mentions": []}
+        summaries.keep(incident, summary | {"same_as": ""}, {}, "2026-11-18T12:00:00Z", [], True, verdict=verdict)
+        return incident["summary"]
+
+    def test_a_record_that_says_actively_exploited_needs_no_review(self):
+        # TYPO3, CVE-2026-125160: the first review said yes, the second no, and the flag fell.
+        s = self.parse(self.RECORD, "Files are disclosed. This vulnerability is known to be actively exploited.")
+        self.assertEqual((s["exploited"], s.get("exploited_input"), s.get("exploited_unconfirmed")), (True, True, None))
+        self.assertFalse(summaries.review_params(s, {"id": "x", "mentions": []})["messages"][0]["content"].endswith(summaries.review.ATTACKS_QUESTION))
+        self.assertTrue(self.keep(s, None)["exploited"])
+        self.assertEqual(summaries.recheck_exploited([{"summary": self.keep(s, None)}]), [])
+        # The input's CISA KEV line: a reporter's claim stands; a write-up's still does not.
+        self.assertTrue(self.parse(self.NEWS, "Files are disclosed.", kev="yes").get("exploited_input"))
+        self.assertFalse(self.parse(self.WRITEUP, "Files are disclosed.", kev="yes")["exploited"])
+
+    def test_a_write_up_claim_takes_the_record_that_says_so_as_its_source(self):
+        # Huatian, CVE-2024-58406: the replies cited VulnCheck; the record says the same.
+        s = self.parse(self.WRITEUP, "Exploitation evidence was first observed by the Shadowserver Foundation on 2024-11-20.")
+        self.assertEqual((s["exploited"], s["exploited_source"], s.get("exploited_input")), (True, self.RECORD, True))
+
+    def test_a_claim_the_reporters_do_not_state_still_falls_on_the_review_no(self):
+        # Rootways, CVE-2026-130583: only Sansec's write-up says "Exploited in the wild"; a write-up is no reporter.
+        self.assertFalse(self.parse(self.WRITEUP, "SSRF in the Apple Pay endpoint.", writeup_text="Exploited in the wild.")["exploited"])
+        s = self.parse(self.RECORD, "SSRF in the Apple Pay endpoint. It could be exploited in the wild.")
+        self.assertTrue(s.get("exploited_unconfirmed"))
+        self.assertFalse(self.keep(copy.deepcopy(s), False)["exploited"])
+        self.assertTrue(self.keep(s, True)["exploited_review"])
+
+
 class DisputedAttacksTest(unittest.TestCase):
     """A new reply that says "not exploited" never takes down attacks the Board shows with a source (owner 11-18, the
     re-summary dry run's ARTEX and N-central): only the review's no does, and a reply whose own text still reports the

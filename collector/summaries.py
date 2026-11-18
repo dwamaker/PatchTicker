@@ -311,7 +311,8 @@ ATTACK_SEEN = re.compile(r"in the wild|zero-day|actively (?:exploited|attacked)|
                          r"\b(?:have|has|had|are|were) (?:already |now )?(?!expected|anticipated|predicted|likely|possible|feared)"
                          r"(?:been \w+|\w+ed|\w+ing|hit|struck|underway|ongoing)\b"
                          r"|exploited in (?:[\w-]+,? ){0,3}attacks|under (?:active |ongoing )?attack|attack campaign"
-                         r"|exploitation (?:(?:was|has been|have been|is|were|had been) )?(?!not\b|never\b)(?:\w+ )?"
+                         # Huatian's record: "Exploitation evidence was first observed by the Shadowserver Foundation"
+                         r"|exploitation (?:evidence )?(?:(?:was|has been|have been|is|were|had been) )?(?!not\b|never\b)(?:\w+ )?"
                          r"(?:seen|observed|reported|detected|confirmed)"
                          r"|(?:observed|seen|detected|reported|confirmed) (?:active |ongoing |limited )?exploitation", re.I)
 # The Korean text's report of attacks that happened ("실제 공격 시도도 확인되었습니다", "악용 사례가 보고됐습니다"): the verb
@@ -366,6 +367,29 @@ def attacks_evidenced(summary, kind):
                                              for p in DELIVERED for m in p.finditer(text)))
 
 
+KEV_YES = re.compile(r"^Exploited in the wild \(CISA KEV\): yes\b", re.M)
+
+
+def input_reports_attacks(input_text, source, reporters):
+    """The reporter whose own words in the input report the attacks a reply claims (attack_reported): the claim's source
+    when it is a reporter and the input's CISA KEV line says yes, or it is an advisory whose text says so; else a CVE
+    record of the input that says so. "" for none. Never a news or curator page's text: their "Related: ... Exploited in
+    Attacks" links match on every page. TYPO3, CVE-2026-125160's record "known to be actively exploited": the flag fell
+    on one review draw's no; Huatian, CVE-2024-58406: the replies cited VulnCheck, a write-up, for what the record says."""
+    blocks = list(SOURCE_RE.finditer(input_text))
+    head = input_text[:blocks[0].start()] if blocks else input_text  # no page text can forge the KEV line
+    kinds = mention_kinds(input_text)
+    if source in reporters and (KEV_YES.search(head) or kinds.get(source) == "advisory"
+                                and any(b[1] == source and attack_reported(b[3]) for b in blocks)):
+        return source
+    records = {u.rsplit("=", 1)[-1].rsplit("/", 1)[-1]: u for u, k in kinds.items() if k == "cve_record" and u in reporters}
+    for b in blocks:
+        cve = b[0].split(":", 1)[0].split()[-1]
+        if not b[1] and cve in records and attack_reported(b[3]):
+            return source if source in reporters else records[cve]
+    return ""
+
+
 def recheck_exploited(incidents):
     """Each cycle, the stored Summaries' exploited flags by attacks_evidenced(), the source's kind read from the
     Incident's Mentions; one that fails is cleared (exploited, exploited_source, exploited_cves), as parse() clears a
@@ -373,7 +397,8 @@ def recheck_exploited(incidents):
     changed = []
     for i in incidents:
         summary = i.get("summary") or {}
-        if i.get("kev") or not summary.get("exploited") or summary.get("exploited_review") or not isinstance(summary.get("en"), dict):
+        if (i.get("kev") or not summary.get("exploited") or summary.get("exploited_review") or summary.get("exploited_input")
+                or not isinstance(summary.get("en"), dict)):
             continue
         kind = next((m["kind"] for m in i.get("mentions", []) if m["url"] == summary.get("exploited_source")), None)
         if not attacks_evidenced(summary, kind):
@@ -1105,7 +1130,7 @@ def release_reviews(incidents, batches):
     return released
 
 
-ATTACK_FIELDS = ("exploited", "exploited_source", "exploited_cves", "exploited_review")
+ATTACK_FIELDS = ("exploited", "exploited_source", "exploited_cves", "exploited_review", "exploited_input")
 
 
 ATTACKS_UNFLAGGED = "the text reports attacks but exploited is false"
@@ -1497,9 +1522,15 @@ def parse(reply, input_text, urls):
     # Reported attacks need the input source that reports them (owner, 2026-11-09); without one the flag is dropped,
     # never the Summary.
     trusted_text, reporters = trusted(input_text)
-    if not (summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters):
+    sourced = summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters
+    if sourced and attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"])):
+        pass
+    elif summary["exploited"] and (stated := input_reports_attacks(input_text, summary["exploited_source"] if sourced else "", reporters)):
+        # A reporter in the input says so in plain words: no review draw decides it, and recheck_exploited leaves it.
+        summary["exploited_source"], summary["exploited_input"] = stated, True
+    elif not sourced:
         summary["exploited"], summary["exploited_source"] = False, ""
-    elif not attacks_evidenced(summary, mention_kinds(input_text).get(summary["exploited_source"])):
+    else:
         # Wording the pattern misses: the review decides (owner 11-17), else keep() drops it (settle_attacks)
         summary["exploited_unconfirmed"] = True
     # Step 4: the attacked CVEs of a group, each one of the Incident's own by exact id; none once exploited is dropped.
