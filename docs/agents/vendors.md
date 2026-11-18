@@ -60,5 +60,44 @@ TouchEn nxKey, INISAFE CrossWeb EX, IPinside, AhnLab Safe Transaction, CrossEX, 
 Altibase, SECUI and AhnLab EPP (whose two records name vendor and product `n/a`). Check such a pattern against the
 first real record and correct it.
 
+The same standard holds for every country (owner, 2026-11-18): a product's tier is its reach in its own country, with
+no cap for being foreign. A tier 1 or 2 rests on a source that was opened; without one the product is tier 3 until a
+figure is found. The sources of the foreign tier 1 and 2 labels, read on 2026-11-18. **Weak** marks a source to
+revisit: the vendor's own count, a worldwide figure, Wikipedia, or a page quoting another.
+
+- LINE (1): 100 million monthly users in Japan, https://www.itmedia.co.jp/mobile/articles/2601/29/news102.html
+- WPS Office (1): 678 million monthly active devices, 341 million PCs, Kingsoft Office's Q3 2026 report,
+  https://finance.sina.com.cn/roll/2026-10-27/doc-iniwsmww0326244.shtml. **Weak**: the vendor's count, worldwide.
+- Zalo (1): 82.6 million monthly users in Vietnam, https://en.wikipedia.org/wiki/Zalo. **Weak**: Wikipedia.
+- BankID (1): 8.4 million active users in Sweden (2022), https://en.wikipedia.org/wiki/BankID_(Sweden). **Weak**: Wikipedia.
+- Buffalo AirStation (2): 46.4% of Japan's 2025 wireless LAN unit sales, first,
+  https://www.bcnaward.jp/award/section/detail/contents_type=243
+- SKYSEA Client View (2): 13.7 million client PCs, https://www.skyseaclientview.net/point/. **Weak**: the vendor's count.
+- Hitachi JP1 (2): 44% of Japan's job-management software sales, fiscal 2025 (Techno Systems Research),
+  https://www.hitachi.co.jp/Prod/comp/soft1/jp1/product/jp1/ajs/index.html
+- Cybozu Office (2): over 80,000 companies, https://office.cybozu.co.jp/. **Weak**: the vendor's count.
+- e-Tax software (2): 74.0% of income-tax filers filed by e-Tax for 2024, https://mbp-japan.com/iwate/tax110/column/5214708/.
+  **Weak**: a tax accountant quoting the National Tax Agency; the figure is e-Tax as a whole, web and phone included.
+- FRITZ!Box (2): about 50% of German households, https://www.techbook.de/connectivity/fritzbox-marke-entstehung.
+  **Weak**: the maker's figure, through a press article.
+- 1C:Enterprise (2): about 80% of the Russian vendors' share of the ERP market, 60% of it in 2025,
+  https://www.cnews.ru/news/top/2026-01-09_vmesto_sapkto_i_kak_v_rossii. **Weak**: a press article.
+- Pardus (2): on over 190,000 school boards by an education ministry contract,
+  https://pardus.org.tr/meb-ve-tubitaktan-buyuk-is-birligi/
+- X-Road (2): Estonia's data-exchange layer, 3,800 e-services,
+  https://e-estonia.com/solutions/interoperability-services/x-road/
+- Estonian ID software (2): 99% of residents hold the ID card, https://e-estonia.com/solutions/estonian-e-identity/id-card/
+- DigiLocker (2): 434.9 million registered users (December 2024), https://en.wikipedia.org/wiki/DigiLocker. **Weak**: Wikipedia.
+- Warsaw (GAS Tecnologia) (2): required by Banco do Brasil and Caixa, used by 23 institutions,
+  https://www.hardware.com.br/artigos/warsaw-o-modulo-de-seguranca-bancario-que-continua-inportunando-os-usuarios/.
+  **Weak**: a press article.
+
+Guessed foreign ids (no CVE record or CPE on 2026-11-18): BankID, DigiLocker, X-Road, Warsaw, ELSTER, `ria:*` and
+`open-eid:*` of Estonian ID software, `zalo:*`, `fritz!*:*`, `bsi:ausweisapp*`, `chunghwa*:hicos*`, `neojapan*:*`,
+`c-dac*:*`. A vendor-wide pattern stays off a vendor name another maker shares: Buffalo is named by its product
+families, not `buffalo:*` (`buffalo:open_xdmod` is a university's software), Trusteer Rapport takes `ibm:trusteer`, not
+IBM's server-side Pinpoint, and Pardus takes TÜBİTAK BİLGEM's Pardus, LiderAhenk and ETA tools, not its other software
+(İmzager).
+
 To add one, add a line under its kind with its tier, check that it parses (`python -c "import collector.incidents"`),
 and run both test suites; the next cycle stamps `known` and `known_tier` on the week's rows.

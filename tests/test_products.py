@@ -225,6 +225,71 @@ class WellKnownTest(unittest.TestCase):
                 self.assertIsNone(self.known([{"id": pid, "name": "x"}]))
         self.assertEqual(self.known([{"id": "ahnlab:v3_lite", "name": "x"}]), "AhnLab V3")
 
+    def test_other_countries_national_software_matches_the_ids_its_records_carry(self):
+        # Ids read from CVE records, the live month and NVD's CPE dictionary, 2026-11-18. TÜBİTAK's "i̇" is i + U+0307.
+        tubitak = "tübi̇tak_bi̇lgem_software_technologies_research_institute"
+        cases = {
+            "LINE": ["linecorp:line"], "WPS Office": ["kingsoft:wps_office"], "Zalo": ["vng:zalo_desktop"],
+            "Pardus": [f"{tubitak}:pardus-boot-repair", f"{tubitak}:liderahenk", f"{tubitak}:eta-remote", "pardus:liderahenk",
+                       "tübi̇tak_bi̇lgem_yazılım_teknolojileri_araştırma_enstitüsü:pardus-image-writer"],
+            "Yandex Browser": ["yandex:yandex_browser", "yandex:yandex.browser"],
+            "Ichitaro": ["justsystems:ichitaro_2023", "justsystems:just_government_5", "justsystems:just_office_5"],
+            "mAadhaar": ["uidai:maadhaar"], "Estonian ID software": ["id:libdigidoc"],
+            "Trusteer Rapport": ["trusteer:rapport", "ibm:trusteer"], "AusweisApp": ["governikus:ausweisapp_mobile"],
+            "e-Tax software": ["nta:e-tax", "nta:e-tax_reception_system", "e-tax.nta:e-tax"],
+            "JPKI user software": ["jpki:the_public_certification_service_for_individuals"],
+            "Changing ServiSign": ["changing:cgservisign", "changingtec:servisign"],
+            "HiCOS": ["hinet:hicos_natural_person_credential_component_client"],
+            "Płatnik": ["zakład_ubezpieczeń_społecznych:płatnik"],
+            "Buffalo AirStation": ["buffalo_inc.:wsr-2533dhp", "buffalo:wsr-2533dhp_firmware", "buffalotech:airstation_extreme_n600",
+                                   "buffalo:ls210d_firmware", "buffalo:terastation_nas_5410r", "buffalo:bs-gs2008_firmware"],
+            "ELECOM routers": ["elecom_co.,ltd.:wrc-be36qs-b", "elecom:camera_assistant"],
+            "NEC Aterm": ["nec:aterm_cr2500p_firmware", "necplatforms:aterm_sa3500g"],
+            "I-O DATA": ["i-o_data_device,_inc.:ud-lt1", "iodata:hdl-a"],
+            "Yamaha routers": ["yamaha:rtx1210_firmware", "yamaha:nvr510", "yamaha:srt100"],
+            "FRITZ!Box": ["avm:fritz!_os", "avm:fritz!box_7490_firmware"],
+            "Sangfor": ["sangfor:net-gen_application_firewall"], "Ruijie": ["ruijie:rg-uac", "ruijienetworks:reyee_os"],
+            "H3C": ["h3c:icg2000_unified_communication_gateway"], "Stormshield": ["stormshield:network_security"],
+            "SKYSEA Client View": ["sky_co.,ltd.:skysea_client_view", "skygroup:skysea_client_view"],
+            "Hitachi JP1": ["hitachi:jp1/automatic_operation"],
+            "Cybozu Office": ["cybozu,_inc.:cybozu_office", "cybozu:office"],
+            "Cybozu Garoon": ["cybozu,_inc.:cybozu_garoon", "cybozu:garoon"], "kintone": ["cybozu:kintone"],
+            "desknet's NEO": ["desknets:neo"], "FileZen": ["soliton_systems_k.k.:filezen", "soliton:filezen"],
+            "1C:Enterprise": ["1c:1c:enterprise"], "DATEV": ["datev:program"],
+            "Openfind Mail2000": ["openfind:secushare_pro", "openfind:mail2000"],
+            "HGiga OAKlouds": ["hgiga:oaklouds-custom_page-2.0"], "Digiwin EasyFlow": ["digiwin:easyflow_.net"],
+            "Weaver e-cology": ["weaver:e-office", "weaver:e-cology"],
+            "Seeyon OA": ["seeyon_(beijing_zhiyuan_internet_software_co.,_ltd.):zhiyuan_oa_web_application_system"],
+            "Yonyou": ["yonyou:ufida_erp-nc", "yonyou:yonbip"], "Kingdee": ["kingdee:kis_cloud"],
+            "Tongda OA": ["tongda:oa", "tongda2000:office_anywhere"], "Centreon": ["centreon:centreon_web"],
+            "TOTVS": ["totvs:fluig"], "CompuGroup Medical": ["compugroup_medical:infantia", "compugroup_medical:wingesfar"],
+            "C-DAC e-Sushrut": ["cdac-noida:e-sushrut,_hospital_management_information_system_(hmis)"],
+            "Movable Type": ["six_apart_ltd.:movable_type_premium", "sixapart:movable_type"],
+            "EC-CUBE": ["ec-cube_co.,ltd.:ec-cube", "lockon:ec-cube"],
+            "a-blog cms": ["appleple_inc.:a-blog_cms_(ver.3.1.x_series)", "appleple:a-blog_cms"],
+        }
+        for label, ids in cases.items():
+            for pid in ids:
+                with self.subTest(pid):
+                    self.assertEqual(self.known([{"id": pid, "name": "x"}]), label)
+        # No record or CPE exists for these yet: the name does the matching.
+        for name, label in (("BankID Security Application", "BankID"), ("DigiLocker", "DigiLocker"), ("X-Road", "X-Road"),
+                            ("Warsaw", "Warsaw (GAS Tecnologia)"), ("ElsterSecure", "ELSTER"), ("DigiDoc4", "Estonian ID software")):
+            with self.subTest(name):
+                self.assertEqual(self.known(products=[name]), label)
+        from collector.incidents import WELL_KNOWN
+        self.assertEqual([WELL_KNOWN[l]["tier"] for l in ("LINE", "WPS Office", "Zalo", "BankID", "Pardus")], [1, 1, 1, 1, 2])
+
+    def test_foreign_vendor_patterns_leave_the_vendors_other_products_alone(self):
+        # Same vendor stems in NVD's CPE dictionary that are not the label: a university's software under "buffalo",
+        # IBM's server-side Trusteer, TÜBİTAK's e-signature program, Hitachi's database, JustSystems' input method.
+        tubitak = "tübi̇tak_bi̇lgem_software_technologies_research_institute"
+        for pid in ("buffalo:open_xdmod", "ibm:security_trusteer_pinpoint_detect", f"{tubitak}:i̇mzager", "hitachi:hirdb_server",
+                    "hitachi:cosminexus_application_server", "justsystems:atok", "justsystems:hanako", "nec:express5800/t110j",
+                    "yandex:navigator", "cybozu:cybozu_live", "sky:sky_go"):
+            with self.subTest(pid):
+                self.assertIsNone(self.known([{"id": pid, "name": "x"}]))
+
     def test_an_operating_system_tag_is_never_matched(self):
         self.assertIsNone(self.known(products=["Windows"], platforms=["Windows"]))
 
@@ -258,7 +323,7 @@ class WellKnownTest(unittest.TestCase):
 
 
 class WellKnownListTest(unittest.TestCase):
-    """collector/well_known.json (1,023 labels, each with a tier of reach): every entry has lower-case ids and
+    """collector/well_known.json (1,075 labels, each with a tier of reach): every entry has lower-case ids and
     a tier of 1, 2 or 3; no label or alias is written twice, as the first would silently win; the id pattern compiles."""
 
     def test_the_list_has_its_shape(self):
@@ -271,7 +336,7 @@ class WellKnownListTest(unittest.TestCase):
             for name in (label, *entry.get("names", [])):
                 self.assertFalse(name.lower() in seen, f"{name!r} in {label!r} and {seen.get(name.lower())!r}")
                 seen[name.lower()] = label
-        self.assertGreaterEqual(len(incidents.WELL_KNOWN), 1023)
+        self.assertGreaterEqual(len(incidents.WELL_KNOWN), 1075)
         self.assertEqual(incidents.KNOWN_IDS.groups, len(incidents.WELL_KNOWN))
 
 
