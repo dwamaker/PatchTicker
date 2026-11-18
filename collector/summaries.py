@@ -8,6 +8,7 @@ shares (model), same_as merging (same_event) and the per-CVE lines batch (cve_li
 """
 
 import html
+import json
 import re
 import sys
 
@@ -663,6 +664,30 @@ def fixed_conflict(incident, summary):
     return ""
 
 
+RECORD_AFFECTED = "a CVE record's text calls "  # retry() gives it its own sentence
+
+
+def record_says_affected(summary, input_text):
+    """A fixed version the input's CVE records call affected in their own words (Apache Roller, CVE-2026-129448: the
+    range says "through 6.1.4", the text "listed only Apache Roller 6.1.5 as affected" and recommends 6.1.6; one of two
+    replies gave 6.1.5, and fixed_conflict passes a version equal to a bound). sheets.record_affected's reading: a range's
+    bound ("before 2.49.1") stays a fix. A distribution's package under "fixes" is not checked. The reason, or ""."""
+    descriptions = []
+    for block in SOURCE_RE.finditer(input_text):
+        if not block[1]:  # a "CVE record" block: cve_fields() JSON on one line
+            try:
+                descriptions += [d["value"] for d in json.loads(block[3]).get("descriptions", []) if isinstance(d.get("value"), str)]
+            except (ValueError, AttributeError, TypeError):
+                continue
+    affected = page_sheets.record_affected(descriptions)
+    for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
+                                         if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
+        named = set(page_sheets.VERSION.findall(text)) if isinstance(text, str) else set()
+        if named & affected:
+            return f"{RECORD_AFFECTED}{sorted(named & affected)[0]} affected, yet the reply names it as fixed"
+    return ""
+
+
 # A run of letters outside ASCII, Latin-1 and Latin Extended-A/B ("é", "ü", "İ", "µ") and Hangul (jamo, compatibility
 # jamo, syllables). Not letters (digits, marks, ZWNJ, "–") end a run.
 STRAY_RUN = re.compile(r"(?:(?![\x00-\x7f\u00aa-\u024f\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7ff])[^\W\d_])+")
@@ -901,7 +926,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None):
     name_titles(summary, trusted_names(incident, text))
     # A fixed version the CVE records call affected, or a word in a script the Incident never had, is never stored, on
     # the last try either.
-    conflict = fixed_conflict(incident, summary) or stray_script(incident, summary, text)
+    conflict = fixed_conflict(incident, summary) or record_says_affected(summary, text) or stray_script(incident, summary, text)
     if conflict:
         failed(incident, conflict)
         return
@@ -1074,6 +1099,9 @@ RETRY_SENTENCES = [
     # Owner, 2026-11-12: GStreamer's Red Hat backport came back as `fixed` three times under the plain sentence.
     # 11-15: the bound comes from the CVE records' fix keys, which the input may not hold (CVE-2026-125712, 1.28.4);
     # naming it as the version to write sent the model to it, and the number check rejected it.
+    (RECORD_AFFECTED, " The CVE record's own text calls that version affected, so it is not a fixed version: in `fixed`"
+                      " and `fixes` name only a version a source says fixes the flaw, such as the one the record"
+                      " recommends upgrading to."),
     (FIXED_CONFLICT, " A version below that bound is still affected. In `fixed` and `fixes` name only a fixed version the"
                      " input itself writes; when the input names none at or above the bound, leave `fixed` empty and never"
                      " write the bound yourself. A distribution's package version (Red Hat's 1.16.1-8.el8_10) goes only"
@@ -1420,15 +1448,15 @@ def trusted_names(incident, input_text=""):
 
 
 def name_titles(summary, names):
-    """" (Name, ...)" at the end of the Korean and the English title, for each trusted name the title does not already
-    hold anywhere (inside a bracket of its own counts). A closing bracket the model wrote stays before it: "... (SSRF)
-    (Name)". The Easy title is left alone: five plain words for a reader who never heard of the product, where a coined
-    name says nothing."""
+    """" (Name, ...)" at the end of the Korean and the English title when it holds none of the trusted names anywhere
+    (inside a bracket of its own counts): a title that shows one name gets no second bracket (N-able's "(Able2Shell)"
+    became "(Able2Shell) (4EverAble2Shell)"). A closing bracket the model wrote stays before it: "... (SSRF) (Name)".
+    The Easy title is left alone: five plain words for a reader who never heard of the product, where a coined name says
+    nothing."""
     for lang in ("ko", "en"):
         title = summary[lang]["title"]
-        missing = [n for n in names if n.lower() not in title.lower()]
-        if missing:
-            summary[lang]["title"] = f"{title.rstrip()} ({', '.join(missing)})"
+        if names and not any(n.lower() in title.lower() for n in names):
+            summary[lang]["title"] = f"{title.rstrip()} ({', '.join(names)})"
 
 
 def input_cves(input_text):

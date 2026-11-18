@@ -1421,6 +1421,44 @@ class PagesBudgetTest(unittest.TestCase):
         self.assertEqual((claude.sent[0]["max_tokens"], claude.sent[0].get("timeout")), (MAX_TOKENS_RETRY, None))
 
 
+class RecordSaysAffectedTest(unittest.TestCase):
+    """A fixed version the CVE record's own text calls affected is kept back and asked again (Apache Roller,
+    CVE-2026-129448, integration test 11-18)."""
+
+    ROLLER = ("Deserialization of Untrusted Data in Apache Roller versions 4.0.0 through 6.1.4 allows an unauthenticated"
+              " remote attacker to execute arbitrary code.\n\nThis is the same vulnerability as CVE-2026-82384, which listed"
+              " only Apache Roller 6.1.5 as affected. This issue is being actively exploited.\n\nUsers are recommended to"
+              " upgrade to Apache Roller 6.1.6 or later.")
+    GIT = "Git versions before 2.49.1 are affected by a flaw in the credential helper. Fixed in 2.49.1."
+
+    def text(self, description):
+        record = json.dumps({"descriptions": [{"lang": "en", "value": description}]})
+        return f"Incident: CVE-2026-129448\nMentions:\nCVE record CVE-2026-129448:\n{record}"
+
+    def test_a_version_the_record_calls_affected_is_no_fix_and_its_bound_still_is(self):
+        self.assertTrue(summaries.record_says_affected({"fixed": "6.1.5", "fixes": []}, self.text(self.ROLLER))
+                        .startswith(summaries.RECORD_AFFECTED + "6.1.5"))
+        self.assertTrue(summaries.record_says_affected({"fixed": "", "fixes": [{"for": "Apache Roller", "version": "6.1.5"}]},
+                                                       self.text(self.ROLLER)))
+        self.assertEqual(summaries.record_says_affected({"fixed": "6.1.6", "fixes": []}, self.text(self.ROLLER)), "")
+        self.assertEqual(summaries.record_says_affected({"fixed": "2.49.1", "fixes": []}, self.text(self.GIT)), "")
+        # A page's words are not the record's.
+        self.assertEqual(summaries.record_says_affected({"fixed": "6.1.5", "fixes": []},
+                                                        "Incident: x\nText of https://a.example/:\n6.1.5 is affected"), "")
+
+    def test_the_reply_is_kept_back_with_its_own_retry_sentence(self):
+        incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
+        # The Lead's text holds every number the borrowed reply uses; the record's text calls 6.1.5 affected.
+        text = (f"Text of {SSHOLE_SUMMARY['lead']}{summary_input.LEAD_MARK}:\n" + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+                + "\n" + self.text(self.ROLLER).split("\n", 2)[2])
+        with contextlib.redirect_stderr(io.StringIO()):
+            summaries.save_reply(incident, FakeClaude.message(SSHOLE_SUMMARY | {"fixed": "6.1.5"}), text,
+                                 {"cves": [], "kev": False, "advisories": [], "n": 0}, "2026-11-18T00:00:00Z")
+        self.assertNotIn("summary", incident)
+        self.assertTrue(incident["summary_error"]["reason"].startswith(summaries.RECORD_AFFECTED + "6.1.5"), incident["summary_error"])
+        self.assertIn("The CVE record's own text calls that version affected", summaries.retry(incident, text)["note"])
+
+
 class FlawNameTitleTest(unittest.TestCase):
     """The flaw's name in a title comes from code (owner 11-18): a name two Mention titles carry is added; the model's own
     closing brackets stay."""
@@ -1453,11 +1491,15 @@ class FlawNameTitleTest(unittest.TestCase):
                 summaries.name_titles(summary, ["Java4Shell"])
                 self.assertEqual(summary["en"]["title"], want)
 
-    def test_each_title_gets_the_names_it_lacks_and_the_easy_title_none(self):
+    def test_a_title_showing_one_trusted_name_gets_no_second_bracket_and_the_easy_title_none(self):
         summary = self.summary("Widget decoder flaw runs code", ko="위젯 디코더 결함 (Java4Shell)")
         summaries.name_titles(summary, ["Java4Shell", "Base64Bleed"])
         self.assertEqual(summary["en"]["title"], "Widget decoder flaw runs code (Java4Shell, Base64Bleed)")
-        self.assertEqual(summary["ko"]["title"], "위젯 디코더 결함 (Java4Shell) (Base64Bleed)")
+        self.assertEqual(summary["ko"]["title"], "위젯 디코더 결함 (Java4Shell)")
+        # N-able, integration test 11-18: "(Able2Shell)" became "(Able2Shell) (4EverAble2Shell)".
+        nable = self.summary("N-able N-central server remote code execution flaws (Able2Shell)")
+        summaries.name_titles(nable, ["4EverAble2Shell", "Able2Shell"])
+        self.assertEqual(nable["en"]["title"], "N-able N-central server remote code execution flaws (Able2Shell)")
         self.assertEqual((summary["en"]["easy_title"], summary["ko"]["easy_title"]), ("Widget hackable", "위젯 해킹 위험"))
         nothing = self.summary("Widget flaw (VSA-2026-062)")
         summaries.name_titles(nothing, [])
