@@ -1447,6 +1447,26 @@ class RecordSaysAffectedTest(unittest.TestCase):
         self.assertEqual(summaries.record_says_affected({"fixed": "6.1.5", "fixes": []},
                                                         "Incident: x\nText of https://a.example/:\n6.1.5 is affected"), "")
 
+    def test_a_bound_with_the_product_name_between_and_its_list_stay_fixes(self):
+        # PostgreSQL, CVE-2026-116303: every try naming a fix was rejected. FreeSWITCH's 1.11.2 stays affected.
+        postgres = ("Use after free in PostgreSQL plperl allows an object creator to execute arbitrary code.  Versions"
+                    " before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected.")
+        freeswitch = ("FreeSWITCH is a Software Defined Telecom Stack. In 1.11.2 and earlier, rtp_common_read() in"
+                      " src/switch_rtp.c uses one session-wide autoadj_tally. FreeSWITCH 1.11.2 adds two opt-in controls,"
+                      " but both default to zero and the release remains affected unless both are configured before RTP"
+                      " session creation. This vulnerability is fixed in 1.11.2.")
+        self.assertEqual(summaries.page_sheets.record_affected([postgres]), set())
+        self.assertEqual(summaries.record_says_affected({"fixed": "", "fixes": [{"for": "PostgreSQL 17", "version": "17.12"}]},
+                                                        self.text(postgres)), "")
+        self.assertEqual(summaries.page_sheets.record_affected([freeswitch]), {"1.11.2"})
+        self.assertEqual(summaries.page_sheets.record_affected(["Versions prior to version 2.3 or 2.4.1 are vulnerable."]), set())
+        self.assertEqual(summaries.page_sheets.record_affected(["Versions <= 3.1 and 3.2 are affected."]), {"3.1", "3.2"})
+        # A fix list after its fix words, a product name between, and "not affected" (GHES, Revive, Rails records).
+        self.assertEqual(summaries.page_sheets.record_affected([
+            "This vulnerability affected all versions of GitHub Enterprise Server prior to 3.23 and was fixed in versions"
+            " 3.19.14, 3.20.10, 3.21.8, and 3.22.3.", "The issue is fixed in Revive Adserver 6.0.9 by HTML-encoding the"
+            " affected values.", "Rails 8.0 and earlier do not serialize SafeBuffer with MessagePack and are not affected."]), set())
+
     def test_the_reply_is_kept_back_with_its_own_retry_sentence(self):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"]}]}
         # The Lead's text holds every number the borrowed reply uses; the record's text calls 6.1.5 affected.

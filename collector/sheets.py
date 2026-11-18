@@ -176,9 +176,15 @@ def facts_of(sheets):
     return [(s, s["facts"]) for s in sheets if not s.get("unread") and s.get("facts") and s["facts"].get("about_incident")]
 
 
-AFFECTED_WORDS = re.compile(r"\b(?:affected|vulnerable|still (?:affected|vulnerable)|is impacted)\b", re.I)
-# A version a sentence calls fixed, or the bound of a range ("before 6.1.6", "prior to", "< 6.1.6"): the fix, not affected.
-FIXED_IN = re.compile(r"(?:(?:fixed|patched|upgrade to|resolved) (?:in |to )?(?:version )?|\bbefore |\bprior to |<\s?)v?(\d+(?:\.\d+)+)", re.I)
+# "not affected" calls nothing affected (Rails, "8.0 and earlier ... are not affected").
+AFFECTED_WORDS = re.compile(r"(?<!\bnot )\b(?:affected|vulnerable|still (?:affected|vulnerable)|is impacted)\b", re.I)
+# A version a sentence calls fixed, or the bound of a range, and every version listed after it in the same clause, with
+# up to four words (a product name, "version(s)") before the first number: the fix, not affected. PostgreSQL,
+# CVE-2026-116303, "Versions before PostgreSQL 18.7, 17.12, 16.16, 15.20, and 14.25 are affected" bounds all five;
+# GitHub Enterprise Server's "fixed in versions 3.19.14, 3.20.10, 3.21.8, and 3.22.3" fixes all four. "<=" is inclusive.
+FIXED_IN = re.compile(r"(?:\b(?:fixed|patched|resolved|upgrade to|update to)(?:\s+in|\s+to)?|\bbefore|\bprior to|\bearlier than"
+                      r"|<(?!=))\s*(?:[A-Za-z][\w+-]*\s+){0,4}?v?\d+(?:\.\d+)+"
+                      r"(?:\s*,\s*(?:(?:and|or)\s+)?v?\d+(?:\.\d+)+|\s+(?:and|or)\s+v?\d+(?:\.\d+)+)*", re.I)
 VERSION = re.compile(r"(?<![\w.])v?(\d+(?:\.\d+){1,3})(?![\w.])")
 
 
@@ -189,7 +195,7 @@ def record_affected(descriptions):
     for text in descriptions:
         for sentence in re.split(r"(?<=[.;])\s+", text):
             if AFFECTED_WORDS.search(sentence):
-                fixed_here = set(FIXED_IN.findall(sentence))
+                fixed_here = {v for m in FIXED_IN.findall(sentence) for v in VERSION.findall(m)}
                 got |= {v for v in VERSION.findall(sentence) if v not in fixed_here}
     return got
 
