@@ -1422,46 +1422,46 @@ class PagesBudgetTest(unittest.TestCase):
 
 
 class FlawNameTitleTest(unittest.TestCase):
-    """The flaw's name in a title comes from code (owner's trial 11-18): a name two Mention titles carry is added, and a
-    closing bracket that is neither such a name, a version nor a product of the entry goes."""
+    """The flaw's name in a title comes from code (owner 11-18): a name two Mention titles carry is added; the model's own
+    closing brackets stay."""
 
     def mentions(self, *titles):
         return {"mentions": [{"kind": kind, "url": f"https://h{n}.example/", "title": t} for n, (kind, t) in enumerate(titles)]}
 
-    def summary(self, en, ko="위젯 결함", products=("Widget Server",), platforms=()):
-        return {"ko": {"title": ko, "easy_title": "위젯 해킹 위험", "names": list(products)},
-                "en": {"title": en, "easy_title": "Widget hackable", "names": list(products)},
-                "products": list(products), "platforms": list(platforms)}
+    def summary(self, en, ko="위젯 결함"):
+        return {"ko": {"title": ko, "easy_title": "위젯 해킹 위험"}, "en": {"title": en, "easy_title": "Widget hackable"}}
 
     def test_a_name_counts_when_two_titles_carry_it_letter_for_letter(self):
         two = self.mentions(("writeup", "Java4Shell: a flaw in Base64"), ("advisory", "Patch now for Java4Shell"))
         self.assertEqual(summaries.trusted_names(two), ["Java4Shell"])
-        self.assertEqual(summaries.trusted_names(self.mentions(("writeup", "Java4Shell"), ("writeup", "java4shell"))), [])
-        self.assertEqual(summaries.trusted_names(self.mentions(("writeup", "Java4Shell"), ("repo", "Java4Shell PoC"))), [])
-        self.assertEqual(summaries.trusted_names(self.mentions(("writeup", "Backdoor found"), ("writeup", "Backdoor in X"))), [])
+        for titles in ((("writeup", "Java4Shell"), ("writeup", "java4shell")), (("writeup", "Java4Shell"), ("repo", "Java4Shell PoC")),
+                       (("writeup", "Java4Shell"), ("cve_record", "Java4Shell in Widget")),
+                       (("writeup", "Backdoor found"), ("writeup", "Backdoor in X")),
+                       # CVE-2026-124308: two oss-security posts named a function, "DecLibRecon::createSubPicRefBufs".
+                       (("discussion", "UAF in DecLibRecon::createSubPicRefBufs"), ("discussion", "DecLibRecon::createSubPicRefBufs again")),
+                       (("discussion", "x.getFile leaks"), ("discussion", "p->getFile too"))):
+            with self.subTest(titles):
+                self.assertEqual(summaries.trusted_names(self.mentions(*titles)), [])
 
-    def test_the_models_own_brackets_go_and_names_versions_and_products_stay(self):
-        for en, names, want in (
-                ("Widget flaw lets attackers in (VSA-2026-062)", [], "Widget flaw lets attackers in"),
-                ("Widget SSRF [SSRF]", [], "Widget SSRF"),
-                ("Widget flaw (not a security flaw)", [], "Widget flaw"),
-                ("Widget flaw (Java4Shell)", ["Java4Shell"], "Widget flaw (Java4Shell)"),
-                ("Widget flaw (before 16.1.4)", [], "Widget flaw (before 16.1.4)"),
-                ("Widget flaw (Widget Server)", [], "Widget flaw (Widget Server)"),
-                ("Widget flaw (Linux)", [], "Widget flaw (Linux)"),
-                ("Widget flaw (Java4Shell, SSRF)", ["Java4Shell"], "Widget flaw (Java4Shell)"),
-                ("Widget flaw [1.0, 2.0)", [], "Widget flaw [1.0, 2.0)")):
+    def test_the_models_own_brackets_stay_and_the_name_follows_them(self):
+        for en, want in (("Widget flaw lets attackers in (SSRF)", "Widget flaw lets attackers in (SSRF) (Java4Shell)"),
+                         ("Widget flaw (no login needed)", "Widget flaw (no login needed) (Java4Shell)"),
+                         ("Widget flaw (Java4Shell, SSRF)", "Widget flaw (Java4Shell, SSRF)"),  # already holds it
+                         ("Widget flaw lets attackers in", "Widget flaw lets attackers in (Java4Shell)")):
             with self.subTest(en):
-                summary = self.summary(en, platforms=["Linux"])
-                summaries.name_titles(summary, names)
+                summary = self.summary(en)
+                summaries.name_titles(summary, ["Java4Shell"])
                 self.assertEqual(summary["en"]["title"], want)
 
-    def test_a_trusted_name_is_added_to_both_titles_that_lack_it_and_never_to_the_easy_title(self):
-        summary = self.summary("Widget decoder flaw runs code (November 2026 CSPU)", ko="위젯 디코더 결함 (Java4Shell)")
+    def test_each_title_gets_the_names_it_lacks_and_the_easy_title_none(self):
+        summary = self.summary("Widget decoder flaw runs code", ko="위젯 디코더 결함 (Java4Shell)")
         summaries.name_titles(summary, ["Java4Shell", "Base64Bleed"])
         self.assertEqual(summary["en"]["title"], "Widget decoder flaw runs code (Java4Shell, Base64Bleed)")
-        self.assertEqual(summary["ko"]["title"], "위젯 디코더 결함 (Java4Shell)")  # already names one: left as it is
+        self.assertEqual(summary["ko"]["title"], "위젯 디코더 결함 (Java4Shell) (Base64Bleed)")
         self.assertEqual((summary["en"]["easy_title"], summary["ko"]["easy_title"]), ("Widget hackable", "위젯 해킹 위험"))
+        nothing = self.summary("Widget flaw (VSA-2026-062)")
+        summaries.name_titles(nothing, [])
+        self.assertEqual(nothing["en"]["title"], "Widget flaw (VSA-2026-062)")
 
     def test_a_stored_summary_gets_the_name(self):
         incident = {"id": "x", "mentions": [{"kind": "writeup", "url": SSHOLE_SUMMARY["lead"], "title": "SSHole: musl OpenSSH"},
@@ -1471,5 +1471,5 @@ class FlawNameTitleTest(unittest.TestCase):
         summaries.save_reply(incident, FakeClaude.message(reply), text, {"cves": [], "kev": False, "advisories": [], "n": 0},
                              "2026-11-18T00:00:00Z")
         self.assertNotIn("summary_error", incident, incident.get("summary_error"))
-        self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"] + " (SSHole)")
+        self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"] + " (OSS advisory) (SSHole)")
         self.assertEqual(incident["summary"]["ko"]["title"], SSHOLE_SUMMARY["ko"]["title"] + " (SSHole)")

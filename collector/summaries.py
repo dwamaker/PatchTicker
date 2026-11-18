@@ -1398,43 +1398,37 @@ def parse(reply, input_text, urls):
     return summary
 
 
-# The flaw's own name in a title is set here, never by a prompt line (owner's trial 11-18, 66 Incidents: names right
-# 5 -> 14, closing brackets that were no name 8 -> 0, names missed 13 -> 4). A name-looking word: ...2Shell, ...4Shell,
-# ...Bleed, ...door and the like, or a coinage with a capital inside (regreSSHion).
-NAME_WORD = re.compile(r"\b[\w-]*(?:[24][Ss]hell|SHELL|Bleed|bleed|SSHole|sshole|door|Gate|Hole)\b|\b[a-z]+[A-Z]\w*\b")
+# The flaw's own name in a title is added here, never asked for by a prompt line (owner's trial 11-18, 66 Incidents:
+# names right 5 -> 14, names missed 13 -> 4). The model's own closing brackets stay (owner 11-18: "(SSRF)", "(no login
+# needed)" tell a reader something). A name-looking word: ...2Shell, ...4Shell, ...Bleed, ...door and the like, or a
+# coinage with a capital inside (regreSSHion). Never a word a title writes as code, after "::", "." or "->": oss-security
+# titles name functions ("DecLibRecon::createSubPicRefBufs", two posts of CVE-2026-124308).
+NAME_WORD = re.compile(r"(?<![:.>])\b[\w-]*(?:[24][Ss]hell|SHELL|Bleed|bleed|SSHole|sshole|door|Gate|Hole)\b"
+                       r"|(?<![:.>])\b[a-z]+[A-Z]\w*\b")
 NOT_A_NAME = {"backdoor"}  # a kind of flaw that many titles carry, not one flaw's name
-CLOSING_BRACKET = re.compile(r"\s*[(\[]([^()\[\]]+)[)\]]\s*$")
-VERSION_PART = re.compile(r"\d+\.\d")
 
 
 def trusted_names(incident, input_text=""):
     """A name the input's fact sheet gives from two or more source hosts (the request's own input: the batch path keeps
-    it), then the name-looking words that two or more of the Incident's Mention titles (repos left out) carry letter for
-    letter. One source alone is not enough: round 3 then gave advisory titles and "UNIX Hard Link" as names."""
+    it), then the name-looking words that two or more of the Incident's Mention titles carry letter for letter. Repos and
+    CVE records do not count. One source alone is not enough: round 3 then gave advisory titles and "UNIX Hard Link" as names."""
     names = page_sheets.sheet_names(input_text)
-    titles = [m.get("title") or "" for m in incident["mentions"] if m["kind"] != "repo"]
+    titles = [m.get("title") or "" for m in incident["mentions"] if m["kind"] not in ("repo", "cve_record")]
     words = sorted({w for t in titles for w in NAME_WORD.findall(t)})
     return names + [w for w in words if w.lower() not in NOT_A_NAME and sum(w in t for t in titles) >= 2
                     and w.lower() not in {n.lower() for n in names}]
 
 
 def name_titles(summary, names):
-    """Both titles' closing bracket goes unless each of its parts is a trusted name, a version ("4.0.2 and older"; the
-    numbers check has read it), or one of the Entry's products, names or platforms ("(Red Hat Enterprise Linux)"): the
-    rest is the model's own habit ("(VSA-2026-062)", "(SSRF)", "(not a security flaw)"). Then " (Name, ...)" is added
-    to a title that holds none of the trusted names. The Easy title is left alone: five plain words for a reader who
-    never heard of the product, where a coined name says nothing."""
-    known = [k.lower() for k in (*summary["products"], *summary["ko"]["names"], *summary["en"]["names"],
-                                 *summary["platforms"]) if isinstance(k, str)]
+    """" (Name, ...)" at the end of the Korean and the English title, for each trusted name the title does not already
+    hold anywhere (inside a bracket of its own counts). A closing bracket the model wrote stays before it: "... (SSRF)
+    (Name)". The Easy title is left alone: five plain words for a reader who never heard of the product, where a coined
+    name says nothing."""
     for lang in ("ko", "en"):
         title = summary[lang]["title"]
-        found = CLOSING_BRACKET.search(title)
-        parts = [p.strip() for p in re.split(r",|·", found[1]) if p.strip()] if found else []
-        if found and not all(p in names or VERSION_PART.search(p) or any(p.lower() in k for k in known) for p in parts):
-            title = title[:found.start()].rstrip()
-        if names and not any(n.lower() in title.lower() for n in names):
-            title = f"{title} ({', '.join(names)})"
-        summary[lang]["title"] = title
+        missing = [n for n in names if n.lower() not in title.lower()]
+        if missing:
+            summary[lang]["title"] = f"{title.rstrip()} ({', '.join(missing)})"
 
 
 def input_cves(input_text):
