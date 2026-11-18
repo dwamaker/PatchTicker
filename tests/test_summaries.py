@@ -530,6 +530,7 @@ class InstantSummaryTest(unittest.TestCase):
         # 11-18 06:40 KST: 96 Incidents at once, every candidate asked one after another; the cycle took 25 min 53 s.
         from datetime import datetime
         from collector.cycle import INSTANT_SECONDS, route_summaries
+        from collector.logfile import CycleLine
         now, t = datetime(2026, 11, 9, 12, 0), [0]
         row = lambda n, cvss, **more: {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss, "mentions": [],  # noqa: E731
                                        "first_seen": "2026-11-09T11:00:00Z", "published": "2026-11-09T10:00:00Z",
@@ -543,9 +544,13 @@ class InstantSummaryTest(unittest.TestCase):
             return create(**params)
         claude.messages.create = slow
         asked = lambda: [p["messages"][0]["content"].split("\n")[0] for p in claude.sent if "Incident:" in p["messages"][0]["content"]]  # noqa: E731
+        line = CycleLine("2026-11-09T12:00:00Z", lambda: t[0])
         with contextlib.redirect_stderr(io.StringIO()):
             route_summaries(rows, [], claude, lambda url, headers=None: b"", now, "2026-11-09T12:00:00Z", set(), probe=False,
-                            clock=lambda: t[0])
+                            clock=lambda: t[0], line=line)
+        # The cycle's log line counts them: three asked (each reply unreadable, so failed), one kept back.
+        self.assertEqual({k: line.counts[k] for k in ("summaries_asked", "summaries_kept_back", "summaries_failed")},
+                         {"summaries_asked": 3, "summaries_kept_back": 1, "summaries_failed": 3})
         # KEV, then CVSS 9+, then arrival order inside the 7+ band; started at 0, 70 and 140 s of the 180.
         self.assertEqual(asked(), ["Incident: CVE-2026-3", "Incident: CVE-2026-2", "Incident: CVE-2026-1"])
         self.assertEqual(INSTANT_SECONDS, 180)

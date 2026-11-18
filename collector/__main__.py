@@ -14,7 +14,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import alert, curators, cve_lines, discord, indexnow, kisa, news, sheets, summaries
+from collector import alert, curators, cve_lines, discord, indexnow, kisa, logfile, news, sheets, summaries
 from collector.cycle import run_cycle
 from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -22,7 +22,7 @@ from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, r
 REQUIRED = ("VR_COLLECTOR_ID", "VR_CONTACT")
 R2 = ("VR_R2_ENDPOINT", "VR_R2_BUCKET", "VR_R2_ACCESS_KEY_ID", "VR_R2_SECRET_ACCESS_KEY")
 OPTIONAL = ("VR_STORE_DIR", "VR_BACKUP_DB", "VR_NVD_API_KEY", "VR_GITHUB_TOKEN", "VR_CURATOR_FEEDS", "ANTHROPIC_API_KEY",
-            "VR_DISCORD_WEBHOOK", "VR_INDEXNOW_KEY", "VR_DISTRO_TABLE", "VR_SUMMARY_REVIEW") + R2
+            "VR_DISCORD_WEBHOOK", "VR_INDEXNOW_KEY", "VR_DISTRO_TABLE", "VR_SUMMARY_REVIEW", "VR_LOG_DIR") + R2
 
 
 def load_settings(path):
@@ -96,6 +96,9 @@ def cycle_end_main(code, path):
     outcome."""
     try:
         settings = lenient_settings(path)
+        logfile.start(settings)
+        if code != "0":  # a killed cycle (124: the timeout) wrote no `cycle` line; this one marks the gap in the log
+            print(f"cycle_end exit={code} result={'timed_out' if code == str(alert.TIMED_OUT) else 'failed'}")
         url = settings.get("VR_DISCORD_WEBHOOK")
         post = make_http_post(f"vuln-radar/0.1 ({settings.get('VR_CONTACT', 'collector')})")
         # Built only when a line is due: make_notifier logs a line each time it is made.
@@ -121,6 +124,7 @@ def alert_test_main(path):
 
 def cycle_main(path):
     settings = load_settings(path)
+    logfile.start(settings)  # VR_LOG_DIR: everything printed from here, and the cycle line, also goes to the day's file
     key = settings.get("ANTHROPIC_API_KEY")
     agent = f"vuln-radar/0.1 ({settings['VR_CONTACT']})"
     run_cycle(

@@ -18,6 +18,8 @@ from collector.store import MemoryStore
 # The older seam tests predate quick titles and gathered batches (2026-11-09): every waiting Summary goes out at once.
 from collector import summaries as _summaries  # noqa: E402
 _summaries.QUICK_TITLES, _summaries.BATCH_MIN = False, 1
+# Each cycle's `cycle` log line stays out of the test output (test_logfile reads it).
+cycle.emit = lambda text: None
 
 FIXTURES = Path(__file__).parent / "fixtures"
 NVD_FIXTURES = FIXTURES / "nvd"

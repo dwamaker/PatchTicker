@@ -257,9 +257,11 @@ class CacheTest(unittest.TestCase):
                 raise OSError("down")
             return PAGE.encode()
         claude = FakeClaude(*[self.reply()] * 6)
+        counts = {"sheets_asked": 0, "sheets_failed": 0, "sheets_kept_back": 0}
         with contextlib.redirect_stderr(io.StringIO()):
-            got = sheets.fill(store, [inc], claude, get, STAMP, limit=3)
+            got = sheets.fill(store, [inc], claude, get, STAMP, limit=3, counts=counts)
         self.assertEqual(len(claude.sent), 3)
+        self.assertEqual(counts, {"sheets_asked": 3, "sheets_failed": 0, "sheets_kept_back": 2})  # the cycle's log line
         self.assertNotIn("https://h1.example/a", {s["url"] for s in got[inc["id"]]})
         with contextlib.redirect_stderr(io.StringIO()):
             sheets.fill(store, [inc], claude, lambda url, headers=None: PAGE.encode(), STAMP)
