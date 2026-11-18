@@ -799,10 +799,17 @@ def lost_fix(incident, summary, input_text, fix_rows=()):
     records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
     and the records' own text does not call it affected (the whole version: a package's "0.2.3-7.el10_2.9" is not the
     upstream 0.2.3). A line the union adds back from the sheet (sheet_lines on fix_rows) is no loss: Java4Shell's draws
-    spent every try when the model dropped 21.3.20.1 or 17.0.21.1.2, which a trusted row gives. The reason, or ""."""
+    spent every try when the model dropped 21.3.20.1 or 17.0.21.1.2, which a trusted row gives. Nor is a version the
+    guards reject (fixed_conflict, flagged_fixes): a reply that drops it is right. The reason, or ""."""
+    lost = lost_fixes(incident, summary, input_text, fix_rows)
+    return f"{LOST_FIX}{lost[0]}" if lost else ""
+
+
+def lost_fixes(incident, summary, input_text, fix_rows=()):
+    """The stored Summary's fixed versions lost_fix finds missing from the reply, in their stored order."""
     stored = incident.get("summary")
     if not stored:
-        return ""
+        return []
     # A line the union added (from_sheet) is not the model's to keep: save_reply adds it again after this check.
     def versions(s):
         return [v for v in [s.get("fixed"), *(f.get("version") for f in s.get("fixes") or [] if isinstance(f, dict) and not f.get("from_sheet"))]
@@ -813,6 +820,7 @@ def lost_fix(incident, summary, input_text, fix_rows=()):
     new_lines = [tuple(map(int, m.split("."))) for v in kept for m in VERSION_RE.findall(v)]
     affected = page_sheets.record_affected(record_texts(input_text))
     bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
+    lost = []
     for v in dict.fromkeys(versions(stored)):
         dotted = VERSION_RE.search(v)
         if compact(v) in new_text:
@@ -827,12 +835,41 @@ def lost_fix(incident, summary, input_text, fix_rows=()):
         if (line and not page_sheets.distro_build(v) and any(n[:2] == line[:2] and n >= line for n in new_lines)
                 or EPOCH.sub("", v.strip()) in affected):
             continue
+        # As a fixes line, so a distribution's package passes the guards as it does there.
+        as_line = {"fixed": "", "fixes": [{"version": v}]}
+        if fixed_conflict(incident, as_line) or flagged_fixes(as_line, input_text):
+            continue
         bare = EPOCH.sub("", v.strip())
         given = bare in bounds or any(re.search(rf"{FIX_WORDS}[^.\n]{{0,60}}?(?<![\w.]){re.escape(form)}(?![\w.]|-\d)",
                                                 input_text, re.I) for form in {v.strip(), bare})
         if given:
-            return f"{LOST_FIX}{v.strip()}"
-    return ""
+            lost.append(v.strip())
+    return lost
+
+
+def carry_lost(incident, summary, input_text, fix_rows=()):
+    """The second miss (owner, 11-18: ILIAS, CVE-2026-131850, lost its stored 9.25 three times while its own advisory
+    gives 9.25, 10.13 and 11.6 and the record only 11.6; the Summary was given up): each version lost_fixes finds still
+    missing comes back from the stored Summary, its stored fixes lines marked from_stored (the Board reads only for and
+    version), and the headline fixed when the stored fixed was that version and the reply has none. A version the stored
+    Summary had as its fixed only, beside a reply's own fixed or as a distribution's package (never a bare fixed), comes
+    as a line under the stored first product. A line the union would not add (sheets.union: the reply already shows it,
+    or names its release under the same label) stays out; the guards were asked in lost_fixes."""
+    stored = incident.get("summary") or {}  # a first Summary loses nothing (lost_fixes)
+    for v in lost_fixes(incident, summary, input_text, fix_rows):
+        lines = [f for f in stored.get("fixes") or [] if isinstance(f, dict) and not f.get("from_sheet")
+                 and str(f.get("version", "")).strip() == v]
+        headline = str(stored.get("fixed") or "").strip() == v
+        bare = not DISTRO_PACKAGE.search(v)  # a distribution's package is never the bare fixed (parse)
+        if headline and not lines and (summary.get("fixed") or not bare):
+            lines = [{"for": (stored.get("products") or [""])[0], "version": stored["fixed"]}]
+        # Lines first: the union counts the headline fixed as shown.
+        for f in lines:
+            line = {"for": str(f.get("for", "")), "version": f["version"], "devices": list(f.get("devices") or [])}
+            if page_sheets.union(summary, [line]):
+                summary.setdefault("fixes", []).append(line | {"from_stored": True})
+        if headline and bare and not summary.get("fixed"):
+            summary["fixed"] = stored["fixed"]
 
 
 # A run of letters outside ASCII, Latin-1 and Latin Extended-A/B ("é", "ü", "İ", "µ") and Hangul (jamo, compatibility
@@ -1077,6 +1114,26 @@ def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False
 BATCH = "batch"  # save_reply's review_with for a batch reply: its review goes out in the next review batch
 
 
+def sound(incident):
+    """A stored Summary no re-summary trigger finds fault with: no fixed version the records call affected, no word in
+    another script, no attacks without their source (needs_summary's own checks)."""
+    stored = incident.get("summary")
+    return bool(stored) and not (fixed_conflict(incident, stored) or stray_script(incident, stored)
+                                 or stored.get("exploited") and not stored.get("exploited_source"))
+
+
+def hold(incident, seen, due):
+    """A re-summary whose last try failed a hard check (save_reply's conflict) while the stored Summary is sound: the
+    stored Summary stays quietly, not given up (no final, so no summary_failures entry and no alert: an alert means a
+    reader misses something), and the triggers this request answered are spent (summary_basis takes its seen, counted
+    as keep() counts), so only a new trigger asks again."""
+    print(f"summaries: {incident['id']} keeps its stored Summary after: {incident['summary_error']['reason']}"[:400],
+          file=sys.stderr)
+    incident.pop("summary_error")
+    n = incident.get("summary_basis", {}).get("n", 0)
+    incident["summary_basis"] = seen | {"n": n + 1 if due else max(n, 1)}
+
+
 def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, fix_rows=(), carry=(), finders=()):
     # review_with (owner 11-16, "모든 요약에 검토 추가"): None for no review (VR_SUMMARY_REVIEW=0), a client for the instant
     # path (one review call here), or BATCH (the reply waits in review_pending for a review batch, submit_reviews()).
@@ -1102,13 +1159,18 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
         summary["exploited_disputed"] = True
     # A fixed version below the CVE records' bound, or a word in a script the Incident never had, is never stored, on
     # the last try either.
-    # A fixed version the stored Summary had and the input still gives is never lost: asked again, and when the tries
-    # run out the stored Summary stays.
+    # A fixed version the stored Summary had and the input still gives is never lost: asked once with a note naming it;
+    # missed again (or on the last try) the stored line is carried into the reply (carry_lost), which goes on.
     # lost_fix asks the union (sheet_lines) first: a line it adds back costs no try.
+    error = incident.get("summary_error", {})
+    if LOST_FIX in error.get("reason", "") or error.get("tries", 0) + 1 >= MAX_TRIES:
+        carry_lost(incident, summary, text, fix_rows)
     conflict = (fixed_conflict(incident, summary) or lost_fix(incident, summary, text, fix_rows)
                 or stray_script(incident, summary, text))
     if conflict:
         failed(incident, conflict)
+        if incident.get("summary_error", {}).get("final") and sound(incident):
+            hold(incident, seen, due)
         return
     # Jargon in the Easy view, a stopgap without the step its mitigation says it needs, a field or version in one
     # language only or a forbidden Korean word (language_gaps), or a stray bracket in a title costs a retry, never the Summary: the last try is kept as
