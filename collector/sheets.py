@@ -279,10 +279,29 @@ def sheet_names(input_text):
 SCORE_ROLES = ("vendor_advisory", "cna_record", "finder_disclosure")
 
 
+# Words that name the same party when they trail a name: "Calif", "Calif.io" and "Calif Research" are one publisher.
+PARTY_TAIL = {"inc", "ltd", "llc", "corp", "corporation", "co", "company", "gmbh", "ag", "sa", "plc", "io", "com", "org",
+              "net", "research", "labs", "lab", "security", "team"}
+
+
+def party(name):
+    words = re.sub(r"[^\w]+", " ", str(name).lower()).split()
+    while len(words) > 1 and words[-1] in PARTY_TAIL:
+        words.pop()
+    return " ".join(words)
+
+
+def same_party(given_by, publisher):
+    """The score row's giver is the page's publisher, by name: the model's publisher_gives_it is not steady (Java4Shell
+    live, 11-18: false for Calif's own "Under CVSS 4.0, this vulnerability scores 9.2", true in the trials). Whole names
+    after normalising, never a part of a longer different one ("Oracle" is not "Oracle Cloud Infrastructure")."""
+    return bool(party(publisher)) and party(given_by) == party(publisher)
+
+
 def page_scores(incident, sheets):
     """The owner's rule "the higher one wins", taken to a finder's own score (Oracle's record: 8.1 under CVSS 3.1; Calif's
     own page: 9.2 under CVSS 4.0). A sheet score counts only when it names one of the Incident's CVE IDs, the page's own
-    publisher gives it, the page is a vendor advisory, a CNA record or the finder's disclosure, the page is no news site
+    publisher gives it (by the sheet's word, or its giver is the publisher by name: same_party), the page is a vendor advisory, a CNA record or the finder's disclosure, the page is no news site
     or curator the collector reads, and its words are on the page letter for letter. It raises that CVE's score (and the
     Incident's) only when higher, with who gave it as "by". Over 66 trial Incidents: one raise, rightly, none wrongly.
     True when a score changed."""
@@ -292,7 +311,8 @@ def page_scores(incident, sheets):
             continue
         for row in f["scores"]:
             value, cve = score_value(row["score"]), row["cve"].strip().upper()
-            if (value is None or cve not in incident["cves"] or not CVE_ID.fullmatch(cve) or not row["publisher_gives_it"]
+            own = row["publisher_gives_it"] or same_party(row["given_by"], f["publisher"])
+            if (value is None or cve not in incident["cves"] or not CVE_ID.fullmatch(cve) or not own
                     or not row.get("on_page") or not f["publisher"].strip()):
                 continue
             version = row["cvss_version"].strip() if re.fullmatch(r"\s*[234]\.\d\s*", row["cvss_version"]) else ""
