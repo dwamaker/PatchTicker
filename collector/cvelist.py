@@ -35,31 +35,52 @@ TRACKER = re.compile(r"//(?:bugzilla|bugs?|jira|phabricator|gerrit|discuss|forum
 
 
 MAX_RECORDS = 250
+# Cycles a record that failed (a 404 while the delta log is ahead of the raw path, a 5xx, a body that is no JSON) is
+# asked again before it is given up with one line: an hour at one cycle every 10 minutes.
+MISSING_TRIES = 6
+# Failed records in one cycle after which the rest are left for the next cycle unasked, so a host that went down does
+# not hold the cycle for DEADLINE a record (net.py).
+MISSING_STOP = 5
 
 
-def fetch(checkpoint, http_get, known=frozenset(), limit=MAX_RECORDS):
-    """Return (new published CVE records, next checkpoint). The checkpoint is a delta fetchTime.
+def fetch(checkpoint, http_get, known=frozenset(), limit=MAX_RECORDS, pending=None):
+    """Return (new published CVE records, next checkpoint, pending). The checkpoint is a delta fetchTime.
 
     An updated record is read only when its CVE is in `known` (already on the Board), so a CNA adding
     an advisory or exploit link reaches the row without pulling the hundreds of old CVEs touched daily.
     A long gap (a backfill, a box that was down) is read oldest first, whole entries at a time, until `limit`
     records; the checkpoint stops after the last entry read, so the next cycle goes on from there (owner, 11-09: a
-    7-day backfill in one cycle would have run for hours)."""
+    7-day backfill in one cycle would have run for hours).
+    A record that cannot be read is left out, never the cycle (11-18: one 404 ended a cycle): it goes into `pending`
+    ({CVE ID: failed cycles}), asked again each cycle while the checkpoint moves on, and is given up after MISSING_TRIES.
+    The delta log itself failing still ends the cycle (see cycle.steps)."""
+    pending = dict(pending or {})
     log = json.loads(http_get(DELTA_LOG_URL))  # newest entry first
-    if not log:
-        return [], checkpoint
     # shortcut: with no checkpoint, start from the newest entry instead of backfilling 30 days.
     entries = [e for e in log if e["fetchTime"] > checkpoint] if checkpoint else log[:1]
-    links = {}
-    reached = log[0]["fetchTime"]
+    links = {cve: record_url(cve) for cve in pending}
+    reached = log[0]["fetchTime"] if log else checkpoint
     for entry in reversed(entries):
         for item in entry["new"] + [u for u in entry.get("updated", []) if u["cveId"] in known]:
             links.setdefault(item["cveId"], item["githubLink"])
         if len(links) >= limit and entry is not entries[0]:
             reached = entry["fetchTime"]
             break
-    records = [json.loads(http_get(url)) for url in links.values()]
-    return [r for r in records if r["cveMetadata"]["state"] == "PUBLISHED"], reached
+    records, failed = [], 0
+    for cve, url in links.items():
+        if failed >= MISSING_STOP:
+            pending.setdefault(cve, 0)  # not asked: no try counted
+            continue
+        try:
+            records.append(json.loads(http_get(url)))
+            pending.pop(cve, None)
+        except (OSError, ValueError) as err:
+            failed += 1
+            pending[cve] = pending.get(cve, 0) + 1
+            if pending[cve] >= MISSING_TRIES:
+                del pending[cve]
+                print(f"cvelist: gave up record {cve} after {MISSING_TRIES} cycles: {err!r}"[:300], file=sys.stderr)
+    return [r for r in records if r.get("cveMetadata", {}).get("state") == "PUBLISHED"], reached, pending
 
 
 RECORD_URL = "https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/{year}/{group}xxx/{cve}.json"

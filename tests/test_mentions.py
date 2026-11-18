@@ -531,7 +531,7 @@ class StoryPageTest(unittest.TestCase):
                 return json.dumps(log).encode()
             return (FIXTURES / "cvelist" / "CVE-2026-123158.json").read_bytes()
 
-        records, _ = cvelist.fetch("2026-11-08T03:00:00Z", get, {"CVE-2026-123158"})
+        records, _, _ = cvelist.fetch("2026-11-08T03:00:00Z", get, {"CVE-2026-123158"})
         self.assertEqual(asked[1:], ["https://raw.example/CVE-2026-123158.json"])
         self.assertEqual([r["cveMetadata"]["cveId"] for r in records], ["CVE-2026-123158"])
 

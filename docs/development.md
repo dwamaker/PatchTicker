@@ -78,7 +78,7 @@ Each cycle ends with one line, also when it fails (a cycle killed by the 3000 s 
 step after it then writes `cycle_end exit=124 result=timed_out`, or `result=failed` for another non-zero exit):
 
 ```
-cycle start=2026-11-18T06:40:01Z took=212 read=58 link=6 distros=off sheets=31 summaries=96 board=21 new=96 summaries_asked=9 summaries_kept_back=84 summaries_failed=1 summaries_batched=0 sheets_asked=10 sheets_kept_back=4 sheets_failed=0 summaries_deadline=0 titles_kept_back=0 distros_asked=0 distros_kept_back=0 refused=3 refused_hosts=openjdk.org,www.reuters.com skipped=- fixes_lines=0 fixes_flagged=0 fixes_carried=0 result=ok
+cycle start=2026-11-18T06:40:01Z took=212 read=58 link=6 distros=off sheets=31 summaries=96 board=21 new=96 summaries_asked=9 summaries_kept_back=84 summaries_failed=1 summaries_batched=0 sheets_asked=10 sheets_kept_back=4 sheets_failed=0 summaries_deadline=0 titles_kept_back=0 distros_asked=0 distros_kept_back=0 refused=3 refused_hosts=openjdk.org,www.reuters.com skipped=- fixes_lines=0 fixes_flagged=0 fixes_carried=0 records_missing=0 result=ok
 ```
 
 Fields, in this order (times in whole seconds; a stage shows `off` when not set up, `skipped` when its source failed,
@@ -100,7 +100,10 @@ this cycle); `fixes_flagged` (Summaries stored this cycle on their last try with
 release line calls affected, the versions kept in the Summary's `fixes_flagged`, which the Board does not read);
 `fixes_carried` (lines code carried from the stored Summary into a re-summary that dropped them twice, or on its last
 try, while the input still gives them as fixes, marked `from_stored`, which the Board does not read, in the Summaries
-stored this cycle); `result` (`ok`, or
+stored this cycle); `records_missing` (CVE records the delta log named that answered an error, 404 included, or no
+JSON, or were left unasked after `MISSING_STOP` such failures: left out of this cycle and asked again next cycle, kept
+in `checkpoints.json` as `cvelist_missing`, given up with one `cvelist: gave up record` line after `MISSING_TRIES`
+cycles); `result` (`ok`, or
 `failed:<stage>:<exception type>`).
 
 Mentions join an Incident when they cite one of its CVE IDs or, while either side has no CVE, one

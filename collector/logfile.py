@@ -116,6 +116,7 @@ class CycleLine:
         self.fixes_lines = 0  # lines the union added to fixes in the Summaries stored this cycle (cycle.route_summaries)
         self.fixes_flagged = 0  # Summaries stored this cycle with a fixed version the records call affected (fixes_flagged)
         self.fixes_carried = 0  # lines carried from the stored Summary into the Summaries stored this cycle (from_stored)
+        self.records_missing = 0  # CVE records left out this cycle, to be asked again (cvelist.fetch's pending)
 
     def lap(self, stage, then=None):
         """The time since the last lap goes to `stage`; `then` is the stage running from here."""
@@ -152,5 +153,5 @@ class CycleLine:
             *(f"{s}={stage(s)}" for s in STAGES), *(f"{k}={v}" for k, v in self.counts.items()),
             f"refused={sum(self.refused.values())}", f"refused_hosts={hosts}", f"skipped={','.join(self.skipped) or '-'}",
             f"fixes_lines={self.fixes_lines}", f"fixes_flagged={self.fixes_flagged}",
-            f"fixes_carried={self.fixes_carried}",
+            f"fixes_carried={self.fixes_carried}", f"records_missing={self.records_missing}",
             f"result={result}"])
