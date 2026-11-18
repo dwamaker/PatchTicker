@@ -225,14 +225,27 @@ class StoryPageTest(unittest.TestCase):
         self.assertIn("https://blog.example/asus", [m["url"] for m in self.incidents[3]["mentions"]])
         self.assertEqual(len(self.incidents), 5)
 
-    def test_a_page_naming_one_incidents_cve_next_to_another_incidents_list_page_stands_alone(self):
-        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-8888"},
-                                                {"kind": "advisory", "url": "https://www.asus.com/security-advisory"}],
-                                   "cves": ["CVE-2026-8888"], "urls": [], "text": "x"}, "2026-11-06T00:00:00Z")
-        self.link(self.incidents, self.story('CVE-2026-9999 <a href="https://www.asus.com/security-advisory">list</a>'),
+    def test_a_page_naming_one_incidents_cve_joins_it_whatever_its_links_hit(self):
+        # HN 50538240 (11-18): its page named CVE-2026-114938 and linked two other CVE-less stories' write-ups.
+        for item, url in ((50538199, "https://openjdk.org/groups/vulnerability/advisories/2026-11-17"),
+                          (50538123, "https://www.nytimes.com/2026/11/17/us/politics/ai-security-bug-java.html")):
+            self.link(self.incidents, self.story("", url, item), "2026-11-17T21:00:00Z")
+        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-114938"}],
+                                   "cves": ["CVE-2026-114938"], "urls": [], "text": "x"}, "2026-11-17T22:00:00Z")
+        page = ('Java4Shell, CVE-2026-114938. <a href="https://openjdk.org/groups/vulnerability/advisories/2026-11-17">a</a>'
+                ' <a href="https://www.nytimes.com/2026/11/17/us/politics/ai-security-bug-java.html">b</a>')
+        self.link(self.incidents, self.story(page, "https://java4shell.example/", 50538240), "2026-11-18T01:00:00Z")
+        self.assertEqual(len(self.incidents), 6)
+        self.rejoin()
+        java = next(i for i in self.incidents if i["id"] == "CVE-2026-114938")
+        self.assertIn("https://java4shell.example/", [m["url"] for m in java["mentions"]])
+        self.assertEqual(len(self.incidents), 5)  # the two linked stories stay apart: their pages cited nothing
+
+    def test_a_page_naming_cves_of_two_incidents_stands_alone_whatever_its_links_hit(self):
+        self.link(self.incidents, self.story('CVE-2026-123158 CVE-2026-9999 <a href="https://sshhole.com/">yet</a>'),
                   "2026-11-08T03:00:00Z")
         self.assertEqual(self.rejoin(), set())
-        self.assertEqual(len(self.incidents), 4)
+        self.assertEqual(len(self.incidents), 3)
 
     def test_a_page_naming_a_cve_only_in_its_related_posts_cards_stands_alone(self):
         apache = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-119618"}],

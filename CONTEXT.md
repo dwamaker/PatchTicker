@@ -23,7 +23,9 @@ _Avoid_: item, record, hit
 **Citations** (인용):
 For an HN story with no CVE, the CVE IDs and outside links found in the page it links to. Kept on its
 Incident for a week; when they point at exactly one other Incident (a CVE ID, or its advisory, write-up
-or repo page), the story is folded into it, whichever arrived first. A page counts only when no other Incident
+or repo page), the story is folded into it, whichever arrived first. A CVE ID outranks a link: when the page's CVE
+IDs are held by one Incident, the story joins it whatever its links point at; held by several, it stands alone
+(owner, 2026-11-18). Links decide only when no CVE ID does. A page counts only when no other Incident
 links it, and an advisory only when it names one notice: a vendor's list of notices says nothing about which
 Incident a story is about (owner, 2026-11-15).
 
