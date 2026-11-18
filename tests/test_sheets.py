@@ -124,7 +124,7 @@ class PageScoreTest(unittest.TestCase):
     def test_the_finders_own_score_raises_the_cve_and_says_who_gave_it(self):
         inc = self.java()
         self.assertTrue(sheets.page_scores(inc, [finder_page()]))
-        self.assertEqual(inc["cve_scores"]["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif",
+        self.assertEqual(inc["cve_scores"]["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif", "version": "4.0",
                                                                "record": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}})
         self.assertEqual(inc["cvss"], 9.2)
 
@@ -152,7 +152,7 @@ class PageScoreTest(unittest.TestCase):
     def test_the_board_view_carries_whose_the_shown_score_is_and_nothing_else_does(self):
         inc = self.java() | {"products": []}
         sheets.page_scores(inc, [finder_page()])
-        self.assertEqual(board_view(inc)["score_by"], {"cvss": 9.2, "by": "Calif", "record": 8.1})
+        self.assertEqual(board_view(inc)["score_by"], {"cvss": 9.2, "version": "4.0", "record": 8.1, "record_version": "3.1"})
         self.assertNotIn("score_by", board_view(self.java() | {"products": []}))  # no raise: no field
         group = self.java() | {"cves": ["CVE-2026-1000", "CVE-2026-1001"], "products": []}
         group["cve_scores"]["CVE-2026-1001"] = {"cvss": 9.5, "vector": "CVSS:3.1/AV:N"}

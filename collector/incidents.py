@@ -53,13 +53,21 @@ def board_view(incident):
 
 
 def score_by_field(incident):
-    """When the shown score is a page's raise (sheets.page_scores), whose it is and what the CVE record gives, for the one
-    plain line under the Summary (owner 11-18): {"score_by": {"cvss", "by", "record"}}. Only the top CVE's."""
+    """When the shown score is a page's raise (sheets.page_scores), it and the CVE record's, each with its CVSS version,
+    for the page's "CVSS 4.0 9.2 / CVSS 3.1 8.1" (owner 11-18: two standards): {"score_by": {"cvss", "version",
+    "record", "record_version"}}, a version "" when not known. Only the top CVE's."""
     top = top_cve(incident)
     entry = (incident.get("cve_scores") or {}).get(top) if top else None
     if not entry or not entry.get("by") or "record" not in entry:
         return {}
-    return {"score_by": {"cvss": entry["cvss"], "by": entry["by"], "record": entry["record"]["cvss"]}}
+    return {"score_by": {"cvss": entry["cvss"], "version": entry.get("version", ""), "record": entry["record"]["cvss"],
+                         "record_version": cvss_version(entry["record"]["vector"])}}
+
+
+def cvss_version(vector):
+    """"3.1" of "CVSS:3.1/AV:N/...", or "" (a CVSS 2 vector has no prefix, and none means not known)."""
+    found = re.match(r"CVSS:(\d\.\d)/", vector or "")
+    return found[1] if found else ""
 
 
 def distro_fields(incident, order):
@@ -794,7 +802,7 @@ def absorb(target, other):
             scores = target.setdefault("cve_scores", {})
             if "record" in entry:  # a page's raise: the record's own pair first, so it stays under the raise
                 merge_score(scores, cve, entry["record"]["cvss"], entry["record"]["vector"])
-            merge_score(scores, cve, entry["cvss"], entry["vector"], entry.get("by", ""))
+            merge_score(scores, cve, entry["cvss"], entry["vector"], entry.get("by", ""), entry.get("version", ""))
     for cve, day in (other.get("kev_cves") or {}).items():
         if cve in target["cves"]:
             listed = target.setdefault("kev_cves", {})
@@ -928,10 +936,11 @@ def merge_public_dates(incident, dates):
     return changed
 
 
-def merge_score(scores, cve, score, vector, by=""):
+def merge_score(scores, cve, score, vector, by="", version=""):
     """Keep `score` and its own vector as `cve`'s entry in a cve_scores map when it has none or this one is strictly
     higher, so an equal score never flips the vector between cycles. by: who gave a score read from a page
-    (sheets.page_scores). Such an entry is {"cvss": the page's score, "vector": "", "by", "record": {"cvss", "vector"}}:
+    (sheets.page_scores), with the CVSS version the page names ("4.0", or none). Such an entry is {"cvss": the page's
+    score, "vector": "", "by", "version", "record": {"cvss", "vector"}}:
     the record's (or NVD's) own pair stays under "record", and a higher record or NVD score that is still not above the
     page's updates it there. True when the entry changed."""
     old = scores.get(cve)
@@ -944,7 +953,8 @@ def merge_score(scores, cve, score, vector, by=""):
         return True
     if by:
         record = old and old.get("record", {"cvss": old["cvss"], "vector": old["vector"]})
-        scores[cve] = {"cvss": score, "vector": "", "by": by} | ({"record": record} if record else {})
+        scores[cve] = ({"cvss": score, "vector": "", "by": by} | ({"version": version} if version else {})
+                       | ({"record": record} if record else {}))
     else:
         scores[cve] = {"cvss": score, "vector": vector or ""}
     return True

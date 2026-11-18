@@ -295,7 +295,8 @@ def page_scores(incident, sheets):
             if (value is None or cve not in incident["cves"] or not CVE_ID.fullmatch(cve) or not row["publisher_gives_it"]
                     or not row.get("on_page") or not f["publisher"].strip()):
                 continue
-            if merge_score(incident.setdefault("cve_scores", {}), cve, value, "", by=" ".join(f["publisher"].split())):
+            version = row["cvss_version"].strip() if re.fullmatch(r"\s*[234]\.\d\s*", row["cvss_version"]) else ""
+            if merge_score(incident.setdefault("cve_scores", {}), cve, value, "", by=" ".join(f["publisher"].split()), version=version):
                 incident["cvss"] = max(incident.get("cvss", 0), value)
                 changed = True
     return changed
