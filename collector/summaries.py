@@ -760,7 +760,15 @@ EPOCH = re.compile(r"(?<![\w.:])\d+:(?=\d)")  # "0:" of "0:1.21.1-10.el9_8.3": t
 FIX_WORDS = r"(?:fixed|patched|resolved|upgrade to|update to|updating to|before|prior to|<\s?)"
 
 
-def lost_fix(incident, summary, input_text):
+def sheet_lines(incident, summary, fix_rows, text):
+    """The union's lines for a reply (sheets.union), marked from_sheet: each trusted sheet row (fix_rows: sheets.fix_rows)
+    it lacks that neither fixed_conflict nor record_says_affected rejects."""
+    return [line | {"from_sheet": True} for line in page_sheets.union(summary, [
+        r for r in fix_rows if not fixed_conflict(incident, {"fixed": "", "fixes": [r]})
+        and not record_says_affected({"fixed": "", "fixes": [r]}, text)])]
+
+
+def lost_fix(incident, summary, input_text, fix_rows=()):
     """A re-summary that drops a fixed version the stored Summary had while the input still gives it as a fix (Git in the
     integrated test, 11-18: the stored 2.49.1, the record's "before 2.49.1", a draw that named none; yggdrasil,
     CVE-2026-18379, whose only fixed version went). Not a loss: the same version without its epoch, or a version of the
@@ -771,7 +779,8 @@ def lost_fix(incident, summary, input_text):
     have renamed it ("U/L 95" by its build number). The input gives a version as a fix, by its exact text, when the CVE
     records' fix keys bound at it, or a fix word stands just before it ("before 2.49.1", "Fixed version: ... 1.4.4"),
     and the records' own text does not call it affected (the whole version: a package's "0.2.3-7.el10_2.9" is not the
-    upstream 0.2.3). The reason, or ""."""
+    upstream 0.2.3). A line the union adds back from the sheet (sheet_lines on fix_rows) is no loss: Java4Shell's draws
+    spent every try when the model dropped 21.3.20.1 or 17.0.21.1.2, which a trusted row gives. The reason, or ""."""
     stored = incident.get("summary")
     if not stored:
         return ""
@@ -779,9 +788,10 @@ def lost_fix(incident, summary, input_text):
     def versions(s):
         return [v for v in [s.get("fixed"), *(f.get("version") for f in s.get("fixes") or [] if isinstance(f, dict) and not f.get("from_sheet"))]
                 if isinstance(v, str) and v.strip()]
+    kept = versions(summary) + [line["version"] for line in sheet_lines(incident, summary, fix_rows, input_text)]
     compact = lambda t: re.sub(r"\s+", "", EPOCH.sub("", t)).lower()  # noqa: E731
-    new_text = compact(" ".join(versions(summary)))  # the Board's fix line reads these, not the mitigation
-    new_lines = [tuple(map(int, m.split("."))) for v in versions(summary) for m in VERSION_RE.findall(v)]
+    new_text = compact(" ".join(kept))  # the Board's fix line reads these, not the mitigation
+    new_lines = [tuple(map(int, m.split("."))) for v in kept for m in VERSION_RE.findall(v)]
     affected = page_sheets.record_affected(record_texts(input_text))
     bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
     for v in dict.fromkeys(versions(stored)):
@@ -1075,7 +1085,8 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     # the last try either.
     # A fixed version the stored Summary had and the input still gives is never lost: asked again, and when the tries
     # run out the stored Summary stays.
-    conflict = (fixed_conflict(incident, summary) or record_says_affected(summary, text) or lost_fix(incident, summary, text)
+    # lost_fix asks the union (sheet_lines) first: a line it adds back costs no try.
+    conflict = (fixed_conflict(incident, summary) or record_says_affected(summary, text) or lost_fix(incident, summary, text, fix_rows)
                 or stray_script(incident, summary, text))
     if conflict:
         failed(incident, conflict)
@@ -1098,9 +1109,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     # The union of fixed versions (owner's carry trial, 11-18), after every check so it costs no retry, and before the
     # review so the reviewed and stored Summary carry it: each trusted sheet row (fix_rows: sheets.fix_rows) the reply
     # lacks, marked from_sheet (the Board reads only for and version). Java4Shell kept 14 of 14 lines in all six draws.
-    summary["fixes"] = [*(summary.get("fixes") or []), *(line | {"from_sheet": True} for line in page_sheets.union(summary, [
-        r for r in fix_rows if not fixed_conflict(incident, {"fixed": "", "fixes": [r]})
-        and not record_says_affected({"fixed": "", "fixes": [r]}, text)]))]
+    summary["fixes"] = [*(summary.get("fixes") or []), *sheet_lines(incident, summary, fix_rows, text)]
     draft = {"summary": summary, "seen": seen, "stamp": stamp, "listed": list(listed), "due": due, "words": words}
     last = incident.get("summary_error", {}).get("tries", 0) + 1 >= MAX_TRIES
     if problem and not last:

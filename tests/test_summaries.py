@@ -1851,6 +1851,18 @@ class LostFixTest(unittest.TestCase):
         self.assertEqual(summaries.lost_fix(cockpit, self.reply("", ["0:366.1.1-1.el10_3", "366.1.1-1.el9_9"]),
                                             self.text("cockpit flaw.")), "")  # the epoch aside
 
+    def test_a_line_the_union_adds_back_from_the_sheet_is_no_loss(self):
+        # Java4Shell (rewritten): the draw dropped Corretto's line it wrote before; a trusted sheet row gives it.
+        java = {"id": "x", "summary": {"fixed": "17.0.21.1", "fixes": [{"for": "Oracle Java SE 17", "version": "17.0.21.1"},
+                                                                       {"for": "Amazon Corretto 21", "version": "21.3.20.1"}]}}
+        reply, text = self.reply("17.0.21.1", ["17.0.21.1"]), self.text("Java SE flaw. Fixed in Amazon Corretto 21.3.20.1 and later.")
+        row = {"for": "Amazon Corretto 21", "version": "21.3.20.1"}
+        self.assertEqual(summaries.lost_fix(java, reply, text), summaries.LOST_FIX + "21.3.20.1")
+        self.assertEqual(summaries.lost_fix(java, reply, text, [row]), "")
+        self.assertEqual(reply["fixes"], [{"for": "Git", "version": "17.0.21.1", "devices": []}])  # asking changes nothing
+        # A row the union's checks refuse (below the records' first fixed version of its line) adds nothing back.
+        self.assertTrue(summaries.lost_fix(java | {"fix_keys": ["amazon:corretto<21.3.21"]}, reply, text, [row]))
+
     def test_a_version_without_a_dotted_number_is_lost_only_when_no_fix_is_left(self):
         # Samsung, CVE-2026-21148 (rewritten): the only fix went to the mitigation.
         samsung = {"id": "x", "summary": {"fixed": "SMR Nov-2026 Release 1", "fixes": []}}
