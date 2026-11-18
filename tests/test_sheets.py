@@ -109,9 +109,9 @@ class MergeTest(unittest.TestCase):
 
 
 def finder_page(url="https://calif.example/java4shell", kind="writeup", role="finder_disclosure", cve="CVE-2026-1000",
-                gives=True, on_page=True, score="9.2"):
+                gives=True, on_page=True, score="9.2", given_by="Calif"):
     return sheet(url, "B", kind, page_role=role, publisher="Calif", scores=[
-        {"score": score, "cvss_version": "4.0", "cve": cve, "given_by": "Calif", "publisher_gives_it": gives,
+        {"score": score, "cvss_version": "4.0", "cve": cve, "given_by": given_by, "publisher_gives_it": gives,
          "words": "CVSS 4.0 score of 9.2", "on_page": on_page}])
 
 
@@ -168,6 +168,29 @@ class PageScoreTest(unittest.TestCase):
         self.assertEqual(target["cve_scores"]["CVE-2026-1000"], {"cvss": 9.2, "vector": "", "by": "Calif",
                                                                  "record": {"cvss": 8.1, "vector": "CVSS:3.1/AV:N"}})
 
+    def test_a_row_given_by_the_publisher_by_name_counts_when_the_model_says_otherwise(self):
+        # The live sheet of https://calif.io/java4shell/ (11-18): publisher_gives_it came back false.
+        live = sheet("https://calif.io/java4shell/", "B", "writeup", page_role="finder_disclosure", publisher="Calif", scores=[
+            {"score": "9.2", "cvss_version": "4.0", "cve": "CVE-2026-1000", "given_by": "Calif", "publisher_gives_it": False,
+             "words": "Under CVSS 4.0, this vulnerability scores 9.2 out of 10 (CRITICAL).", "on_page": True}])
+        inc = self.java()
+        self.assertTrue(sheets.page_scores(inc, [live]))
+        self.assertEqual((inc["cvss"], inc["cve_scores"]["CVE-2026-1000"]["by"]), (9.2, "Calif"))
+        for given_by in ("Calif.io", "Calif Research", "calif"):
+            self.assertTrue(sheets.same_party(given_by, "Calif"), given_by)
+        for given_by in ("Califa", "Oracle Calif", ""):
+            self.assertFalse(sheets.same_party(given_by, "Calif"), given_by)
+        self.assertFalse(sheets.same_party("Oracle Cloud Infrastructure", "Oracle"))
+
+    def test_a_blog_quoting_another_partys_score_is_refused(self):
+        blog = sheet("https://aikido.example/java4shell", "B", "writeup", page_role="blog", publisher="Aikido", scores=[
+            {"score": "9.2", "cvss_version": "4.0", "cve": "CVE-2026-1000", "given_by": "Calif", "publisher_gives_it": False,
+             "words": "early reports put it at 9.2", "on_page": True}])
+        inc = self.java()
+        self.assertFalse(sheets.page_scores(inc, [blog]))
+        self.assertFalse(sheets.page_scores(inc, [blog | {"facts": blog["facts"] | {"page_role": "finder_disclosure"}}]))
+        self.assertEqual(inc["cvss"], 8.1)
+
     def test_a_news_quote_and_a_curator_are_refused(self):
         for page in (finder_page("https://www.bleepingcomputer.com/news/security/java4shell/", role="vendor_advisory"),
                      finder_page(kind="curator"), finder_page(role="news"), finder_page(role="blog")):
@@ -176,7 +199,7 @@ class PageScoreTest(unittest.TestCase):
             self.assertEqual(inc["cvss"], 8.1)
 
     def test_another_cves_score_a_reported_score_and_words_not_on_the_page_are_refused(self):
-        for page in (finder_page(cve="CVE-2026-9999"), finder_page(gives=False), finder_page(on_page=False),
+        for page in (finder_page(cve="CVE-2026-9999"), finder_page(gives=False, given_by="Oracle"), finder_page(on_page=False),
                      finder_page(score="7.0"), finder_page(score="n/a")):
             inc = self.java()
             self.assertFalse(sheets.page_scores(inc, [page]))
