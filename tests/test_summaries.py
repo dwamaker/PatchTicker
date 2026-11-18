@@ -2008,6 +2008,59 @@ class LostFixTest(unittest.TestCase):
         self.assertIn("The input still gives that version as a fix", summaries.retry(incident, text)["note"])
 
 
+class RecordFixTest(unittest.TestCase):
+    """A fix a record's affected list gives as "unaffected" after affected releases (owner, 11-18: Imagination's Graphics
+    DDK lost its stored 26.3, and the re-summary said no source names a fixed version while naming 26.3 RTM)."""
+
+    @staticmethod
+    def record(*affected):
+        return json.dumps({"containers": {"cna": {"descriptions": [{"lang": "en", "value": "A GPU driver flaw."}],
+                                                  "affected": list(affected)}}})
+
+    DDK = {"vendor": "Acme", "product": "GPU Kit", "defaultStatus": "unknown", "versions": [
+        {"status": "unaffected", "version": "1.18 RTM2"}, {"status": "affected", "version": "25.3 RTM"},
+        {"status": "affected", "version": "26.2 RTM"}, {"status": "unaffected", "version": "26.3 RTM"}]}
+
+    def test_the_fix_is_read_from_unaffected_after_affected_less_than_and_changes(self):
+        fields = lambda *a: json.loads(summary_input.cve_fields(self.record(*a))).get("fixed_per_record")  # noqa: E731
+        self.assertEqual(fields(self.DDK), ["GPU Kit 26.3 RTM"])  # not the 1.18 RTM2 listed before any affected one
+        # AMD EPYC (rewritten): defaultStatus affected and one unaffected firmware version.
+        self.assertEqual(fields({"product": "Server CPU", "defaultStatus": "affected",
+                                 "versions": [{"version": "PI 1.0.0.J", "status": "unaffected"}]}), ["Server CPU PI 1.0.0.J"])
+        self.assertEqual(fields({"product": "Lib", "versions": [
+            {"status": "affected", "version": "0", "lessThan": "2.4.1", "versionType": "semver"},
+            {"status": "affected", "version": "3.0", "lessThan": "*", "changes": [{"at": "3.1.2", "status": "unaffected"}]}]}),
+            ["Lib 2.4.1", "Lib 3.1.2"])
+        self.assertIsNone(fields({"product": "Lib", "versions": [{"status": "unaffected", "version": "0", "lessThan": "*"},
+                                                                 {"status": "affected", "version": "1.2"}]}))
+
+    def test_a_stored_fix_the_record_list_gives_is_lost_when_dropped(self):
+        ddk = {"id": "x", "summary": {"fixed": "26.3", "fixes": []}}
+        reply = {"fixed": "", "fixes": [], "ko": {"mitigation": "x"}, "en": {"mitigation": "x"}}
+        text = f"Incident: CVE-2026-1\nCVE record CVE-2026-1:\n{summary_input.cve_fields(self.record(self.DDK))}"
+        self.assertEqual(summaries.lost_fix(ddk, reply, text), summaries.LOST_FIX + "26.3")
+        summaries.carry_lost(ddk, reply, text)
+        self.assertEqual(reply["fixed"], "26.3")
+        # Without the unaffected entry the list gives no fix, and nothing is lost.
+        only_affected = self.DDK | {"versions": self.DDK["versions"][:3]}
+        text = f"Incident: CVE-2026-1\nCVE record CVE-2026-1:\n{summary_input.cve_fields(self.record(only_affected))}"
+        self.assertEqual(summaries.lost_fix(ddk, {"fixed": "", "fixes": []}, text), "")
+
+    def test_no_source_names_a_fix_beside_a_version_to_run_is_sent_back(self):
+        def mitigation(ko, en):
+            return SSHOLE_SUMMARY | {"ko": SSHOLE_SUMMARY["ko"] | {"mitigation": ko}, "en": SSHOLE_SUMMARY["en"] | {"mitigation": en}}
+        bad = mitigation("수정 버전을 밝힌 출처가 아직 없습니다. 26.3 RTM 이상을 쓰는지 확인하세요.",
+                         "No source names a fixed version yet. Check whether you run 26.3 RTM or newer.")
+        self.assertEqual(summaries.no_source_names(bad), f"{summaries.NO_SOURCE_NAMES} (ko)")
+        self.assertEqual(summaries.no_source_names(mitigation("x", bad["en"]["mitigation"])), f"{summaries.NO_SOURCE_NAMES} (en)")
+        # The bound sentence (the last affected version) and a mitigation with a fix are fine.
+        for ok in (mitigation("수정 버전을 밝힌 출처가 아직 없습니다. 7.0.0보다 새 버전인지 확인하세요.",
+                              "No source names a fixed version yet. Check that you run a version newer than 7.0.0."),
+                   mitigation("26.3 RTM 이상으로 업데이트하세요.", "Update to 26.3 RTM or newer.")):
+            self.assertEqual(summaries.no_source_names(ok), "")
+        self.assertIn("is a fixed version", summaries.retry({"summary_error": {"reason": summaries.no_source_names(bad)}})["note"])
+
+
 class ResummaryHardChecksTest(unittest.TestCase):
     """A re-summary's hard checks cost the stored Summary nothing it shows rightly (owner, 11-18: ILIAS, CVE-2026-131850,
     was given up after three replies followed the record's one line and dropped the stored 9.25 its advisory gives)."""

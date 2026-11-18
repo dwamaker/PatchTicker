@@ -501,6 +501,23 @@ def no_action(summary):
     return ""
 
 
+NO_SOURCE_NAMES = "the mitigation says no source names a fixed version, yet names one"
+# "26.3 RTM or newer", "update to 26.3", "26.3 RTM 이상", "26.3으로 업데이트": a version given as the fix. Not "newer
+# than 7.0.0" (BOUND_CHECK's sentence: the bound is the last affected version).
+NAMED_FIX_RE = {"en": re.compile(r"(?<![\w.])v?\d+(?:\.\d+)+\b[^.;,]{0,15}?\s(?:or|and) (?:newer|later|above|higher)\b"
+                                 r"|\b(?:update|upgrade) to\b[^.;]{0,30}?(?<![\w.])v?\d+(?:\.\d+)+", re.I),
+                "ko": re.compile(r"(?<![\w.])\d+(?:\.\d+)+[^.;,]{0,15}?\s?이상|(?<![\w.])\d+(?:\.\d+)+[^.;,]{0,15}?\s?(?:으로|로) "
+                                 r"(?:업데이트|업그레이드)")}
+
+
+def no_source_names(summary):
+    """A mitigation that says no source names a fixed version while it names one ("Check whether you run 26.3 RTM or
+    newer", 11-18: Imagination's Graphics DDK, whose records list 26.3 RTM unaffected after the affected releases). The
+    reason, or ""."""
+    return next((f"{NO_SOURCE_NAMES} ({lang})" for lang in ("ko", "en") if NO_SOURCE_FIX_RE.search(summary[lang]["mitigation"])
+                 and NAMED_FIX_RE[lang].search(summary[lang]["mitigation"])), "")
+
+
 EMPTY_WITH_FIX = "fixed names a version, yet a field is empty"
 
 
@@ -742,6 +759,18 @@ def record_blocks(input_text):
     return blocks
 
 
+def record_fixed(input_text):
+    """The "product version" fixes the input's CVE records give in their affected lists (cve_fields' fixed_per_record)."""
+    found = []
+    for block in SOURCE_RE.finditer(input_text):
+        if not block[1]:
+            try:
+                found += [f for f in json.loads(block[3]).get("fixed_per_record", []) if isinstance(f, str)]
+            except (ValueError, AttributeError, TypeError):
+                continue
+    return found
+
+
 def record_texts(input_text):
     """The descriptions of the input's CVE records."""
     return [d for block in record_blocks(input_text) for d in block]
@@ -820,6 +849,7 @@ def lost_fixes(incident, summary, input_text, fix_rows=()):
     new_lines = [tuple(map(int, m.split("."))) for v in kept for m in VERSION_RE.findall(v)]
     affected = page_sheets.record_affected(record_texts(input_text))
     bounds = {b for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k for b in [EPOCH.sub("", k.split("<", 1)[1])]}
+    fixed_by_record = record_fixed(input_text)
     lost = []
     for v in dict.fromkeys(versions(stored)):
         dotted = VERSION_RE.search(v)
@@ -840,8 +870,10 @@ def lost_fixes(incident, summary, input_text, fix_rows=()):
         if fixed_conflict(incident, as_line) or flagged_fixes(as_line, input_text):
             continue
         bare = EPOCH.sub("", v.strip())
+        # Or a record's affected list gives it (record_fixed: "Graphics DDK 26.3 RTM" gives the stored 26.3).
         given = bare in bounds or any(re.search(rf"{FIX_WORDS}[^.\n]{{0,60}}?(?<![\w.]){re.escape(form)}(?![\w.]|-\d)",
-                                                input_text, re.I) for form in {v.strip(), bare})
+                                                input_text, re.I) for form in {v.strip(), bare}) or any(
+            re.search(rf"(?<![\w.]){re.escape(form)}(?![\w.]|-\d)", fix) for fix in fixed_by_record for form in {v.strip(), bare})
         if given:
             lost.append(v.strip())
     return lost
@@ -1190,7 +1222,8 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
         flagged and f"{RECORD_AFFECTED}{flagged[0]} affected, yet the reply names it as fixed", easy_jargon(summary) and f"{JARGON}: {easy_jargon(summary)}", missing_stopgap_step(summary),
         mismatch and f"{EASY_MISMATCH} in {', '.join(mismatch)}", language_gaps(summary), unbalanced_title(summary),
         len(input_cves(text)) > 1 and group_scope(summary), len(input_cves(text)) > 1 and release_without_fix(summary),
-        informal_lines(summary), bound_check(summary), no_action(summary), empty_with_fix(summary), many_versions(summary), field_names(summary),
+        informal_lines(summary), bound_check(summary), no_action(summary), no_source_names(summary), empty_with_fix(summary),
+        many_versions(summary), field_names(summary),
         hangul_in_english(summary, text), attacked_unnamed(summary, text), attacks_unflagged(summary),
         affected_label(summary, text), left and CARRY_LEFT + ", ".join(f"{c['kind']} {c['words']}" for c in left)) if p)
     # The union of fixed versions (owner's carry trial, 11-18), after every check so it costs no retry, and before the
@@ -1439,6 +1472,9 @@ RETRY_SENTENCES = [
                   " \"if you run\" before it."),
     (NO_ACTION, " Make easy_action something the reader can do: from mitigation a workaround, a migration or a replacement,"
                 " else \"There is no fix yet. Update as soon as a fixed version is out.\""),
+    (NO_SOURCE_NAMES, " A version given as the one to run or update to is a fixed version: when a source or a CVE record's"
+                      " fixed_per_record gives it, put it in fixed or fixes and say to update to it, in both languages;"
+                      " say no source names a fixed version only when none does."),
     (EMPTY_WITH_FIX, " When fixed or fixes names a version, mitigation and easy_action say to update to it, in both languages."),
     (HANGUL_IN_EN, " Write every English field in English; Korean only for a name the input itself writes in Korean."),
     (ATTACKED_UNNAMED, " Name the CVE ids of the input's CISA KEV line right beside the words that say a flaw is exploited,"

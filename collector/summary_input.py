@@ -212,7 +212,40 @@ def cve_fields(raw, score=None):
         keep |= {"cvss": own["cvss"], "vector": own["vector"]}
         if own is not score and "by" in score:
             keep |= {"page_cvss": score["cvss"], "page_cvss_by": score["by"]}
+    fixes = record_fixes(cna)
+    if fixes:
+        keep["fixed_per_record"] = fixes
     return json.dumps(keep, ensure_ascii=False)
+
+
+ZERO = re.compile(r"0(?:[.:\-]0)*")
+
+
+def record_fixes(cna):
+    """The versions a record's `affected` list gives as the fix, which its raw entries leave to be worked out (11-18:
+    Imagination's Graphics DDK lists seven releases affected and then "26.3 RTM" unaffected, and a re-summary said no
+    source names a fixed version): an unaffected version after an affected one of the same product, or under
+    defaultStatus "affected" (AMD's EPYC firmware), an affected range's lessThan, and a change to unaffected.
+    "product version" strings, in record order; never "*", a version without a digit or unaffected from 0."""
+    out = []
+    for a in cna.get("affected") or []:
+        if not isinstance(a, dict):
+            continue
+        product = " ".join(str(a.get("product") or "").split())
+        after_affected = a.get("defaultStatus") == "affected"
+        for v in a.get("versions") or []:
+            if not isinstance(v, dict):
+                continue
+            found = []
+            if v.get("status") == "affected":
+                after_affected = True
+                found = [v.get("lessThan"), *(c.get("at") for c in v.get("changes") or []
+                                              if isinstance(c, dict) and c.get("status") == "unaffected")]
+            elif v.get("status") == "unaffected" and after_affected:
+                found = [v.get("version")]
+            out += [f"{product} {' '.join(f.split())}".strip() for f in found
+                    if isinstance(f, str) and re.search(r"\d", f) and not ZERO.fullmatch(f.strip())]
+    return list(dict.fromkeys(out))
 
 
 def record_descriptions(raw):
