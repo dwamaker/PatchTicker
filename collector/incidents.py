@@ -706,17 +706,21 @@ def page_cves(page, page_url):
 def cited_by(incidents, keys):
     """The one Incident a CVE-less story's page is about (a blog on sshole links sshhole.com): matched by a
     CVE ID or by a link to one of its advisory, write-up or repo pages. Several or none: [] (stands alone).
-    The one must be named by a CVE ID or by a page no other Incident links; an advisory with no identifier (a
-    vendor's list of notices, a changelog, a product page) names none."""
+    A CVE ID outranks a link: when the page's CVE IDs are held by one Incident, that is the one whatever its links hit
+    (11-18, the Java4Shell story also linked two other stories' write-ups); held by several, it stands alone. Only with
+    no CVE hit do links decide, and the one must be named by a page no other Incident links; an advisory with no
+    identifier (a vendor's list of notices, a changelog, a product page) names none."""
+    by_cve = [i for i in incidents if set(i["cves"]) & set(keys["cves"])]
+    if by_cve:
+        return by_cve if len(by_cve) == 1 else []
     urls = set(keys["urls"])
     pages = lambda i: {url_key(m["url"]): m for m in i["mentions"] if m["kind"] in ("advisory", "writeup", "repo")}
-    hits = [i for i in incidents if set(i["cves"]) & set(keys["cves"]) or pages(i).keys() & urls]
+    hits = [i for i in incidents if pages(i).keys() & urls]
     if len(hits) != 1:
         return []
     from collector.cvelist import has_id  # cvelist imports this module
     linked = Counter(u for i in incidents for u in i["urls"])  # a Mention's page is one of its Incident's urls
-    named = set(hits[0]["cves"]) & set(keys["cves"]) or any(
-        linked[u] == 1 and (m["kind"] != "advisory" or has_id(m["url"])) for u, m in pages(hits[0]).items() if u in urls)
+    named = any(linked[u] == 1 and (m["kind"] != "advisory" or has_id(m["url"])) for u, m in pages(hits[0]).items() if u in urls)
     return hits if named else []
 
 

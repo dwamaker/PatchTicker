@@ -46,6 +46,36 @@ MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 BULK_SECONDS = 120
 
 
+# A CVE-less story's page that failed to load is fetched again (11-17: openjdk.org's advisory gave nothing at 21:10Z
+# and answered the next day). Each retry waits for the story's age, as a page may go up after the story: 3 tries at
+# 1, 4 and 12 hours, all inside a day, the story's useful time on the Board. At most 3 fetches a cycle: each may take
+# DEADLINE (120 s, 6 min in all), and on 11-17 only 11 stories of the day lacked a page, so 3 of 144 cycles clear them.
+PAGE_RETRY_HOURS = (1, 4, 12)
+PAGE_RETRIES_PER_CYCLE = 3
+
+
+def refetch_pages(incidents, http_get, now):
+    """Fetch again the linked page of each CVE-less story Incident first seen in the last day that has no Citations
+    (`cites`), stories stored before this rule included; return the months changed. `page_tries` counts the retries
+    (stored only, never on the Board: board_view keeps PAGE_FIELDS)."""
+    changed, left, day = set(), PAGE_RETRIES_PER_CYCLE, stamp_ago(now, days=1)
+    for incident in incidents:
+        tries = incident.get("page_tries", 0)
+        writeup = next((m["url"] for m in incident["mentions"] if m["kind"] == "writeup"), None)
+        if (not left or incident["cves"] or "cites" in incident or not writeup or tries >= len(PAGE_RETRY_HOURS)
+                or not day <= incident["first_seen"] <= stamp_ago(now, hours=PAGE_RETRY_HOURS[tries])):
+            continue
+        left -= 1
+        page = summary_input.fetch_page(http_get, writeup)
+        if page:
+            incident["cites"] = page_keys(page, writeup)
+            incident.pop("page_tries", None)
+        else:
+            incident["page_tries"] = tries + 1
+        changed.add(month_of(incident["first_seen"]))
+    return changed
+
+
 OLD_CVE_YEARS = 2  # all CVE ids this many years before now's year: an old event (owner, 11-17)
 OLD_EVENT_DAYS = 14  # an event_date further back than this: an old event
 
@@ -137,6 +167,7 @@ def run_cycle(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key=
     for group in cvelist.mention_groups(records) + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
+    changed |= refetch_pages(incidents, http_get, now)
     changed |= rejoin(incidents, stamp_ago(now, days=7))
     try:
         changed |= hn.refresh_points(incidents, now, http_get)
