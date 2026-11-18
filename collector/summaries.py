@@ -1042,16 +1042,27 @@ def release_reviews(incidents, batches):
     return released
 
 
-def settle_attacks(summary, verdict):
+ATTACK_FIELDS = ("exploited", "exploited_source", "exploited_cves", "exploited_review")
+
+
+def settle_attacks(summary, verdict, stored=None):
     """An exploited flag parse() left unconfirmed (ATTACK_SEEN and DELIVERED miss its wording) stands only on the
-    review's yes, marked exploited_review so recheck_exploited leaves it; a no, or no review at all, drops it."""
+    review's yes, marked exploited_review so recheck_exploited leaves it; a no drops it. No answer (the review left the
+    question out, was cut off or unreadable, or none was asked) is not a no: the Incident keeps the attacks its stored
+    Summary already shows, with that Summary's source (Huatian OA8000, CVE-2024-58406, re-summary dry run 11-18: the
+    review replied without attacks_happened and the Incident fell from the highest level). Without such a Summary the
+    unconfirmed flag drops, as before."""
     if not summary.pop("exploited_unconfirmed", False):
         return
     if verdict is True:
         summary["exploited_review"] = True
+        return
+    for field in ATTACK_FIELDS:
+        summary.pop(field, None)
+    if verdict is None and stored and stored.get("exploited") is True:
+        summary.update({field: stored[field] for field in ATTACK_FIELDS if field in stored})
     else:
         summary["exploited"], summary["exploited_source"] = False, ""
-        summary.pop("exploited_cves", None)
 
 
 def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None, event_date=""):
@@ -1059,10 +1070,13 @@ def keep(incident, summary, seen, stamp, listed, due, words=(), verdict=None, ev
     shows the mitigation. words: the runs of other letters only the request's input had, kept so the stored Summary
     passes stray_script() in needs_summary(), which has no input. verdict: the review's attacks_happened, None when no
     review answered it. event_date: the review's day of the reported attack or incident (YYYY-MM-DD), stored with the
-    Summary it was read from; cycle.highlights keeps an event more than 14 days old out of the Highlights."""
-    settle_attacks(summary, verdict)
-    if event_date:
-        summary["event_date"] = event_date
+    Summary it was read from; cycle.highlights keeps an event more than 14 days old out of the Highlights. A review that
+    gives no day keeps the stored Summary's (HN 50496937, re-summary dry run 11-18: the Cursor extension's 2026-10-29
+    attack came back into the Highlights); a different day replaces it."""
+    stored = incident.get("summary") or {}
+    settle_attacks(summary, verdict, stored)
+    if event_date or stored.get("event_date"):
+        summary["event_date"] = event_date or stored["event_date"]
     if words:
         incident["script_words"] = sorted(set(incident.get("script_words", [])) | set(words))
     for lang in easy_action_mismatch(summary):

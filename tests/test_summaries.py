@@ -4,6 +4,7 @@ pages/sshhole.com.html and pages/release-10.6p2.txt are the real pages (2026-11-
 """
 
 import contextlib
+import copy
 import io
 import json
 import re
@@ -1515,3 +1516,37 @@ class FlawNameTitleTest(unittest.TestCase):
         self.assertNotIn("summary_error", incident, incident.get("summary_error"))
         self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"] + " (OSS advisory) (SSHole)")
         self.assertEqual(incident["summary"]["ko"]["title"], SSHOLE_SUMMARY["ko"]["title"] + " (SSHole)")
+
+
+class ReSummaryKeepsWhatTheReviewLeftOutTest(unittest.TestCase):
+    """Re-summary dry run, 11-18: a review that gives no attacks answer or no event day takes nothing from the stored
+    Summary."""
+
+    CVE_RECORD = "https://www.cve.org/CVERecord?id=CVE-2024-58406"
+    VULNCHECK = "https://www.vulncheck.com/advisories/huatian-oa8000"
+
+    def store(self, stored, verdict=None, event_date="", **new):
+        incident = {"id": "CVE-2024-58406", "cves": ["CVE-2024-58406"], "mentions": [], "summary": stored}
+        summary = copy.deepcopy(SSHOLE_SUMMARY) | {"same_as": ""} | new
+        summaries.keep(incident, summary, {}, "2026-11-18T12:00:00Z", [], True, verdict=verdict, event_date=event_date)
+        return incident["summary"]
+
+    def test_no_attacks_answer_keeps_the_stored_summarys_flag_and_a_real_no_drops_it(self):
+        stored = {"exploited": True, "exploited_source": self.CVE_RECORD, "event_date": "2024-11-20"}
+        new = {"exploited": True, "exploited_source": self.VULNCHECK, "exploited_unconfirmed": True}
+        kept = self.store(stored, None, "2024-11-20", **new)
+        self.assertEqual((kept["exploited"], kept["exploited_source"]), (True, self.CVE_RECORD))
+        self.assertNotIn("exploited_unconfirmed", kept)
+        dropped = self.store(stored, False, **new)
+        self.assertEqual((dropped["exploited"], dropped["exploited_source"]), (False, ""))
+        yes = self.store(stored, True, **new)
+        self.assertEqual((yes["exploited"], yes["exploited_source"], yes["exploited_review"]), (True, self.VULNCHECK, True))
+        # Nothing stored to keep: an unconfirmed flag without an answer drops, as before.
+        self.assertFalse(self.store({}, None, **new)["exploited"])
+
+    def test_a_review_with_no_event_day_keeps_the_stored_one_and_a_new_day_replaces_it(self):
+        # HN 50496937, the Cursor marketplace extension: attacked 2026-10-29.
+        stored = {"event_date": "2026-10-29"}
+        self.assertEqual(self.store(stored)["event_date"], "2026-10-29")
+        self.assertEqual(self.store(stored, event_date="2026-10-30")["event_date"], "2026-10-30")
+        self.assertNotIn("event_date", self.store({}))
