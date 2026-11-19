@@ -125,6 +125,12 @@ code{font-family:var(--mono);font-size:.875rem}
 @media (hover:hover) and (pointer:fine){.tags a:hover span{text-decoration:underline;text-underline-offset:2px}}
 @media (pointer:coarse){.tags{row-gap:0}.tags a{min-height:44px;min-width:44px}}
 .links{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule)}
+/* a note in place of a page (note()): Astryx EmptyState, centred, 32/24 padding, 16 gap, an icon over the title, the description in Secondary Ink, the way on one row */
+.gone{display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1.5rem;text-align:center}
+.gone-icon{width:2rem;height:2rem;color:var(--ink-3)}
+.gone h1{margin:0;font-size:1.25rem}
+.gone p{margin:-.5rem 0 0;max-width:30rem;color:var(--ink-2)}
+.gone .links{justify-content:center;margin:.25rem 0 0;padding:0;border:0}
 .sources li+li{margin-top:.25rem}
 .cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
 .cves.lines{display:block}.cves.lines li+li{margin-top:.375rem}
@@ -375,10 +381,15 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
 const CACHE = 'public, max-age=300';
 const CACHE_404 = 'public, max-age=60';
 
+const GONE_PAGE = '<path d="M6 2.75h8l4.25 4.25V21.25H6Z M13.75 2.75V7.25h4.5M9.5 12.5l5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>';
+const GONE_DOWN = '<path d="M12 3.5 21.5 20h-19Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.5v4.5M12 16.75v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
 // A short note in place of a page (404, 410, 503): never indexed, always a way on. A 503 is never cached.
 export function note(lang, status, text, links) {
   const head = `<title>Patch Ticker</title>\n<meta name="robots" content="noindex">`;
-  const body = `<h1>${esc(text)}</h1><nav class="links">${links.join('')}</nav>`;
+  const [title, ...rest] = text.match(/[^.。]+[.。]?\s*/g); // the first sentence is the title, the rest its description
+  const desc = rest.join('').trim();
+  const body = `<div class="gone"><svg class="gone-icon" viewBox="0 0 24 24" aria-hidden="true">${status === 503 ? GONE_DOWN : GONE_PAGE}</svg>`
+    + `<h1>${esc(title.trim())}</h1>${desc ? `<p>${esc(desc)}</p>` : ''}<nav class="links">${links.join('')}</nav></div>`;
   const extra = { 503: { 'retry-after': '600' }, 404: { 'cache-control': CACHE_404 }, 410: { 'cache-control': CACHE } }[status];
   return new Response(document(lang, head, body), { status, headers: { 'content-type': 'text/html; charset=utf-8', ...extra } });
 }
