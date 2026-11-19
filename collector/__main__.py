@@ -14,7 +14,7 @@ from pathlib import Path
 
 import anthropic
 
-from collector import alert, curators, cve_lines, discord, indexnow, kisa, logfile, news, sheets, summaries
+from collector import alert, curators, cve_lines, discord, indexnow, kisa, logfile, news, sheets, summaries, vendors
 from collector.cycle import run_cycle
 from collector.net import make_http_get, make_http_post
 from collector.store import BackedUpStore, FolderStore, SqliteStore, r2_store, restore
@@ -137,6 +137,7 @@ def cycle_main(path):
         curator_feeds=[u.strip() for u in settings["VR_CURATOR_FEEDS"].split(",") if u.strip()]
         if "VR_CURATOR_FEEDS" in settings else curators.FEEDS,
         news_feeds=news.FEEDS,
+        vendor_feeds=vendors.FEEDS,
         kisa_feed=kisa.FEED,
         # The key is passed in, never left for the SDK to find in a login profile; no key, no Summaries.
         claude=anthropic.Anthropic(api_key=key) if key else None,

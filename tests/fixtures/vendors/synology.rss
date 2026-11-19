@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>Synology Product Security Advisory</title>
+<link>https://www.synology.com/en-global/support/security</link>
+<description><![CDATA[Synology Product Security Advisory Feed.]]></description>
+<atom:link href="https://www.synology.com/api/rssfeed/security/en-global" rel="self" type="application/rss+xml"></atom:link>
+<lastBuildDate>Thu, 19 Nov 2026 15:50:54 +0800</lastBuildDate>
+<pubDate>Thu, 19 Nov 2026 15:47:20 +0800</pubDate>
+<item>
+<title>Synology-SA-26:21 DSM, BeeStation OS</title>
+<link>https://www.synology.com/en-global/support/security/Synology_SA_26_21</link>
+<description><![CDATA[Synology has released a security update to address a vulnerability:
+
+CVE-2026-120382 allows remote attackers to read or write arbitrary files and conduct denial-of-service attacks.
+
+]]></description>
+<pubDate>Thu, 19 Nov 2026 15:47:20 +0800</pubDate>
+<author>security@synology.com (Synology Security Team)</author>
+<guid isPermaLink="true">https://www.synology.com/en-global/support/security/Synology_SA_26_21</guid>
+</item>
+<item>
+<title>Synology-SA-26:20 NGINX2Root</title>
+<link>https://www.synology.com/en-global/support/security/Synology_SA_26_20</link>
+<description><![CDATA[Synology has released a security update to address a vulnerability:
+
+CVE-2026-123007 allows remote attackers to read or write arbitrary files and conduct denial-of-service attacks.
+
+]]></description>
+<pubDate>Thu, 19 Nov 2026 15:47:17 +0800</pubDate>
+<author>security@synology.com (Synology Security Team)</author>
+<guid isPermaLink="true">https://www.synology.com/en-global/support/security/Synology_SA_26_20</guid>
+</item>
+<item>
+<title>Synology-SA-26:18 DSM</title>
+<link>https://www.synology.com/en-global/support/security/Synology_SA_26_18</link>
+<description><![CDATA[Synology has released a security update for the DSM to address multiple vulnerabilities :
+
+Vulnerabilities allow remote attackers to read or write arbitrary files or conduct denial-of-service attacks.
+Vulnerabilities allow remote authenticated users to read or write arbitrary files or conduct denial-of-service attacks.
+Vulnerabilities allow remote authenticated users with administrator privileges to read or write arbitrary files or conduct denial-of-service attacks.
+
+]]></description>
+<pubDate>Tue, 10 Nov 2026 17:06:33 +0800</pubDate>
+<author>security@synology.com (Synology Security Team)</author>
+<guid isPermaLink="true">https://www.synology.com/en-global/support/security/Synology_SA_26_18</guid>
+</item>
+<item>
+<title>Synology-SA-26:17 Plex Media Server (Plex2Shell)</title>
+<link>https://www.synology.com/en-global/support/security/Synology_SA_26_17</link>
+<description><![CDATA[Synology has released a security update for the Plex Media Server package in DSM to address the Plex2Shell vulnerabilities.
+]]></description>
+<pubDate>Sun, 08 Nov 2026 10:15:47 +0800</pubDate>
+<author>security@synology.com (Synology Security Team)</author>
+<guid isPermaLink="true">https://www.synology.com/en-global/support/security/Synology_SA_26_17</guid>
+</item>
+<item>
+<title>Synology-SA-26:16 OpenSSH (sshole)</title>
+<link>https://www.synology.com/en-global/support/security/Synology_SA_26_16</link>
+<description><![CDATA[None of Synology's products are affected by CVE-2026-123158.
+]]></description>
+<pubDate>Fri, 06 Nov 2026 10:39:42 +0800</pubDate>
+<author>security@synology.com (Synology Security Team)</author>
+<guid isPermaLink="true">https://www.synology.com/en-global/support/security/Synology_SA_26_16</guid>
+</item>
+</channel>
+</rss>
