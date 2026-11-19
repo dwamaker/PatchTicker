@@ -2995,8 +2995,8 @@ function details(incident, onStrip = false) {
   }
   const ids = facts.length ? [factList(facts)] : [];
   // Owner 11-19: opening a row moves its ring and tags from the header down into the panel's top, the tags as working
-  // filters, so no one scrolls past a long panel to pick one; CSS hides the header's while this group is drawn. Beside the
-  // facts in the Normal view (under them when the line is too narrow), on top alone in the Easy view (facts at its foot).
+  // filters, so no one scrolls past a long panel to pick one; they travel there with the fold (carry). They stand straight
+  // under their header places (index.html .p-top, alignRing), beside the facts; the Easy view's facts sit at its foot.
   const side = el('div', 'p-side');
   side.append(scoreCell(incident));
   const tags = tagLine(incident);
@@ -3300,13 +3300,35 @@ function carryStarts(button, body, flights, opening) {
 // Owner 11-19 (no diagonal path): the panel's ring stands straight under the header's. From 768px the columns do it
 // (index.html .p-top); on phones the header ring follows the risk sign, whose width varies, so the panel's is moved
 // sideways to match (a translate, so nothing around it reflows). The header's keeps its place while open.
-function alignRing(button, body) {
+// ringShift: how far to move it (null: nothing to line up), read without writing, so many rows can be read first.
+function ringShift(button, body) {
   const head = button.querySelector(':scope > .c-score');
   const there = body.querySelector(':scope > .p-top > .p-side > .c-score');
-  if (!head || !there) return;
-  there.style.translate = '';
-  const dx = head.getBoundingClientRect().left - there.getBoundingClientRect().left;
-  if (Math.abs(dx) > 0.5) there.style.translate = `${dx}px 0`;
+  if (!head || !there) return null;
+  const now = parseFloat(there.style.translate) || 0;
+  return [there, head.getBoundingClientRect().left - (there.getBoundingClientRect().left - now)];
+}
+const setShift = ([there, dx]) => { there.style.translate = Math.abs(dx) > 0.5 ? `${dx}px 0` : ''; };
+function alignRing(button, body) {
+  const shift = ringShift(button, body);
+  if (shift) setShift(shift);
+}
+// Rows drawn open (a redraw: the first open loading the full Incident, 모두 펼치기, a tag click) are lined up once they
+// are on the page: all read, then all written, in one frame (as nameRows). A row not attached yet waits a few frames.
+const toAlign = new Map();
+function alignLater(button, body) {
+  if (!toAlign.size) requestAnimationFrame(alignDrawn);
+  toAlign.set(button, [body, 0]);
+}
+function alignDrawn() {
+  const ready = [...toAlign].filter(([button]) => button.isConnected);
+  const shifts = ready.map(([button, [body]]) => ringShift(button, body));
+  for (const [button, [body, tries]] of toAlign) {
+    if (button.isConnected || tries > 10) toAlign.delete(button); // a row of an old draw is never attached
+    else toAlign.set(button, [body, tries + 1]);
+  }
+  shifts.filter(Boolean).forEach(setShift);
+  if (toAlign.size) requestAnimationFrame(alignDrawn);
 }
 function carry(li, button, body, opening, starts, flights) {
   flights.forEach((f) => f?.stop());
@@ -3411,7 +3433,10 @@ function row(incident, pinned, vendor = '') {
     if (opening) foldOrFade(body, true, undefined, shift);
     else foldOrFade(body, false, () => { body.hidden = !open.has(key); }, shift); // reopened mid-way: stay open
   });
-  if (!body.hidden) fill();
+  if (!body.hidden) {
+    fill();
+    alignLater(button, body);
+  }
   const heading = el('h3', 'row-h');
   heading.append(button);
   li.append(heading, body);

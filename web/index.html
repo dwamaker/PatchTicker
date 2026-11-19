@@ -952,8 +952,8 @@
     .details .sec-head, .details .fix-head, .details .cve-lines-head { margin: 1.5rem 0 0; font-size: calc(1rem * var(--ts)); font-weight: 700; line-height: 1.4; letter-spacing: -0.01em; color: var(--ink); }
     .details .sec-head + p, .details .fix-head + .fix-list, .details .sec-head + .cond-list, .details .cve-lines-head + .cve-lines { margin-top: 0.375rem; }
     .details .facts + .sec-head, .details .p-top + .sec-head, .details .why-line + .sec-head { margin-top: 1rem; }
-    /* Owner 11-19: an opened row's ring and tags move from its header to the panel's top (app.mjs p-side): beside the facts,
-       wrapping under them when the line is too narrow (phones, larger text); the header's copies step aside meanwhile. */
+    /* Owner 11-19: an opened row's ring and tags move from its header to the panel's top (app.mjs p-side), beside the facts.
+       Phones stack them; from 768px the columns below place them. */
     .p-top { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.75rem 2rem; }
     .p-top > .facts { flex: 1 1 22rem; }
     .p-side { flex: 0 1 24rem; display: flex; align-items: flex-start; gap: 0.75rem; min-width: 0; }
@@ -965,7 +965,7 @@
        stands for the header's date and chevron less the panel's wider right padding (2.5rem against 0.75rem). A Highlight's
        header runs to the band's edge, so its panel top reaches out over the padding instead. Phones: alignRing. */
     @media (min-width: 768px) {
-      .p-top { display: grid; grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 15rem) calc(0.25rem + 5.5rem * var(--ts)); grid-template-areas: "facts ring tags ."; column-gap: var(--gap); }
+      .p-top { display: grid; grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 15rem) calc(0.25rem + 5.5rem * var(--ts)); grid-template-areas: "facts ring tags tags"; column-gap: var(--gap); } /* the tags start under the header's and may use the spare track */
       .p-top > .facts { grid-area: facts; }
       .p-side { display: contents; }
       .p-side > .c-score { grid-area: ring; }
