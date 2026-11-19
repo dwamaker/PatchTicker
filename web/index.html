@@ -482,7 +482,8 @@
     /* Closing, the panel fades out where it was (a sheet slides down) instead of vanishing; hidden is set at once, display
        waits for the fade (allow-discrete, as .menu does). Astryx Motion: exits on --ease-exit, fast (175ms). */
     .filters[hidden] { opacity: 0; translate: 0 -6px; pointer-events: none; transition: opacity 160ms var(--ease-exit), translate 160ms var(--ease-exit), box-shadow 160ms var(--ease-exit), display 160ms allow-discrete; }
-    @media (max-width: 599px) { .filters[hidden] { opacity: 1; translate: 0 100%; transition-duration: 220ms; } } /* a sheet slides down whole; only the dim behind it fades */
+    @media (max-width: 599px) { .filters[hidden] { opacity: 1; translate: 0 100%; transition-duration: 220ms; } }
+    .filters.shut[hidden] { transition: none; } /* 필터 적용: the Board transition fades it (app.mjs applyPanel) */ /* a sheet slides down whole; only the dim behind it fades */
     #filter-count[hidden] { opacity: 0; scale: 0.6; transition: opacity 140ms var(--ease-exit), scale 140ms var(--ease-exit), display 140ms allow-discrete; }
     .fp-head { margin-bottom: 1rem; }
     .fp-head .fp-title { margin: 0; }

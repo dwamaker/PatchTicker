@@ -1558,8 +1558,8 @@ function unpick(e) {
 // filter is a token). [text nodes, name, remove]
 function barTokens() {
   const products = pickedEntries().map((e) => [[label(e)], label(e), () => unpick(e), `p:${e.ids.join()}`]);
-  const conditions = conditionList().map(([value, change, field]) => [field ? [el('span', 'f', `${field} `), el('b', '', value)] : [value],
-    field ? `${field} ${value}` : value, () => { update(change); $('search').focus({ preventScroll: true }); }, `c:${JSON.stringify(change)}`]);
+  const conditions = conditionList().map(([value, change, field, key]) => [field ? [el('span', 'f', `${field} `), el('b', '', value)] : [value],
+    field ? `${field} ${value}` : value, () => { update(change); $('search').focus({ preventScroll: true }); }, key]);
   return [...products, ...conditions];
 }
 function token([text, name, remove, key]) {
@@ -1851,15 +1851,17 @@ $('filters').addEventListener('change', () => { countDraft(); placeSegs(); });
 function applyPanel(event) {
   event.preventDefault();
   const fromCopy = panelFrom?.stuck;
-  const drawn = update(panelDraft());
-  closePanel(true); // the results are the answer; the applied conditions stay visible as chips
+  // the results are the answer; the applied conditions stay visible as chips. The panel shuts inside the Board
+  // transition, so its old picture fades out while the rows glide up once (no fade of its own, which would keep it in
+  // the page a moment and drop the rows again after the transition).
+  const drawn = update(panelDraft(), true, () => closePanel(true));
   if (fromCopy) drawn.then(toBoardHead); // opened mid-list: the new results start under the frozen row
   // A start date before the loaded week needs the older months.
   const week = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   if (filter.from && filter.from < week && olderMonths.length) loadOlder();
 }
 
-function update(change, animate = true) {
+function update(change, animate = true, first = () => {}) {
   // A search word rewrites its own step; starting a search (from none) is a new step, so Back first clears the search.
   const onlyQuery = Object.keys(change).length === 1 && 'query' in change;
   const push = !onlyQuery || (!filter.query && Boolean(change.query));
@@ -1867,6 +1869,7 @@ function update(change, animate = true) {
   shown = PAGE;
   saveFilter(push);
   const redraw = () => {
+    first();
     render();
     if (!$('filters').hidden) filterPanel(); // an open panel always shows the filter in force, never a stale draft
   };
@@ -1913,7 +1916,8 @@ function closePanel(applied = false) {
   const from = panelFrom;
   panelFrom = null;
   sheetInert(false);
-  $('filters').hidden = true; // it fades out (index.html .filters[hidden]); floating stays until the next open sets it
+  $('filters').classList.toggle('shut', applied); // applied: the Board transition carries it out (applyPanel)
+  $('filters').hidden = true; // else it fades out (index.html .filters[hidden]); floating stays until the next open sets it
   $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
   $('filter-btn').focus({ preventScroll: true });
@@ -1991,16 +1995,17 @@ function conditionList() {
   const t = TEXT[lang];
   const f = t.fp;
   const words = defaultView === 'easy' ? t.easyLevels : t.levels;
-  // [value, change, field]: a token reads "field value" (Astryx PowerSearch token, the value bold); a value that names
-  // itself ("공격 발생만") has no field.
+  // [value, change, field, key]: a token reads "field value" (Astryx PowerSearch token, the value bold); a value that
+  // names itself ("공격 발생만") has no field. The key names the condition alone (a change carries its siblings), so
+  // the bar's tokens pop in and shrink out one by one (barEnd).
   return [
-    ...filter.risk.map((r) => [words[r], { risk: filter.risk.filter((x) => x !== r) }, f.risk]),
-    ...(filter.kev ? [[t.qfKev, { kev: false }]] : []),
-    ...filter.has.map((h) => [f.has[h], { has: filter.has.filter((x) => x !== h) }]),
-    ...osPicks().map((p) => [osName(p), { picks: filter.picks.filter((x) => x !== p) }, 'OS']),
-    ...(filter.from || filter.to ? [[`${filter.from || '…'} ~ ${filter.to || '…'}`, { from: '', to: '' }, f.published]] : []),
-    ...(filter.cvssMin ? [[`${filter.cvssMin}.0+`, { cvssMin: 0 }, 'CVSS']] : []),
-    ...(filter.cve ? [[filter.cve === 'yes' ? f.cveYes : f.cveNo, { cve: '' }]] : []),
+    ...filter.risk.map((r) => [words[r], { risk: filter.risk.filter((x) => x !== r) }, f.risk, `risk:${r}`]),
+    ...(filter.kev ? [[t.qfKev, { kev: false }, undefined, 'kev']] : []),
+    ...filter.has.map((h) => [f.has[h], { has: filter.has.filter((x) => x !== h) }, undefined, `has:${h}`]),
+    ...osPicks().map((p) => [osName(p), { picks: filter.picks.filter((x) => x !== p) }, 'OS', p]),
+    ...(filter.from || filter.to ? [[`${filter.from || '…'} ~ ${filter.to || '…'}`, { from: '', to: '' }, f.published, `date:${filter.from}~${filter.to}`]] : []),
+    ...(filter.cvssMin ? [[`${filter.cvssMin}.0+`, { cvssMin: 0 }, 'CVSS', `cvss:${filter.cvssMin}`]] : []),
+    ...(filter.cve ? [[filter.cve === 'yes' ? f.cveYes : f.cveNo, { cve: '' }, undefined, `cve:${filter.cve}`]] : []),
   ];
 }
 

@@ -10,7 +10,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-HpnUC2dfzhDK+sbvWYnCga4o+rrtgpOSpsgxAE2E9tE=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-yschvRQ9AgPl/TeFdPKdFwb3bQ7oqhG8zaP6ioqz+/Y=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 =======
   Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-I5rodEGoiEuThdH/r1XTJAYy5rkG16QtgZx3cZ0DJvA=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 >>>>>>> claude/vis-panel-top-f1c7bd
