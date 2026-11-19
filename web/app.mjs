@@ -930,14 +930,22 @@ function placePill() {
 const STALE_MS = 60 * 60 * 1000;
 const WARN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14.5 13.5h-13Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 6.5v3.3M8 11.6v.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 const isStale = () => Boolean(updated) && !loadError && Date.now() - Date.parse(updated) > STALE_MS;
+// Astryx Banner anatomy: the first sentence is the title, the rest the description in Secondary Ink.
+function bannerText(text) {
+  const [title, ...rest] = text.match(/[^.。]+[.。]?\s*/g);
+  const box = el('span', 'b-text');
+  box.append(el('b', '', title.trim()), el('span', 'b-desc', rest.join('').trim()));
+  return box;
+}
 function staleNote() {
   const note = $('stale');
   const stale = isStale();
   const text = stale ? TEXT[lang].stale : ''; // the age is in the status line just above (critique 12)
-  if (note.textContent === text) return; // unchanged: screen readers hear it once (role=status)
+  if (note.dataset.text === text) return; // unchanged: screen readers hear it once (role=status)
+  note.dataset.text = text;
   note.hidden = !stale;
   note.innerHTML = stale ? WARN : '';
-  if (stale) note.append(el('span', '', text));
+  if (stale) note.append(bannerText(text));
 }
 let shownList = [];
 // The status line; on phones a stale Board says so on this line in two words (critique 13: the notice box pushed the
@@ -1405,9 +1413,14 @@ function errorState() {
   const t = TEXT[lang];
   const retry = Object.assign(el('button', 'btn', t.retry), { type: 'button' });
   retry.addEventListener('click', () => location.reload());
-  const actions = el('p', 'actions');
-  actions.append(retry);
-  return [para('', t.loadError), para('load-detail', t.loadDetail(loadError)), actions];
+  // Astryx EmptyState, Best Practices: "Don't: Use an EmptyState for error messages that require immediate action; use
+  // a Banner instead": the warning banner, the cause under its description, 다시 시도 at its end.
+  const banner = el('div', 'load-err');
+  banner.innerHTML = WARN;
+  const text = bannerText(t.loadError);
+  text.append(el('span', 'b-desc load-detail', t.loadDetail(loadError)));
+  banner.append(text, retry);
+  return [banner];
 }
 
 // Screen readers hear the count once the visitor stops changing the filter, not on every redraw. A new filter says its
@@ -1460,14 +1473,23 @@ function emptyState() {
   const actions = buttons.childElementCount ? [buttons] : [];
   // Only Products picked and none on the Board: the visitor's good news, said as a sign, never as "safe".
   if (filter.picks.length && !quick && !query) return [allClear(), ...actions];
+  // Astryx EmptyState, Best Practices: "Do: Use an illustration or icon that reinforces the context": the search glyph,
+  // or the filter funnel when quick filters emptied the Board.
+  const icon = el('span', 'e-icon');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.innerHTML = quick && !query ? EMPTY_FILTER : EMPTY_SEARCH;
   // A search that found nothing says what the Board holds (owner, 11-17: "why is my October CVE missing?"), whether or
   // not the notice under the header was closed; past the store's 90 days only the retention sentence stays.
   // Each sentence its own box, as in index.html #collect-note: lines break between sentences (owner, 11-18).
   const lines = sinceStillTrue(document.documentElement.dataset.collectedSince, Date.now()) ? [...t.noticeSince, t.noticeKeep] : [t.noticeKeep];
   const facts = Object.assign(el('p', 'scope'), { lang });
   lines.forEach((line, n) => { const box = el('span', 'sentence'); box.append(...keepIds(line)); facts.append(...(n ? [' ', box] : [box])); });
-  return [para('', message), scope, ...(query ? [facts] : []), ...actions];
+  const text = el('div', 'e-text');
+  text.append(para('', message), scope, ...(query ? [facts] : []));
+  return [icon, text, ...actions];
 }
+const EMPTY_SEARCH = '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m15.5 15.5 5 5M8 8l5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const EMPTY_FILTER = '<svg viewBox="0 0 24 24"><path d="M3.5 4.5h17l-6.5 8v5.5l-4 2v-7.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 
 function allClear() {
   const t = TEXT[lang];
