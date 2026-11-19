@@ -890,8 +890,8 @@ function pageText() {
   $('support').querySelector('[data-t="newTab"]').lang = lang; // the link itself is lang="en"
   // Icons alone are ambiguous: each icon button also says its name on hover. Astryx IconButton, Best Practices:
   // "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
-  for (const node of document.querySelectorAll('#jump button, #theme, #repo, #feeds-btn, #prefs-btn, #search-clear')) node.title = node.getAttribute('aria-label');
-  $('filter-btn').title = t.filterBtn; // named by its word, hidden below 1024px
+  for (const node of document.querySelectorAll('#jump button, #theme, #repo, #feeds-btn, #prefs-btn, #search-clear')) node.dataset.tip = node.getAttribute('aria-label');
+  $('filter-btn').dataset.tip = t.filterBtn; // named by its word, hidden below 1024px
   // The language menu's button names the page's language (full on wide screens, a short code on phones: the header must
   // fit 375px); screen readers hear what it opens. Each entry is in its own language and marks the current one.
   $('lang').setAttribute('aria-label', `${t.langMenu}: ${t.langName}`);
@@ -1099,7 +1099,7 @@ function primer() {
   more.addEventListener('click', () => openGuide(true));
   const close = Object.assign(el('button', 'btn p-close'), { type: 'button' });
   close.setAttribute('aria-label', p.dismiss);
-  close.title = p.dismiss; // Astryx IconButton, Best Practices: "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
+  close.dataset.tip = p.dismiss; // Astryx IconButton, Best Practices: "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
   close.append(el('span', 'x'));
   close.addEventListener('click', () => fold($('primer'), false, () => { setGuide(false); $('guide-btn').focus({ preventScroll: true }); }));
   box.replaceChildren(keys, more, close);
@@ -1652,11 +1652,6 @@ function filterPanel() {
     return wrap;
   };
   const input = (type, name, value) => Object.assign(document.createElement('input'), { type, name, value });
-  const select = (name, options, value) => {
-    const s = Object.assign(document.createElement('select'), { name });
-    s.append(...options.map(([v, text]) => Object.assign(new Option(text, v), { selected: String(v) === String(value) })));
-    return s;
-  };
   const checks = (legend, name, items, isOn) => {
     const set = el('fieldset', 'fp-field wide fp-checks');
     set.append(el('legend', 'fp-label', legend));
@@ -1666,6 +1661,21 @@ function filterPanel() {
       chip.append(box, el('span', '', text));
       set.append(chip);
     }
+    return set;
+  };
+  // A choice of three or four (최소 CVSS, CVE 번호) is a segmented control, every option in sight, not a select (Astryx
+  // Selector, Best Practices: "Don't: Use when there are only two options; use a SegmentedControl or radio buttons";
+  // SegmentedControl: "Use for switching between 2-5 mutually exclusive views or modes where all options should be visible").
+  const segments = (legend, name, items, value) => {
+    const set = el('fieldset', 'fp-field fp-seg');
+    const track = el('div', 'fp-seg-track');
+    for (const [v, text] of items) {
+      const box = Object.assign(input('radio', name, v), { checked: String(v) === String(value) });
+      const option = el('label', '');
+      option.append(box, el('span', '', text));
+      track.append(option);
+    }
+    set.append(el('legend', 'fp-label', legend), track);
     return set;
   };
   const words = defaultView === 'easy' ? t.easyLevels : t.levels;
@@ -1683,8 +1693,8 @@ function filterPanel() {
     (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(Object.assign(el('p', 'fp-note', f.osNote), { id: 'fp-os-note' })); set.setAttribute('aria-describedby', 'fp-os-note'); return set; })(),
     // What a dashed chip means: one full-width line right under the chips, and each dashed chip points to it (critique 13).
     Object.assign(el('p', 'fp-note fp-zero-note', f.zeroNote), { id: 'fp-zero-note' }),
-    field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
-    field(f.cve, select('cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve)),
+    segments(f.cvss, 'cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin),
+    segments(f.cve, 'cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve),
     dates,
   );
   const actions = el('div', 'fp-actions');
@@ -1695,8 +1705,12 @@ function filterPanel() {
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
-  const close = Object.assign(el('button', 'btn', f.close), { type: 'button' });
-  close.addEventListener('click', closePanel);
+  // Astryx Dialog's header: the title and an icon-only ghost close, named and with its hover hint.
+  const close = Object.assign(el('button', 'btn fp-close'), { type: 'button' });
+  close.setAttribute('aria-label', f.close);
+  close.dataset.tip = f.close;
+  close.append(el('span', 'x'));
+  close.addEventListener('click', () => closePanel());
   const head = el('div', 'g-head fp-head');
   head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
   form.replaceChildren(head, grid, actions);
@@ -1814,6 +1828,69 @@ function closePanel(applied = false) {
   $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
   $('filter-btn').focus({ preventScroll: true });
+}
+
+// The phone sheet's head is its handle (Astryx BottomSheet: "drag region at the top of the panel"): dragged down it follows
+// the finger, and let go past 80px it closes; short of that it springs back.
+{
+  const form = $('filters');
+  let drag = null;
+  form.addEventListener('pointerdown', (event) => {
+    if (!phoneSheet() || form.hidden || !event.target.closest('.fp-head') || event.target.closest('button')) return;
+    drag = { y: event.clientY, id: event.pointerId };
+    form.setPointerCapture(event.pointerId);
+  });
+  form.addEventListener('pointermove', (event) => {
+    if (drag?.id === event.pointerId) form.style.translate = `0 ${Math.max(0, event.clientY - drag.y)}px`;
+  });
+  const drop = (event) => {
+    if (drag?.id !== event.pointerId) return;
+    const far = event.type === 'pointerup' && event.clientY - drag.y > 80;
+    drag = null;
+    form.style.translate = '';
+    if (far) closePanel();
+  };
+  form.addEventListener('pointerup', drop);
+  form.addEventListener('pointercancel', drop);
+}
+
+// Icon-only buttons name themselves in a small inverted bubble (Astryx Tooltip: "Add a tooltip to icon-only buttons";
+// useTooltip.tsx: Primary Ink ground, the surface's colour on it, 4px by 8px in, delay 200, placement above, flipping
+// below where there is no room): after 200ms under a hovering pointer, at once on a keyboard focus, never on touch.
+// The name is the button's aria-label already, so the bubble is hidden from readers. A button showing its word has none.
+{
+  const tip = Object.assign(document.createElement('div'), { className: 'tip', hidden: true }); // el() is defined further down
+  tip.setAttribute('aria-hidden', 'true');
+  document.body.append(tip);
+  let timer = 0;
+  const hide = () => { clearTimeout(timer); tip.hidden = true; };
+  const show = (node) => {
+    if (node.querySelector(':scope > span:not(.x, .count)')?.offsetWidth > 1) return; // its word is on screen
+    tip.textContent = node.dataset.tip;
+    tip.hidden = false;
+    const r = node.getBoundingClientRect();
+    const above = r.top - tip.offsetHeight - 6 >= 0;
+    const x = Math.min(innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2));
+    tip.style.translate = `${Math.round(x)}px ${Math.round(above ? r.top - tip.offsetHeight - 6 : r.bottom + 6)}px`;
+  };
+  document.addEventListener('pointerover', (event) => {
+    const node = event.target.closest?.('[data-tip]');
+    if (!node || event.pointerType === 'touch' || node.contains(event.relatedTarget)) return;
+    hide();
+    timer = setTimeout(() => show(node), 200);
+  });
+  document.addEventListener('pointerout', (event) => {
+    const node = event.target.closest?.('[data-tip]');
+    if (node && !node.contains(event.relatedTarget)) hide();
+  });
+  document.addEventListener('focusin', (event) => {
+    hide();
+    if (event.target.matches?.('[data-tip]:focus-visible')) show(event.target);
+  });
+  document.addEventListener('focusout', hide);
+  document.addEventListener('pointerdown', hide);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') hide(); });
+  addEventListener('scroll', hide, { passive: true });
 }
 
 // The Board's head (the bar with 주요 사건) just under the frozen row: where a new order or filter starts reading.
