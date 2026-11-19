@@ -763,9 +763,10 @@ function pop(node, from = 'scale(0.6)', duration = 220) {
 // Both ways on one gentle ease-out (MuMu, frame by frame, owner 11-10): EASE_OUT was three quarters open in 50ms, so a
 // phone-tall panel just appeared; an ease-in close barely moved for 80ms and then shut in three frames.
 const FOLD_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)';
-// A row's own details (row()): under reduced motion they fade and nothing moves; fold() stays as it is for the rest
-// (vendor folds appear at once, DESIGN.md). Astryx Motion, Respecting User Preferences: "opacity only, in 200 ms or less".
-function rowFold(node, opening, done = () => {}) {
+// A row's details and the reading guide: fold() with motion; under reduced motion they fade and nothing moves. fold()
+// stays as it is for the rest (vendor folds appear at once, DESIGN.md). Astryx Motion, Respecting User Preferences:
+// "opacity only, in 200 ms or less".
+function foldOrFade(node, opening, done = () => {}) {
   if (!reducedMotion.matches) return fold(node, opening, done);
   node.folding?.cancel();
   const run = node.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }], { duration: 200, easing: EASE_OUT, fill: 'forwards' });
@@ -970,6 +971,37 @@ let guideOpen = false;
 // Storage blocked: closed, since it could never be dismissed for good, so the 읽는 법 button carries it alone.
 let primerOpen = !stored(SAVED_GUIDE, true);
 
+// 읽는 법 opens and closes with the rows' fold (owner, 11-19: it had no motion); reduced motion: the 200ms fade. Its top
+// margin moves with it, so nothing below jumps when the fold ends. A press mid-close turns it round.
+function guideEdges(box, opening) {
+  if (reducedMotion.matches) return;
+  const cs = getComputedStyle(box);
+  // A border never draws thinner than 1px, so the margin also takes back the two border lines.
+  const full = { marginTop: cs.marginTop };
+  const none = { marginTop: `-${parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)}px` };
+  box.edging?.cancel();
+  box.edging = box.animate(opening ? [none, full] : [full, none], { duration: opening ? 300 : 240, easing: FOLD_EASE });
+}
+function openGuide(focusClose = false) {
+  const box = $('guide');
+  if (box.dataset.leaving) delete box.dataset.leaving; // closing: turn round where it stands
+  else setGuide(true);
+  $('guide-btn').setAttribute('aria-expanded', 'true');
+  guideEdges(box, true);
+  foldOrFade(box, true);
+  if (focusClose) box.querySelector('.g-head .btn')?.focus({ preventScroll: true });
+}
+function closeGuide() {
+  const box = $('guide');
+  box.dataset.leaving = '1';
+  $('guide-btn').setAttribute('aria-expanded', 'false');
+  $('guide-btn').focus({ preventScroll: true }); // 닫기 sits inside the box that folds away
+  guideEdges(box, false);
+  foldOrFade(box, false, () => {
+    delete box.dataset.leaving;
+    setGuide(false);
+  });
+}
 function setGuide(open) {
   guideOpen = open;
   primerOpen = false; // either way the visitor has met the guide
@@ -984,11 +1016,11 @@ function guide() {
   const g = t.guide;
   const box = $('guide');
   primer();
-  $('guide-btn').setAttribute('aria-expanded', guideOpen);
+  $('guide-btn').setAttribute('aria-expanded', guideOpen && !box.dataset.leaving);
   box.hidden = !guideOpen;
   if (!guideOpen) return box.replaceChildren();
   const close = Object.assign(el('button', 'btn', g.close), { type: 'button' });
-  close.addEventListener('click', () => { setGuide(false); $('guide-btn').focus(); });
+  close.addEventListener('click', closeGuide);
   const head = el('div', 'g-head');
   head.append(Object.assign(el('h2', '', g.title), { id: 'guide-title' }), close);
   const list = el('dl', 'legend');
@@ -1056,11 +1088,7 @@ function primer() {
   key(pending, p.unrated);
   key(scoreCell({ cvss: 9.8 }), p.ring);
   const more = Object.assign(el('button', 'btn p-more', p.more), { type: 'button' }); // phones: the 읽는 법 button just above does it
-  more.addEventListener('click', () => {
-    setGuide(true);
-    reveal($('guide'));
-    $('guide').querySelector('.g-head .btn')?.focus({ preventScroll: true });
-  });
+  more.addEventListener('click', () => openGuide(true));
   const close = Object.assign(el('button', 'btn p-close'), { type: 'button' });
   close.setAttribute('aria-label', p.dismiss);
   close.title = p.dismiss; // Astryx IconButton, Best Practices: "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
@@ -1766,10 +1794,7 @@ $('theme').addEventListener('click', toggleTheme);
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (!$('filters').hidden) return closePanel();
-  if (guideOpen) {
-    setGuide(false);
-    return $('guide-btn').focus();
-  }
+  if (guideOpen && !$('guide').dataset.leaving) return closeGuide();
   let item = document.activeElement;
   while (item && !(item.tagName === 'LI' && item.querySelector(':scope > h3.row-h'))) item = item.parentElement;
   const row = item?.querySelector(':scope > h3.row-h > button.row');
@@ -2031,10 +2056,7 @@ $('jump-up').addEventListener('click', (event) => launch(event.currentTarget, tr
 $('jump-down').addEventListener('click', (event) => launch(event.currentTarget, false));
 $('jump-down').addEventListener('click', () => scrollTo({ top: document.documentElement.scrollHeight, behavior: glide() }));
 
-$('guide-btn').addEventListener('click', () => {
-  setGuide(!guideOpen);
-  if (guideOpen) reveal($('guide'));
-});
+$('guide-btn').addEventListener('click', () => (guideOpen && !$('guide').dataset.leaving ? closeGuide() : openGuide()));
 // Two-button groups take one Tab stop and move by arrows (groupKey, Astryx ButtonGroup): 가−/가+ left and right, with
 // Home/End; 한 화면 위로/아래로 up and down only, since Home and End stay the browser's (DESIGN.md, jump buttons).
 function rove(group, keys) {
@@ -2948,10 +2970,10 @@ function row(incident, pinned, vendor = '') {
       open.add(key);
       fill(true);
       body.hidden = false;
-      rowFold(body, true);
+      foldOrFade(body, true);
     } else {
       open.delete(key);
-      rowFold(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
+      foldOrFade(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
     }
   });
   if (!body.hidden) fill();

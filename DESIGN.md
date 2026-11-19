@@ -591,8 +591,9 @@ Restrained outlined buttons for theme, language and copying a command.
   without replaying it.
 - **Folding:** an opened row's details and a folded model list grow from 0 to their height (220ms, ease-out) and
   shrink back faster (160ms) when closed, so the rows below glide; a click mid-way turns them round.
-- **Opening:** the reading guide and the filter panel ease in over 200ms (a 6px drop
-  and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
+- **Opening:** the reading guide opens and closes like a row's details (the same fold, both ways; its top margin moves
+  with it so nothing below jumps; reduced motion: a 200ms fade; owner, 11-19: it had no motion). The filter panel eases
+  in over 200ms (a 6px drop and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
 - **Vendor fold (trial, 11-09; three since late 11-09, owner):** three or more list rows of one vendor (or of WordPress plugins and themes, one
