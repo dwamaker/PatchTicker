@@ -699,7 +699,8 @@
     .sub.say { display: block; color: var(--ink); font-weight: 500; } /* Easy view: the whole plain sentence, never cut */
     .cve { font-variant-numeric: tabular-nums; }
     .cve.none { color: var(--ink-2); }
-    .row[aria-expanded="true"] .sub:has(.cve:not(.none)) { display: none; } /* open: the panel's first line carries the IDs, copyable (owner, 11-10) */
+    .row[aria-expanded="true"] .sub:has(.cve:not(.none)) { visibility: hidden; } /* open: the panel's first line carries the IDs, copyable (owner, 11-10); its place is kept, so the title never moves (11-19) */
+    @media (max-width: 767px) { .row[aria-expanded="true"] .sub:has(.cve:not(.none)) { display: none; } } /* under the title on phones: nothing above it moves */
     .cve-more { font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 500; color: var(--ink-2); }
     /* 원문: a small filled grey token (Astryx Token sm: 20px, 4px corners, 12px medium, no border) */
     .orig { display: inline-block; margin-right: 0.375rem; padding: 0 0.5rem; border-radius: var(--r-marker); background: var(--note-wash); color: var(--note-ink); font-size: calc(0.75rem * var(--ts)); font-weight: 500; line-height: calc(1.25rem * var(--ts)); vertical-align: 0.125rem; }
@@ -959,7 +960,12 @@
     .p-side > .c-score { flex: none; } /* the ring keeps its size; the tags take what is left */
     .p-prod { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
     .p-label { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; }
-    li:has(> .details:not([hidden]) > .p-top > .p-side) > .row-h > .row > :is(.c-score, .c-tags) { display: none; }
+    /* open: the header's ring and tags have gone to the panel (app.mjs carry flies them there and back with the fold); their
+       places are kept, so the title never moves, except the tags' own line on narrow screens (the fold takes up the step) */
+    li:has(> .details > .p-top > .p-side) > .row-h > .row[aria-expanded="true"] > :is(.c-score, .c-tags) { visibility: hidden; }
+    @media (max-width: 1023px) { li:has(> .details > .p-top > .p-side) > .row-h > .row[aria-expanded="true"] > .c-tags { display: none; } }
+    .carrying { position: relative; }
+    .ghost { position: absolute; z-index: 1; margin: 0; pointer-events: none; }
     .details > .sec-head:first-child { margin-top: 0; }
     .details .lead { max-width: 46rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
     .details .lead ~ .mentions { margin-top: 0.5rem; padding-top: 0; border-top: 0; }
