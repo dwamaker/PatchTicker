@@ -774,8 +774,10 @@ const FOLD_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)';
 // A row's details and the reading guide: fold() with motion; under reduced motion they fade and nothing moves. fold()
 // stays as it is for the rest (vendor folds appear at once, DESIGN.md). Astryx Motion, Respecting User Preferences:
 // "opacity only, in 200 ms or less".
-function foldOrFade(node, opening, done = () => {}) {
-  if (!reducedMotion.matches) return fold(node, opening, done);
+// shift: how much the header above grew (closing) or shrank (opening) in the same frame, which the fold starts from so
+// the rows below never step (an opened row's tags leave the header's own line on narrow screens: carry).
+function foldOrFade(node, opening, done = () => {}, shift = 0) {
+  if (!reducedMotion.matches) return fold(node, opening, done, shift);
   node.folding?.cancel();
   const run = node.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }], { duration: 200, easing: EASE_OUT, fill: 'forwards' });
   node.folding = run;
@@ -785,13 +787,13 @@ function foldOrFade(node, opening, done = () => {}) {
     run.cancel(); // the held end frame lets go only after done() has hidden a closed row
   };
 }
-function fold(node, opening, done = () => {}) {
+function fold(node, opening, done = () => {}, shift = 0) {
   node.folding?.cancel();
   if (reducedMotion.matches) return done();
   const cs = getComputedStyle(node);
   const full = { height: `${node.scrollHeight}px`, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 };
-  if (!opening) full.height = `${node.offsetHeight}px`;
-  const shut = { height: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
+  if (!opening) full.height = `${Math.max(0, node.offsetHeight - shift)}px`;
+  const shut = { height: `${opening ? shift : 0}px`, paddingTop: '0px', paddingBottom: '0px', opacity: 0 };
   node.style.overflow = 'hidden';
   node.folding = node.animate(opening ? [shut, full] : [full, shut],
     { duration: opening ? 300 : 240, easing: FOLD_EASE });
@@ -3279,6 +3281,59 @@ function evidenceCell(incident) {
   return el('small', 'c-ev', reason.kind === 'kev' ? [t.kevListed, reason.date].filter(Boolean).join(' ') : t.reportedBy(host(reason.url)));
 }
 
+// Owner 11-19: opening or closing a row carries its ring and tags between the header and the panel's top as one motion
+// with the fold (same duration and curve). A ghost, a copy of the header's (the panel clips its own while it folds),
+// travels inside the row while the real copies are held invisible by animations, so a finish or a cancel leaves no
+// trace. The rings are the same, so the ghost hands over on landing; the tags differ in the panel (buttons, 나머지 N개
+// 보기), so the ghost fades into the real line on the way. Reduced motion: no travel, a 200ms cross-fade. starts: where
+// each copy is seen before the change (a ghost's place when a click turns it round mid-way), from carryStarts.
+// The header's ring and tags and the panel's, by index (0 ring, 1 tags); null where one is missing.
+function carryParts(button, body) {
+  const side = body.querySelector(':scope > .p-top > .p-side');
+  return [[button.querySelector(':scope > .c-score'), side?.querySelector(':scope > .c-score')],
+    [button.querySelector(':scope > .c-tags'), side?.querySelector('.tag-line')]];
+}
+function carryStarts(button, body, flights, opening) {
+  // a ghost still in flight is where its copy is seen; one that has landed is gone from the page
+  return carryParts(button, body).map(([head, there], n) => ((flights[n]?.ghost.isConnected && flights[n].ghost) || (opening ? head : there))?.getBoundingClientRect());
+}
+function carry(li, button, body, opening, starts, flights) {
+  flights.forEach((f) => f?.stop());
+  const parts = carryParts(button, body);
+  if (!parts[0][1]) return []; // no group in the panel (a row still loading): the header keeps its own
+  const still = reducedMotion.matches;
+  const timing = { duration: still ? 200 : opening ? 300 : 240, easing: still ? EASE_OUT : FOLD_EASE, fill: 'forwards' };
+  const box = li.getBoundingClientRect();
+  li.classList.add('carrying');
+  return parts.map(([head, there], n) => {
+    const a = starts[n];
+    if (!head?.childElementCount || !there || !a?.width) return null;
+    const [from, to] = opening ? [head, there] : [there, head];
+    const b = to.getBoundingClientRect();
+    const ghost = head.cloneNode(true);
+    for (const x of [ghost, ...ghost.querySelectorAll('[id]')]) x.removeAttribute('id');
+    ghost.classList.add('ghost');
+    ghost.setAttribute('aria-hidden', 'true');
+    Object.assign(ghost.style, { left: `${a.left - box.left}px`, top: `${a.top - box.top}px`, width: `${head.getBoundingClientRect().width || a.width}px`, fontSize: getComputedStyle(head).fontSize });
+    li.append(ghost);
+    const ring = n === 0 && !still; // the same ring at both ends: it lands and hands over
+    // The tags hand over near landing (from 60% of the way), so two sets never show at once.
+    const hand = still ? 0 : 0.6;
+    const runs = [
+      ghost.animate([{ transform: 'none', opacity: 1 }, { opacity: 1, offset: hand }, { transform: still ? 'none' : `translate(${b.left - a.left}px, ${b.top - a.top}px)`, opacity: ring ? 1 : 0 }], timing),
+      from.animate([{ opacity: 0 }, { opacity: 0 }], timing),
+      to.animate([{ opacity: 0 }, { opacity: 0, offset: hand }, { opacity: ring ? 0 : 1 }], timing),
+    ];
+    const stop = () => {
+      runs.forEach((r) => r.cancel());
+      ghost.remove();
+      if (!li.querySelector(':scope > .ghost')) li.classList.remove('carrying');
+    };
+    runs[0].onfinish = stop;
+    return { ghost, stop };
+  });
+}
+
 // One board row: a button that opens the details below it, like opening a post. A Highlight is one alert of the
 // 주요 사건 band: a header strip (risk sign, 공격 발생 and its evidence, time, chevron) over its title, ring and badges.
 function row(incident, pinned, vendor = '') {
@@ -3326,18 +3381,22 @@ function row(incident, pinned, vendor = '') {
       $('announce').textContent = TEXT[lang].loadError;
     });
   };
+  let flights = []; // the ring and tags in flight between the header and the panel (carry)
   button.addEventListener('click', () => {
     const opening = !open.has(key);
+    // Where the ring and tags are seen now and how tall the header is, before the change moves them.
+    const starts = carryStarts(button, body, flights, opening);
+    const before = heading.offsetHeight;
     button.setAttribute('aria-expanded', opening);
     if (opening) {
       open.add(key);
       fill(true);
       body.hidden = false;
-      foldOrFade(body, true);
-    } else {
-      open.delete(key);
-      foldOrFade(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
-    }
+    } else open.delete(key);
+    const shift = Math.max(0, opening ? before - heading.offsetHeight : heading.offsetHeight - before);
+    flights = carry(li, button, body, opening, starts, flights);
+    if (opening) foldOrFade(body, true, undefined, shift);
+    else foldOrFade(body, false, () => { body.hidden = !open.has(key); }, shift); // reopened mid-way: stay open
   });
   if (!body.hidden) fill();
   const heading = el('h3', 'row-h');
