@@ -805,7 +805,7 @@ function fold(node, opening, done = () => {}) {
 // Board redraws the visitor asked for (filters, sort, 주요 사건 더 보기, 모두 펼치기, the view; 더 보기 only when it draws the
 // whole Board, not when it adds rows) keep each row's identity: a row
 // that stays glides to its new place, a new one fades in, a gone one fades out (View Transitions; each row is named in
-// row()). Reduced motion: nothing moves, the change only cross-fades. Typing in search redraws plainly.
+// row()). Reduced motion: nothing moves, the change only cross-fades. Typing in search uses it too, quicker.
 const rowNames = new Map();
 const rowName = (id) => rowNames.get(id) || rowNames.set(id, `row-${rowNames.size + 1}`).get(id);
 // Only rows on or near the screen are named: every named row is captured, and off-screen ones cost memory for nothing.
@@ -832,7 +832,7 @@ function boardTransition(change) {
   transition.ready.catch(() => {}); // a newer redraw skipped this one: nothing is wrong
   transition.finished.finally(() => {
     for (const li of document.querySelectorAll('li[data-vt]')) li.style.viewTransitionName = '';
-    if (--boardRuns === 0) document.documentElement.classList.remove('vt-board');
+    if (--boardRuns === 0) document.documentElement.classList.remove('vt-board', 'vt-search');
   });
   return transition.updateCallbackDone.catch(() => {});
 }
@@ -2297,8 +2297,15 @@ $('search').addEventListener('input', (event) => {
   suggest();
   $('search-clear').hidden = !event.target.value && activeFilters() === 0;
   clearTimeout(typing);
-  typing = setTimeout(() => update({ query: event.target.value }, false), 150); // no transition under the caret
+  typing = setTimeout(() => searchTransition(event.target.value), 150);
 });
+// Typing redraws the Board with the same row-keeping transition, only quicker (index.html, .vt-search; owner, 11-19:
+// "no animation at all when it switches"). A keystroke during one cuts it to its end: a new View Transition skips the
+// running one, so nothing queues. boardTransition takes the class off when the last transition ends.
+function searchTransition(query) {
+  document.documentElement.classList.add('vt-search');
+  update({ query });
+}
 // The keys of Astryx Typeahead: arrows move through the suggestions, Enter picks the one moved to (with none, the typed
 // words stay the search), Escape closes the list, Backspace in an empty field takes the last token back. Never while
 // an input method is still composing (Korean): its Enter and Backspace belong to the syllable.
