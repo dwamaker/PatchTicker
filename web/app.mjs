@@ -2546,7 +2546,9 @@ function lineBadge(name) {
 // An operating system the software runs on: an outline, not a line colour, so it never reads as the Product.
 // Screen readers hear "(OS)" once, after the last one ("Windows macOS Linux (OS) Perl"); sighted readers see the outline.
 const osBadge = (name, last = true) => {
-  const badge = el('span', 'ln os', name);
+  // the same inner label as a line badge, so a closed row can end a long name with "…" (the title gives it whole)
+  const badge = Object.assign(el('span', 'ln os'), { title: name });
+  badge.append(el('span', 'ln-t', name));
   if (last) badge.append(el('span', 'sr-only', ' (OS)'));
   return badge;
 };
