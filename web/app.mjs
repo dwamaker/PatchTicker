@@ -2813,6 +2813,7 @@ function dateCell(incident) {
 // Both views end with the Lead and every Mention, so links a CVE record gains later show up in either.
 // Critique P2 (11-19): what to do comes first in both views. The Normal panel keeps its small ID, score and date lines on
 // top as a header strip; the Easy panel opens on the red line and the action, and keeps those identifiers at its foot.
+// Since 11-19 (owner) both open on the row's tags as a 제품 line, so a filter is never a long scroll away.
 function details(incident, onStrip = false) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';

@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -289,8 +289,13 @@ function mentions(i, lang, t) {
       return '';
     }
   };
-  // Owner, 11-19: a kind with more links than MENTIONS_SHOWN folds into one line, as on the Board (mentionGroups).
-  return ul(mentionGroups(i.mentions.filter(shown)).map(({ kind, list, sites, fold }) => {
+  // Owner, 11-19: a kind with more links than MENTIONS_SHOWN folds into one line, as on the Board (mentionGroups). The Lead
+  // never folds: this page has no Lead line of its own, so when its kind folds it stays a line of its own ahead of the rest.
+  const kept = i.mentions.filter(shown);
+  const lead = kept.find((m) => m.url === i.brief?.lead);
+  const apart = lead && kept.filter((m) => m.kind === lead.kind).length > MENTIONS_SHOWN ? lead : null;
+  const leadLine = apart ? [`${esc(t.mentionKinds[apart.kind] || apart.kind)}: ${link(apart.url, named(apart), t)}`] : [];
+  return ul([...leadLine, ...mentionGroups(kept.filter((m) => m !== apart)).map(({ kind, list, sites, fold }) => {
     const label = t.mentionKinds[kind] || kind;
     const links = list.map((m) => {
       const name = named(m);
@@ -299,7 +304,7 @@ function mentions(i, lang, t) {
     });
     return fold ? `<details class="more"><summary>${esc(t.mentionsMany(label, sites, list.length))}</summary>${ul(links, 'sources')}</details>`
       : `${esc(label)}: ${links.join(' · ')}`;
-  }), 'sources');
+  })], 'sources');
 }
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
