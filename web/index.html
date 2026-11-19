@@ -869,6 +869,13 @@
     .command.stamped { background: color-mix(in srgb, var(--ok) 16%, var(--panel-2)); border-color: var(--ok); transition-duration: 120ms; }
     .command .ok { color: var(--ok); }
     @media (prefers-reduced-motion: reduce) { .command .copy:active { transform: none; } }
+    /* phones: the code takes the block's full width (a 25-letter image name broke mid-word beside Copy) and Copy sits
+       under it at the end, on a hairline, as CodeBlock's controls sit in their own row when there is no room beside */
+    @media (max-width: 599px) {
+      .command { grid-template-columns: minmax(0, 1fr); }
+      .command code { padding-bottom: 0.5rem; }
+      .command .copy { justify-self: stretch; justify-content: flex-end; border-top: 1px solid var(--rule-2); border-radius: 0 0 calc(var(--r-ctl) - 1px) calc(var(--r-ctl) - 1px); }
+    }
 
     @media (min-width: 768px) and (max-width: 1023px) {
       .row { grid-template-columns: var(--pre) minmax(0, 1fr) calc(2.75rem * var(--ts)) calc(5.5rem * var(--ts)) 0.75rem; grid-template-areas: "risk t score when chev" ". tags tags tags ."; row-gap: 0.5rem; }
