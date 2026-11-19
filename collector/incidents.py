@@ -129,7 +129,7 @@ def order_fields(incident, maps):
 
 
 def known_field(incident):
-    """`known` for the page (wellKnown in web/board.mjs), worked out at each write and never stored, so an edit of
+    """`known` for the page (tierOf and highlightScore in web/board.mjs), worked out at each write and never stored, so an edit of
     collector/well_known.json reaches the week's rows at the next cycle. known_tier: the label's tier of reach in that
     file (1 on most computers or phones, 2 the standard of its field, 3 known inside it), which orders the Highlights
     (owner, 11-17; it replaced the label's place, known_rank); none for a label on no list (a Summary's widely_used),

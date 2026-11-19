@@ -1655,6 +1655,18 @@ test('an exploited 7.5 on no list has no place of its own beside twenty critical
   assert.ok(!highlights.some((i) => i.id === 'X')); // 37.5 + 12 against 49 + 10 + 3 (owner, 11-19)
 });
 
+// Equal score and publish time: the lower id, whatever order the rows come in or the visitor's sort (the collector too).
+test('of twin rows the lower id is the Highlight, whatever the input order and sort', () => {
+  const twin = (id) => tierRow(id, `v-${id}`, { cvss: 9.8 });
+  const rows = [...Array.from({ length: 11 }, (_, n) => tierRow(`K${n}`, `v${n}`, { cvss: 10 })), twin('T2'), twin('T1')];
+  for (const sort of ['new', 'cvss', 'risk']) {
+    for (const list of [rows, [...rows].reverse()]) {
+      const picked = filterBoard(list, [], '', HL_NOW, { sort }).highlights.map((i) => i.id);
+      assert.ok(picked.includes('T1') && !picked.includes('T2'), `${sort} ${picked}`);
+    }
+  }
+});
+
 // Owner, 11-16 and 11-19: one vendor and category does not fill the list; each row of it already chosen costs the next 10.
 test('a second row of the same vendor and category comes in only by beating the rest by the penalty', () => {
   const others = (cvss, tier) => Array.from({ length: 11 }, (_, n) => tierRow(`K${n}`, `v${n}`, tier ? { known: `Label ${n}`, known_tier: tier, cvss } : { cvss }));

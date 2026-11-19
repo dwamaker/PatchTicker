@@ -221,6 +221,12 @@ class CycleTest(unittest.TestCase):
         picked = lambda rest: [v["id"] for v in cycle.highlights(pair + rest, "2026-11-09T12:00:00Z", "2026-11-16T12:00:00Z")]
         self.assertNotIn("A2", picked(strong))
         self.assertIn("A2", picked(weak))
+        twins = [row("T2", "t2", cvss=9.8), row("T1", "t1", cvss=9.8)]  # equal: the lower id, in either order
+        ten = [row(f"K{n}", f"v{n}", cvss=10) for n in range(11)]
+        for rows in (ten + twins, list(reversed(ten + twins))):
+            ids = [v["id"] for v in cycle.highlights(rows, "2026-11-09T12:00:00Z", "2026-11-16T12:00:00Z")]
+            self.assertIn("T1", ids)
+            self.assertNotIn("T2", ids)
         self.assertEqual(cycle.same_key(pair[0]), "acme")
         self.assertEqual(cycle.same_key(pair[0] | {"known_kind": "Browsers"}), "acme|Browsers")
         self.assertEqual(cycle.same_key({"id": "x", "products": []}), "id:x")

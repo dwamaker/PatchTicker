@@ -124,14 +124,18 @@ only what a row, the filters, folds and Highlights read, and the collector's `wp
 week's Highlights stay whole (ports kept in step by `tests/fixtures/board/rows-case.json`). The page fetches
 `board/recent.json` only to open a row view or to search.
 
-Highlights (of the last seven days: every exploited one, then the best-scored well-known one of each product, then the
-rest by score, at least ten and at most twenty; `pickHighlights`, owner 11-10 and 11-11) are scored in the page
-(`highlightScore` in `web/board.mjs`) from the exploited flag (KEV, or a Summary reporting attacks), HN points, curator newsletter Mentions, CVSS (an exploited Incident with no score counts as 9.0, the floor of its 최고 band) and Mention count (up to ten, so a many-CVE release does not outrank exploited Incidents); among equal scores the newer is first. Curator issues add 25 each, two at most however many issues cite the Incident; one issue cites an Incident once (by its link).
-Well known (`wellKnown`): a row at 최고, not exploited, that the collector stamped `known` on both its row and board
+Highlights (of the last seven days, at 위험 or above; `pickHighlights`, owner 11-19) are ranked by one score in the page
+(`highlightScore` in `web/board.mjs`, ported as `highlight_score`): 5 x CVSS (an exploited Incident with no score counts
+as 9.0, a provisional level as 9.0 or 7.0), wide use by the label's tier (14, 10, 5), urgency (exploited 12, any other 긴급
+3), recency (10 when published now, to 0 at seven days), and HN points, one curator and Mentions as tie-breakers of 2 at
+most. The best is taken each time after 10 off per chosen row of the same vendor and well_known category (`sameKey`);
+twelve in all; ties go to the newer, then the lower id. No kind has a reserved place (until 11-19 every exploited one came
+first, then the best-scored well-known one of each product).
+Well known: a row the collector stamped `known` on both its row and board
 views, worked out at each write and never stored (`known_label` in `collector/incidents.py`): the label of its first
 Product on `collector/well_known.json`, else, when its Summary says `widely_used` (none since 11-11: the schema cannot carry it), that Product's English name; and
 `known_tier`, the label's tier of reach in that file (1 on most computers or phones, 2 the standard of its field,
-3 known inside it), which orders the well-known Highlights (none for a label on no list, which the site counts as 3). The
+3 known inside it), the wide-use part of the Highlight score (none for a label on no list, which the site counts as 3). The
 collector picks the same Highlights (`highlights` in `collector/cycle.py`, kept in step by
 `tests/fixtures/board/highlights-case.json`) so each is whole in `board/rows.json`. How to add a product:
 `docs/agents/vendors.md`.

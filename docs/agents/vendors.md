@@ -41,9 +41,8 @@ whole file (a test checks both).
 
 Every label has a `tier`, its reach (owner, 2026-11-17, "많은 사람이 사용하는걸 위로"): **1** on most computers or phones
 (Windows, Chrome, Android), **2** the standard of its field (Zoom, FortiOS, SAP NetWeaver), **3** well known inside its
-field. The tier, not the file's order, is the priority: the well-known Highlights are chosen tier 1 before 2 before 3,
-by score inside a tier, and the pins and 주요 사건 더 보기 show tier 1, tier 2, exploited rows on tier 3 or no list, tier 3,
-then the rest (CONTEXT.md, Highlight). The kind a label sits under also counts: a pin stands for a vendor in one
+field. The tier, not the file's order, counts: it is the wide-use part of the Highlight score (tier 1 +14, 2 +10,
+3 +5; owner, 2026-11-19, replacing the tier groups of 11-17; CONTEXT.md, Highlight). The kind a label sits under also counts: a pin stands for a vendor in one
 kind, so Android (Operating systems) and Chrome (Browsers) both take one while two Google browsers share one; file a
 label under the kind a reader would look for it in. A product on no list (a Summary's `widely_used`, which no new Summary carries
 since 11-11) counts as tier 3. Give the lowest tier that is true: a tier-1 label outranks every exploited row of tier 3.

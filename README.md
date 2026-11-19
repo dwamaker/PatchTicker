@@ -49,7 +49,7 @@ Patch Ticker answers both in seconds, with no security background needed.
 - **Your products only**: pick what you run and the list narrows to it. Picks stay in your browser.
 - **Plain summaries** in Korean and English: what it is, who is affected, how to fix it.
 - **Easy view**: no jargon, just the risk and one thing to do now.
-- **Highlights**: Incidents under attack, or in widely used products, stand on top.
+- **Highlights**: the week's Incidents ranked by score, how widely the product is used, attacks and date stand on top.
 - **Before a CVE exists**: write-ups and mailing-list posts show up at once and merge when the CVE is assigned.
 - **Folds**: one vendor's same-day notices, and fixes shipped in one update, fold into one line.
 - **Linked to sources**: every claim links to its source; a command is shown only as a source wrote it.
