@@ -21,8 +21,14 @@ from collector.incidents import STAMP, cves_in, stamp_ago
 # (optional) rewrites the item's link to the form CVE records cite, so the two join by URL.
 FEEDS = {
     "https://www.synology.com/api/rssfeed/security/en-global": {
-        # "Synology-SA-26:21 DSM, BeeStation OS" starts; "Synology-SA-26:17 Plex Media Server (Plex2Shell)" joins.
-        "own": re.compile(r"^Synology-SA-\d+:\d+ (DSM|SRM|BSM|Bee\w*|Synology|Active Backup|Surveillance Station|C2)\b"),
+        # "Synology-SA-26:21 DSM, BeeStation OS" starts; "Synology-SA-26:17 Plex Media Server (Plex2Shell)", Samba,
+        # Linux kernel, OpenSSL, Docker, WordPress and other packaged projects only join. Measured on the 448 items of
+        # 2026-11-19; a Synology product missing here only joins (its CVE record still brings it).
+        "own": re.compile(r"^Synology-SA-\d+:\d+ (DSM|SRM|BSM|Bee\w*|Synology|Active\w*|C2|\w+ Station|Calendar|Chat|Contacts"
+                          r"|Drive|Office|MailPlus|(Mail|Media|SSO|DNS|RADIUS|LDAP|WebDAV|CardDAV|Git|Directory) Server"
+                          r"|VPN (Plus|Server)|SSL VPN Client|Safe Access|Hyper Backup|Snapshot Replication|Replication Service"
+                          r"|Storage (Manager|Analyzer)|USB Copy|Antivirus Essential|Virtual Machine Manager|(Android )?Moments"
+                          r"|DS \w+|Universal Search|SMB Service|Presto|Secure SignIn|VS\d+\w*)\b"),
         "other": re.compile(r"None of Synology's products are affected", re.I),
         # The feed links /support/security/Synology_SA_26_21; CVE records cite /security/advisory/Synology_SA_26_21.
         "link": lambda url: url.replace("/support/security/Synology_SA_", "/security/advisory/Synology_SA_"),
@@ -57,7 +63,7 @@ def fetch(checkpoints, http_get, feeds, stamp):
         if not items:
             continue
         if feed not in checkpoints:
-            checkpoints[feed] = [key for key, _ in items][-MAX_SEEN:]
+            checkpoints[feed] = [key for key, _ in reversed(items)][-MAX_SEEN:]  # oldest first, as later ones append
             continue
         seen = list(checkpoints[feed])
         for key, item in items:

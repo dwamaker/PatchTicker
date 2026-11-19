@@ -204,7 +204,8 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
 
     line.lap("read", "link")
     # Join-only repos go last, so they can join Incidents that started this cycle.
-    for group in cvelist.mention_groups(records) + advisories + posts + stories + articles + repos:
+    # Vendor advisories after the stories: one on another project's flaw only joins, maybe a row started this cycle.
+    for group in cvelist.mention_groups(records) + posts + stories + articles + advisories + repos:
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
     changed |= refetch_pages(incidents, http_get, now)

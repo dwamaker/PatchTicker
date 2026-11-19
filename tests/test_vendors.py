@@ -60,8 +60,8 @@ class VendorFeedTest(unittest.TestCase):
         groups, checkpoints = vendors.fetch({}, get, vendors.FEEDS, STAMP)
         self.assertEqual(groups, [])
         self.assertEqual(len(checkpoints[SYNOLOGY]), 5)
-        self.assertEqual(checkpoints[DRUPAL], ["3637891 at https://www.drupal.org", "3636972 at https://www.drupal.org",
-                                               "3623427 at https://www.drupal.org"])
+        self.assertEqual(checkpoints[DRUPAL], ["3623427 at https://www.drupal.org", "3636972 at https://www.drupal.org",
+                                               "3637891 at https://www.drupal.org"])  # oldest first, so a trim drops old ids
         self.assertEqual(vendors.fetch(checkpoints, get, vendors.FEEDS, STAMP), ([], checkpoints))
 
     def test_only_unseen_items_are_built_and_then_recorded(self):
@@ -153,16 +153,26 @@ class VendorLinkTest(unittest.TestCase):
                       sshole["mentions"])
         self.assertEqual(sshole["brief"]["lead"], "https://www.cve.org/CVERecord?id=CVE-2026-123158")
 
-    def test_the_cycle_puts_a_new_vendor_advisory_on_the_board(self):
+    def test_the_cycle_puts_new_vendor_advisories_on_the_board_with_or_without_a_cve(self):
         store = MemoryStore()
-        store.write("checkpoints.json", {"vendors": unseen(SA.format(21))})
+        store.write("checkpoints.json", {"vendors": unseen(SA.format(21), SA.format(18))})
         answer = recorded(None, unpublished=("CVE-2026-120382",))
         run_cycle(store, lambda url, headers=None: FEEDS[url] if url in FEEDS else answer(url, headers),
                   at("2026-11-19T12:00:00"), "test-box", vendor_feeds=vendors.FEEDS)
         rows = board(store)
-        self.assertEqual(list(rows), ["CVE-2026-120382"])
+        self.assertEqual(sorted(rows), ["CVE-2026-120382", ADVISORY.format(18)])
         self.assertEqual(rows["CVE-2026-120382"]["brief"]["lead"], ADVISORY.format(21))
-        self.assertIn(SA.format(21), store.read("checkpoints.json")["vendors"][SYNOLOGY])
+        self.assertTrue(on_board(rows[ADVISORY.format(18)]))
+        self.assertTrue({SA.format(21), SA.format(18)} <= set(store.read("checkpoints.json")["vendors"][SYNOLOGY]))
+
+    def test_synology_own_products_start_and_packaged_projects_only_join(self):
+        own = vendors.FEEDS[SYNOLOGY]["own"]
+        for title in ("Synology-SA-26:21 DSM, BeeStation OS", "Synology-SA-25:07 SMB Service", "Synology-SA-24:25 Surveillance Station",
+                      "Synology-SA-24:11 Synology Active Backup for Business Agent", "Synology-SA-23:01 MailPlus Server", "Synology-SA-20:01 VS960HD"):
+            self.assertTrue(own.search(title), title)
+        for title in ("Synology-SA-26:17 Plex Media Server (Plex2Shell)", "Synology-SA-26:20 NGINX2Root", "Synology-SA-22:20 Samba",
+                      "Synology-SA-24:12 GitLab", "Synology-SA-26:09 Linux Kernel (Dirty Frag)", "Synology-SA-21:10 Apache HTTP Server"):
+            self.assertFalse(own.search(title), title)
 
 
 if __name__ == "__main__":
