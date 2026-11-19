@@ -1011,3 +1011,15 @@ export function productFeed(names, lang) {
   const used = unique.slice(0, FEED_NAMES);
   return { href: `${feedPath(lang)}?products=${used.map(encodeURIComponent).join(',')}`, names: used, left: unique.length - used.length };
 }
+
+// Astryx ButtonGroup, Best Practices: "Single Tab stop; arrows move between members, Home/End to ends (APG roving tabindex)".
+// Where a key moves the focus in a group of `count` controls from member `index`: the new index, or -1 when the key is
+// left to the browser. `wrap`: the last member's next is the first (a two-way switch).
+export function groupKey(key, index, count, { prev = ['ArrowLeft'], next = ['ArrowRight'], ends = true, wrap = false } = {}) {
+  if (index < 0 || count < 1) return -1;
+  if (prev.includes(key)) return index > 0 ? index - 1 : wrap ? count - 1 : 0;
+  if (next.includes(key)) return index < count - 1 ? index + 1 : wrap ? 0 : count - 1;
+  if (ends && key === 'Home') return 0;
+  if (ends && key === 'End') return count - 1;
+  return -1;
+}

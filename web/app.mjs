@@ -1,5 +1,5 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -258,12 +258,14 @@ function stepText(direction) {
   pageText(); // placeholders: the short ones from 125%
   measureStick(); // the frozen row grew or shrank with the text
 }
+// Astryx Button, Props, isDisabled: "uses aria-disabled instead of native disabled": an end step keeps the focus.
 function showTextSize() {
   const pct = textPct();
-  $('text-down').disabled = pct === TEXT_STEPS[0];
-  $('text-up').disabled = pct === TEXT_STEPS.at(-1);
+  $('text-down').setAttribute('aria-disabled', pct === TEXT_STEPS[0]);
+  $('text-up').setAttribute('aria-disabled', pct === TEXT_STEPS.at(-1));
 }
 function setTextIndex(index) {
+  if (!TEXT_STEPS[index]) return; // a press on an end step: nothing to say
   stepText(index - TEXT_STEPS.indexOf(textPct()));
   $('announce').textContent = TEXT[lang].textNow(textPct()); // the polite region says the new size
 }
@@ -717,6 +719,7 @@ function reportLink(incident) {
   slug(incident.id).then((s) => { a.href = reportUrl(incident, lang, page, s); }, () => {}); // no crypto.subtle (plain http): the id stays
   a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 14 13H2Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.5v3M8 11.2v.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   a.append(el('span', '', t.report));
+  a.append(el('span', 'sr-only', t.newTab)); // Astryx Link, Props, newTabLabel: "SR text announcing an external link opens in a new tab"
   return a;
 }
 
@@ -732,14 +735,17 @@ addEventListener('pagehide', () => {
 // Something the visitor just opened eases in from where it was opened: a short drop for panels, a rise for the
 // phone's bottom sheet; with reduced motion only the fade remains, so the change is still seen.
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+// The Board's two curves (index.html --ease-out / --ease-exit; WAAPI easing cannot read a CSS variable).
+const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const EASE_EXIT = 'cubic-bezier(0.4, 0, 1, 1)';
 function reveal(node, from = '0 -6px', duration = 200) {
   const start = reducedMotion.matches ? { opacity: 0 } : { opacity: 0, translate: from };
-  node.animate([start, { opacity: 1, translate: '0 0' }], { duration, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+  // Astryx Motion, Respecting User Preferences: under reduced motion "opacity only, in 200 ms or less"
+  node.animate([start, { opacity: 1, translate: '0 0' }], { duration: reducedMotion.matches ? Math.min(duration, 200) : duration, easing: EASE_OUT });
 }
 
 // Small confirmations: a check that draws itself, a badge or icon that pops in. Reduced motion keeps the end state
 // (and a fade for pop), never the movement.
-const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 function draw(path, duration = 320, delay = 0) {
   if (reducedMotion.matches) return;
   path.setAttribute('pathLength', '1');
@@ -755,6 +761,19 @@ function pop(node, from = 'scale(0.6)', duration = 220) {
 // Both ways on one gentle ease-out (MuMu, frame by frame, owner 11-10): EASE_OUT was three quarters open in 50ms, so a
 // phone-tall panel just appeared; an ease-in close barely moved for 80ms and then shut in three frames.
 const FOLD_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)';
+// A row's own details (row()): under reduced motion they fade and nothing moves; fold() stays as it is for the rest
+// (vendor folds appear at once, DESIGN.md). Astryx Motion, Respecting User Preferences: "opacity only, in 200 ms or less".
+function rowFold(node, opening, done = () => {}) {
+  if (!reducedMotion.matches) return fold(node, opening, done);
+  node.folding?.cancel();
+  const run = node.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }], { duration: 200, easing: EASE_OUT, fill: 'forwards' });
+  node.folding = run;
+  run.onfinish = () => {
+    node.folding = null;
+    done();
+    run.cancel(); // the held end frame lets go only after done() has hidden a closed row
+  };
+}
 function fold(node, opening, done = () => {}) {
   node.folding?.cancel();
   if (reducedMotion.matches) return done();
@@ -856,15 +875,21 @@ function pageText() {
   }
   searchPlaceholder();
   for (const node of document.querySelectorAll('[data-t-aria]')) node.setAttribute('aria-label', t[node.dataset.tAria]);
-  // The jump group's icons alone are ambiguous: each button also says its name on hover.
-  for (const node of document.querySelectorAll('#jump button')) node.title = node.getAttribute('aria-label');
+  // Astryx Link, Props, newTabLabel: "SR text announcing an external link opens in a new tab" (the footer's link: its span)
+  $('repo').setAttribute('aria-label', t.repo + t.newTab);
+  $('support').querySelector('[data-t="newTab"]').lang = lang; // the link itself is lang="en"
+  // Icons alone are ambiguous: each icon button also says its name on hover. Astryx IconButton, Best Practices:
+  // "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
+  for (const node of document.querySelectorAll('#jump button, #theme, #repo, #feeds-btn, #prefs-btn, #search-clear')) node.title = node.getAttribute('aria-label');
+  $('filter-btn').title = t.filterBtn; // named by its word, hidden below 1024px
   // The language menu's button names the page's language (full on wide screens, a short code on phones: the header must
   // fit 375px); screen readers hear what it opens. Each entry is in its own language and marks the current one.
   $('lang').setAttribute('aria-label', `${t.langMenu}: ${t.langName}`);
   for (const item of document.querySelectorAll('#langs [data-lang]')) item.setAttribute('aria-current', item.dataset.lang === lang);
   for (const view of ['normal', 'easy']) $(`view-${view}`).setAttribute('aria-pressed', defaultView === view);
   placePill();
-  $('theme').setAttribute('aria-pressed', theme() === 'dark');
+  // Astryx ToggleButton, Best Practices: "Don't use ToggleButton for persistent settings; use Switch instead."
+  $('theme').setAttribute('aria-checked', theme() === 'dark');
 }
 
 // The fields' hints: short ones on phones and from 125% text; where even that does not fit beside 필터 and 정렬, the
@@ -1057,8 +1082,11 @@ async function fetchOlder() {
 }
 
 async function loadOlder() {
+  if (loadingOlder) return; // the loading button stays focusable, so a second press arrives here
   loadingOlder = true;
   render();
+  // render() replaced the pressed button: its loading twin takes the focus, so it never falls to <body>
+  if (document.activeElement === document.body) document.querySelector('#more [aria-busy="true"], #empty [aria-busy="true"]')?.focus({ preventScroll: true });
   try {
     const added = await fetchOlder();
     clearTimeout(announcing); // a pending count from the last search must not talk over this
@@ -1073,6 +1101,18 @@ async function loadOlder() {
   render();
   // The button that had focus is gone: the next control in the same place takes it, and the page does not move.
   if (document.activeElement === document.body) ($('more').querySelector('button') || $('empty').querySelector('button') || $('more').querySelector('.older-done'))?.focus({ preventScroll: true });
+}
+
+// 이전 사건 불러오기 / 이전 사건에서도 찾기. Astryx Button, Props, isLoading: "blocks re-activation but stays focusable
+// (aria-disabled, not native disabled); announces via live region" (loadOlder() says the outcome in #announce).
+function olderButton(label) {
+  const button = Object.assign(el('button', 'btn', loadingOlder ? TEXT[lang].loading : label), { type: 'button' });
+  if (loadingOlder) {
+    button.setAttribute('aria-disabled', 'true');
+    button.setAttribute('aria-busy', 'true');
+  }
+  button.addEventListener('click', loadOlder);
+  return button;
 }
 
 // Under the list: more rows of what is loaded, then older months.
@@ -1100,9 +1140,7 @@ function moreButtons(rest) {
   if (!olderMonths.length && olderAdded !== null) buttons.push(Object.assign(el('p', 'older-done', t.olderDone(olderAdded)), { tabIndex: -1 })); // takes the focus when the button is gone
   if (olderMonths.length) {
     const label = activeFilters() ? t.searchOlder : t.loadOlder; // with a search or filter on, it is a search
-    const older = Object.assign(el('button', 'btn', loadingOlder ? t.loading : label), { type: 'button', disabled: loadingOlder });
-    older.addEventListener('click', loadOlder);
-    buttons.push(older);
+    buttons.push(olderButton(label));
   }
   return buttons;
 }
@@ -1372,9 +1410,7 @@ function emptyState() {
   // Say how far back this looked: "nothing" in one week is not "nothing" in 90 days.
   const scope = para('scope', olderMonths.length ? t.scopeWeek : t.scopeMonths);
   if (olderMonths.length) {
-    const older = Object.assign(el('button', 'btn', loadingOlder ? t.loading : t.searchOlder), { type: 'button', disabled: loadingOlder });
-    older.addEventListener('click', loadOlder);
-    buttons.append(older);
+    buttons.append(olderButton(t.searchOlder));
   }
   if (query) buttons.append(clearButton(t.clearSearch, { query: '' }, true));
   // Filters left nothing: each condition can go on its own, the ones that bring the most back first (at most three).
@@ -1812,7 +1848,7 @@ function setPrefs(open) {
   }
   if (!box.classList.contains('open')) return;
   if (reducedMotion.matches) return box.classList.remove('open');
-  box.closing = box.animate([{ opacity: 1 }, { opacity: 0, translate: '0 -4px' }], { duration: 120, easing: 'cubic-bezier(0.4, 0, 1, 1)' });
+  box.closing = box.animate([{ opacity: 1 }, { opacity: 0, translate: '0 -4px' }], { duration: 120, easing: EASE_EXIT });
   box.closing.onfinish = () => { box.closing = null; box.classList.remove('open'); };
 }
 $('prefs-btn').addEventListener('click', () => setPrefs(!$('prefs').classList.contains('open')));
@@ -1934,8 +1970,9 @@ function placeJump() {
   // 한 화면 위로 / 아래로: the pill shows while the page scrolls at all; a step with nowhere to go is disabled
   const max = document.documentElement.scrollHeight - innerHeight;
   $('step').hidden = max < 2;
-  $('step-up').disabled = scrollY <= 1;
-  $('step-down').disabled = scrollY >= max - 1;
+  // Astryx IconButton, Props, isDisabled: "uses aria-disabled instead of native disabled": an end step keeps the focus
+  $('step-up').setAttribute('aria-disabled', scrollY <= 1);
+  $('step-down').setAttribute('aria-disabled', scrollY >= max - 1);
   document.body.classList.remove('jump-idle');
   clearTimeout(jumpIdle);
   // after a step press the group stays STEP_HOLD, not 2 s, so the next press finds it under the finger
@@ -1948,6 +1985,7 @@ const STEP_HOLD = 6000;
 const frozenHeight = () => { const r = stickyPart().getBoundingClientRect(); return r.top <= 1 && r.bottom > 0 ? r.bottom : 0; };
 for (const [id, sign] of [['step-up', -1], ['step-down', 1]]) {
   $(id).addEventListener('click', () => {
+    if ($(id).getAttribute('aria-disabled') === 'true') return; // nowhere to go
     stepPressed = Date.now();
     scrollBy({ top: sign * stepDistance(innerHeight, frozenHeight()), behavior: reducedMotion.matches ? 'auto' : 'smooth' });
   });
@@ -1988,6 +2026,31 @@ $('jump-down').addEventListener('click', () => scrollTo({ top: document.document
 $('guide-btn').addEventListener('click', () => {
   setGuide(!guideOpen);
   if (guideOpen) reveal($('guide'));
+});
+// Two-button groups take one Tab stop and move by arrows (groupKey, Astryx ButtonGroup): 가−/가+ left and right, with
+// Home/End; 한 화면 위로/아래로 up and down only, since Home and End stay the browser's (DESIGN.md, jump buttons).
+function rove(group, keys) {
+  const members = [...group.querySelectorAll('button')];
+  members.forEach((b, n) => { b.tabIndex = n ? -1 : 0; });
+  group.addEventListener('focusin', (event) => { for (const b of members) b.tabIndex = b === event.target ? 0 : -1; });
+  group.addEventListener('keydown', (event) => {
+    const to = groupKey(event.key, members.indexOf(event.target), members.length, keys);
+    if (to < 0) return;
+    event.preventDefault();
+    members[to].focus();
+  });
+}
+rove(document.querySelector('.sizes'), {});
+rove($('step'), { prev: ['ArrowUp'], next: ['ArrowDown'], ends: false });
+// 기본|쉬운 설명 answers the arrows as a two-way switch: either arrow picks the other view and takes the focus. Astryx
+// SegmentedControl (description): "the selection slides to the new segment, whether a tap, an arrow key or a new value moved it".
+$('views').addEventListener('keydown', (event) => {
+  const views = ['normal', 'easy'];
+  const to = groupKey(event.key, views.indexOf(event.target.id.slice(5)), 2, { ends: false, wrap: true });
+  if (to < 0) return;
+  event.preventDefault();
+  if (views[to] !== defaultView) setDefaultView(views[to]);
+  $(`view-${views[to]}`).focus();
 });
 $('text-down').addEventListener('click', () => setTextIndex(TEXT_STEPS.indexOf(textPct()) - 1));
 $('text-up').addEventListener('click', () => setTextIndex(TEXT_STEPS.indexOf(textPct()) + 1));
@@ -2867,10 +2930,10 @@ function row(incident, pinned, vendor = '') {
       open.add(key);
       fill(true);
       body.hidden = false;
-      fold(body, true);
+      rowFold(body, true);
     } else {
       open.delete(key);
-      fold(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
+      rowFold(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
     }
   });
   if (!body.hidden) fill();
