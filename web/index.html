@@ -71,6 +71,9 @@
          Text 4.9:1+ on the tag's panel, rail 4.1:1+ on the group ground. */
       --patch-edge: light-dark(#007c88, #3fc1cc);
       --fold-edge: light-dark(#7340f2, #a98bff);
+      /* their tags' text on an 18% wash of the edge colour (Astryx Token teal / purple): 5.0:1+ on every ground in both themes */
+      --patch-ink: light-dark(#005a63, #3fc1cc);
+      --fold-ink: light-dark(#5326c9, #c2adff);
       --chev-ring: light-dark(#737c86, #737b84); /* a row chevron's ring: 3.5:1+ on the page, group, panel and hover grounds in both themes (WCAG 1.4.11), quieter than Secondary Ink (owner, 11-16) */
       --rainbow: #ff4d4d, #ffa02e, light-dark(#d9a400, #ffe03a), #4cd964, #3ab7ff, #7a6cff, #ff5ad8, #ff4d4d; /* the 쉬운 설명 beckon only (DESIGN.md beckon-*) */ /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
       --ink: light-dark(#16191d, #ececec);
@@ -610,7 +613,8 @@
     .cve.none { color: var(--ink-2); }
     .row[aria-expanded="true"] .sub:has(.cve:not(.none)) { display: none; } /* open: the panel's first line carries the IDs, copyable (owner, 11-10) */
     .cve-more { font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 500; color: var(--ink-2); }
-    .orig { display: inline-block; margin-right: 0.375rem; padding: 0.125rem 0.375rem; border: 1px solid var(--edge); border-radius: var(--r-marker); font-size: calc(0.6875rem * var(--ts)); font-weight: 700; color: var(--ink-2); vertical-align: 0.125rem; }
+    /* 원문: a small filled grey token (Astryx Token sm: 20px, 4px corners, 12px medium, no border) */
+    .orig { display: inline-block; margin-right: 0.375rem; padding: 0 0.5rem; border-radius: var(--r-marker); background: var(--note-wash); color: var(--note-ink); font-size: calc(0.75rem * var(--ts)); font-weight: 500; line-height: calc(1.25rem * var(--ts)); vertical-align: 0.125rem; }
     /* CVSS ring: the arc fills to the score out of 10 and takes its rating's colour; the number sits inside */
     .c-score { grid-area: score; display: flex; align-items: center; gap: 0.625rem; min-width: 0; }
     .gauge { position: relative; flex: none; width: calc(2.75rem * var(--ts)); height: calc(2.75rem * var(--ts)); display: grid; place-items: center; color: var(--note); }
@@ -634,7 +638,12 @@
     .loud .word { display: inline-flex; align-items: center; min-height: calc(1.5rem * var(--ts)); padding: 0 0.5rem; border: 0; border-radius: var(--r-marker); background: var(--note-wash); color: var(--note-ink); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; line-height: 1.2; }
     .loud.risk-highest .word { background: var(--high-wash); color: var(--high-ink); }
     .loud.risk-high .word { background: var(--mid-wash); color: var(--mid-ink); }
-    .loud.unrated .word { border: 1.5px dashed var(--note); }
+    /* 참고 is the common level (53% of rows, 11-19): plain text in the sign's box, no wash, so the filled 긴급 and 위험 stand out
+       (Astryx Badge: "If the same value appears in most rows … use plain text for common states"). A sign with no score yet
+       keeps its dashed edge, inside the same box (the border comes out of the padding), so every sign is one size.
+       Unboxed, 참고 drops its sides too: its first letter sits on the edge the badges, the title and the reason start from. */
+    .loud.risk-notice .word { background: none; padding-inline: 0; }
+    .loud.unrated .word { border: 1.5px dashed var(--note); padding: 0 calc(0.5rem - 1.5px); }
     .sk.sk-pill { border-radius: var(--r-marker); }
     .fp-chip:is(.risk-highest, .risk-high, .risk-notice, .risk-pending) span { border-radius: var(--r-marker); }
     .fp-chip.risk-highest input:checked + span { background: var(--high-wash); border-color: var(--high-wash); color: var(--high-ink); }
@@ -648,9 +657,14 @@
     .nw { white-space: nowrap; } /* a CVE ID kept whole */
     .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
     .kev { color: var(--high); font-weight: 700; } /* also 공격 코드 공개됨 in the panel: red text, no sign (critique 14) */
-    .c-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 0.375rem; min-width: 0; }
-    .ln-t { min-width: 0; overflow-wrap: anywhere; } /* a long Product name wraps inside its badge, never cut (critique 12) */
-    .ln { display: inline-flex; align-items: center; max-width: 100%; min-height: 1.625rem; padding: 0.1875rem 0.6875rem; border-radius: var(--r-pill); background: var(--line); color: var(--line-ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 600; line-height: 1.2; letter-spacing: 0; overflow-wrap: anywhere; }
+    .c-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 0.25rem; min-width: 0; } /* Astryx's 4px between tokens */
+    .ln-t { min-width: 0; overflow-wrap: anywhere; } /* a long Product name wraps inside its badge where all names are listed (the opened row, the picker) */
+    /* Astryx Badge size: the risk sign's 24px height, 8px sides, 12px medium */
+    .ln { display: inline-flex; align-items: center; max-width: 100%; min-height: calc(1.5rem * var(--ts)); padding: 0.125rem 0.5rem; border-radius: var(--r-pill); background: var(--line); color: var(--line-ink); font-size: calc(0.75rem * var(--ts)); font-weight: 500; line-height: 1.2; letter-spacing: 0; overflow-wrap: anywhere; }
+    /* a closed row keeps each badge one line and ends a long name with "…" (Astryx Badge and Token); the title and the
+       opened row's tag line give the whole name */
+    .c-tags .ln { white-space: nowrap; }
+    .c-tags .ln-t { overflow: hidden; text-overflow: ellipsis; }
     .ln.os { background: none; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--edge); font-weight: 500; } /* a system it runs on, not a line */
     .c-date { grid-area: when; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.35; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .chev { grid-area: chev; width: 0.5rem; height: 0.5rem; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg); transition: transform 180ms var(--ease-out); }
@@ -791,7 +805,7 @@
     .details .share .btn { gap: 0.5rem; }
     .details .share svg { width: 16px; height: 16px; flex: none; }
     /* 이 제품의 사건만 보기: an opened row's tags as buttons that filter the Board; the badge keeps its look */
-    .details .tag-line { margin: 1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
+    .details .tag-line { margin: 1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
     .tag-label { margin-right: 0.25rem; color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); }
     .tag-btn { max-width: 100%; min-width: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 100ms ease-out; }
     .tag-btn[aria-pressed="true"] .ln { outline: 2px solid var(--ink); outline-offset: 1px; } /* picked: an ink ring, the line colour stays */
@@ -801,11 +815,13 @@
     @media (pointer: coarse) { .tag-btn { min-height: var(--tap); min-width: var(--tap); } .details .tag-line { row-gap: 0; } } /* 44px to tap, the pill stays its size */
     @media (prefers-reduced-motion: reduce) { .tag-btn:active { transform: none; } }
     .tag-toggle { min-height: var(--tap); padding: 0 0.25rem; border: 0; background: none; color: var(--focus); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; } /* 나머지 N개 보기: link-coloured like the folded model list's summary */
-    .tag-more { display: inline-flex; align-items: center; min-height: 1.625rem; color: var(--ink-2); font-size: calc(0.78125rem * var(--ts)); white-space: nowrap; } /* 외 N개 on a closed row: a quiet count, not a control */
+    .tag-more { display: inline-flex; align-items: center; min-height: calc(1.5rem * var(--ts)); padding-left: 0.25rem; color: var(--ink-2); font-size: calc(0.75rem * var(--ts)); white-space: nowrap; } /* 외 N개 on a closed row: a quiet count, not a control */
     .share-url { display: block; width: 100%; max-width: 32rem; min-height: var(--tap); margin-top: 0.5rem; padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-size: calc(var(--fs-meta) * var(--ts)); }
-    .grp { display: inline-flex; align-items: center; min-height: 1.625rem; padding: 0.1875rem 0.5rem; border: 1px solid var(--ink-2); border-radius: var(--r-marker); background: var(--panel); color: var(--ink); font-size: calc(0.78125rem * var(--ts)); font-weight: 700; line-height: 1.2; white-space: nowrap; }
-    .grp-patch { border-color: var(--patch-edge); color: var(--patch-edge); }
-    .grp-fold { border-color: var(--fold-edge); color: var(--fold-edge); }
+    /* a group's tag: a filled square-cornered token in its kind's colour (Astryx Token teal / purple: a wash of the hue, dark
+       text by day, light by night, no border), the badges' height; square corners keep it apart from the round Product pills */
+    .grp { display: inline-flex; align-items: center; min-height: calc(1.5rem * var(--ts)); padding: 0 0.5rem; border-radius: var(--r-marker); font-size: calc(0.75rem * var(--ts)); font-weight: 600; line-height: 1.2; white-space: nowrap; }
+    .grp-patch { background: color-mix(in srgb, var(--patch-edge) 18%, transparent); color: var(--patch-ink); }
+    .grp-fold { background: color-mix(in srgb, var(--fold-edge) 18%, transparent); color: var(--fold-ink); }
     .fold-members { margin: 0; padding: 0; list-style: none; }
     .fold-members > li { border-top: 1px solid var(--rule); }
     .fold-end { display: flex; align-items: center; padding: 0.625rem 0.75rem 0.75rem calc(0.75rem + var(--pre) + var(--gap)); border-top: 1px solid var(--rule); }
