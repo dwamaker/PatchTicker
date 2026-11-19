@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
+import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, HIGHLIGHTS, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
 import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, mentionGroups, MENTIONS_SHOWN, listboxStep } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
@@ -425,44 +425,47 @@ test('does not reorder the caller\'s array', () => {
 const NOW = new Date('2026-11-07T12:00:00Z').getTime();
 const daysAgo = (d) => new Date(NOW - d * 24 * 60 * 60 * 1000).toISOString().replace('.000Z', 'Z');
 
-test('Highlights are at most ten, 위험 or above from the last seven days, the newer first when half a day beats half a point', () => {
+test('Highlights are 위험 or above from the last seven days, by score: half a CVSS point outweighs half a day', () => {
   // Twelve recent Incidents, CVSS 4.5 to 10.0, half a day apart, newest has the lowest score; one older Incident scores
-  // highest. Owner, 11-19 ("최신소식이 위에"): half a day newer (+1.43) outweighs half a CVSS point (1), so newest first.
+  // highest. Owner, 11-19 (score, wide use, urgency, date): half a point (2.5) outweighs half a day (0.71).
   const recent = Array.from({ length: 12 }, (_, n) => ({ ...incident(`CVE-2026-${100 + n}`, daysAgo(6 - n / 2)), cvss: 10 - n / 2 }));
   const old = { ...incident('CVE-2026-1', daysAgo(8)), cvss: 10, kev: true };
   const { highlights, list } = filterBoard([...recent, old], [], '', NOW);
   // CVSS 6.5 and below (CVE-2026-107 on) are 참고 and stay in the list only (user, 2026-11-09).
-  assert.deepEqual(ids(highlights), ['CVE-2026-106', 'CVE-2026-105', 'CVE-2026-104', 'CVE-2026-103', 'CVE-2026-102',
-    'CVE-2026-101', 'CVE-2026-100']);
+  assert.deepEqual(ids(highlights), ['CVE-2026-100', 'CVE-2026-101', 'CVE-2026-102', 'CVE-2026-103', 'CVE-2026-104',
+    'CVE-2026-105', 'CVE-2026-106']);
   assert.equal(list.length, 13);
 });
 
-test('exploited in the wild outranks HN buzz, which outranks a curator pick, which outranks CVSS 9.8 alone', () => {
-  const kev = { ...incident('CVE-2026-201', daysAgo(1)), cvss: 5.3, kev: true };
-  const hn = { ...incident('CVE-2026-202', daysAgo(1)), cvss: 7.5, mentions: [{ kind: 'discussion', url: '', points: 640 }] };
-  const curated = { ...incident('CVE-2026-203', daysAgo(1)), cvss: 7.5, mentions: [{ kind: 'cve_record', url: '' }, { kind: 'curator', url: '' }] };
-  const critical = { ...incident('CVE-2026-204', daysAgo(1)), cvss: 9.8 };
-  const plain = incident('CVE-2026-205', daysAgo(1));
-  assert.deepEqual(ids(filterBoard([plain, critical, curated, hn, kev], [], '', NOW).highlights),
-    ['CVE-2026-201', 'CVE-2026-202', 'CVE-2026-203', 'CVE-2026-204']); // the plain 참고 row is not one
+// Owner, 11-19 ("점수, 많이사용, 긴급, 날짜순"): one score in that order; HN points, curators and Mentions only break ties.
+test('the score leads, then wide use, then urgency; HN buzz and curators only break ties', () => {
+  const chrome = { ...incident('CVE-2026-200', daysAgo(1)), cvss: 9.0, known: 'Chrome', known_tier: 1 }; // 45 + 14 + 3
+  const critical = { ...incident('CVE-2026-204', daysAgo(1)), cvss: 9.8 }; // 49 + 3
+  const kev = { ...incident('CVE-2026-201', daysAgo(1)), cvss: 7.5, kev: true }; // 37.5 + 12
+  const buzz = { ...incident('CVE-2026-202', daysAgo(1)), cvss: 7.5, mentions: [{ kind: 'discussion', url: '', points: 640 }, { kind: 'curator', url: '' }] }; // + 1.5
+  const plain = { ...incident('CVE-2026-203', daysAgo(1)), cvss: 7.5 };
+  const notice = incident('CVE-2026-205', daysAgo(1));
+  assert.deepEqual(ids(filterBoard([notice, plain, buzz, kev, critical, chrome], [], '', NOW).highlights),
+    ['CVE-2026-200', 'CVE-2026-204', 'CVE-2026-201', 'CVE-2026-202', 'CVE-2026-203']); // the 참고 row is not one
 });
 
 // Owner, 11-10: many-CVE releases (FFmpeg, 331 Mentions) filled all four pins over exploited Incidents.
-test('Mentions count up to ten: exploited with two Mentions outranks an unexploited release with 300', () => {
+test('Mentions count up to ten and only break ties: a 9.8 release with 300 stays ahead of an exploited 5.3', () => {
   const many = (n) => Array.from({ length: n }, () => ({ kind: 'advisory', url: '' }));
   const release = { ...incident('CVE-2026-211', daysAgo(1)), cvss: 9.8, mentions: many(300) };
   const kev = { ...incident('CVE-2026-212', daysAgo(2)), cvss: 5.3, kev: true, mentions: many(2) };
   assert.equal(highlightScore(release, NOW), highlightScore({ ...release, mentions: many(10) }, NOW));
-  assert.deepEqual(ids(filterBoard([release, kev], [], '', NOW).highlights), ['CVE-2026-212', 'CVE-2026-211']);
+  assert.ok(Math.abs(highlightScore(release, NOW) - highlightScore({ ...release, mentions: [] }, NOW) - 0.5) < 1e-9);
+  assert.deepEqual(ids(filterBoard([release, kev], [], '', NOW).highlights), ['CVE-2026-211', 'CVE-2026-212']);
 });
 
-test('the Highlights run by score, newer first, whatever the sort', () => {
-  // The older is 위험 9.0, so the risk and CVSS sorts list it first; by score (recency, owner 11-19) the newer leads.
+test('the Highlights run by score whatever the sort', () => {
+  // The newer 8.5 heads the newest-first list; by score the older 9.0 leads (2.5 points and 긴급's 3 over two days' 2.86).
   const older = { ...incident('CVE-2026-221', daysAgo(3)), cvss: 9 };
   const newer = { ...incident('CVE-2026-222', daysAgo(1)), cvss: 8.5, mentions: [{ kind: 'cve_record', url: '' }, { kind: 'advisory', url: '' }] };
-  assert.ok(highlightScore(newer, NOW) > highlightScore(older, NOW));
+  assert.ok(highlightScore(older, NOW) > highlightScore(newer, NOW));
   for (const sort of ['new', 'risk', 'cvss']) {
-    assert.deepEqual(ids(filterBoard([older, newer], [], '', NOW, { sort }).highlights), ['CVE-2026-222', 'CVE-2026-221'], sort);
+    assert.deepEqual(ids(filterBoard([older, newer], [], '', NOW, { sort }).highlights), ['CVE-2026-221', 'CVE-2026-222'], sort);
   }
 });
 
@@ -511,33 +514,33 @@ test('a story seen only on HN, with no score, is never a Highlight however many 
   assert.equal(list.length, 4);
 });
 
-test('the sshole replay Incident becomes a Highlight ahead of ten CVSS 9.8 Incidents', () => {
+test('the sshole replay Incident is a Highlight, after ten CVSS 9.8 Incidents (owner, 11-19: the score first)', () => {
   // Written by the sshole replay in tests/test_mentions.py (seam 1), which asserts it matches.
   const sshole = JSON.parse(readFileSync(new URL('./fixtures/board/sshole.json', import.meta.url)));
   const critical = Array.from({ length: 10 }, (_, n) => ({ ...incident(`CVE-2026-40${n}`, daysAgo(1)), cvss: 9.8 }));
   const { highlights } = filterBoard([...critical, { ...sshole, cvss: 8.1 }], [], '', NOW); // its NVD score; the fixture is a Brief
-  assert.equal(highlights.length, 10);
-  assert.equal(highlights[0].id, sshole.id);
+  assert.equal(highlights.length, 11);
+  assert.equal(highlights[10].id, sshole.id);
 });
 
 // Owner, 11-10: the week had eleven exploited Incidents and the eleventh was cut off at ten.
-test('Highlights hold every exploited candidate, at least ten and at most twenty', () => {
+// Owner, 11-19: twelve, whatever the number of exploited rows (before, every exploited row came first).
+test('Highlights are twelve at most, and exploited rows come in by their score, not by a place', () => {
   const week = (exploited, plain) => [
     ...Array.from({ length: exploited }, (_, n) => ({ ...incident(`CVE-2026-7${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), kev: true })),
     ...Array.from({ length: plain }, (_, n) => ({ ...incident(`CVE-2026-8${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), cvss: 9.8 })),
   ];
   const chosen = (list) => filterBoard(list, [], '', NOW).highlights;
-  assert.equal(chosen(week(3, 20)).length, 10);
-  assert.ok(chosen(week(12, 20)).every(isExploited));
-  assert.equal(chosen(week(12, 20)).length, 12);
-  assert.equal(chosen(week(25, 5)).length, 20);
+  assert.equal(chosen(week(3, 20)).length, HIGHLIGHTS);
+  assert.equal(chosen(week(25, 5)).length, HIGHLIGHTS);
+  assert.ok(chosen(week(25, 5)).every(isExploited)); // unscored exploited counts 9.0 + 12, over a plain 9.8's 49 + 3
   assert.equal(chosen(week(2, 4)).length, 6);
 });
 
 // Owner, 11-11: a CVSS 9.6 Zoom Workplace flaw ranked 265th of 890; nothing in the score says a product is widely used.
 // The collector stamps `known` (collector/well_known.json, or a Summary's widely_used); collector/cycle.py picks the same
 // Highlights from tests/fixtures/board/highlights-case.json in tests/test_cycle.py.
-test('Highlights take every exploited row, then one well-known 최고 row per product, then the rest by score', () => {
+test('Highlights of the shared case: one score, the same pick as the collector', () => {
   const kase = JSON.parse(readFileSync(new URL('./fixtures/board/highlights-case.json', import.meta.url), 'utf8'));
   const now = Date.parse(kase.now);
   assert.deepEqual(ids(filterBoard(kase.incidents, [], '', now).highlights), kase.expected);
@@ -545,14 +548,13 @@ test('Highlights take every exploited row, then one well-known 최고 row per pr
   assert.deepEqual(ids(filterBoard(plain, [], '', now).highlights), kase.expected_without_known);
   // The other Zoom row, the 'high' Edge row and the 'notice' Firefox row stay ordinary rows.
   assert.equal(filterBoard(kase.incidents, [], '', now).list.length, kase.incidents.length);
-  // At the cap the file's order wins over the score (owner, 11-11: Zoom was cut while SAP NetWeaver stayed).
+  // Eighteen exploited 5.x rows no longer fill the list (owner, 11-19).
   assert.deepEqual(ids(filterBoard(kase.capped.incidents, [], '', now).highlights), kase.capped.expected);
-  // Owner, 11-17: a KEV listing this week does not bring an older Incident in; an exploited row's label is not lifted
-  // again (11-16; collector side too).
+  // Owner, 11-17: a KEV listing this week does not bring an older Incident in.
   assert.deepEqual(ids(filterBoard(kase.kev_week.incidents, [], '', now).highlights), kase.kev_week.expected);
   // Owner, 11-17: an old event is no Highlight (all CVEs two or more years old, or an event date over 14 days back).
   assert.deepEqual(ids(filterBoard(kase.old_events.incidents, [], '', now).highlights), kase.old_events.expected);
-  // Owner, 11-19: an advisory's Critical without a score is a candidate; recency puts a fresh 7.2 over an older 9.8.
+  // Owner, 11-19: an advisory's Critical without a score is a candidate; date counts last, so a 9.8 five days old leads a fresh 7.2.
   assert.deepEqual(ids(filterBoard(kase.severity.incidents, [], '', now).highlights), kase.severity.expected);
 });
 
@@ -573,36 +575,24 @@ test('an advisory rated Critical or High sets a provisional level, shown as pend
 });
 
 // Owner, 11-19 ("매일같이 터지는데, 최신소식이 위에 올라와야"): recency falls in a straight line over the seven days.
-test('a fresh 7.x Highlight beats a 9.x published five days earlier; exploited rows stay first', () => {
-  const fresh = { ...incident('CVE-2026-960', daysAgo(0)), cvss: 7.0 };
-  const older = { ...incident('CVE-2026-961', daysAgo(5)), cvss: 9.8 };
-  const kev = { ...incident('CVE-2026-962', daysAgo(6.9)), cvss: 5.0, kev: true };
-  assert.deepEqual(ids(filterBoard([older, fresh, kev], [], '', NOW).highlights), ['CVE-2026-962', 'CVE-2026-960', 'CVE-2026-961']);
-  assert.ok(highlightScore(fresh, NOW) - highlightScore(older, NOW) > 8);
+test('date counts last: a fresh 9.0 beats a 9.8 five days old, a fresh 7.0 does not', () => {
+  const fresh9 = { ...incident('CVE-2026-960', daysAgo(0)), cvss: 9.0 }; // 45 + 3 + 10
+  const older = { ...incident('CVE-2026-961', daysAgo(5)), cvss: 9.8 }; // 49 + 3 + 2.86
+  const fresh7 = { ...incident('CVE-2026-962', daysAgo(0)), cvss: 7.0 }; // 35 + 10
+  assert.deepEqual(ids(filterBoard([fresh7, older, fresh9], [], '', NOW).highlights), ['CVE-2026-960', 'CVE-2026-961', 'CVE-2026-962']);
   // the gap between two rows does not change as time passes (rows.json's pick still holds minutes later)
-  const gap = (t) => highlightScore(fresh, t) - highlightScore({ ...older, published: daysAgo(1) }, t);
+  const gap = (t) => highlightScore(fresh9, t) - highlightScore({ ...older, published: daysAgo(1) }, t);
   assert.ok(Math.abs(gap(NOW) - gap(NOW + 3600000)) < 1e-9);
 });
 
-test('a well-known row is one at 최고 that is not exploited; an exploited one counts once, as exploited', () => {
-  const zoom = { ...incident('CVE-2026-901', daysAgo(1)), cvss: 9.6, known: 'Zoom' };
-  assert.equal(wellKnown(zoom), true);
-  assert.equal(wellKnown({ ...zoom, cvss: 7.5 }), false); // 'high'
-  assert.equal(wellKnown({ ...zoom, cvss: 5 }), false); // 'notice'
-  assert.equal(wellKnown({ ...zoom, kev: true }), false); // already first as exploited
-  assert.equal(wellKnown({ ...zoom, known: undefined }), false);
-  const both = { ...zoom, kev: true };
-  assert.deepEqual(ids(filterBoard([both], [], '', NOW).highlights), ['CVE-2026-901']);
+test('wide use counts by tier: 14, 10, 5 for tier 1, 2, 3 (a label on no list as 3), nothing unlabelled', () => {
+  const zoom = { ...incident('CVE-2026-901', daysAgo(1)), cvss: 9.6 };
+  const plus = (extra) => highlightScore({ ...zoom, ...extra }, NOW) - highlightScore(zoom, NOW);
+  assert.deepEqual([plus({ known: 'Chrome', known_tier: 1 }), plus({ known: 'Zoom', known_tier: 2 }), plus({ known: 'Dokploy', known_tier: 3 }),
+    plus({ known: 'Widely used, on no list' }), plus({ known_tier: 1 })], [14, 10, 5, 5, 0]);
+  assert.equal(plus({ kev: true }), 9); // exploited +12 in place of 긴급's +3
 });
 
-test('at most twenty Highlights: exploited rows are kept ahead of well-known ones', () => {
-  const exploited = Array.from({ length: 15 }, (_, n) => ({ ...incident(`CVE-2026-7${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), kev: true }));
-  const known = Array.from({ length: 10 }, (_, n) => ({ ...incident(`CVE-2026-6${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), cvss: 9.8, known: `P${n}` }));
-  const chosen = filterBoard([...known, ...exploited], [], '', NOW).highlights;
-  assert.equal(chosen.length, 20);
-  assert.deepEqual(chosen.slice(0, 15).map(isExploited), Array(15).fill(true));
-  assert.ok(chosen.slice(15).every(wellKnown));
-});
 
 test('a Product keeps its line colour, and Products spread over the lines', () => {
   assert.equal(productLine('openbsd:openssh'), productLine('openbsd:openssh'));
@@ -1657,22 +1647,34 @@ test('a tier-1 top-level row stands above a tier-2 exploited row', () => {
   assert.deepEqual(order([t2x, t1]), ['A', 'B']);
 });
 
-test('an exploited row on no list is still chosen and shown when twenty tier-1 and tier-2 rows exist', () => {
+test('an exploited 7.5 on no list has no place of its own beside twenty critical tier-1 and tier-2 rows', () => {
   const rows = Array.from({ length: 20 }, (_, n) => tierRow(`K${n}`, `v${n}`, { known: `Label ${n}`, known_tier: 1 + (n % 2), cvss: 9.8 }));
   const odd = tierRow('X', 'nobody', { cvss: 7.5, summary: { exploited: true, exploited_source: 'https://example.org/attacks' } });
   const { highlights } = filterBoard([...rows, odd], [], '', HL_NOW);
-  assert.equal(highlights.length, 20);
-  assert.ok(highlights.some((i) => i.id === 'X'));
-  const { pins, rest } = pinOrder(highlights, HL_NOW);
-  assert.ok([...pins, ...rest].some((i) => i.id === 'X'));
+  assert.equal(highlights.length, HIGHLIGHTS);
+  assert.ok(!highlights.some((i) => i.id === 'X')); // 37.5 + 12 against 49 + 10 + 3 (owner, 11-19)
 });
 
-test('one row per label: a label that already has a chosen row gets no second', () => {
-  const rows = Array.from({ length: 20 }, (_, n) => tierRow(`K${n}`, `v${n}`, { known: `Label ${n}`, known_tier: 2, cvss: 9.6 }));
-  const second = tierRow('K0b', 'v0', { known: 'Label 0', known_tier: 2, cvss: 9.5 });
-  const ids = filterBoard([...rows, second], [], '', HL_NOW).highlights.map((i) => i.id);
-  assert.equal(ids.length, 20);
-  assert.ok(!ids.includes('K0b'));
+// Equal score and publish time: the lower id, whatever order the rows come in or the visitor's sort (the collector too).
+test('of twin rows the lower id is the Highlight, whatever the input order and sort', () => {
+  const twin = (id) => tierRow(id, `v-${id}`, { cvss: 9.8 });
+  const rows = [...Array.from({ length: 11 }, (_, n) => tierRow(`K${n}`, `v${n}`, { cvss: 10 })), twin('T2'), twin('T1')];
+  for (const sort of ['new', 'cvss', 'risk']) {
+    for (const list of [rows, [...rows].reverse()]) {
+      const picked = filterBoard(list, [], '', HL_NOW, { sort }).highlights.map((i) => i.id);
+      assert.ok(picked.includes('T1') && !picked.includes('T2'), `${sort} ${picked}`);
+    }
+  }
+});
+
+// Owner, 11-16 and 11-19: one vendor and category does not fill the list; each row of it already chosen costs the next 10.
+test('a second row of the same vendor and category comes in only by beating the rest by the penalty', () => {
+  const others = (cvss, tier) => Array.from({ length: 11 }, (_, n) => tierRow(`K${n}`, `v${n}`, tier ? { known: `Label ${n}`, known_tier: tier, cvss } : { cvss }));
+  const first = tierRow('A1', 'acme', { known: 'Acme', known_tier: 2, cvss: 9.6 }); // 48 + 10 + 3
+  const second = tierRow('A2', 'acme', { known: 'Acme', known_tier: 2, cvss: 9.5 }); // 47.5 + 10 + 3, less 10
+  const picked = (rest) => filterBoard([first, second, ...rest], [], '', HL_NOW).highlights.map((i) => i.id);
+  assert.ok(!picked(others(9.0, 2)).includes('A2')); // 50.5 against eleven at 58
+  assert.ok(picked(others(9.0)).includes('A2')); // 50.5 against eleven at 48
 });
 
 test('a row with known and no known_tier behaves as tier 3', () => {

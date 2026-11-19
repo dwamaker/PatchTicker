@@ -141,7 +141,7 @@
      }
     }
    },
-   "highlight_score": 36.00476190476191,
+   "highlight_score": 59.30238095238095,
    "wp_plugin": true
   },
   {
@@ -198,7 +198,7 @@
      }
     ]
    },
-   "highlight_score": 28.383333333333336,
+   "highlight_score": 39.34166666666667,
    "wp_plugin": true
   },
   {
@@ -272,12 +272,15 @@
      }
     ]
    },
-   "highlight_score": 15.662698412698415,
+   "highlight_score": 7.381349206349207,
    "wp_plugin": true
   },
   {
    "full": {
     "id": "CVE-2026-9004",
+    "known": "Windows",
+    "known_tier": 1,
+    "known_kind": "Operating systems",
     "cves": [
      "CVE-2026-9004",
      "CVE-2026-9005",
@@ -452,7 +455,7 @@
      }
     }
    },
-   "highlight_score": 185.36190476190475,
+   "highlight_score": 78.53095238095239,
    "wp_plugin": false
   },
   {
@@ -579,12 +582,15 @@
      }
     }
    },
-   "highlight_score": 28.5,
+   "highlight_score": 6.6,
    "wp_plugin": false
   },
   {
    "full": {
     "id": "CVE-2026-9010",
+    "known": "WordPress",
+    "known_tier": 2,
+    "known_kind": "CMS and web apps",
     "cves": [
      "CVE-2026-9010"
     ],
@@ -716,12 +722,15 @@
      }
     }
    },
-   "highlight_score": 28.13809523809524,
+   "highlight_score": 52.41904761904762,
    "wp_plugin": false
   },
   {
    "full": {
     "id": "CVE-2026-9011",
+    "known": "IBM Db2",
+    "known_tier": 3,
+    "known_kind": "Databases and data",
     "cves": [
      "CVE-2026-9011"
     ],
@@ -776,12 +785,12 @@
     "known": "IBM Db2",
     "known_tier": 3, "known_kind": "Databases and data"
    },
-   "highlight_score": 25.88095238095238,
+   "highlight_score": 47.49047619047619,
    "wp_plugin": false
   },
-  {"full": {"id": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "cves": [], "first_seen": "2026-11-09T08:00:00Z", "published": "2026-11-09T07:47:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "title": "Synology-SA-26:21 OAuth Service"}], "brief": {"text": "Synology-SA-26:21 OAuth Service", "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}, "products": [{"id": "synology:dsm", "name": "Synology DSM"}], "summary": {"ko": {"title": "Synology DSM OAuth 서비스 원격 코드 실행", "summary": "Synology DSM OAuth 서비스 원격 코드 실행.", "conditions": ["Logged-in subscriber"], "mitigation": "Update to 2.0.", "easy": "", "easy_title": "Synology DSM OAuth 서비스 원격 코드 실행", "names": [], "easy_action": "Update.", "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "Synology DSM OAuth Service remote code execution", "summary": "Synology DSM OAuth Service remote code execution.", "conditions": ["Logged-in subscriber"], "mitigation": "Update to 2.0.", "easy": "", "easy_title": "Synology DSM OAuth Service remote code execution", "names": [], "easy_action": "Update.", "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["Synology DSM"], "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "fixed": "2.0", "command": "", "stopgap": "", "stopgap_file": "", "devices": [], "incident": true, "platforms": [], "at": "2026-11-08T01:00:00Z", "fixes": [], "titles_ko": [{"url": "https://example.com/a", "title": "공지"}], "exploited": false, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "row": {"id": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "cves": [], "first_seen": "2026-11-09T08:00:00Z", "published": "2026-11-09T07:47:00Z", "products": [{"id": "synology:dsm", "name": "Synology DSM"}], "rows": true, "wp_plugin": false, "brief": {"text": ""}, "mentions": [{"kind": "advisory"}], "summary": {"exploited": false, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "platforms": [], "products": ["Synology DSM"], "devices": [], "incident": true, "at": "2026-11-08T01:00:00Z", "ko": {"title": "Synology DSM OAuth 서비스 원격 코드 실행", "easy_title": "Synology DSM OAuth 서비스 원격 코드 실행", "easy": "", "names": [], "summary": "Synology DSM OAuth 서비스 원격 코드 실행.", "conditions": [], "mitigation": ""}, "en": {"title": "Synology DSM OAuth Service remote code execution", "easy_title": "Synology DSM OAuth Service remote code execution", "easy": "", "names": [], "summary": "Synology DSM OAuth Service remote code execution.", "conditions": [], "mitigation": ""}}, "known": "Synology DSM", "known_tier": 2, "known_kind": "Firewalls, routers, NAS, cameras"}, "highlight_score": 37.06944444444444, "wp_plugin": false}
+  {"full": {"id": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "known": "Synology DSM", "known_tier": 2, "known_kind": "Firewalls, routers, NAS, cameras", "cves": [], "first_seen": "2026-11-09T08:00:00Z", "published": "2026-11-09T07:47:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "title": "Synology-SA-26:21 OAuth Service"}], "brief": {"text": "Synology-SA-26:21 OAuth Service", "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}, "products": [{"id": "synology:dsm", "name": "Synology DSM"}], "summary": {"ko": {"title": "Synology DSM OAuth 서비스 원격 코드 실행", "summary": "Synology DSM OAuth 서비스 원격 코드 실행.", "conditions": ["Logged-in subscriber"], "mitigation": "Update to 2.0.", "easy": "", "easy_title": "Synology DSM OAuth 서비스 원격 코드 실행", "names": [], "easy_action": "Update.", "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "Synology DSM OAuth Service remote code execution", "summary": "Synology DSM OAuth Service remote code execution.", "conditions": ["Logged-in subscriber"], "mitigation": "Update to 2.0.", "easy": "", "easy_title": "Synology DSM OAuth Service remote code execution", "names": [], "easy_action": "Update.", "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["Synology DSM"], "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "fixed": "2.0", "command": "", "stopgap": "", "stopgap_file": "", "devices": [], "incident": true, "platforms": [], "at": "2026-11-08T01:00:00Z", "fixes": [], "titles_ko": [{"url": "https://example.com/a", "title": "공지"}], "exploited": false, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "row": {"id": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "cves": [], "first_seen": "2026-11-09T08:00:00Z", "published": "2026-11-09T07:47:00Z", "products": [{"id": "synology:dsm", "name": "Synology DSM"}], "rows": true, "wp_plugin": false, "brief": {"text": ""}, "mentions": [{"kind": "advisory"}], "summary": {"exploited": false, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "platforms": [], "products": ["Synology DSM"], "devices": [], "incident": true, "at": "2026-11-08T01:00:00Z", "ko": {"title": "Synology DSM OAuth 서비스 원격 코드 실행", "easy_title": "Synology DSM OAuth 서비스 원격 코드 실행", "easy": "", "names": [], "summary": "Synology DSM OAuth 서비스 원격 코드 실행.", "conditions": [], "mitigation": ""}, "en": {"title": "Synology DSM OAuth Service remote code execution", "easy_title": "Synology DSM OAuth Service remote code execution", "easy": "", "names": [], "summary": "Synology DSM OAuth Service remote code execution.", "conditions": [], "mitigation": ""}}, "known": "Synology DSM", "known_tier": 2, "known_kind": "Firewalls, routers, NAS, cameras"}, "highlight_score": 67.08472222222223, "wp_plugin": false}
  ],
- "score_note": "highlight_score / highlightScore on their own: Mentions count up to ten (MENTION_CAP), so twelve score as ten, and an exploited Incident with two outranks both; an exploited Incident with no CVSS score counts as 9.0 (HIGHEST_CVSS), one with a score keeps it, an unexploited one without adds nothing; curator issues count up to two however many cite it. Owner, 11-19: one its official advisory rates Critical counts as 9.0 and High as 7.0 while it has no score (sev:*), and every score adds recency at `now`: 20 when published at now, falling in a straight line to 0 at seven days old.",
+ "score_note": "highlight_score / highlightScore on their own (owner, 11-19: one score, in his order score, wide use, urgency, date): 5 x CVSS, an exploited row without one as 9.0 and an advisory's Critical / High as 9.0 / 7.0 (sev:*); wide use by tier 14 / 10 / 5; exploited +12, any other 긴급 +3; recency 10 when published at now, falling to 0 at seven days (sev:fresh, sev:week-old); HN points, one curator and up to ten Mentions as tie-breakers of 2 at most.",
  "scores": [
   {
    "incident": {
@@ -842,7 +851,7 @@
      }
     ]
    },
-   "highlight_score": 42.74285714285715
+   "highlight_score": 48.07142857142857
   },
   {
    "incident": {
@@ -895,7 +904,7 @@
      }
     ]
    },
-   "highlight_score": 42.74285714285715
+   "highlight_score": 48.07142857142857
   },
   {
    "incident": {
@@ -917,7 +926,7 @@
      }
     ]
    },
-   "highlight_score": 134.14285714285714
+   "highlight_score": 58.17142857142857
   },
   {
    "incident": {
@@ -939,7 +948,7 @@
      "exploited_source": "https://example.com/report"
     }
    },
-   "highlight_score": 137.14285714285714
+   "highlight_score": 65.67142857142856
   },
   {
    "incident": {
@@ -961,7 +970,7 @@
      }
     ]
    },
-   "highlight_score": 127.74285714285713
+   "highlight_score": 42.17142857142857
   },
   {
    "incident": {
@@ -979,7 +988,7 @@
      }
     ]
    },
-   "highlight_score": 19.142857142857146
+   "highlight_score": 8.671428571428573
   },
   {
    "incident": {
@@ -1008,14 +1017,14 @@
      }
     ]
    },
-   "highlight_score": 86.14285714285714
+   "highlight_score": 46.77142857142857
   },
-  {"incident": {"id": "sev:critical", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 36.142857142857146},
-  {"incident": {"id": "sev:high", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "high", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 32.142857142857146},
-  {"incident": {"id": "sev:medium", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "medium", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 18.142857142857146},
-  {"incident": {"id": "sev:critical-scored", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "cvss": 5.0, "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 28.142857142857146},
-  {"incident": {"id": "sev:fresh", "cves": [], "first_seen": "2026-11-10T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}]}, "highlight_score": 21.0},
-  {"incident": {"id": "sev:week-old", "cves": [], "first_seen": "2026-11-03T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}]}, "highlight_score": 1.0}
+  {"incident": {"id": "sev:critical", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 56.62142857142857},
+  {"incident": {"id": "sev:high", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "high", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 43.62142857142857},
+  {"incident": {"id": "sev:medium", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "medium", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 8.621428571428574},
+  {"incident": {"id": "sev:critical-scored", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "cvss": 5.0, "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 33.62142857142857},
+  {"incident": {"id": "sev:fresh", "cves": [], "first_seen": "2026-11-10T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}]}, "highlight_score": 10.05},
+  {"incident": {"id": "sev:week-old", "cves": [], "first_seen": "2026-11-03T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}]}, "highlight_score": 0.05}
  ],
  "wp_note": "Owner, 11-16: WooCommerce and what is made for it fold with WordPress plugins, and so does an extension or add-on for WordPress; WordPress itself does not. Real Briefs of the live week. Each: an Incident's Brief, its Summary's first product, the answer of is_wordpress_plugin and isWordPressPlugin.",
  "wp_texts": [

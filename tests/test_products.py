@@ -133,12 +133,16 @@ class RowsViewTest(unittest.TestCase):
             with self.subTest(brief[:40]):
                 self.assertEqual(is_wordpress_plugin({"brief": {"text": brief}, "summary": {"products": [first]}}), answer)
 
-    def test_mentions_count_up_to_ten_and_exploited_outranks_a_300_mention_release(self):
+    def test_mentions_are_a_tie_breaker_and_the_owner_order_holds(self):
+        # Owner, 11-19: score, wide use, urgency, date; Mentions (capped at ten, 11-10) only break ties.
         def scored(n, **fields):
             return highlight_score({"mentions": [{"kind": "advisory"}] * n, "first_seen": "2026-11-09T00:00:00Z", **fields},
                                    "2026-11-10T00:00:00Z")
         self.assertEqual(scored(300, cvss=9.8), scored(10, cvss=9.8))
-        self.assertGreater(scored(2, cvss=5.3, kev=True), scored(300, cvss=9.8))
+        self.assertAlmostEqual(scored(300, cvss=9.8) - scored(0, cvss=9.8), 0.5)
+        self.assertGreater(scored(300, cvss=9.8), scored(2, cvss=5.3, kev=True))  # the score first
+        self.assertGreater(scored(1, cvss=9.8, kev=True), scored(1, cvss=9.8))  # then urgency: exploited over a plain 9.8
+        self.assertGreater(scored(1, cvss=9.0, known="Chrome", known_tier=1), scored(1, cvss=9.8))  # wide use over 0.8
 
     def test_a_row_view_keeps_nothing_only_the_details_or_the_search_read(self):
         for case in ROWS["cases"]:

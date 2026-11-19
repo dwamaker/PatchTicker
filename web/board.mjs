@@ -207,54 +207,54 @@ export function productList(incidents, now, lang = 'en', seen = []) {
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
-// Highlight score. Exploited in the wild (CISA KEV) outranks everything; then discussion (HN points,
-// up to 50 at 500 points; a curator's newsletter, 25 each for up to two); CVSS (up to 20) and the
-// number of Mentions (up to MENTION_CAP) order the rest; among equal scores the newer comes first. An exploited
-// Incident with no CVSS score counts as HIGHEST_CVSS, the floor of the band riskLevel gives it (owner, 11-10: CVE-less
-// campaigns sank under every exploited CVE); one with a score keeps it. Also in
-// collector/incidents.py (highlight_score, with HIGHLIGHTS in collector/cycle.py: board/rows.json keeps the week's
-// Highlights whole), kept in step by tests/fixtures/board/rows-case.json.
-// Highlights: every exploited candidate of the week is chosen, at least HIGHLIGHTS and at most HIGHLIGHTS_MAX in all
-// (owner, 11-10: the week's eleventh exploited Incident was cut off); four are pinned at first so the newest list starts
-// on the first screens of a phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순.
-export const HIGHLIGHTS = 10;
-export const HIGHLIGHTS_MAX = 20;
+// Highlights (owner, 11-19: "점수, 많이사용, 긴급, 날짜순으로 되어야지 자리를 따로 주는게 아니라 자연스럽게"): one score
+// over every 위험-or-above candidate of the week (highlightScore), no reserved places. It replaced every exploited row
+// first (11-10), the lifted well-known row per label (11-11, 11-16) and the tier order (11-17): the week's exploited
+// rows took the first places whatever their score (two CVSS 6.1 flaws above every 9.8, 11-19). HIGHLIGHTS of them, four pinned at first so the newest list starts on the first screens of a
+// phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순. Also
+// collector/cycle.py (highlights), kept in step by tests/fixtures/board/highlights-case.json.
+export const HIGHLIGHTS = 12;
 export const PINNED = 4;
-// Well known (owner, 11-11: a CVSS 9.6 Zoom flaw ranked 265th, as nothing in the score says a product is widely used):
-// the collector stamps `known`, the product's label from collector/well_known.json or, for a product on no list that the
-// Summary calls widely used, its name. Such a row at 최고 that is not exploited (those lead anyway) is lifted.
-export const wellKnown = (i) => Boolean(i.known) && riskLevel(i) === 'highest' && !isExploited(i);
 // A labelled row's tier of reach (owner, 11-17; collector/well_known.json): 1 on most computers or phones, 2 the standard
 // of its field, 3 known inside it. A label on no list (a Summary's widely_used), or a row written before the collector
 // carried known_tier, counts as 3; a row with no label has none (null).
 export const tierOf = (i) => (i.known ? ([1, 2, 3].includes(i.known_tier) ? i.known_tier : 3) : null);
-// The Highlights of the score-sorted candidates: every exploited one, then the best-scored well-known one of each label
-// not already held by an exploited row (the others stay ordinary rows), tier 1 before 2 before 3, by score inside a tier
-// (owner, 11-17; until then the label's place in the file), then the rest by score. Also collector/cycle.py
-// (highlights), kept in step by tests/fixtures/board/highlights-case.json.
-export function pickHighlights(candidates) {
-  // A label an exploited Highlight already holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
-  const labels = new Set(candidates.filter((i) => isExploited(i) && i.known).map((i) => i.known));
-  const lead = [...candidates.filter(isExploited),
-    ...candidates.filter((i) => wellKnown(i) && !labels.has(i.known) && labels.add(i.known))
-      .sort((a, b) => tierOf(a) - tierOf(b))]; // a stable sort: one tier stays by score
-  const rest = candidates.filter((i) => !lead.includes(i));
-  return [...lead, ...rest].slice(0, Math.min(HIGHLIGHTS_MAX, Math.max(HIGHLIGHTS, lead.length)));
+// What "the same" is for the Highlights: the first Product id's vendor and the category of collector/well_known.json (as
+// pinKey), else the vendor, else the row. Only fields the collector's row views carry (also collector/cycle.py, same_key).
+const sameKey = (i) => {
+  const vendor = vendorOf(i);
+  if (!vendor) return `id:${i.id}`;
+  return typeof i.known_kind === 'string' && i.known_kind ? `${vendor}|${i.known_kind}` : vendor;
+};
+// One vendor and category does not fill the list (owner, 11-16: Chrome stood at 2 and 11): each row already chosen of
+// the same sameKey costs a candidate SAME_PENALTY (one CVSS point is 5), so a second F5 BIG-IP row has to beat the
+// next-best other row by that much.
+const SAME_PENALTY = 10;
+// The Highlights of the candidates, sorted in showOrder (filterBoard): the best each time, after the penalty; of equals,
+// the first. now: as highlightScore's.
+export function pickHighlights(candidates, now) {
+  const chosen = [];
+  const rest = [...candidates];
+  const scored = new Map(candidates.map((i) => [i, highlightScore(i, now)]));
+  while (rest.length && chosen.length < HIGHLIGHTS) {
+    let best = 0;
+    let top = -Infinity;
+    rest.forEach((i, n) => {
+      const value = scored.get(i) - SAME_PENALTY * chosen.filter((c) => sameKey(c) === sameKey(i)).length;
+      if (value > top) [best, top] = [n, value];
+    });
+    chosen.push(...rest.splice(best, 1));
+  }
+  return chosen;
 }
 // The vendor a pin stands for: the first Product id's vendor, else the first word of the row's product name ("Microsoft
 // Outlook" in a news story's Summary), else the row itself.
 export const vendorKey = (i) => vendorOf(i) || String(firstProduct(i, 'en') || '').toLowerCase().split(/\s+/)[0] || `id:${i.id}`;
-// The one order the pins and 주요 사건 더 보기 show in, whatever the visitor's sort (owner, 11-17, "많은 사람이 사용하는걸 위로"):
-// tier 1, tier 2, exploited rows on tier 3 or on no list, tier 3, the rest; inside each, exploited first, then by
-// highlightScore, newest among equals.
-const showGroup = (i) => {
-  const tier = tierOf(i);
-  if (tier === 1 || tier === 2) return tier - 1;
-  if (isExploited(i)) return 2;
-  return tier === 3 ? 3 : 4;
-};
-export const showOrder = (now) => (a, b) => showGroup(a) - showGroup(b) || isExploited(b) - isExploited(a)
-  || highlightScore(b, now) - highlightScore(a, now) || newest(a, b);
+// The one order the candidates, the pins and 주요 사건 더 보기 run in, whatever the visitor's sort: highlightScore, newest
+// among equals, then the id, so the visitor's sort and the collector's week order pick the same twin (owner, 11-19: one
+// score, wide use inside it, no tier groups).
+export const showOrder = (now) => (a, b) => highlightScore(b, now) - highlightScore(a, now) || newest(a, b)
+  || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 // Owner, 11-16 ("고정 네 자리는 서로 다른 회사로"): walking the Highlights in showOrder, the PINNED places go to rows of different
 // vendors, and the pins show in that order; one whose vendor already holds a place stays ahead in the rest (주요 사건 더
 // 보기), which runs in the same order. With fewer vendors than places (a search for one product), the free places go to
@@ -277,10 +277,6 @@ export function pinOrder(chosen, now, places = PINNED) {
   while (pins.length < places && held.length) pins.push(held.shift());
   return { pins: order.filter((i) => pins.includes(i)), rest: order.filter((i) => !pins.includes(i)) };
 }
-// Owner, 11-10: a release counts a record, an advisory and a write-up per CVE, so uncapped FFmpeg (331 Mentions), Chrome,
-// IBM API Connect and FreeRDP took all four pins over 15 exploited Incidents. Also in collector/incidents.py.
-const MENTION_CAP = 10;
-
 // Why a row is pinned, when the row does not already show it: exploited and CVSS 9+ are on the row itself.
 export function pinReason(i) {
   if (isExploited(i) || i.cvss >= HIGHEST_CVSS) return null;
@@ -289,21 +285,29 @@ export function pinReason(i) {
   return null;
 }
 
-// Owner, 11-19 ("매일같이 터지는데, 최신소식이 위에 올라와야"): a row published at `now` scores RECENCY more, falling in a
-// straight line to nothing at seven days old (the Highlight window). Straight, so the gap between two rows never changes
-// as time passes and the collector's pick for rows.json still holds minutes later. 20 equals the whole CVSS term: a
-// fresh 7.0 (34) beats a 9.8 five days old (25.3). Also collector/incidents.py (RECENCY, recency).
-const RECENCY = 20;
+// The Highlight score (owner, 11-19, in his order: score, wide use, urgency, date; also collector/incidents.py,
+// highlight_score, kept in step by tests/fixtures/board/rows-case.json):
+// - 5 x CVSS; with none, an exploited row counts 9 (owner, 11-10) and a provisional level its band's floor, 9 or 7.
+// - wide use: tier 1 +14, tier 2 +10, tier 3 or a label on no list +5 (tierOf), no label 0.
+// - urgency: exploited +12, any other 긴급 row (CVSS 9+ or an advisory's Critical) +3; no automatic place.
+// - recency: +10 when published at now, falling in a straight line to 0 at seven days old (owner, 11-19: "최신소식이 위에");
+//   straight, so the gap between two rows never changes and the collector's pick for rows.json holds minutes later. One
+//   day is worth about 0.29 CVSS point: a fresh 9.0 beats a 9.8 five days old, a fresh 7.0 does not.
+// - tie-breakers, 2 at most: HN points (1 at 500), a curator issue 0.5, Mentions 0.05 each up to ten (owner, 11-10: a
+//   release counts one per CVE, and FFmpeg's 331 took every pin).
+const RECENCY = 10;
 const recency = (i, now) => RECENCY * Math.min(1, Math.max(0, 1 - (now - Date.parse(publishedAt(i))) / (7 * DAY_MS)));
-// A provisional level counts as its band's floor (owner, 11-19), as an exploited Incident counts as HIGHEST_CVSS.
 const SEVERITY_FLOOR = { __proto__: null, highest: 9, high: 7 }; // 9: HIGHEST_CVSS, declared further down
+const WIDE_USE = { __proto__: null, 1: 14, 2: 10, 3: 5 };
 // now: milliseconds, as filterBoard's.
 export function highlightScore(i, now) {
   const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
-  const curated = i.mentions.filter((m) => m.kind === 'curator').length;
-  const cvss = i.cvss ?? (isExploited(i) ? HIGHEST_CVSS : SEVERITY_FLOOR[provisionalLevel(i)] ?? 0);
-  return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * cvss + Math.min(i.mentions.length, MENTION_CAP)
-    + recency(i, now);
+  const curated = i.mentions.some((m) => m.kind === 'curator') ? 1 : 0;
+  const exploited = isExploited(i);
+  const cvss = i.cvss ?? (exploited ? HIGHEST_CVSS : SEVERITY_FLOOR[provisionalLevel(i)] ?? 0);
+  const urgency = exploited ? 12 : riskLevel(i) === 'highest' ? 3 : 0;
+  return 5 * cvss + (WIDE_USE[tierOf(i)] ?? 0) + urgency + recency(i, now)
+    + Math.min(points / 500, 1) + 0.5 * curated + 0.05 * Math.min(i.mentions.length, 10);
 }
 
 // HN points from which a story is buzz (pinReason's "HN 화제"). Also in collector/hn.py (BUZZ_POINTS). A quiet HN-only
@@ -599,8 +603,8 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   // BroadWorks, published 08-19, stood among them). Also collector/cycle.py (highlights).
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
   const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice' && !oldEvent(i, now))
-    .sort((a, b) => highlightScore(b, now) - highlightScore(a, now) || newest(a, b));
-  const highlights = pickHighlights(candidates);
+    .sort(showOrder(now));
+  const highlights = pickHighlights(candidates, now);
   // now rides along for pinOrder, which orders the pins by the same scores.
   return { highlights, list, variants: list.filter((i) => variant.has(i)).length, inText, now };
 }

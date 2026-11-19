@@ -74,20 +74,24 @@ _Avoid_: 0-day, pre-CVE
 
 **Highlight** (주요 사건):
 (Called 주목 on the page until 2026-11-09.) An Incident shown pinned above the newest-first list, like a notice, because it matters to many visitors right now. Chosen by importance from Incidents at 위험 or above published in the last seven days (by Published time, not first sighting: an old CVE seen again is not new; user, 2026-11-09) only: a CISA KEV listing this week does not bring an older Incident in (owner, 2026-11-17: "일주일로 잡아야지 적어도", after
-an August Incident listed this week stood among them): every exploited one, then one Incident at 최고 for each well-known product not already held by an exploited one (the best-scored; owner, 2026-11-11, 2026-11-16), by
-the product's tier of reach on the hand-kept list (1 on most computers or phones, 2 the standard of its field, 3 known
-inside it; a product on no list counts as 3), tier 1 before 2 before 3 and by importance inside a tier (owner,
-2026-11-17: "많은 사람이 사용하는걸 위로"), then the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). Importance counts, besides attacks,
-discussion, curators, the score and Mentions, how new the Incident is: one just published gains as much as a CVSS 10 adds, falling evenly to
-nothing at seven days old (owner, 2026-11-19: "최신소식이 위에 올라와야"); an Incident with a
-provisional level counts as its level's lowest score (9 or 7). A product is well known when it is
+an August Incident listed this week stood among them). Ranked by one importance, with no place kept for any kind
+(owner, 2026-11-19: "점수, 많이사용, 긴급, 날짜순으로 되어야지 자리를 따로 주는게 아니라 자연스럽게", after the week's
+exploited Incidents took the first places whatever their score, two CVSS 6.1 flaws above every 9.8): in his order, the CVSS score (an exploited Incident without one counts
+as 9, one with a provisional level as its level's lowest score, 9 or 7); how widely the product is used, by its tier
+of reach on the hand-kept list (1 on most computers or phones, 2 the standard of its field, 3 known inside it; a
+product on no list that the Summary calls widely used counts as 3); urgency (exploited counts most, any other 최고
+row a little); then how new it is, falling evenly to nothing at seven days old (one day weighs about a third of a CVSS
+point: a fresh 9.0 passes a 9.8 five days old, a fresh 7.0 does not). Discussion, curators and Mentions only break
+ties. Each Incident already chosen of the same vendor and category of the hand-kept list costs the next one of them
+two CVSS points, so one release does not fill the list. Twelve in all. This replaced every exploited one first
+(2026-11-10), the lifted best-scored well-known row per product (2026-11-11, 2026-11-16) and the tier order
+(2026-11-17). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
 owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), each of a different vendor
 while four remain (owner, 2026-11-16: "고정 네 자리는 서로 다른 회사로"); the same vendor in another category of the
 hand-kept list counts apart (owner, 2026-11-17: Android and Chrome, both Google, take a pin each; Office and Outlook
-share one). The pins and 더 보기 run in one order whatever the
-visitor's sort (owner, 2026-11-17): tier 1, tier 2, exploited Highlights on tier 3 or no list, tier 3, the rest; inside
-each, exploited first, then by importance. The pins are the first four of that order of different vendor-and-category pairs; 더 보기 appends
+share one). The pins and 더 보기 run in that one order whatever the visitor's sort
+(owner, 2026-11-19; from 2026-11-17 to then by tier groups). The pins are the first four of that order of different vendor-and-category pairs; 더 보기 appends
 the others below them in the same order; the four keep their place (2026-11-09); the rest stay in the list below. The list is the whole Board in the visitor's
 order: every Highlight, pinned or not, also stands at its own place there, edged in its Risk colour like its pinned frame
 (owner, 2026-11-16), never inside a vendor fold: the fold holds and counts the rest, or unfolds below its minimum (owner,

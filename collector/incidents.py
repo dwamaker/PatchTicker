@@ -129,7 +129,7 @@ def order_fields(incident, maps):
 
 
 def known_field(incident):
-    """`known` for the page (wellKnown in web/board.mjs), worked out at each write and never stored, so an edit of
+    """`known` for the page (tierOf and highlightScore in web/board.mjs), worked out at each write and never stored, so an edit of
     collector/well_known.json reaches the week's rows at the next cycle. known_tier: the label's tier of reach in that
     file (1 on most computers or phones, 2 the standard of its field, 3 known inside it), which orders the Highlights
     (owner, 11-17; it replaced the label's place, known_rank); none for a label on no list (a Summary's widely_used),
@@ -232,17 +232,13 @@ def published_at(incident):
     return incident.get("published") or incident["first_seen"]
 
 
-# MENTION_CAP in web/board.mjs (owner, 11-10): many-CVE releases (FFmpeg, 331 Mentions) took all four pins over exploited Incidents.
-MENTION_CAP = 10
-
-
-# Owner, 11-19 ("매일같이 터지는데, 최신소식이 위에 올라와야"): a Highlight published at `now` scores RECENCY more, falling in a
-# straight line to nothing at RECENCY_DAYS old (the Highlight window, RECENT_DAYS in collector/cycle.py). Straight, so
-# the gap between two rows never changes as time passes and rows.json's pick at the cycle still holds minutes later.
-# 20 equals the whole CVSS term: one day costs about 1.4 CVSS points, so a fresh 7.0 (34) beats a 9.8 five days old (25.3).
-RECENCY = 20
-RECENCY_DAYS = 7
+# The Highlight score: a port of highlightScore in web/board.mjs, where its parts are explained (owner, 11-19: score,
+# wide use, urgency, date, in that order; tests/fixtures/board/rows-case.json keeps the two in step). rows.json keeps the
+# week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more.
+RECENCY = 10  # when published at now, falling in a straight line to 0 at RECENCY_DAYS old; one day ~0.29 CVSS point
+RECENCY_DAYS = 7  # the Highlight window (RECENT_DAYS in collector/cycle.py)
 SEVERITY_FLOOR = {"highest": HIGHEST_CVSS, "high": 7}  # a provisional level counts as its band's floor
+WIDE_USE = {1: 14, 2: 10, 3: 5}  # by tier_of; no label 0
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
@@ -257,19 +253,22 @@ def recency(incident, now):
     return RECENCY * min(1, max(0, 1 - age / (RECENCY_DAYS * 86_400_000)))
 
 
+def tier_of(view):
+    """A port of tierOf in web/board.mjs: the label's tier of reach (1, 2, 3), 3 for a label without one, None unlabelled."""
+    return (view.get("known_tier") if view.get("known_tier") in (1, 2, 3) else 3) if view.get("known") else None
+
+
 def highlight_score(incident, now):
-    """A port of highlightScore in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step): rows.json
-    keeps the week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more. now: an ISO
-    stamp, for the recency bonus."""
+    """now: an ISO stamp, for the recency part."""
     mentions = incident["mentions"]
     points = max([0] + [m.get("points") or 0 for m in mentions])
-    curated = sum(1 for m in mentions if m["kind"] == "curator")
+    curated = 1 if any(m["kind"] == "curator" for m in mentions) else 0
     exploited = is_exploited(incident)
-    cvss = incident.get("cvss")  # none yet: an exploited Incident counts as the floor of its 최고 band (owner, 11-10),
-    # one its own advisory rates Critical or High as the floor of that band (owner, 11-19)
+    cvss = incident.get("cvss")
     cvss = cvss if cvss is not None else HIGHEST_CVSS if exploited else SEVERITY_FLOOR.get(provisional_level(incident), 0)
-    return ((100 if exploited else 0) + min(points / 10, 50) + 25 * min(curated, 2) + 2 * cvss
-            + min(len(mentions), MENTION_CAP) + recency(incident, now))
+    urgency = 12 if exploited else 3 if risk_level(incident) == "highest" else 0
+    return (5 * cvss + WIDE_USE.get(tier_of(incident), 0) + urgency + recency(incident, now)
+            + min(points / 500, 1) + 0.5 * curated + 0.05 * min(len(mentions), 10))
 
 
 # A port of WP_PLUGIN and isWordPressPlugin in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step):
@@ -553,11 +552,6 @@ def row_tags(incident, lang):
 def vendor_words(pid):
     """Vendor words that may lead a Product's name, each with its space: web/vendors.json's, and its id's vendor."""
     return LED_BY + ([] if pid.startswith("name:") else [pid.split(":")[0].replace("_", " ") + " "])
-
-
-def well_known(view):
-    """A port of wellKnown in web/board.mjs: a view stamped `known`, at 최고 and not exploited."""
-    return bool(view.get("known")) and risk_level(view) == "highest" and not is_exploited(view)
 
 
 def unknown_vendors(incidents, since):

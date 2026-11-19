@@ -13,7 +13,7 @@ from collector import (checks, curators, cve_lines, cvelist, discord, distros, g
 from collector.logfile import CycleLine
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
-                                 search_worthy, stamp_ago, summary_failures, unknown_vendors, well_known)
+                                 search_worthy, stamp_ago, summary_failures, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 # The Distribution table (step 10). CVEs looked up a cycle: each costs about 4 s and 3 to 6 requests, and changes at
@@ -31,10 +31,10 @@ DISTRO_PAUSE = 1  # seconds between two CVEs' lookups: no distribution's server 
 # are how Incidents posted before step 10 get their table.
 DISTRO_FIRST_DAYS, DISTRO_FOLLOW_DAYS, DISTRO_BACKFILL_DAYS = 7, 37, 30
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
-# Highlights as filterBoard picks them (HIGHLIGHTS, HIGHLIGHTS_MAX and pickHighlights in web/board.mjs).
+# Highlights as filterBoard picks them (HIGHLIGHTS, SAME_PENALTY and pickHighlights in web/board.mjs).
 WHOLE_NEWEST = 100
-HIGHLIGHTS = 10
-HIGHLIGHTS_MAX = 20
+HIGHLIGHTS = 12
+SAME_PENALTY = 10
 # The RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed). Owner, 11-17: 50
 # were 14 hours, so a reader that looks once a day missed items; 200 were about 3.5 days (feed.json ~0.9 MB, ~3 ms to render).
 FEED_SIZE = 200
@@ -109,28 +109,33 @@ def old_event(view, now):
     return bool(day) and day < (date.fromisoformat(now[:10]) - timedelta(days=OLD_EVENT_DAYS)).isoformat()
 
 
+def same_key(view):
+    """A port of sameKey in web/board.mjs: the first Product id's vendor with its well_known.json category, else the
+    vendor, else the row."""
+    vendor = ((view.get("products") or [{}])[0].get("id") or "").split(":")[0]
+    if not vendor:
+        return f"id:{view['id']}"
+    kind = view.get("known_kind")
+    return f"{vendor}|{kind}" if isinstance(kind, str) and kind else vendor
+
+
 def highlights(views, since, now=None):
-    """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs;
-    tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above published
-    since `since`, by score and newest first among equals, every exploited one (owner, 11-10), then the best-scored
-    well-known one of each label not held by an exploited row (owner, 11-11, 11-16), tier 1 before 2 before 3 by score
-    inside a tier (known_tier of collector/well_known.json; a label on no list, or a row without a tier, as 3; owner,
-    11-17), then the rest; HIGHLIGHTS..HIGHLIGHTS_MAX in all."""
-    # Published in the window only (owner, 11-17: a KEV listing this week no longer brings an older Incident in), and
-    # no old event (old_event; now defaults to the window's end).
+    """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs, where the rule is
+    explained; tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above
+    published since `since`, no old event, by highlight_score (newest, then the id, among equals), the best each time
+    after SAME_PENALTY per chosen row of its same_key; HIGHLIGHTS in all (owner, 11-19: one score, no reserved places)."""
+    # Published in the window only (owner, 11-17), and no old event (old_event; now defaults to the window's end).
     now = now or (date.fromisoformat(since[:10]) + timedelta(days=RECENT_DAYS)).isoformat() + since[10:]
-    top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice" and not old_event(v, now)),
-                 key=lambda v: (highlight_score(v, now), published_at(v)), reverse=True)
-    # A label an exploited Highlight holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
-    known, labels = [], {v["known"] for v in top if is_exploited(v) and v.get("known")}
-    for v in top:
-        if well_known(v) and v["known"] not in labels:
-            labels.add(v["known"])
-            known.append(v)
-    # A stable sort: rows of one tier stay by score (tierOf in web/board.mjs: no tier, or another value, counts as 3).
-    lead = [v for v in top if is_exploited(v)] + sorted(known, key=lambda v: v["known_tier"] if v.get("known_tier") in (1, 2, 3) else 3)
-    chosen = {v["id"] for v in lead}
-    return (lead + [v for v in top if v["id"] not in chosen])[:min(HIGHLIGHTS_MAX, max(HIGHLIGHTS, len(lead)))]
+    rest = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice" and not old_event(v, now)),
+                  key=lambda v: v["id"])
+    rest.sort(key=lambda v: (highlight_score(v, now), published_at(v)), reverse=True)  # stable: ids ascending among equals
+    scored = {v["id"]: highlight_score(v, now) for v in rest}
+    chosen = []
+    while rest and len(chosen) < HIGHLIGHTS:
+        keys = [same_key(c) for c in chosen]
+        best = max(range(len(rest)), key=lambda n: scored[rest[n]["id"]] - SAME_PENALTY * keys.count(same_key(rest[n])))
+        chosen.append(rest.pop(best))
+    return chosen
 
 
 emit = print  # where the `cycle` line goes: stdout, so the container's output and the lasting log; tests quiet it
