@@ -225,23 +225,6 @@
         "light": "#ffffff",
         "dark": "#4f5053"
       },
-      "chevron-ring": {
-        "role": "neutral",
-        "displayName": "Chevron Ring",
-        "canonical": "light-dark(#737c86, #737b84)",
-        "tonalRamp": [
-          "oklch(15% 0.004 251)",
-          "oklch(26% 0.011 251)",
-          "oklch(38% 0.016 251)",
-          "oklch(49% 0.018 251)",
-          "oklch(61% 0.018 251)",
-          "oklch(72% 0.016 251)",
-          "oklch(84% 0.011 251)",
-          "oklch(95% 0.004 251)"
-        ],
-        "light": "#737c86",
-        "dark": "#737b84"
-      },
       "group-ground": {
         "role": "neutral",
         "displayName": "Group Ground",
@@ -1114,7 +1097,7 @@
       "refersTo": "board-row",
       "description": "Risk sign, title over CVE ID, ring, badges, date over time, chevron in a 28px rounded square.",
       "html": "<button class=\"ds-row\"><span class=\"ds-risk-w\">긴급</span><span class=\"ds-t\"><b>OpenSSH 원격 코드 실행 취약점</b><span>CVE-2026-12345</span></span><span class=\"ds-when\">2026-11-19<br>09:12</span><span class=\"ds-chev\" aria-hidden=\"true\"></span></button>",
-      "css": ".ds-row { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) 5.5rem 0.75rem; align-items: center; column-gap: 1.25rem; width: 100%; min-height: 4.5rem; padding: 12px; border: 0; border-bottom: 1px solid var(--rule, #dde1e5); background: none; color: var(--ink, #16191d); text-align: left; cursor: pointer; transition: background-color 120ms ease-out; } .ds-row:hover { background: var(--panel-2, #eceef1); } .ds-row:focus-visible { outline: 2px solid var(--focus, #1a5fb4); outline-offset: 2px; } .ds-risk-w { justify-self: start; display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 8px; border-radius: 4px; background: var(--high-wash, #ffc4be); color: var(--high-ink, #76000c); font: 700 0.875rem/1.2 var(--sans, system-ui, sans-serif); } .ds-t b { display: block; font: 700 1.0625rem/1.35 var(--sans, system-ui, sans-serif); letter-spacing: -0.02em; } .ds-t span { display: block; margin-top: 3px; color: var(--ink-2, #4f5862); font-size: 0.875rem; font-variant-numeric: tabular-nums; } .ds-when { justify-self: end; text-align: right; color: var(--ink-2, #4f5862); font-size: 0.8125rem; line-height: 1.35; font-variant-numeric: tabular-nums; } .ds-chev { position: relative; width: 8px; height: 8px; } .ds-chev::before { content: ''; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2, #4f5862); border-bottom: 1.5px solid var(--ink-2, #4f5862); transform: rotate(-45deg) translate(-1.5px, -1.5px); } .ds-chev::after { content: ''; position: absolute; inset: -10px; border: 1.5px solid var(--chev-ring, #737c86); border-radius: 6px; }"
+      "css": ".ds-row { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) 5.5rem 0.75rem; align-items: center; column-gap: 1.25rem; width: 100%; min-height: 4.5rem; padding: 12px; border: 0; border-bottom: 1px solid var(--rule, #dde1e5); background: none; color: var(--ink, #16191d); text-align: left; cursor: pointer; transition: background-color 120ms ease-out; } .ds-row:hover { background: var(--panel-2, #eceef1); } .ds-row:focus-visible { outline: 2px solid var(--focus, #1a5fb4); outline-offset: 2px; } .ds-risk-w { justify-self: start; display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 8px; border-radius: 4px; background: var(--high-wash, #ffc4be); color: var(--high-ink, #76000c); font: 700 0.875rem/1.2 var(--sans, system-ui, sans-serif); } .ds-t b { display: block; font: 700 1.0625rem/1.35 var(--sans, system-ui, sans-serif); letter-spacing: -0.02em; } .ds-t span { display: block; margin-top: 3px; color: var(--ink-2, #4f5862); font-size: 0.875rem; font-variant-numeric: tabular-nums; } .ds-when { justify-self: end; text-align: right; color: var(--ink-2, #4f5862); font-size: 0.8125rem; line-height: 1.35; font-variant-numeric: tabular-nums; } .ds-chev { position: relative; width: 8px; height: 8px; } .ds-chev::before { content: ''; position: absolute; inset: 0; border-right: 2px solid var(--ink-2, #4f5862); border-bottom: 2px solid var(--ink-2, #4f5862); transform: rotate(-45deg) translate(-1.5px, -1.5px); }"
     },
     {
       "name": "Highlight Band",

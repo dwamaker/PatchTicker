@@ -15,7 +15,6 @@ colors:
   control-hover: "light-dark(#d5d6d8, #424446)"
   control-on: "light-dark(#cccdd0, #4f5053)"
   segment-on: "light-dark(#ffffff, #4f5053)"
-  chevron-ring: "light-dark(#737c86, #737b84)"
   group-ground: "light-dark(#e6ebf1, #1c2531)"
   skeleton: "light-dark(#ccd3db, #5a5e66)"
   warning-wash: "light-dark(#e2a40033, #e2a4003f)"
@@ -123,8 +122,8 @@ typography:
 rounded:
   marker: "4px"
   code: "6px"
-  ctl: "8px"
-  frame: "10px"
+  ctl: "6px"
+  frame: "6px"
   pill: "999px"
 spacing:
   gutter: "1rem"
@@ -343,9 +342,6 @@ for Products only.
   menus' and panels' edge, label dividers.
 - **Control Edge** (`control-edge`): borders of the search bar, the date fields, the OS badges and the jump buttons.
 - **Skeleton** (`skeleton`, `--skel`, Astryx `--color-skeleton`): the loading Board's bars.
-- **Chevron Ring** (`chev-ring`, `--chev-ring`): the ring around a row's chevron, #737c86 by day and #737b84 by night (owner,
-  11-16: Control Edge was 2.8:1 on the day group ground). On the page, group, panel and hover grounds 3.53 to 4.24:1 by
-  day and 3.60 to 4.30:1 by night, so 3:1+ everywhere (WCAG 1.4.11) and still quieter than Secondary Ink (6:1+).
 - **Patch Teal** (`patch-edge`, `--patch-edge`) and **Fold Violet** (`fold-edge`, `--fold-edge`): the colours of the two
   kinds of group (owner, 11-16): a release group (함께 공개) is teal (#007c88 by day, #3fc1cc by night); a
   vendor fold (묶음) violet (#7340f2 by day, #a98bff by night). Both were Product lines once (line-07, line-06); since
@@ -462,7 +458,7 @@ template card's, and with four 긴급 in a row they told nothing); it is set apa
 - Nothing else in the Board's flow.
 
 ### Frosted menus (owner, 11-19, an experiment)
-The four menus (search suggestions, 정렬, language, RSS) are 90% Kiosk Panel over a 12px blur (saturate 1.2) of what
+The four menus (search suggestions, 정렬, language, RSS) are 70% Kiosk Panel over a 12px blur (owner, 11-19: 90% before) (saturate 1.2) of what
 lies behind, where the browser has `backdrop-filter`. `?menu=solid` draws them solid to compare; deleting the one CSS
 rule makes them solid for good. Every menu text keeps 4.5:1+ even over a solid ink or white ground behind it, the hover
 fill included.
@@ -475,25 +471,25 @@ not by a lift.
 ## Shapes
 
 Five radii, all `:root` tokens: square-ish marks (4px, `--r-marker`: risk badges, group tags, the search bar's tokens,
-"원문", skeleton bars, the Support badge), inner corners (6px, `--r-code`: menu rows, the chosen segment inside its
-track, the tooltip, the chevron's ring), controls (8px, `--r-ctl`: buttons, chips, segmented tracks, the command
-block, the step squares), frames (10px, `--r-frame`: the search bar, the Highlights band, the filter panel, the guide,
+"원문", skeleton bars, the Support badge, menu rows, the chosen segment inside its track), inner corners (6px,
+`--r-code`: the tooltip, the keyboard-focus square around a row's chevron), controls (6px, `--r-ctl`: buttons, chips,
+segmented tracks, the command block, the step squares), frames (6px since 11-19, owner's slider pick; 10px before,
+`--r-frame`: the search bar, the Highlights band, the filter panel, the guide,
 the first-visit line, banners, menus) and full pills (999px: Product line badges, the 필터 count, the new-Incidents
-pill). A corner inside a frame is concentric with it (the bar's 10px less its 5px inset and border holds a 4px token).
+pill). A corner inside a frame or track is concentric with it (a 6px track less its 2px inset holds a 4px segment).
 Borders are 1px throughout, and no row wears a coloured side edge (critique P2,
 11-19); the one coloured line is an opened vendor fold's 2px Fold Violet rail with a 0.875rem stop ring (2px) at each
 member's sign, like stations on a subway line. The risk sign is a filled 4px-corner badge (a dashed edge while no
-score; owner, 11-19), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring, a
-28px rounded square (6px corners; owner, 11-19: the circle stood apart from the squared buttons and badges; Chevron
-Ring, Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a control without
-moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it, and the chevron 0.5rem in from the row's edge, so the
+score; owner, 11-19), the chevron a 2px stroked corner that turns when a row opens, with no ring around it (owner, 11-19:
+"테두리 없애고 화살표 살짝 두껍게"); a keyboard focus alone draws a 1.5px Wayfinding Blue 28px square (6px corners)
+around it, without moving the row's columns. On a phone the date stands 0.875rem further left to clear it, and the chevron 0.5rem in from the row's edge, so the
 ring stays inside the row and a group's frame at 320px too.
 
 ## Components
 
 ### Buttons (owner, 11-19, after Astryx Button)
 - **Secondary** (the shared `.btn`, the default): Control Fill, no visible edge (a transparent 1px one, so sizes hold
-  and forced colours still draw it), 8px corners, 0.75rem side padding, an 0.5rem gap after an icon, Label size at 500.
+  and forced colours still draw it), 6px corners, 0.75rem side padding, an 0.5rem gap after an icon, Label size at 500.
   Control Hover under the pointer; Control On while its menu or panel is open (not 주요 사건 접기, which only expands
   the list).
 - **Ghost:** the header's controls (GitHub, RSS, settings, theme, language) and the icon-only closes (the first-visit
@@ -560,8 +556,8 @@ ring stays inside the row and a group's frame at 320px too.
 
 ### Menus (owner, 11-19: "드롭다운 디자인 통일")
 - **One look for the four dropdowns** (the search bar's suggestions, 정렬, the language and RSS menus), after Astryx
-  DropdownMenu: a Kiosk Panel surface (frosted, see Elevation), Rail edge, 10px corners, `--lift-menu`, 4px inside, rows
-  2px apart, 4px from its trigger. A row is 8px in (6px block), at least the control height, 6px corners, Description
+  DropdownMenu: a Kiosk Panel surface (frosted, see Elevation), Rail edge, 6px corners, `--lift-menu`, 4px inside, rows
+  2px apart, 4px from its trigger. A row is 8px in (6px block), at least the control height, 4px corners, Description
   size; hover and press are see-through ink (8% and 14%, Astryx overlay-hover/-pressed), so they also sit on the frosted
   ground. A keyboard's row gets the fill and the focus ring inside it. The current choice is semibold with a Wayfinding
   Blue tick at the row's end. A section label is Meta size in Secondary Ink at normal weight.
@@ -574,8 +570,8 @@ ring stays inside the row and a group's frame at 320px too.
   closed button opens it. Address (`#s=`) and storage are unchanged. Without popovers the button steps to the next order.
 
 ### View switch (기본 | 쉬운 설명)
-- **Style (owner, 11-19, after Astryx SegmentedControl):** a borderless track in Control Fill, 2px inset, 8px corners;
-  two options at the control height less 4px (44 px under a finger), 1rem side padding, 6px corners.
+- **Style (owner, 11-19, after Astryx SegmentedControl):** a borderless track in Control Fill, 2px inset, 6px corners;
+  two options at the control height less 4px (44 px under a finger), 1rem side padding, 4px corners.
 - **State:** the chosen option is a raised segment (Segment On, `--lift-low`, Ink at 600) that slides under the pressed
   side (240ms); the other is Secondary Ink at 500, gaining Control Hover under the pointer. The same segmented look
   draws 최소 CVSS and CVE 번호 in the filter panel and the guide's small switch.
@@ -590,12 +586,12 @@ ring stays inside the row and a group's frame at 320px too.
   then by importance inside each, its four pins of four different vendor-and-category pairs (owner, 2026-11-16, 2026-11-17; until then the pins
   followed the visitor's order). An old event (its CVEs all two or more years old, or an event date over 14 days
   back) is never a Highlight, though its row stays (owner, 2026-11-17).
-- **Panel:** Kiosk Panel with a Rail border, 10px corners, 1.25rem in; its head holds the title and an icon-only ghost
+- **Panel:** Kiosk Panel with a Rail border, 6px corners, 1.25rem in; its head holds the title and an icon-only ghost
   × close. Chip rows for 위험 단계, 조건 (악용 중만, 공식 공지, 공개 익스플로잇·PoC) and OS; 최소 CVSS and CVE 번호 as
   segmented controls (Astryx: a select is wrong for two or a few options); 게시일 시작/끝, the panel's only fields,
   keeping a field's Control Edge. Nothing changes until 필터 적용; 필터 초기화 clears the panel only (Products picked
   in the bar and the search stay). Everything lives in the hash.
-- **Chips:** Control Fill, 8px corners (the risk chips 4px, like the signs), Secondary Ink at 500. Chosen, a chip fills
+- **Chips:** Control Fill, 6px corners (the risk chips 4px, like the signs), Secondary Ink at 500. Chosen, a chip fills
   (Ink with the page ground's colour at 700; a risk chip takes its sign's wash and ink) and carries a tick, so the state
   never rests on colour alone (Astryx ToggleButton). A chip that would leave nothing is dashed in the caution tone,
   `caution-wash` with `caution-ink` text and a dashed edge, also under the pointer (owner, 11-19; 8.7:1 by day, 6.7:1
@@ -603,7 +599,7 @@ ring stays inside the row and a group's frame at 320px too.
 - **Footer (owner, 11-19):** the groups' notes on the left (what 위험 단계 means, that OS shows everything running on
   that system, and the dashed-chip note with a small dashed swatch, which keeps its line while hidden so nothing jumps),
   필터 초기화 and the primary 필터 적용 · N건 on the right, over a Hairline.
-- **Phone sheet:** under 600 px the panel is a bottom sheet (up to 85vh, 10px top corners) over the Scrim, a modal
+- **Phone sheet:** under 600 px the panel is a bottom sheet (up to 85vh, 6px top corners) over the Scrim, a modal
   dialog with the focus inside. Its head sticks, with a 36 × 4 px handle (Astryx BottomSheet); a drag down the head
   follows the finger and closes the sheet past 80px. The notes scroll in flow; 필터 적용 stays pinned at the bottom.
 - **Applied conditions** are tokens in the search bar after the picked Products (see Search bar); the old row of chips
@@ -618,7 +614,7 @@ ring stays inside the row and a group's frame at 320px too.
   stay the same size (the first version scaled the root size, which zoomed the whole page).
 
 ### Search bar (owner, 11-19, after Astryx PowerSearch)
-- **One bar** replaced the product field and the search field side by side: Kiosk Panel, 1px Control Edge border, 10px
+- **One bar** replaced the product field and the search field side by side: Kiosk Panel, 1px Control Edge border, 6px
   radius, 48 px high, a drawn magnifier in Hint Ink. The typed text is the keyword search and suggests Products; picked
   Products and the filter panel's conditions are tokens inside it. Spellcheck is off.
 - **Tokens:** Products first, then each condition read as "field value" with the value bold. A token is 36px tall,
@@ -695,7 +691,7 @@ ring stays inside the row and a group's frame at 320px too.
 ### Reading guide (이 현황판 읽는 법)
 - **Place:** a link-coloured "읽는 법" disclosure at the right of the status line (wraps under it on
   phones), 44px tall, chevron turning up when open. The guide opens below it in a Kiosk Panel with a
-  1px Rail border and 10px radius, like the filter panel, with a 닫기 button.
+  1px Rail border and 6px radius, like the filter panel, with a 닫기 button.
 - **First visit:** the guide never opens by itself (critique 9); a first visit gets the first-visit line instead (see
   Motion), and drawing that line stores `vr-guide`.
 - **Content:** each mark drawn with the row's own parts beside one plain line: the three risk levels
@@ -819,9 +815,9 @@ ring stays inside the row and a group's frame at 320px too.
   from 60% of the way. A click mid-way starts from where the ghosts are. The first open of a row still loading its full
   Incident, 모두 펼치기 and redraws stay instant. Reduced motion: a 200ms cross-fade in place.
 - **Opening:** the reading guide opens and closes like a row's details (the same fold, both ways; its top margin moves
-  with it so nothing below jumps; reduced motion: a 200ms fade; owner, 11-19: it had no motion). The filter panel eases
-  in over 200ms (a 6px drop and a fade) and fades out where it was in 160ms on `--ease-exit` (X, 필터, Escape, a tap on
-  the Scrim); the phone's filter sheet rises from the bottom over 300ms and slides down whole in 220ms while its dim
+  with it so nothing below jumps; reduced motion: a 200ms fade; owner, 11-19: it had no motion). The inline filter panel
+  grows open over 260ms and shrinks shut in 160ms on `--ease-exit` (X, 필터, Escape), so the Board below slides down
+  and back up instead of jumping (owner, 11-19; reduced motion: a fade); floating mid-list it drops 6px and fades; the phone's filter sheet rises from the bottom over 300ms and slides down whole in 220ms while its dim
   fades. 필터 적용 shuts the inline panel inside the Board's transition, so its old picture fades while the rows glide
   once. The chevron turns in 180ms.
 - **Filter motion (owner, 11-19: "the small animations are missing"):** a chip's tick grows in and out with its fill

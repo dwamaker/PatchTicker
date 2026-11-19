@@ -74,7 +74,6 @@
       /* their tags' text on an 18% wash of the edge colour (Astryx Token teal / purple): 5.0:1+ on every ground in both themes */
       --patch-ink: light-dark(#005a63, #3fc1cc);
       --fold-ink: light-dark(#5326c9, #c2adff);
-      --chev-ring: light-dark(#737c86, #737b84); /* a row chevron's ring: 3.5:1+ on the page, group, panel and hover grounds in both themes (WCAG 1.4.11), quieter than Secondary Ink (owner, 11-16) */
       --rainbow: #ff4d4d, #ffa02e, light-dark(#d9a400, #ffe03a), #4cd964, #3ab7ff, #7a6cff, #ff5ad8, #ff4d4d; /* the 쉬운 설명 beckon only (DESIGN.md beckon-*) */ /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
       --ink: light-dark(#16191d, #ececec);
       --ink-2: light-dark(#4f5862, #a8afb7);
@@ -119,8 +118,8 @@
       --lift-low: 0 1px 1px rgb(0 0 0 / 0.1), 0 2px 8px rgb(0 0 0 / 0.1); /* Astryx --shadow-low: the switch's raised segment */
       --seg-on: light-dark(#ffffff, #4f5053); /* that segment: the panel by day; by night a step lighter than its track, so it reads raised, not sunk */
       --r-pill: 999px;
-      --r-frame: 10px;
-      --r-ctl: 8px;
+      --r-frame: 6px;
+      --r-ctl: 6px;
       /* Astryx Shape: "x Hardcode radius values; they won't scale with theme radius multipliers." -> every DESIGN.md radius is a token (marker 4, code 6). */
       --r-marker: 4px;
       --r-code: 6px;
@@ -212,7 +211,7 @@
     .menu ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
     :is(.menu, .menu ul) > * { flex: none; } /* a long menu scrolls; its rows never squeeze */
     .menu-head { margin: 0; padding: 0.25rem 0.5rem; color: var(--ink-2); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 400; user-select: none; }
-    .mi { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: var(--ctl-h); padding: 0.375rem 0.5rem; border: 0; border-radius: var(--r-code); background: none; color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
+    .mi { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: var(--ctl-h); padding: 0.375rem 0.5rem; border: 0; border-radius: var(--r-marker); background: none; color: var(--ink); font: inherit; text-align: start; cursor: pointer; }
     @media (hover: hover) { .mi:hover { background: var(--menu-hover); } .mi:active { background: var(--menu-press); } }
     /* a keyboard's row: the fill and the focus ring inside it (Selector itemKeyboardHighlighted: the fill alone is under 3:1) */
     .mi:focus-visible, .suggest .mi[aria-selected="true"] { background: var(--menu-hover); outline: 2px solid var(--focus); outline-offset: -2px; }
@@ -221,7 +220,7 @@
     /* Frosted menus (owner, 11-19, an experiment): 90% of the panel over a blur of what lies behind. Delete this rule for
        solid menus; ?menu=solid shows them solid to compare (app.mjs). Every menu text keeps 4.5:1+ even over a solid ink or
        white ground behind it, the hover fill included (Secondary Ink is the faintest menu text). */
-    @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { :root:not(.menu-solid) .menu { background: color-mix(in srgb, var(--panel) 90%, transparent); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); } }
+    @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { :root:not(.menu-solid) .menu { background: color-mix(in srgb, var(--panel) 70%, transparent); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2); } }
     /* the popover menus enter from just above (src/Layer/layerAnimations.stylex.ts:53-58 enterBelow) */
     @media (prefers-reduced-motion: no-preference) {
       .menu[popover] { opacity: 0; translate: 0 -0.25rem; transition: opacity, translate, display, overlay; transition-duration: 0.15s; transition-behavior: allow-discrete; }
@@ -252,7 +251,7 @@
        chosen segment a raised panel with the low shadow and semibold ink, the other in Secondary Ink (src/SegmentedControl/
        SegmentedControl.tsx container + SegmentedControlItem.tsx selected; concentric radius 8 - 2 = 6) */
     #views { display: inline-flex; padding: 2px; border: 0; border-radius: var(--r-ctl); background: var(--ctl-fill); }
-    #views button { min-height: calc(var(--ctl-h) - 4px); padding: 0 1rem; border: 0; border-radius: var(--r-code); background: none; color: var(--ink-2); font-weight: 500; cursor: pointer; }
+    #views button { min-height: calc(var(--ctl-h) - 4px); padding: 0 1rem; border: 0; border-radius: var(--r-marker); background: none; color: var(--ink-2); font-weight: 500; cursor: pointer; }
     @media (pointer: coarse) { #views button { min-height: var(--tap); } } /* 44px under a finger */
     #views button[aria-pressed="true"] { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
     .end { justify-self: end; display: flex; gap: 0.25rem; }
@@ -384,7 +383,7 @@
     .token .x::after { transform: rotate(-45deg); }
     @media (hover: hover) { .token:hover { background: color-mix(in srgb, var(--ink) 14%, var(--panel)); } .token:hover .x { color: var(--ink); } }
     .token:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-    .bar-end { position: absolute; top: 0; right: 0; height: 46px; display: flex; align-items: center; gap: 0.25rem; padding: 0 0.375rem 0 0.25rem; border-radius: 0 9px 9px 0; background: var(--panel); }
+    .bar-end { position: absolute; top: 0; right: 0; height: 46px; display: flex; align-items: center; gap: 0.25rem; padding: 0 0.375rem 0 0.25rem; border-radius: 0 calc(var(--r-frame) - 1px) calc(var(--r-frame) - 1px) 0; background: var(--panel); }
     /* unfocused, the tokens keep one row and the lane says how many it hides (Tokenizer tokenOverflowBehavior
        "unfocusedInline", truncatedWrapper); focused, they wrap into view */
     .sbar:not(:focus-within) { flex-wrap: nowrap; overflow: hidden; }
@@ -523,12 +522,12 @@
     .fp-seg-track { display: inline-flex; align-self: flex-start; max-width: 100%; padding: 2px; border-radius: var(--r-ctl); background: var(--ctl-fill); }
     .fp-seg label { position: relative; display: flex; min-width: 0; }
     .fp-seg input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-    .fp-seg span { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ctl-h) - 4px); padding: 0 0.75rem; border-radius: var(--r-code); color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; text-align: center; transition: background-color 120ms ease-out, color 120ms ease-out, transform 100ms ease-out; }
+    .fp-seg span { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ctl-h) - 4px); padding: 0 0.75rem; border-radius: var(--r-marker); color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; text-align: center; transition: background-color 120ms ease-out, color 120ms ease-out, transform 100ms ease-out; }
     @media (pointer: coarse) { .fp-seg span { min-height: var(--tap); } }
     .fp-seg input:checked + span { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
     /* one pill under the chosen option that slides across, as 기본|쉬운 설명's does (app.mjs placeSegs) */
     .fp-seg-track { position: relative; isolation: isolate; }
-    .fp-seg-track.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-code); background: var(--seg-on); box-shadow: var(--lift-low); }
+    .fp-seg-track.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-marker); background: var(--seg-on); box-shadow: var(--lift-low); }
     .fp-seg-track.ready::before { transition: left 200ms var(--ease-out), width 200ms var(--ease-out); }
     .fp-seg-track.slid input:checked + span { background: none; box-shadow: none; }
     @media (hover: hover) { .fp-seg label:hover input:not(:checked) + span { background: var(--ctl-hover); color: var(--ink); } }
@@ -761,10 +760,10 @@
        arrow turns inside a still ring drawn around its 0.5rem box, so the row's columns do not move */
     .row .chev { position: relative; justify-self: center; border: 0; transform: none; }
     .row[aria-expanded="true"] .chev { transform: none; }
-    .row .chev::before { content: ""; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms var(--ease-out); }
+    .row .chev::before { content: ""; position: absolute; inset: 0; border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms var(--ease-out); }
     .row[aria-expanded="true"] .chev::before { transform: rotate(45deg) translate(-2px, -2px); }
-    .row .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--chev-ring); border-radius: var(--r-code); transition: border-color 120ms ease-out; } /* a 28px rounded square (owner, 11-19: the circle stood apart from the squared buttons and badges) */
-    @media (hover: hover) { .row:hover .chev::after { border-color: var(--ink-2); } }
+    .row .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid transparent; border-radius: var(--r-code); transition: border-color 120ms ease-out; } /* a 28px rounded square (owner, 11-19: the circle stood apart from the squared buttons and badges) */
+    /* no ring at rest or on hover (owner, 11-19: the frame went, the arrow got heavier); a keyboard focus still draws it */
     .row:focus-visible .chev::after { border-color: var(--focus); }
 
     /* 주요 사건: one alert band (critique P2, 11-19). The Highlights share one frame with a hairline between them, flat
@@ -1100,7 +1099,7 @@
     .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active { transform: scale(0.98); } /* Astryx Button, pressable: "scale(0.98)" */
     .token:active, .fp-chip:active span, .fp-seg label:active span, .field .clear:active { transform: scale(0.96); } /* the filter chips press in too (DESIGN.md: chips press to 96%) */
     #views { position: relative; isolation: isolate; }
-    #views.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-code); background: var(--seg-on); box-shadow: var(--lift-low); }
+    #views.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-marker); background: var(--seg-on); box-shadow: var(--lift-low); }
     #views.ready::before { transition: left 240ms var(--ease-out), width 240ms var(--ease-out); }
     #views.slid button[aria-pressed="true"] { background: none; box-shadow: none; }
     ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }

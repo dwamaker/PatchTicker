@@ -1924,8 +1924,27 @@ function openPanel(opener) {
     form.querySelector('.fp-head .btn').focus({ preventScroll: true });
   } else {
     for (const name of ['role', 'aria-modal', 'aria-labelledby']) form.removeAttribute(name);
-    reveal(form);
+    slidePanel(form, true);
   }
+}
+
+// The inline panel grows open and shrinks shut, so the Board below slides down and back up instead of jumping
+// (owner, 11-19). Height is animated on purpose: the push is the point, and it runs once per open or close.
+// Reduced motion keeps a fade, never the slide.
+function slidePanel(form, opening) {
+  form.getAnimations().forEach((a) => a.cancel());
+  if (reducedMotion.matches) {
+    form.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }], { duration: 160 });
+    return;
+  }
+  const cs = getComputedStyle(form);
+  const full = { height: `${form.offsetHeight}px`, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, marginBottom: cs.marginBottom, borderTopWidth: cs.borderTopWidth, borderBottomWidth: cs.borderBottomWidth, opacity: 1 };
+  const none = { height: '0px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', borderTopWidth: '0px', borderBottomWidth: '0px', opacity: 0 };
+  form.style.overflow = 'clip';
+  const run = form.animate(opening ? [none, full] : [full, none], opening
+    ? { duration: 260, easing: EASE_OUT }
+    : { duration: 160, easing: EASE_EXIT, fill: 'forwards' }); // the CSS keeps it drawn 160ms (index.html .filters[hidden])
+  run.finished.then(() => { form.style.overflow = ''; run.cancel(); }, () => { form.style.overflow = ''; });
 }
 
 function closePanel(applied = false) {
@@ -1933,7 +1952,9 @@ function closePanel(applied = false) {
   panelFrom = null;
   sheetInert(false);
   // applied inline: the Board transition carries it out (applyPanel); a sheet or floating panel fades out on its own
-  $('filters').classList.toggle('shut', applied && !phoneSheet() && !$('filters').classList.contains('floating'));
+  const inline = !phoneSheet() && !$('filters').classList.contains('floating');
+  $('filters').classList.toggle('shut', applied && inline);
+  if (inline && !applied) slidePanel($('filters'), false);
   $('filters').hidden = true; // else it fades out (index.html .filters[hidden]); floating stays until the next open sets it
   $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
@@ -2422,7 +2443,8 @@ $('search').addEventListener('blur', closeSuggest);
 $('search-clear').addEventListener('click', () => {
   $('search').value = '';
   clearTimeout(typing);
-  update(NO_FILTER, false);
+  document.documentElement.classList.add('vt-search');
+  update(NO_FILTER);
   $('search').focus();
 });
 $('search').addEventListener('input', (event) => {
