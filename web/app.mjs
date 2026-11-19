@@ -1,5 +1,5 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
 
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
@@ -266,6 +266,7 @@ function showTextSize() {
   const pct = textPct();
   $('text-down').setAttribute('aria-disabled', pct === TEXT_STEPS[0]);
   $('text-up').setAttribute('aria-disabled', pct === TEXT_STEPS.at(-1));
+  rest(document.querySelector('.sizes'));
 }
 function setTextIndex(index) {
   if (!TEXT_STEPS[index]) return; // a press on an end step: nothing to say
@@ -585,7 +586,7 @@ function ensureOthers() {
     productCounts = doc;
     refreshProducts();
     if (document.activeElement === $('search')) suggest(); // the open list gains its counts and their order
-    holdPlace(render);
+    setTimeout(() => holdPlace(render)); // its own task, so the first row open is not one long task (audit 11-19)
   }, () => { productCounts = {}; });
 }
 
@@ -2309,6 +2310,7 @@ function placeJump() {
   // Astryx IconButton, Props, isDisabled: "uses aria-disabled instead of native disabled": an end step keeps the focus
   $('step-up').setAttribute('aria-disabled', scrollY <= 1);
   $('step-down').setAttribute('aria-disabled', scrollY >= max - 1);
+  rest($('step'));
   document.body.classList.remove('jump-idle');
   clearTimeout(jumpIdle);
   // after a step press the group stays STEP_HOLD, not 2 s, so the next press finds it under the finger
@@ -2360,12 +2362,20 @@ $('jump-down').addEventListener('click', (event) => launch(event.currentTarget, 
 $('jump-down').addEventListener('click', () => scrollTo({ top: document.documentElement.scrollHeight, behavior: glide() }));
 
 $('guide-btn').addEventListener('click', () => (guideOpen && !$('guide').dataset.leaving ? closeGuide() : openGuide()));
+// While the focus is outside a group, its Tab stop rests on a member that can act (restingStop); inside, it follows the focus.
+function rest(group) {
+  if (group.contains(document.activeElement)) return;
+  const members = [...group.querySelectorAll('button')];
+  const stop = restingStop(members.map((b) => b.getAttribute('aria-disabled') === 'true'));
+  members.forEach((b, n) => { b.tabIndex = n === stop ? 0 : -1; });
+}
 // Two-button groups take one Tab stop and move by arrows (groupKey, Astryx ButtonGroup): 가−/가+ left and right, with
 // Home/End; 한 화면 위로/아래로 up and down only, since Home and End stay the browser's (DESIGN.md, jump buttons).
 function rove(group, keys) {
   const members = [...group.querySelectorAll('button')];
-  members.forEach((b, n) => { b.tabIndex = n ? -1 : 0; });
+  rest(group);
   group.addEventListener('focusin', (event) => { for (const b of members) b.tabIndex = b === event.target ? 0 : -1; });
+  group.addEventListener('focusout', (event) => { if (!group.contains(event.relatedTarget)) setTimeout(() => rest(group)); }); // left on a dimmed end
   group.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return; // Alt+arrows: the browser's Back/Forward
     const to = groupKey(event.key, members.indexOf(event.target), members.length, keys);
@@ -2924,10 +2934,12 @@ function tagsCell(incident) {
   return cell;
 }
 
+const relativeFormats = {}; // one per language: making one per row cost ~17 ms of a redraw at 4x CPU
+const relativeFormat = (code) => (relativeFormats[code] ||= new Intl.RelativeTimeFormat(code, { numeric: 'always' }));
 // "2시간 전" / "2 hours ago"; the date from 30 days on.
 function ago(iso) {
   const age = relativeAge(iso, Date.now());
-  return age ? new Intl.RelativeTimeFormat(lang, { numeric: 'always' }).format(age.value, age.unit) : iso.slice(0, 10);
+  return age ? relativeFormat(lang).format(age.value, age.unit) : iso.slice(0, 10);
 }
 
 // When the news first broke, in the visitor's time zone: the date over the time; how long ago in the tooltip.

@@ -521,6 +521,10 @@ const withOthers = (doc, lang, others) => pageResponse(bucket({ 'pages/CVE-2026-
 test('the page shows the Public date among the times and links the product\'s other Incidents under the Mitigation', async () => {
   const doc = { ...SSHOLE, public_date: '2026-10-30' };
   const ko = await (await withOthers(doc, 'ko', OTHERS)).text();
+  // Section titles are headings, so heading navigation reaches 요약, 대처법 and the rest (audit 11-19); the page's one h1 stays.
+  assert.match(ko, /<section aria-labelledby="s-todo"><h2 class="label" id="s-todo">/);
+  assert.doesNotMatch(ko, /<p class="label"/);
+  assert.equal(ko.match(/<h1\b/g).length, 1);
   const times = ko.slice(ko.indexOf('id="s-times"'));
   assert.match(times, /<dt>공개일<\/dt><dd>2026-10-30<\/dd>/);
   const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));

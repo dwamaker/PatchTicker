@@ -173,7 +173,7 @@ const cveList = (i, lang, t) => {
   return ul(links.slice(0, CVE_SHOWN), cls)
     + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), cls)}</details>`;
 };
-const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
+const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><h2 class="label" id="s-${key}">${esc(label)}</h2>${body}</section>` : '');
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
 // Without script, Korean and Japanese pages say their time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in

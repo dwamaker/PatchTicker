@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupKey } from '../web/board.mjs';
+import { groupKey, restingStop } from '../web/board.mjs';
 
 test('groupKey: arrows move along a two-button group and stop at its ends; Home/End reach the ends', () => {
   assert.equal(groupKey('ArrowRight', 0, 2), 1);
@@ -29,4 +29,11 @@ test('groupKey: a two-way switch wraps, so either arrow reaches the other option
   assert.equal(groupKey('ArrowLeft', 0, 2, keys), 1);
   assert.equal(groupKey('ArrowRight', 0, 2, keys), 1);
   assert.equal(groupKey('Home', 1, 2, keys), -1);
+});
+
+test('restingStop: a roving group rests its Tab stop on the first member that can act', () => {
+  assert.equal(restingStop([false, false]), 0);
+  assert.equal(restingStop([true, false]), 1); // at the top of the page, 한 화면 위로 is dimmed: Tab reaches 한 화면 아래로
+  assert.equal(restingStop([false, true]), 0);
+  assert.equal(restingStop([true, true]), 0); // nothing can act: still one stop, never none
 });

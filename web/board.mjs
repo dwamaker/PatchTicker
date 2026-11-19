@@ -136,8 +136,16 @@ export const familyName = (name) => name.replace(PLATFORM, '').replace(SERVICING
 const familyKey = (name) => productKey(name.replace(/\bversion\s+(?=\d)/giu, ''));
 export function pickerEntries(products, counts = {}) {
   const groups = new Map();
+  const bySuffix = new Map(); // family key → the non-OS group keys ending in it, so a named Product looks up, not scans
   const add = (key, p, name) => {
-    const entry = groups.get(key) || groups.set(key, { key, name, ids: [], n: 0, os: p.id.startsWith('os:') }).get(key);
+    let entry = groups.get(key);
+    if (!entry) {
+      groups.set(key, entry = { key, name, ids: [], n: 0, os: p.id.startsWith('os:') });
+      if (!key.startsWith('os:')) {
+        const suffix = key.slice(key.indexOf('|') + 1);
+        bySuffix.set(suffix, [...(bySuffix.get(suffix) || []), key]);
+      }
+    }
     entry.ids.push(p.id);
     entry.n += counts[p.id] || 0;
     if (name.length > entry.name.length) entry.name = name; // "Adobe Photoshop" over "Photoshop"
@@ -151,7 +159,7 @@ export function pickerEntries(products, counts = {}) {
   }
   for (const [p, name] of named) {
     const own = familyKey(name);
-    const vendors = [...groups.keys()].filter((k) => k.slice(k.indexOf('|') + 1) === own && !k.startsWith('os:'));
+    const vendors = bySuffix.get(own) || [];
     add(vendors.length === 1 ? vendors[0] : `name|${own}`, p, name);
   }
   return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
@@ -1096,6 +1104,9 @@ export function productFeed(names, lang) {
 // Astryx ButtonGroup, Best Practices: "Single Tab stop; arrows move between members, Home/End to ends (APG roving tabindex)".
 // Where a key moves the focus in a group of `count` controls from member `index`: the new index, or -1 when the key is
 // left to the browser. `wrap`: the last member's next is the first (a two-way switch).
+// A roving group's one Tab stop while the focus is elsewhere: its first member that can act, so Tab never lands on a dimmed
+// end step alone (audit 11-19: 가+ and 한 화면 아래로 were reachable only by arrows from a disabled first member).
+export const restingStop = (disabled) => Math.max(0, disabled.indexOf(false));
 export function groupKey(key, index, count, { prev = ['ArrowLeft'], next = ['ArrowRight'], ends = true, wrap = false } = {}) {
   if (index < 0 || count < 1) return -1;
   if (prev.includes(key)) return index > 0 ? index - 1 : wrap ? count - 1 : 0;

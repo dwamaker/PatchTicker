@@ -71,8 +71,8 @@ test("an Incident page links to the pages of its products, operating systems asi
     products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }],
     summary: { incident: true, products: ['OpenSSH'], platforms: ['Linux'], ko: { title: 'T', summary: 'S' }, en: { title: 'T', summary: 'S' } } };
   const html = await (await pageResponse(store({ 'pages/CVE-2026-1001.json': doc }), 'ko', 'CVE-2026-1001', NOW)).text();
-  assert.match(html, /<p class="label" id="s-product-pages">제품별 사건<\/p><p class="others"><a href="\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a><\/p>/);
+  assert.match(html, /<h2 class="label" id="s-product-pages">제품별 사건<\/h2><p class="others"><a href="\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a><\/p>/);
   assert.doesNotMatch(html, /href="\/p\/[0-9a-f]{16}">Linux/);
   const en = await (await pageResponse(store({ 'pages/CVE-2026-1001.json': doc }), 'en', 'CVE-2026-1001', NOW)).text();
-  assert.match(en, /Incidents by product<\/p><p class="others"><a href="\/en\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a>/);
+  assert.match(en, /Incidents by product<\/h2><p class="others"><a href="\/en\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a>/);
 });

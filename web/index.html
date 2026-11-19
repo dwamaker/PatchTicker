@@ -324,9 +324,11 @@
     #filter, .search-row { transition: box-shadow 200ms ease-out; }
     /* 필터 and 정렬 at the end of the search line at every width, so they freeze with it (critique 11-17: they had their own
        line under the status line, with a copy riding the frozen row once that line scrolled away) */
-    .search-row { display: flex; align-items: center; }
-    .search-row > .field { flex: 1 1 auto; min-width: 0; }
-    .search-tools { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex: none; padding-left: 0.5rem; }
+    /* where 필터 and 정렬 would leave the bar under 8em (large text on a phone: audit 11-19 measured a 47px stub), they wrap
+       under it at the end; at default text the bar keeps 127px+ at 360px, so the row stays one control high */
+    .search-row { display: flex; align-items: center; flex-wrap: wrap; row-gap: 0.5rem; }
+    .search-row > .field { flex: 1 1 8em; min-width: 0; }
+    .search-tools { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex: none; margin-left: auto; padding-left: 0.5rem; }
     .search-tools > * { flex: none; }
     .search-tools .btn { position: relative; gap: 0.375rem; padding: 0 0.75rem; }
     .search-tools svg { width: 16px; height: 16px; }
@@ -1217,7 +1219,7 @@
     <div id="views" role="group" data-t-aria="views"><button id="view-normal" type="button" aria-pressed="true" data-t="normal">기본</button><button id="view-easy" type="button" aria-pressed="false" data-t="easy">쉬운 설명</button></div>
     <button id="prefs-btn" class="btn" type="button" aria-controls="prefs" aria-expanded="false" data-t-aria="prefs"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 5h7M14 5h1M3 13h1M8 13h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="5" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="13" r="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
     <div class="end" id="prefs">
-      <div class="sizes" role="group" data-t-aria="textSizeGroup">
+      <div class="sizes" role="toolbar" data-t-aria="textSizeGroup">
         <button id="text-down" type="button" data-t-aria="textDown"><span aria-hidden="true" class="g1"><span data-t="textGlyph"></span><b>−</b></span></button>
         <button id="text-up" type="button" data-t-aria="textUp"><span aria-hidden="true" class="g3"><span data-t="textGlyph"></span><b>+</b></span></button>
       </div>
@@ -1278,7 +1280,7 @@
   </main>
   <div id="jump" class="jump">
     <button id="jump-up" class="off" type="button" data-t-aria="toTop"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h9M8 14V6M4.5 9.5 8 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div id="step" class="step" role="group" data-t-aria="stepGroup"><button id="step-up" type="button" data-t-aria="stepUp"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10 8 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button id="step-down" type="button" data-t-aria="stepDown"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div id="step" class="step" role="toolbar" aria-orientation="vertical" data-t-aria="stepGroup"><button id="step-up" type="button" data-t-aria="stepUp"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 10 8 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button id="step-down" type="button" data-t-aria="stepDown"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <button id="jump-down" class="off" type="button" data-t-aria="toBottom"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 13.5h9M8 2v8M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <footer><div class="wrap">

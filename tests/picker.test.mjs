@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { familyName, pickerEntries, rankEntries } from '../web/board.mjs';
+import { familyName, pickerEntries, productKey, rankEntries } from '../web/board.mjs';
 
 const named = (list) => list.map((p) => ({ id: p.id, name: p.en }));
 const fixture = named(JSON.parse(readFileSync(new URL('./fixtures/board/picker-case.json', import.meta.url))).products);
@@ -78,4 +78,43 @@ test('the real Product list has no "installed on" suggestion and fewer entries t
   assert.deepEqual(entries.filter((e) => / installed on /i.test(e.name)).map((e) => e.name), []);
   assert.ok(entries.length < products.length);
   assert.deepEqual(rankEntries(entries, '.net 10').map((e) => e.name), ['.NET 10.0']);
+});
+
+// pickerEntries looks a named Product's family up in a Map (audit 11-19: the scan over every group key made the first row
+// open 2x slower than live). The scan it replaced, kept here as the reference: both must give the same entries.
+function scanEntries(products, counts = {}) {
+  const own = (name) => productKey(name.replace(/\bversion\s+(?=\d)/giu, ''));
+  const groups = new Map();
+  const add = (key, p, name) => {
+    const entry = groups.get(key) || groups.set(key, { key, name, ids: [], n: 0, os: p.id.startsWith('os:') }).get(key);
+    entry.ids.push(p.id);
+    entry.n += counts[p.id] || 0;
+    if (name.length > entry.name.length) entry.name = name;
+  };
+  const named = [];
+  for (const p of products) {
+    const name = familyName(p.name);
+    if (p.id.startsWith('os:')) add(p.id, p, p.name);
+    else if (p.id.startsWith('name:')) named.push([p, name]);
+    else add(`${p.id.split(':')[0]}|${own(name)}`, p, name);
+  }
+  for (const [p, name] of named) {
+    const key = own(name);
+    const vendors = [...groups.keys()].filter((k) => k.slice(k.indexOf('|') + 1) === key && !k.startsWith('os:'));
+    add(vendors.length === 1 ? vendors[0] : `name|${key}`, p, name);
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
+}
+const others = new URL('../web/data/board/others.json', import.meta.url);
+test('the Map lookup gives the same entries as the scan it replaced', () => {
+  assert.deepEqual(pickerEntries(fixture), scanEntries(fixture));
+});
+test('… and on the real Product list, in both languages, with counts', { skip: !existsSync(real) }, () => {
+  const list = JSON.parse(readFileSync(real)).products;
+  const counts = existsSync(others) ? JSON.parse(readFileSync(others)).counts : {};
+  for (const lang of ['en', 'ko']) {
+    const products = list.map((p) => ({ id: p.id, name: p[lang] || p.en }));
+    assert.ok(products.some((p) => p.id.startsWith('name:')));
+    assert.deepEqual(pickerEntries(products, counts), scanEntries(products, counts));
+  }
 });
