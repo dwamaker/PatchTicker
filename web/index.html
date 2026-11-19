@@ -547,6 +547,13 @@
        "이것들 진짜 화나네"): one edge for the sign and its reason down the column. */
     .loud { --sign-inset: 0.75rem; flex-direction: column; align-items: flex-start; justify-self: start; }
     .loud .why { flex-basis: auto; padding-left: 0; text-align: start; }
+    /* The reason is centred on the sign (owner, 11-19: "글자 배지 중앙기준으로 정렬시켜"), while every sign keeps the column's start:
+       the track is the sign's width (the reason is a zero-width box) and the reason overflows it evenly on both sides. Wide screens
+       only: on phones the reason sits beside the sign (owner: leave the phone as it is). */
+    @media (min-width: 768px) {
+      .row > .c-risk.loud { display: grid; grid-template-columns: max-content; justify-items: center; justify-self: start; }
+      .row > .c-risk.loud .why { width: 0; display: flex; justify-content: center; white-space: nowrap; text-align: center; }
+    }
     .strip .loud .why { padding-left: 0; } /* the band's strip puts the reason beside the sign, on its own line */
     :lang(ja) .strip .loud .why { word-break: keep-all; } /* the strip's reason sits beside the sign: unchanged */
     :lang(ja) .loud .why { word-break: normal; } /* keep-all left 攻撃されています one line over the title at 150%: Japanese breaks between kana, every line on the content line */
