@@ -878,7 +878,8 @@ function searchPlaceholder() {
     node.placeholder = ((narrow || textPct() >= 125) && t[`${key}Short`]) || t[key];
     if (node.id !== 'search') continue;
     measure.font = getComputedStyle(node).font;
-    if (measure.measureText(node.placeholder).width > node.clientWidth) node.placeholder = t.search;
+    const fits = (text) => measure.measureText(text).width <= node.clientWidth;
+    if (!fits(node.placeholder)) node.placeholder = fits(t[`${key}Short`]) ? t[`${key}Short`] : t.search;
   }
 }
 addEventListener('resize', searchPlaceholder);
@@ -1128,8 +1129,9 @@ let highlightedNow = new Set(); // every Highlight, pinned or behind 주요 사�
 function boardLists() {
   const { highlights: chosen, list, variants, inText } = filtered();
   // A product or search filter is a question: no pinned block repeating the list's own rows above it, one sentence
-  // answering instead (answerLine; critique 11-17, P1). The list still edges its Highlights (highlightedNow).
-  const answering = Boolean(filter.picks.length || applied());
+  // answering instead (answerLine; critique 11-17, P1). The list still edges its Highlights (highlightedNow). A search
+  // counts from the moment it is typed or restored, so no block shows while it waits for the full week (applied).
+  const answering = Boolean(filter.picks.length || filter.query);
   // The pins go to four different vendors and show by importance, whatever the visitor's sort (owner, 11-16; pinOrder);
   // 주요 사건 더 보기 appends the rest below them, a pinned vendor's other rows first, then by importance too.
   const { pins, rest: extra } = answering ? { pins: [], rest: [] } : pinOrder(chosen);
@@ -1151,8 +1153,10 @@ function answerLine(list) {
   const t = TEXT[lang];
   const c = answerCounts(list);
   const n = (x) => x.toLocaleString(lang);
-  const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || id.replace(/^os:/, ''));
-  const who = [...names, ...(applied() ? [`‘${applied()}’`] : [])].join(', ');
+  const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || OSES.find((o) => `os:${o.toLowerCase()}` === id) || id);
+  // Two names, then a count: a saved filter of many Products keeps the sentence to a line or two (the chips list them all).
+  const shown = names.length > 3 ? [names.slice(0, 2).join(', '), t.moreProducts(names.length - 2)].join(' ') : names.join(', ');
+  const who = [shown, ...(applied() ? [`‘${applied()}’`] : [])].filter(Boolean).join(', ');
   const when = filter.from || filter.to ? '' : olderMonths.length ? t.answerWeek : t.answerHeld;
   const easy = defaultView === 'easy';
   const levels = ['highest', 'high', 'notice'].filter((l) => c[l]).map((l) => `${easy ? t[l] : t.levels[l]} ${n(c[l])}`);
@@ -1206,7 +1210,8 @@ function render() {
   // Not a live region: #announce already says the count; with nothing found the empty state answers instead. While the
   // data loads it stands empty, keeping its line (index.html), so the rows do not move when the answer arrives.
   $('answer').hidden = !answering || (updated && !list.length) || Boolean(loadError);
-  $('answer').textContent = $('answer').hidden || !updated ? '' : answerLine(list);
+  const waiting = filter.query && !applied(); // the list is not the search's yet
+  $('answer').textContent = $('answer').hidden || !updated || waiting ? '' : answerLine(list);
   $('all-head').hidden = !list.length;
   $('all-head').textContent = TEXT[lang].fp.sorts[filter.sort]; // the list's heading says its order
   $('sort').replaceChildren(...SORTS.map((key) => Object.assign(new Option(TEXT[lang].fp.sorts[key], key), { selected: key === filter.sort })));

@@ -318,9 +318,13 @@
       .bar { margin-top: 1rem; }
       .bar-head { flex: 1 1 auto; justify-content: space-between; }
       #filter { padding-top: 0.875rem; }
-      /* phones: 필터 is its icon (the word stays for screen readers), so the search words keep their room */
+    }
+    /* up to 1023px 필터 is its icon (the word stays for screen readers), and from 768px the search line takes the larger
+       share beside the product field, so the search words keep their room beside 필터 and 정렬 (at 768px it had none) */
+    @media (max-width: 1023px) {
       #filter-btn > [data-t] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
       .search-tools #filter-btn { padding: 0 0.625rem; }
+      #filter { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
     }
     /* a filtered Board's answer (app.mjs answerLine): the heaviest line over its list, as heavy as a row's title */
     .answer { margin: 1.25rem 0 0; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.45; color: var(--ink); font-variant-numeric: tabular-nums; text-wrap: pretty; }
