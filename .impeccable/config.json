@@ -26,6 +26,24 @@
         "value": "variable\",pretendard,\"apple sd gothic neo\",\"malgun gothic\",\"noto sans kr\",system-ui,sans-serif",
         "createdAt": "2026-11-17T09:11:49.129Z",
         "reason": "Claude, 11-17: same stack as DESIGN.md typography fontFamily (Pretendard Variable ... sans-serif) and edge/page.mjs --sans; the hook reads the CSS quotes as a different value"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "tests/fixtures/pages/sshhole.com.html"
+        ],
+        "createdAt": "2026-11-19T14:05:12.337Z",
+        "reason": "Claude, severity session: captured third-party page used as parser test input, not Patch Ticker UI"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "tests/fixtures/pages/aikido-wfx-loot.html"
+        ],
+        "createdAt": "2026-11-19T14:05:12.432Z",
+        "reason": "Claude, severity session: captured third-party page used as parser test input, not Patch Ticker UI"
       }
     ]
   }
