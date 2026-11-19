@@ -760,7 +760,7 @@
     .row[aria-expanded="true"] .chev { transform: none; }
     .row .chev::before { content: ""; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms var(--ease-out); }
     .row[aria-expanded="true"] .chev::before { transform: rotate(45deg) translate(-2px, -2px); }
-    .row .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--chev-ring); border-radius: 50%; transition: border-color 120ms ease-out; }
+    .row .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--chev-ring); border-radius: var(--r-code); transition: border-color 120ms ease-out; } /* a 28px rounded square (owner, 11-19: the circle stood apart from the squared buttons and badges) */
     @media (hover: hover) { .row:hover .chev::after { border-color: var(--ink-2); } }
     .row:focus-visible .chev::after { border-color: var(--focus); }
 
