@@ -147,14 +147,21 @@
     @media (hover: hover) { a:hover { text-decoration-color: currentColor; } } /* src/Link/Link.tsx:73-77 underline on ':hover' under (hover: hover); ours already underlines, so the line darkens as on 읽는 법 */
     .wrap { max-width: 75rem; margin: 0 auto; padding: 0 1rem; }
     @media (min-width: 768px) { .wrap { padding: 0 1.5rem; } }
+    /* the jump buttons (fixed, 44px, 1rem from the edge) never sit on a row (owner, 11-19): where the side margin is narrower
+       than they need (80px with the scrollbar), the Board's own right padding makes up the rest */
+    @media (min-width: 768px) { main.wrap { padding-right: max(1.5rem, calc(5rem - max(0px, (100vw - 75rem) / 2))); } }
 
     /* top bar: name, 기본|쉬운 설명, theme and language */
     .top { position: relative; border-bottom: 1px solid var(--rule); }
     #prefs-btn { display: none; }
     #prefs-btn svg { width: 18px; height: 18px; }
     .top .wrap { min-height: 4rem; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; }
-    .brand { display: flex; align-items: center; gap: 0.375rem; min-width: 0; }
-    #repo { padding: 0; color: var(--ink-2); } /* the public repository, beside the name */
+    /* name, GitHub and RSS sit at one even spacing (owner, 11-19): each icon button pads 0.375rem both sides and the name
+       takes the same 0.375rem, so name→icon and icon→icon read the same 0.875rem */
+    .brand { display: flex; align-items: center; gap: 0.125rem; min-width: 0; }
+    .brand h1 { margin-right: 0.375rem; }
+    .brand :is(#repo, #feeds-btn) { padding-inline: 0.375rem; }
+    #repo { color: var(--ink-2); } /* the public repository, beside the name */
     #repo svg { width: 20px; height: 20px; fill: currentColor; }
     @media (hover: hover) { #repo:hover { color: var(--ink); } }
     /* Support badge (owner, 11-18): the README's Buy Me a Coffee badge, drawn here (no third-party image), in the footer's
@@ -1163,6 +1170,9 @@
       <p id="alias-hint" class="pick-note" role="status"></p>
       <div id="picks"></div>
     </div>
+    <!-- the filter panel opens under the search bar it belongs to, never beside a section's own buttons (owner, 11-19:
+         its × sat right under 모두 펼치기) -->
+    <form id="filters" class="filters" hidden></form>
     <div class="statusline">
       <p id="status"><span lang="ko">불러오는 중…</span><span lang="en">Loading…</span><span lang="ja">読み込み中…</span></p>
       <button id="guide-btn" type="button" aria-controls="guide" aria-expanded="false"><span data-t="guideBtn"><span lang="ko">읽는 법</span><span lang="en">How to read</span><span lang="ja">見方</span></span><i class="chev" aria-hidden="true"></i></button>
@@ -1178,7 +1188,6 @@
         <button id="expand-all" class="btn" type="button" hidden></button>
       </div>
     </div>
-    <form id="filters" class="filters" hidden></form>
     <section id="pinned" aria-labelledby="pinned-head">
       <ol id="highlights" class="stack"><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li></ol>
       <div id="pin-more" class="more"><i class="sk sk-btn"></i></div>
