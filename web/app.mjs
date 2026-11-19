@@ -2319,7 +2319,7 @@ function placeJump() {
 // Owner, 11-17 ("스크롤 말고 눌러서 이동"): 한 화면 위로 / 아래로 move one screen below the frozen search row (stepDistance), smooth
 // unless motion is reduced; Page Up/Down, Space, Home and End stay the browser's own.
 let stepPressed = 0;
-const STEP_HOLD = 6000;
+const STEP_HOLD = 5000; // owner, 11-19: five seconds
 const frozenHeight = () => { const r = stickyPart().getBoundingClientRect(); return r.top <= 1 && r.bottom > 0 ? r.bottom : 0; };
 for (const [id, sign] of [['step-up', -1], ['step-down', 1]]) {
   $(id).addEventListener('click', () => {
