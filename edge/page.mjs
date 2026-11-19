@@ -386,10 +386,10 @@ const GONE_DOWN = '<path d="M12 3.5 21.5 20h-19Z" fill="none" stroke="currentCol
 // A short note in place of a page (404, 410, 503): never indexed, always a way on. A 503 is never cached.
 export function note(lang, status, text, links) {
   const head = `<title>Patch Ticker</title>\n<meta name="robots" content="noindex">`;
-  const [title, ...rest] = text.match(/[^.。]+[.。]?\s*/g); // the first sentence is the title, the rest its description
-  const desc = rest.join('').trim();
+  // the first sentence is the title, the rest its description; a dot inside a word (Node.js, 1.2) ends no sentence
+  const [, title, desc] = /^(.+?(?:\.(?=\s)|。))\s*(.*)$/s.exec(text) || [, text, ''];
   const body = `<div class="gone"><svg class="gone-icon" viewBox="0 0 24 24" aria-hidden="true">${status === 503 ? GONE_DOWN : GONE_PAGE}</svg>`
-    + `<h1>${esc(title.trim())}</h1>${desc ? `<p>${esc(desc)}</p>` : ''}<nav class="links">${links.join('')}</nav></div>`;
+    + `<h1>${esc(title)}</h1>${desc ? `<p>${esc(desc)}</p>` : ''}<nav class="links">${links.join('')}</nav></div>`;
   const extra = { 503: { 'retry-after': '600' }, 404: { 'cache-control': CACHE_404 }, 410: { 'cache-control': CACHE } }[status];
   return new Response(document(lang, head, body), { status, headers: { 'content-type': 'text/html; charset=utf-8', ...extra } });
 }

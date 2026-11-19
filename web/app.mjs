@@ -932,9 +932,9 @@ const WARN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 14.5 1
 const isStale = () => Boolean(updated) && !loadError && Date.now() - Date.parse(updated) > STALE_MS;
 // Astryx Banner anatomy: the first sentence is the title, the rest the description in Secondary Ink.
 function bannerText(text) {
-  const [title, ...rest] = text.match(/[^.。]+[.。]?\s*/g);
+  const [, title, desc] = /^(.+?(?:\.(?=\s)|。))\s*(.*)$/s.exec(text) || [, text, '']; // a dot inside a word (1.2) ends no sentence
   const box = el('span', 'b-text');
-  box.append(el('b', '', title.trim()), el('span', 'b-desc', rest.join('').trim()));
+  box.append(el('b', '', title), el('span', 'b-desc', desc));
   return box;
 }
 function staleNote() {
@@ -1415,12 +1415,17 @@ function errorState() {
   retry.addEventListener('click', () => location.reload());
   // Astryx EmptyState, Best Practices: "Don't: Use an EmptyState for error messages that require immediate action; use
   // a Banner instead": the warning banner, the cause under its description, 다시 시도 at its end.
+  const banner = errorBanner();
+  banner.querySelector('.b-text').append(el('span', 'b-desc load-detail', t.loadDetail(loadError)));
+  banner.append(retry);
+  return [banner];
+}
+// The warning banner for data that did not arrive: the Board's load error, and an opened row whose details failed.
+function errorBanner() {
   const banner = el('div', 'load-err');
   banner.innerHTML = WARN;
-  const text = bannerText(t.loadError);
-  text.append(el('span', 'b-desc load-detail', t.loadDetail(loadError)));
-  banner.append(text, retry);
-  return [banner];
+  banner.append(bannerText(TEXT[lang].loadError));
+  return banner;
 }
 
 // Screen readers hear the count once the visitor stops changing the filter, not on every redraw. A new filter says its
@@ -2980,10 +2985,10 @@ function row(incident, pinned, vendor = '') {
   // load error if that fails; after a failure a redraw shows the error and only opening the row asks again (owner, 11-10).
   const fill = (asked = false) => {
     if (!incident.rows) return body.childElementCount || body.append(...details(incident, Boolean(ev)));
-    if (fullFailed && !asked) return body.replaceChildren(para('preparing', TEXT[lang].loadError));
+    if (fullFailed && !asked) return body.replaceChildren(errorBanner());
     body.replaceChildren(para('preparing', TEXT[lang].loading));
     ensureFull().catch(() => { // Astryx Banner, Best Practices: "Announce async outcomes from the transition handler with useAnnounce."
-      body.replaceChildren(para('preparing', TEXT[lang].loadError));
+      body.replaceChildren(errorBanner());
       $('announce').textContent = TEXT[lang].loadError;
     });
   };

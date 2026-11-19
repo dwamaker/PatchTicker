@@ -630,3 +630,10 @@ test('a note page: an icon, the first sentence as the title, the rest as its des
   const one = await note('en', 404, 'There is no Incident page at this address.', []).text();
   assert.match(one, /<h1>There is no Incident page at this address\.<\/h1><nav class="links"><\/nav>/);
 });
+
+test('a note splits at a sentence end only, never at a dot inside a word', async () => {
+  const html = await note('en', 503, 'Node.js 1.2 pages cannot load. Try again.', []).text();
+  assert.match(html, /<h1>Node\.js 1\.2 pages cannot load\.<\/h1><p>Try again\.<\/p>/);
+  const ja = await note('ja', 503, '読み込めません。しばらくしてからお試しください。', []).text();
+  assert.match(ja, /<h1>読み込めません。<\/h1><p>しばらくしてからお試しください。<\/p>/);
+});
