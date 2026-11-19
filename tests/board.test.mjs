@@ -560,15 +560,17 @@ test('Highlights of the shared case: one score, the same pick as the collector',
 
 // Owner, 11-19: no score yet, the official advisory's severity word sets a provisional level; the row stays drawn as
 // Score pending, says where the level comes from, and the risk filter counts it under that level.
-test('an advisory rated Critical or High sets a provisional level, shown as pending with its word; a score wins', () => {
+test('an advisory rated Critical or High sets a provisional level, shown dashed with the vendor word; a score wins', () => {
   const adv = (severity, extra = {}) => ({ ...incident('CVE-2026-950', daysAgo(1)), summary: { severity, severity_source: 'https://vendor/sa' }, ...extra });
   assert.deepEqual([adv('critical'), adv('high'), adv('medium'), adv('low')].map(riskLevel), ['highest', 'high', 'notice', 'notice']);
   assert.deepEqual([adv('critical'), adv('high'), adv('medium')].map(riskChoice), ['highest', 'high', 'pending']);
   assert.equal(riskLevel(adv('critical', { cvss: 5.0 })), 'notice'); // the score wins
   assert.equal(riskLevel({ ...adv('critical'), summary: { severity: 'critical', severity_source: '' } }), 'notice'); // no source
-  assert.equal(pendingWhy(adv('critical'), WORDS.ko), '점수 대기 · 공지 등급 Critical');
-  assert.equal(pendingWhy(adv('high'), WORDS.en), 'Score pending · advisory: High');
-  assert.equal(pendingWhy(adv('medium'), WORDS.ja), 'スコア待ち'); // no provisional level: nothing to explain
+  // Owner, 11-19: one short reason under the dashed sign, the vendor's word; no 점수 대기 (the dashed edge says it).
+  assert.equal(pendingWhy(adv('critical'), WORDS.ko), '제조사 Critical');
+  assert.equal(pendingWhy(adv('high'), WORDS.en), 'Vendor: High');
+  assert.equal(pendingWhy(adv('critical'), WORDS.ja), 'ベンダー評価 Critical');
+  assert.equal(pendingWhy(adv('medium'), WORDS.ja), 'スコア待ち'); // no provisional level: Score pending as before
   // the score floor: Critical as 9.0, High as 7.0
   assert.equal(highlightScore(adv('critical'), NOW), highlightScore({ ...adv(''), cvss: 9 }, NOW));
   assert.equal(highlightScore(adv('high'), NOW), highlightScore({ ...adv(''), cvss: 7 }, NOW));
