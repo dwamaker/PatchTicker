@@ -975,11 +975,11 @@ let primerOpen = !stored(SAVED_GUIDE, true);
 // margin moves with it, so nothing below jumps when the fold ends. A press mid-close turns it round.
 function guideEdges(box, opening) {
   if (reducedMotion.matches) return;
+  box.edging?.cancel(); // a reopen mid-close reads the resting margin, not the one in flight
   const cs = getComputedStyle(box);
   // A border never draws thinner than 1px, so the margin also takes back the two border lines.
   const full = { marginTop: cs.marginTop };
   const none = { marginTop: `-${parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)}px` };
-  box.edging?.cancel();
   box.edging = box.animate(opening ? [none, full] : [full, none], { duration: opening ? 300 : 240, easing: FOLD_EASE });
 }
 function openGuide(focusClose = false) {
@@ -1000,6 +1000,7 @@ function closeGuide() {
   foldOrFade(box, false, () => {
     delete box.dataset.leaving;
     setGuide(false);
+    $('guide-btn').scrollIntoView({ block: 'nearest' }); // closed from deep inside: 읽는 법, now holding the focus, comes back into view
   });
 }
 function setGuide(open) {

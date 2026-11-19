@@ -203,7 +203,7 @@
     .btn { min-height: var(--tap); min-width: var(--tap); padding: 0 1rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: none; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     @media (hover: hover) { .btn:hover:where(:not([aria-disabled="true"])) { background: var(--panel-2); color: var(--ink); } }
     /* Astryx Button, Props, isLoading: "blocks re-activation but stays focusable (aria-disabled, not native disabled)" */
-    .btn[aria-disabled="true"] { cursor: default; } /* the loading button keeps its ink: src/Button/Button.tsx:399-400 "Loading prevents interaction without dimming the spinner; explicit disabled states remain dimmed." */
+    .btn[aria-disabled="true"] { cursor: default; color: var(--ink-3); } /* the loading button dims (approved Astryx item 26; Button.tsx:399-400 keeps a spinner undimmed, and the Board has no spinner) */
     #theme { padding: 0; }
     /* text size: 가− and 가+ in one outline, the glyph grows left to right (px, so the
        control itself does not jump); everything else is rem, so the root size scales the Board */
@@ -540,6 +540,7 @@
     .loud { --sign-inset: 0.75rem; flex-direction: column; align-items: flex-start; justify-self: start; }
     .loud .why { flex-basis: auto; padding-left: var(--sign-inset); text-align: start; }
     .strip .loud .why { padding-left: 0; } /* the band's strip puts the reason beside the sign, on its own line */
+    :lang(ja) .strip .loud .why { word-break: keep-all; } /* the strip's reason sits beside the sign: unchanged */
     :lang(ja) .loud .why { word-break: normal; } /* keep-all left 攻撃されています one line over the title at 150%: Japanese breaks between kana, every line on the content line */
     .c-title { grid-area: t; min-width: 0; }
     .title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; overflow-wrap: anywhere; text-wrap: pretty; }
@@ -847,9 +848,9 @@
       .why { font-size: calc(var(--fs-meta) * var(--ts)); }
     }
     /* micro-feedback: presses and toggles answer within 100-250ms; under reduced motion only colours change */
-    /* + the search ×, the language rows and 정렬 tint like every control (src/Field/InputClearButton.tsx:129-131 a ghost Button; src/DropdownMenu/DropdownMenuItem.tsx:68-72 ':focus' paint; src/Selector/Selector.tsx:296-300 transitionProperty) */
+    /* + the search ×, the language rows and 정렬 tint like every control (src/Field/InputClearButton.tsx:129-131 a ghost Button; src/DropdownMenu/DropdownMenuItem.tsx:68-72 ':focus' paint; src/Selector/Selector.tsx:292-297 "The hover and pressed answers still come from the shared interaction overlay") */
     .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row, .field .clear, .langs button, .sort select { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
-    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span, .sort select:active { transform: scale(0.96); } /* the filter chips and 정렬 press in too (DESIGN.md: chips press to 96%; src/Selector/Selector.tsx:296-300 ':active' scale) */
+    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span { transform: scale(0.96); } /* the filter chips press in too (DESIGN.md: chips press to 96%) */
     #views { position: relative; isolation: isolate; }
     #views.slid::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-pill); background: var(--ink); }
     #views.ready::before { transition: left 240ms var(--ease-out), width 240ms var(--ease-out); }
@@ -886,7 +887,7 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span, .sort select:active { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it
