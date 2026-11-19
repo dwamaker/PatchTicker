@@ -818,7 +818,9 @@ function nameRows() {
 // Resolves once the new Board is drawn (a caller that reads the drawn rows waits for it).
 let boardRuns = 0;
 function boardTransition(change) {
-  if (!document.startViewTransition) return Promise.resolve(change());
+  // Under the phone sheet or the floating panel (still fading out included) the Board redraws at once: the transition's
+  // named rows are drawn above the whole page, so they showed through the sheet (owner, 11-19, MuMu: 필터 초기화).
+  if (!document.startViewTransition || panelOver()) return Promise.resolve(change());
   document.documentElement.classList.toggle('vt-still', reducedMotion.matches);
   // the frozen search bar and the jump group get names of their own while it runs (index.html, .vt-board), so the moving
   // rows pass under them; counted, so a transition that cuts in keeps them named until the last one ends
@@ -1762,7 +1764,14 @@ function filterPanel() {
   // The panel is drawn again under the pressed button: 필터 초기화 in the new one takes the focus, never <body>. It is
   // redrawn inside the Board transition (update), not before it, so the chosen chips cross-fade to clear (owner, 11-19).
   const refocus = () => $('filters').querySelector('.fp-actions .btn')?.focus({ preventScroll: true });
-  reset.addEventListener('click', () => update(PANEL_EMPTY_WITH_OS()).then(refocus));
+  // Under a sheet the Board redraws without a transition (boardTransition), so the cleared choices fade in themselves.
+  reset.addEventListener('click', () => {
+    const over = panelOver();
+    update(PANEL_EMPTY_WITH_OS()).then(() => {
+      refocus();
+      if (over) $('filters').querySelector('.fp-grid')?.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 160, easing: EASE_OUT });
+    });
+  });
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // The groups' notes sit in the footer, left of the buttons (owner, 11-19); each group still points to its own note.
@@ -1854,7 +1863,9 @@ function applyPanel(event) {
   // the results are the answer; the applied conditions stay visible as chips. The panel shuts inside the Board
   // transition, so its old picture fades out while the rows glide up once (no fade of its own, which would keep it in
   // the page a moment and drop the rows again after the transition).
-  const drawn = update(panelDraft(), true, () => closePanel(true));
+  // Over the Board (sheet, floating) it fades out on its own while the Board redraws at once under it (boardTransition).
+  const draft = panelDraft();
+  const drawn = panelOver() ? (closePanel(true), update(draft)) : update(draft, true, () => closePanel(true));
   if (fromCopy) drawn.then(toBoardHead); // opened mid-list: the new results start under the frozen row
   // A start date before the loaded week needs the older months.
   const week = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
@@ -1888,6 +1899,8 @@ function sheetInert(on) {
 let panelFrom = null;
 let stuckOn = false; // placeJump: the reader is mid-list, the Board's head gone under the frozen row
 const phoneSheet = () => matchMedia('(max-width: 599px)').matches;
+// the panel is over the Board (a phone's sheet, or floating mid-list) and still drawn, fading out included
+const panelOver = () => (phoneSheet() || $('filters').classList.contains('floating')) && getComputedStyle($('filters')).display !== 'none';
 function openPanel(opener) {
   const form = $('filters');
   panelFrom = { opener, y: scrollY, stuck: stuckOn };
@@ -1916,7 +1929,8 @@ function closePanel(applied = false) {
   const from = panelFrom;
   panelFrom = null;
   sheetInert(false);
-  $('filters').classList.toggle('shut', applied); // applied: the Board transition carries it out (applyPanel)
+  // applied inline: the Board transition carries it out (applyPanel); a sheet or floating panel fades out on its own
+  $('filters').classList.toggle('shut', applied && !phoneSheet() && !$('filters').classList.contains('floating'));
   $('filters').hidden = true; // else it fades out (index.html .filters[hidden]); floating stays until the next open sets it
   $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
