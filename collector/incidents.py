@@ -142,7 +142,7 @@ def known_field(incident):
 
 
 ROW_FIELDS = ("id", "cves", "first_seen", "published", "cvss", "kev", "kev_date", "products")
-ROW_SUMMARY = ("exploited", "exploited_source", "platforms", "products", "library", "devices", "incident", "poc_public", "at",
+ROW_SUMMARY = ("exploited", "exploited_source", "severity", "severity_source", "platforms", "products", "library", "devices", "incident", "poc_public", "at",
                "event_date")
 
 
@@ -205,12 +205,26 @@ def is_exploited(incident):
 HIGHEST_CVSS = 9  # HIGHEST_CVSS in web/board.mjs: the 최고 band's CVSS floor
 
 
+PROVISIONAL = {"critical": "highest", "high": "high"}  # PROVISIONAL in web/board.mjs; medium and low change nothing
+
+
+def provisional_level(incident):
+    """A port of provisionalLevel in web/board.mjs: while an Incident has no CVSS score, the level its official advisory's
+    own severity word gives (the Summary's severity and severity_source, summary_input.advisory_severity; owner, 11-19),
+    "highest" or "high"; else None. A score, once there, always wins."""
+    summary = incident.get("summary") or {}
+    source = summary.get("severity_source")
+    if incident.get("cvss") is not None or not (isinstance(source, str) and source):
+        return None
+    return PROVISIONAL.get(summary.get("severity"))
+
+
 def risk_level(incident):
     """A port of riskLevel in web/board.mjs (tests/fixtures/board/risk-case.json keeps the two in step)."""
-    cvss = incident.get("cvss")
-    if is_exploited(incident) or (cvss is not None and cvss >= HIGHEST_CVSS):
+    cvss, provisional = incident.get("cvss"), provisional_level(incident)
+    if is_exploited(incident) or (cvss is not None and cvss >= HIGHEST_CVSS) or provisional == "highest":
         return "highest"
-    return "high" if cvss is not None and cvss >= 7 else "notice"
+    return "high" if (cvss is not None and cvss >= 7) or provisional == "high" else "notice"
 
 
 def published_at(incident):
@@ -222,17 +236,40 @@ def published_at(incident):
 MENTION_CAP = 10
 
 
-def highlight_score(incident):
+# Owner, 11-19 ("매일같이 터지는데, 최신소식이 위에 올라와야"): a Highlight published at `now` scores RECENCY more, falling in a
+# straight line to nothing at RECENCY_DAYS old (the Highlight window, RECENT_DAYS in collector/cycle.py). Straight, so
+# the gap between two rows never changes as time passes and rows.json's pick at the cycle still holds minutes later.
+# 20 equals the whole CVSS term: one day costs about 1.4 CVSS points, so a fresh 7.0 (34) beats a 9.8 five days old (25.3).
+RECENCY = 20
+RECENCY_DAYS = 7
+SEVERITY_FLOOR = {"highest": HIGHEST_CVSS, "high": 7}  # a provisional level counts as its band's floor
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def epoch_ms(stamp):
+    """Whole milliseconds since 1970 of an ISO stamp (Date.parse in web/board.mjs); a stamp without a zone is UTC."""
+    at = datetime.fromisoformat(stamp)
+    return ((at if at.tzinfo else at.replace(tzinfo=timezone.utc)) - EPOCH) // timedelta(milliseconds=1)
+
+
+def recency(incident, now):
+    age = epoch_ms(now) - epoch_ms(published_at(incident))
+    return RECENCY * min(1, max(0, 1 - age / (RECENCY_DAYS * 86_400_000)))
+
+
+def highlight_score(incident, now):
     """A port of highlightScore in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step): rows.json
-    keeps the week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more."""
+    keeps the week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more. now: an ISO
+    stamp, for the recency bonus."""
     mentions = incident["mentions"]
     points = max([0] + [m.get("points") or 0 for m in mentions])
     curated = sum(1 for m in mentions if m["kind"] == "curator")
     exploited = is_exploited(incident)
-    cvss = incident.get("cvss")  # none yet: an exploited Incident counts as the floor of its 최고 band (owner, 11-10)
-    cvss = cvss if cvss is not None else HIGHEST_CVSS if exploited else 0
+    cvss = incident.get("cvss")  # none yet: an exploited Incident counts as the floor of its 최고 band (owner, 11-10),
+    # one its own advisory rates Critical or High as the floor of that band (owner, 11-19)
+    cvss = cvss if cvss is not None else HIGHEST_CVSS if exploited else SEVERITY_FLOOR.get(provisional_level(incident), 0)
     return ((100 if exploited else 0) + min(points / 10, 50) + 25 * min(curated, 2) + 2 * cvss
-            + min(len(mentions), MENTION_CAP))
+            + min(len(mentions), MENTION_CAP) + recency(incident, now))
 
 
 # A port of WP_PLUGIN and isWordPressPlugin in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step):

@@ -122,11 +122,11 @@ class RowsViewTest(unittest.TestCase):
         for case in ROWS["cases"]:
             with self.subTest(case["full"]["id"]):
                 self.assertEqual(rows_view(case["full"]), case["row"])
-                self.assertEqual(highlight_score(case["full"]), case["highlight_score"])
+                self.assertEqual(highlight_score(case["full"], ROWS["now"]), case["highlight_score"])
                 self.assertEqual(is_wordpress_plugin(case["full"]), case["wp_plugin"])
         for case in ROWS["scores"]:
             with self.subTest(case["incident"]["id"]):
-                self.assertEqual(highlight_score(case["incident"]), case["highlight_score"])
+                self.assertEqual(highlight_score(case["incident"], ROWS["now"]), case["highlight_score"])
 
     def test_woocommerce_add_ons_fold_with_wordpress_plugins_wordpress_itself_does_not(self):
         for brief, first, answer in ROWS["wp_texts"]:
@@ -135,7 +135,8 @@ class RowsViewTest(unittest.TestCase):
 
     def test_mentions_count_up_to_ten_and_exploited_outranks_a_300_mention_release(self):
         def scored(n, **fields):
-            return highlight_score({"mentions": [{"kind": "advisory"}] * n, **fields})
+            return highlight_score({"mentions": [{"kind": "advisory"}] * n, "first_seen": "2026-11-09T00:00:00Z", **fields},
+                                   "2026-11-10T00:00:00Z")
         self.assertEqual(scored(300, cvss=9.8), scored(10, cvss=9.8))
         self.assertGreater(scored(2, cvss=5.3, kev=True), scored(300, cvss=9.8))
 

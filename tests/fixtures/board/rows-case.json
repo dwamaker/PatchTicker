@@ -141,7 +141,7 @@
      }
     }
    },
-   "highlight_score": 21.6,
+   "highlight_score": 36.00476190476191,
    "wp_plugin": true
   },
   {
@@ -198,7 +198,7 @@
      }
     ]
    },
-   "highlight_score": 13.8,
+   "highlight_score": 28.383333333333336,
    "wp_plugin": true
   },
   {
@@ -272,7 +272,7 @@
      }
     ]
    },
-   "highlight_score": 1.0,
+   "highlight_score": 15.662698412698415,
    "wp_plugin": true
   },
   {
@@ -452,7 +452,7 @@
      }
     }
    },
-   "highlight_score": 170.6,
+   "highlight_score": 185.36190476190475,
    "wp_plugin": false
   },
   {
@@ -579,7 +579,7 @@
      }
     }
    },
-   "highlight_score": 16.0,
+   "highlight_score": 28.5,
    "wp_plugin": false
   },
   {
@@ -716,7 +716,7 @@
      }
     }
    },
-   "highlight_score": 15.4,
+   "highlight_score": 28.13809523809524,
    "wp_plugin": false
   },
   {
@@ -776,11 +776,12 @@
     "known": "IBM Db2",
     "known_tier": 3, "known_kind": "Databases and data"
    },
-   "highlight_score": 16.0,
+   "highlight_score": 25.88095238095238,
    "wp_plugin": false
-  }
+  },
+  {"full": {"id": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "cves": [], "first_seen": "2026-11-09T08:00:00Z", "published": "2026-11-09T07:47:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "title": "Synology-SA-26:21 OAuth Service"}], "brief": {"text": "Synology-SA-26:21 OAuth Service", "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}, "products": [{"id": "synology:dsm", "name": "Synology DSM"}], "summary": {"ko": {"title": "Synology DSM OAuth 서비스 원격 코드 실행", "summary": "Synology DSM OAuth 서비스 원격 코드 실행.", "conditions": ["Logged-in subscriber"], "mitigation": "Update to 2.0.", "easy": "", "easy_title": "Synology DSM OAuth 서비스 원격 코드 실행", "names": [], "easy_action": "Update.", "command_for": "", "stopgap_then": "", "cve_lines": []}, "en": {"title": "Synology DSM OAuth Service remote code execution", "summary": "Synology DSM OAuth Service remote code execution.", "conditions": ["Logged-in subscriber"], "mitigation": "Update to 2.0.", "easy": "", "easy_title": "Synology DSM OAuth Service remote code execution", "names": [], "easy_action": "Update.", "command_for": "", "stopgap_then": "", "cve_lines": []}, "products": ["Synology DSM"], "lead": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "fixed": "2.0", "command": "", "stopgap": "", "stopgap_file": "", "devices": [], "incident": true, "platforms": [], "at": "2026-11-08T01:00:00Z", "fixes": [], "titles_ko": [{"url": "https://example.com/a", "title": "공지"}], "exploited": false, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "row": {"id": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "cves": [], "first_seen": "2026-11-09T08:00:00Z", "published": "2026-11-09T07:47:00Z", "products": [{"id": "synology:dsm", "name": "Synology DSM"}], "rows": true, "wp_plugin": false, "brief": {"text": ""}, "mentions": [{"kind": "advisory"}], "summary": {"exploited": false, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21", "platforms": [], "products": ["Synology DSM"], "devices": [], "incident": true, "at": "2026-11-08T01:00:00Z", "ko": {"title": "Synology DSM OAuth 서비스 원격 코드 실행", "easy_title": "Synology DSM OAuth 서비스 원격 코드 실행", "easy": "", "names": [], "summary": "Synology DSM OAuth 서비스 원격 코드 실행.", "conditions": [], "mitigation": ""}, "en": {"title": "Synology DSM OAuth Service remote code execution", "easy_title": "Synology DSM OAuth Service remote code execution", "easy": "", "names": [], "summary": "Synology DSM OAuth Service remote code execution.", "conditions": [], "mitigation": ""}}, "known": "Synology DSM", "known_tier": 2, "known_kind": "Firewalls, routers, NAS, cameras"}, "highlight_score": 37.06944444444444, "wp_plugin": false}
  ],
- "score_note": "highlight_score / highlightScore on their own: Mentions count up to ten (MENTION_CAP), so twelve score as ten, and an exploited Incident with two outranks both; an exploited Incident with no CVSS score counts as 9.0 (HIGHEST_CVSS), one with a score keeps it, an unexploited one without adds nothing; curator issues count up to two however many cite it.",
+ "score_note": "highlight_score / highlightScore on their own: Mentions count up to ten (MENTION_CAP), so twelve score as ten, and an exploited Incident with two outranks both; an exploited Incident with no CVSS score counts as 9.0 (HIGHEST_CVSS), one with a score keeps it, an unexploited one without adds nothing; curator issues count up to two however many cite it. Owner, 11-19: one its official advisory rates Critical counts as 9.0 and High as 7.0 while it has no score (sev:*), and every score adds recency at `now`: 20 when published at now, falling in a straight line to 0 at seven days old.",
  "scores": [
   {
    "incident": {
@@ -841,7 +842,7 @@
      }
     ]
    },
-   "highlight_score": 25.6
+   "highlight_score": 42.74285714285715
   },
   {
    "incident": {
@@ -894,7 +895,7 @@
      }
     ]
    },
-   "highlight_score": 25.6
+   "highlight_score": 42.74285714285715
   },
   {
    "incident": {
@@ -916,7 +917,7 @@
      }
     ]
    },
-   "highlight_score": 117.0
+   "highlight_score": 134.14285714285714
   },
   {
    "incident": {
@@ -938,7 +939,7 @@
      "exploited_source": "https://example.com/report"
     }
    },
-   "highlight_score": 120.0
+   "highlight_score": 137.14285714285714
   },
   {
    "incident": {
@@ -960,7 +961,7 @@
      }
     ]
    },
-   "highlight_score": 110.6
+   "highlight_score": 127.74285714285713
   },
   {
    "incident": {
@@ -978,7 +979,7 @@
      }
     ]
    },
-   "highlight_score": 2.0
+   "highlight_score": 19.142857142857146
   },
   {
    "incident": {
@@ -1007,8 +1008,14 @@
      }
     ]
    },
-   "highlight_score": 69.0
-  }
+   "highlight_score": 86.14285714285714
+  },
+  {"incident": {"id": "sev:critical", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 36.142857142857146},
+  {"incident": {"id": "sev:high", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "high", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 32.142857142857146},
+  {"incident": {"id": "sev:medium", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "summary": {"incident": true, "severity": "medium", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 18.142857142857146},
+  {"incident": {"id": "sev:critical-scored", "cves": [], "first_seen": "2026-11-09T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}], "cvss": 5.0, "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "highlight_score": 28.142857142857146},
+  {"incident": {"id": "sev:fresh", "cves": [], "first_seen": "2026-11-10T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}]}, "highlight_score": 21.0},
+  {"incident": {"id": "sev:week-old", "cves": [], "first_seen": "2026-11-03T00:00:00Z", "mentions": [{"kind": "advisory", "url": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}]}, "highlight_score": 1.0}
  ],
  "wp_note": "Owner, 11-16: WooCommerce and what is made for it fold with WordPress plugins, and so does an extension or add-on for WordPress; WordPress itself does not. Real Briefs of the live week. Each: an Incident's Brief, its Summary's first product, the answer of is_wordpress_plugin and isWordPressPlugin.",
  "wp_texts": [

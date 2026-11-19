@@ -120,7 +120,7 @@ def highlights(views, since, now=None):
     # no old event (old_event; now defaults to the window's end).
     now = now or (date.fromisoformat(since[:10]) + timedelta(days=RECENT_DAYS)).isoformat() + since[10:]
     top = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice" and not old_event(v, now)),
-                 key=lambda v: (highlight_score(v), published_at(v)), reverse=True)
+                 key=lambda v: (highlight_score(v, now), published_at(v)), reverse=True)
     # A label an exploited Highlight holds is not lifted a second time (owner, 11-16: Chrome stood at 2 and 11).
     known, labels = [], {v["known"] for v in top if is_exploited(v) and v.get("known")}
     for v in top:

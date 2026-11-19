@@ -253,8 +253,8 @@ const showGroup = (i) => {
   if (isExploited(i)) return 2;
   return tier === 3 ? 3 : 4;
 };
-export const showOrder = (a, b) => showGroup(a) - showGroup(b) || isExploited(b) - isExploited(a)
-  || highlightScore(b) - highlightScore(a) || newest(a, b);
+export const showOrder = (now) => (a, b) => showGroup(a) - showGroup(b) || isExploited(b) - isExploited(a)
+  || highlightScore(b, now) - highlightScore(a, now) || newest(a, b);
 // Owner, 11-16 ("고정 네 자리는 서로 다른 회사로"): walking the Highlights in showOrder, the PINNED places go to rows of different
 // vendors, and the pins show in that order; one whose vendor already holds a place stays ahead in the rest (주요 사건 더
 // 보기), which runs in the same order. With fewer vendors than places (a search for one product), the free places go to
@@ -263,8 +263,9 @@ export const showOrder = (a, b) => showGroup(a) - showGroup(b) || isExploited(b)
 // collector's known_kind), so Android and Chrome, both Google, take a pin each while two Google browsers share one; a row
 // on no list, or written before the collector carried the category, by its vendor alone.
 export const pinKey = (i) => (typeof i.known_kind === 'string' && i.known_kind ? `${vendorKey(i)}|${i.known_kind}` : vendorKey(i));
-export function pinOrder(chosen, places = PINNED) {
-  const order = chosen.toSorted(showOrder);
+// now: the time filterBoard picked the Highlights at (highlightScore's recency).
+export function pinOrder(chosen, now, places = PINNED) {
+  const order = chosen.toSorted(showOrder(now));
   const vendors = new Set();
   const pins = [];
   const held = [];
@@ -288,11 +289,21 @@ export function pinReason(i) {
   return null;
 }
 
-export function highlightScore(i) {
+// Owner, 11-19 ("매일같이 터지는데, 최신소식이 위에 올라와야"): a row published at `now` scores RECENCY more, falling in a
+// straight line to nothing at seven days old (the Highlight window). Straight, so the gap between two rows never changes
+// as time passes and the collector's pick for rows.json still holds minutes later. 20 equals the whole CVSS term: a
+// fresh 7.0 (34) beats a 9.8 five days old (25.3). Also collector/incidents.py (RECENCY, recency).
+const RECENCY = 20;
+const recency = (i, now) => RECENCY * Math.min(1, Math.max(0, 1 - (now - Date.parse(publishedAt(i))) / (7 * DAY_MS)));
+// A provisional level counts as its band's floor (owner, 11-19), as an exploited Incident counts as HIGHEST_CVSS.
+const SEVERITY_FLOOR = { __proto__: null, highest: 9, high: 7 }; // 9: HIGHEST_CVSS, declared further down
+// now: milliseconds, as filterBoard's.
+export function highlightScore(i, now) {
   const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
   const curated = i.mentions.filter((m) => m.kind === 'curator').length;
-  const cvss = i.cvss ?? (isExploited(i) ? HIGHEST_CVSS : 0);
-  return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * cvss + Math.min(i.mentions.length, MENTION_CAP);
+  const cvss = i.cvss ?? (isExploited(i) ? HIGHEST_CVSS : SEVERITY_FLOOR[provisionalLevel(i)] ?? 0);
+  return (isExploited(i) ? 100 : 0) + Math.min(points / 10, 50) + 25 * Math.min(curated, 2) + 2 * cvss + Math.min(i.mentions.length, MENTION_CAP)
+    + recency(i, now);
 }
 
 // HN points from which a story is buzz (pinReason's "HN 화제"). Also in collector/hn.py (BUZZ_POINTS). A quiet HN-only
@@ -365,16 +376,31 @@ export function searchedCve(query, i, lang) {
   return { cve, text: cveLines(i, lang).find((l) => l.cve === cve)?.text || '', cvss: cveScore(i, cve), exploited };
 }
 
-// The Easy view's Risk banner, set by rules: exploited (above) or the CVSS score.
+// Owner, 11-19: while an Incident has no CVSS score, the severity word its own official advisory states (the collector
+// reads it from the advisory's page: summary.severity and severity_source) gives a provisional level: Critical the
+// highest, High the high one; medium, low or none change nothing. A score, once there, always wins. The row stays drawn
+// as Score pending and names the word (severityWhy). Also collector/incidents.py (provisional_level).
+const PROVISIONAL = { __proto__: null, critical: 'highest', high: 'high' };
+export const provisionalLevel = (i) => (i.cvss == null && typeof i.summary?.severity_source === 'string' && i.summary.severity_source
+  ? PROVISIONAL[i.summary.severity] ?? null : null);
+
+// The Easy view's Risk banner, set by rules: exploited (above), the CVSS score, or else the advisory's word (above).
 // The 9.0 cutoff is also in collector/summaries.py (is_candidate) and collector/incidents.py (HIGHEST_CVSS).
 const HIGHEST_CVSS = 9;
 export function riskLevel(i) {
-  if (isExploited(i) || i.cvss >= HIGHEST_CVSS) return 'highest';
-  return i.cvss >= 7 ? 'high' : 'notice';
+  if (isExploited(i) || i.cvss >= HIGHEST_CVSS || provisionalLevel(i) === 'highest') return 'highest';
+  return i.cvss >= 7 || provisionalLevel(i) === 'high' ? 'high' : 'notice';
 }
 
+// The words under a pending row's sign: Score pending, and where a provisional level comes from, the advisory's word as
+// the vendor writes it ("점수 대기 · 공지 등급 Critical"). t: WORDS[lang], or the page's TEXT[lang] built on it.
+export const advisoryWord = (i, t) => (provisionalLevel(i)
+  ? `${t.advisoryWhy} ${i.summary.severity[0].toUpperCase()}${i.summary.severity.slice(1)}` : '');
+export const pendingWhy = (i, t) => [t.unratedWhy, advisoryWord(i, t)].filter(Boolean).join(' · ');
+
 // The risk filter's choice an Incident falls under: its level, or Score pending when it has no score and no attacks. The
-// row keeps its level's sign (riskLevel), drawn dashed.
+// row keeps its level's sign (riskLevel), drawn dashed. A provisional level (provisionalLevel) counts under that level,
+// as an exploited row without a score does: someone choosing 긴급 wants the advisory that says Critical (owner, 11-19).
 export const riskChoice = (i) => (riskLevel(i) === 'notice' && i.cvss == null ? 'pending' : riskLevel(i));
 
 // Offered to search engines and the RSS feed (Incident page, CONTEXT.md): on the Board with a Summary, and at the 위험
@@ -573,9 +599,10 @@ export function filterBoard(incidents, picks = [], query = '', now = Date.now(),
   // BroadWorks, published 08-19, stood among them). Also collector/cycle.py (highlights).
   // Newest first among equal scores, whatever the visitor's sort (owner, 11-10).
   const candidates = list.filter((i) => publishedAt(i) >= since && riskLevel(i) !== 'notice' && !oldEvent(i, now))
-    .sort((a, b) => highlightScore(b) - highlightScore(a) || newest(a, b));
+    .sort((a, b) => highlightScore(b, now) - highlightScore(a, now) || newest(a, b));
   const highlights = pickHighlights(candidates);
-  return { highlights, list, variants: list.filter((i) => variant.has(i)).length, inText };
+  // now rides along for pinOrder, which orders the pins by the same scores.
+  return { highlights, list, variants: list.filter((i) => variant.has(i)).length, inText, now };
 }
 
 // CVSS v3 qualitative rating, as a key the page words per language; null while NVD has not rated it.
@@ -809,7 +836,7 @@ export const WORDS = {
     fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, fixesFold: (n) => `제품별 수정 버전 보기 (${n}개)`, foldLess: '접기',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '공격 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
-    unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
+    unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', advisoryWhy: '공지 등급', conditions: '해당 조건', published: '처음 게시',
     publicDate: '공개일', productOthers: (n) => `최근 30일 동안 이 제품의 다른 사건 ${n}건`,
     distroTable: (n) => `배포판별 패키지 (${n})`, distroSources: '출처:',
     distroStates: { fixed: (v) => `${v}에서 수정됨`, not_affected: '영향 없음', not_fixed: '아직 수정 안 됨', wont_fix: '수정 계획 없음' },
@@ -832,7 +859,7 @@ export const WORDS = {
     fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, fixesFold: (n) => `Fixed version by product (${n})`, foldLess: 'Show less',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Attacked', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
-    unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
+    unrated: 'CVSS score pending', unratedWhy: 'Score pending', advisoryWhy: 'advisory:', conditions: 'Affected when', published: 'First published',
     publicDate: 'Public date', productOthers: (n) => `${n} other Incident${n === 1 ? '' : 's'} of this product in the last 30 days`,
     distroTable: (n) => `Distribution packages (${n})`, distroSources: 'Sources:',
     distroStates: { fixed: (v) => `fixed in ${v}`, not_affected: 'not affected', not_fixed: 'not fixed yet', wont_fix: 'will not be fixed' },
@@ -855,7 +882,7 @@ export const WORDS = {
     fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, fixesFold: (n) => `製品別の修正バージョンを表示 (${n})`, foldLess: '閉じる',
     setting: '設定ファイルにこの行を追加してください:', settingIn: (f) => `設定ファイル ${f} にこの行を追加してください:`,
     levels: { highest: '緊急', high: '警戒', pending: 'スコア待ち', notice: '参考' }, kevReason: '攻撃発生', kevListed: 'CISA KEV 掲載', attackSource: '攻撃の報告:', poc: '攻撃コード公開済み',
-    unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', conditions: '該当する条件', published: '初出',
+    unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', advisoryWhy: '公式評価', conditions: '該当する条件', published: '初出',
     publicDate: '公開日', productOthers: (n) => `この製品の過去30日間のほかのインシデント ${n}件`,
     distroTable: (n) => `ディストリビューション別パッケージ (${n})`, distroSources: '出典:',
     distroStates: { fixed: (v) => `${v} で修正済み`, not_affected: '影響なし', not_fixed: '未修正', wont_fix: '修正予定なし' },

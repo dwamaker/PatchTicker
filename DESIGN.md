@@ -728,7 +728,10 @@ ring stays inside the row and a group's frame at 320px too.
   draws its sign with a dashed edge and says "점수 대기" (both views; ring label "CVSS 점수 대기"; English "Score pending") at
   14px/700 under the sign, where 공격 발생 would sit, and an empty dashed ring stands in the ring's place (also on
   phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
-  these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
+  these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged. When the product's own
+  advisory rates it Critical or High (a provisional level, CONTEXT.md Risk banner; 2026-11-19), the sign is that level's
+  (긴급 / 위험), still dashed, and the reason names the word: "점수 대기 · 공지 등급 Critical" ("Score pending · advisory:
+  Critical", "スコア待ち · 公式評価 Critical"), the same on the Incident page's banner.
 - In both views the risk word is a badge after Astryx's Token (owner, 11-19, replacing the 11-09 unfilled ring: pills
   and curves read as generated): square corners (`--r-marker`, 4px), no border, 1.5rem tall, 0.5rem side padding, Label
   size (0.875rem) at 700; the top level (긴급 / 긴급!) on `emergency-wash` in `emergency-ink`, the next (위험 / 경계) on

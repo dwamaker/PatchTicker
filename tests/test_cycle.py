@@ -220,6 +220,8 @@ class CycleTest(unittest.TestCase):
         # Owner, 11-17: a KEV listing this week does not bring an older Incident in; an exploited row's label is not
         # lifted again (11-16).
         self.assertEqual([i["id"] for i in cycle.highlights(case["kev_week"]["incidents"], since)], case["kev_week"]["expected"])
+        # Owner, 11-19: an advisory's Critical without a score is a candidate; recency puts a fresh 7.2 over an older 9.8.
+        self.assertEqual([i["id"] for i in cycle.highlights(case["severity"]["incidents"], since)], case["severity"]["expected"])
 
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")

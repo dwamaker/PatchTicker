@@ -22,7 +22,7 @@ from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKE
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
-from collector.summary_input import CVE_LINES_ONLY, SOURCE_RE, is_hn, mention_kinds, summary_input, trusted
+from collector.summary_input import CVE_LINES_ONLY, SOURCE_RE, advisory_severity, is_hn, mention_kinds, summary_input, trusted
 
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
@@ -1810,7 +1810,8 @@ def parse(reply, input_text, urls, finders=()):
     # Read by save_reply, never stored; one that is not text is not acted on and never fails the Summary.
     lead_fixed(summary, input_text)
     summary["same_as"] = data["same_as"] if isinstance(data.get("same_as"), str) else ""
-    return summary
+    # The official advisory's own severity word (owner, 11-19): a provisional level while no CVSS score exists (risk_level).
+    return summary | advisory_severity(input_text)
 
 
 # The flaw's own name in a title is added here, never asked for by a prompt line (owner's trial 11-18, 66 Incidents:

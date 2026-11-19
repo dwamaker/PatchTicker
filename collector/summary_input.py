@@ -424,6 +424,27 @@ def mention_kinds(input_text):
     return {url: kind for kind, url in MENTION_LINE.findall(head)}
 
 
+# Owner, 11-19: the severity word an official advisory states under its own label: "Severity Critical" (GitHub's
+# advisories, Synology's), "Security risk: Critical 18 ∕ 25" (Drupal's), "Max Severity: Important" (Microsoft's). Only the
+# word right after the label, so a product table's "DSM 7.4 Critical" and a sentence's "a critical component" never count.
+SEVERITY_RE = re.compile(r"\b(?:severity|security risk)\s*:?\s*(highly critical|moderately critical|less critical|not critical"
+                         r"|critical|high|important|moderate|medium|low)\b", re.I)
+SEVERITY_WORDS = {"highly critical": "critical", "important": "high", "moderate": "medium", "moderately critical": "medium",
+                  "less critical": "low", "not critical": "low"}
+
+
+def advisory_severity(input_text):
+    """{"severity": critical|high|medium|low, "severity_source": URL} from the first page of the input that is an official
+    advisory in its Mentions list (mention_kinds) and states one (SEVERITY_RE), else {}. Read by code, never asked of the
+    model: a write-up's, news page's, discussion's or CVE record's text and every Mention title never count."""
+    kinds = mention_kinds(input_text)
+    for block in SOURCE_RE.finditer(input_text):
+        if block[1] and kinds.get(block[1]) == "advisory" and (found := SEVERITY_RE.search(block[3])):
+            word = " ".join(found[1].lower().split())
+            return {"severity": SEVERITY_WORDS.get(word, word), "severity_source": block[1]}
+    return {}
+
+
 def trusted(input_text):
     """The text a command or stopgap may come from: the Lead's, the official advisories' and the CVE records'. And the
     URLs whose report of attacks counts: advisories, CVE records, curators and news sites. Not a write-up, the Lead

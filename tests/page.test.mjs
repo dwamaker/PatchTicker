@@ -119,6 +119,15 @@ test('a group whose only Mentions are its CVE records keeps the Lead record unde
   }
 });
 
+// Owner, 11-19: no score, the product's advisory rates it Critical: 긴급, still dashed as pending, the word named.
+test('the banner of an Incident its advisory rates Critical shows 긴급, pending, and the advisory word', async () => {
+  const rated = { ...SSHOLE, kev: false, cvss: undefined, summary: { ...SSHOLE.summary, exploited: false, exploited_source: '',
+    severity: 'critical', severity_source: 'https://www.openssh.com/txt/release-9.9p2' } };
+  const banner = (await (await page(rated)).text()).match(/<div class="banner[^"]*">[\s\S]*?<\/div>/)[0];
+  assert.match(banner, /class="banner risk-highest unrated"/);
+  assert.match(banner, /<small class="why unrated">점수 대기 · 공지 등급 Critical<\/small>/);
+});
+
 test('the page shows what the Board panel shows, with the Board rules', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, />긴급</); // riskLevel: KEV

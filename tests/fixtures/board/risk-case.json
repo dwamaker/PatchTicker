@@ -12,6 +12,12 @@
     {"incident": {"id": "https://news.ycombinator.com/item?id=1", "cves": [], "summary": {"incident": true}}, "risk": "notice", "search_worthy": true},
     {"incident": {"id": "https://news.ycombinator.com/item?id=2", "cves": [], "summary": {"incident": false}}, "risk": "notice", "search_worthy": false},
     {"incident": {"id": "https://www.bleepingcomputer.com/news/security/x/", "cves": []}, "risk": "notice", "search_worthy": false},
-    {"incident": {"id": "https://seclists.org/oss-sec/2026/q4/563", "cves": [], "summary": {"incident": true}}, "risk": "notice", "search_worthy": true}
-  ]
+    {"incident": {"id": "https://seclists.org/oss-sec/2026/q4/563", "cves": [], "summary": {"incident": true}}, "risk": "notice", "search_worthy": true},
+    {"incident": {"id": "sev:critical-no-cve", "cves": [], "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "risk": "highest", "search_worthy": true},
+    {"incident": {"id": "sev:high-cve", "cves": ["CVE-2026-9501"], "summary": {"incident": true, "severity": "high", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "risk": "high", "search_worthy": true},
+    {"incident": {"id": "sev:medium-cve", "cves": ["CVE-2026-9502"], "summary": {"incident": true, "severity": "medium", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "sev:critical-scored-low", "cves": ["CVE-2026-9503"], "cvss": 5.0, "summary": {"incident": true, "severity": "critical", "severity_source": "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"}}, "risk": "notice", "search_worthy": false},
+    {"incident": {"id": "sev:critical-no-source", "cves": ["CVE-2026-9504"], "summary": {"incident": true, "severity": "critical", "severity_source": ""}}, "risk": "notice", "search_worthy": false}
+  ],
+  "severity_note": "sev:* (owner, 11-19): with no CVSS score, the official advisory's severity word (summary.severity with its severity_source) sets a provisional level, Critical the highest and High the high one; medium changes nothing, a score always wins, and no source means no level."
 }
