@@ -208,7 +208,7 @@
       display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0.25rem; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
       border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: var(--lift-menu);
       font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; }
-    .menu[popover]:not(:popover-open) { display: none; } /* also where popovers are unknown: never drawn in the page */
+    .menu[popover]:not(:is(:popover-open)) { display: none; } /* also where popovers are unknown: never drawn in the page */
     .menu ul { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
     :is(.menu, .menu ul) > * { flex: none; } /* a long menu scrolls; its rows never squeeze */
     .menu-head { margin: 0; padding: 0.25rem 0.5rem; color: var(--ink-2); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 400; user-select: none; }
@@ -340,7 +340,7 @@
       #sort :is(#sort-now, .chev-ic) { display: none; }
       .search-tools .sort-ic { display: block; width: 18px; height: 18px; }
     }
-    @media (max-width: 599px) { #sort { max-width: 7.5rem; } .search-tools .btn { padding: 0 0.625rem; } } /* the search words keep their room at 375px */
+    @media (max-width: 599px) { #sort { max-width: 6.5rem; } .search-tools .btn { padding: 0 0.625rem; } } /* the search words keep their room at 375px */
     /* phones: the bar takes the whole line, 필터 and 정렬 under it at the end, so picked tokens and the typed words have room */
     /* phones: 필터 and 정렬 sit beside the one-row bar, so the frozen row stays one control high; while the bar has the
        focus it takes the whole line, its tokens wrap, and 필터 and 정렬 go under it at the end */
