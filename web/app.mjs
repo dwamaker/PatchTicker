@@ -61,7 +61,7 @@ const TEXT = {
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
-    copy: '복사', copied: '복사됨', share: '이 사건 링크 복사',
+    copy: '복사', copied: '복사됨', copyFailed: '복사하지 못했습니다. 선택된 명령을 직접 복사하세요.', share: '이 사건 링크 복사',
     feeds: 'RSS 피드', feedsHead: 'RSS로 받아 보기', feedMain: '주요 피드', feedMainNote: '위험 이상 사건과 CVE 번호 전 속보',
     feedAll: '현황판 전체', feedAllNote: '참고까지 모든 사건', feedMine: '내 제품', feedPick: '제품 고르기',
     feedNone: '위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.',
@@ -115,7 +115,7 @@ const TEXT = {
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
-    copy: 'Copy', copied: 'Copied', share: 'Copy link to this Incident',
+    copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. The command is selected: copy it yourself.', share: 'Copy link to this Incident',
     feeds: 'RSS feeds', feedsHead: 'Follow by RSS', feedMain: 'Main feed', feedMainNote: 'Elevated and up, attacked, or no CVE yet',
     feedAll: 'The whole Board', feedAllNote: 'Every Incident, Notice too', feedMine: 'My products', feedPick: 'Pick products',
     feedNone: 'Pick products in “Products you run” above, and an address with only their Incidents appears here.',
@@ -169,7 +169,7 @@ const TEXT = {
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
     mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
     normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
-    copy: 'コピー', copied: 'コピーしました', share: 'このインシデントのリンクをコピー',
+    copy: 'コピー', copied: 'コピーしました', copyFailed: 'コピーできませんでした。選択されたコマンドを手動でコピーしてください。', share: 'このインシデントのリンクをコピー',
     feeds: 'RSS フィード', feedsHead: 'RSS で受け取る', feedMain: 'メインフィード', feedMainNote: '警戒以上、実際の攻撃、CVE 未採番のインシデント',
     feedAll: 'ボード全体', feedAllNote: '参考を含むすべてのインシデント', feedMine: '自分の製品', feedPick: '製品を選ぶ',
     feedNone: '上の「使っている製品」で製品を選ぶと、その製品のインシデントだけが届くアドレスがここに表示されます。',
@@ -428,6 +428,8 @@ async function main() {
   // allowed). Later redraws (filters, views) do not replay it.
   document.body.classList.add('arriving');
   render();
+  // Astryx Banner, Best Practices: "Announce async outcomes from the transition handler with useAnnounce." (#empty is no live region)
+  if (loadError) $('announce').textContent = TEXT[lang].loadError;
   // A restored search, an open row or a #i= link that is a row view (or a search field focused before the data came) needs
   // the full week first: the restore scroll would land on another row while that row shows one loading line (owner, 11-10).
   const rowView = (id) => incidents.find((i) => i.id === id)?.rows;
@@ -1061,6 +1063,7 @@ function primer() {
   });
   const close = Object.assign(el('button', 'btn p-close'), { type: 'button' });
   close.setAttribute('aria-label', p.dismiss);
+  close.title = p.dismiss; // Astryx IconButton, Best Practices: "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
   close.append(el('span', 'x'));
   close.addEventListener('click', () => fold($('primer'), false, () => { setGuide(false); $('guide-btn').focus({ preventScroll: true }); }));
   box.replaceChildren(keys, more, close);
@@ -1391,7 +1394,9 @@ function announce(count, key) {
   if (first) return;
   // Nothing found: the empty state's own sentence, not its buttons (critique 13: #empty was a live region holding them).
   announcing = setTimeout(() => {
-    $('announce').textContent = count ? TEXT[lang].found(count) : $('empty').querySelector('p, strong')?.textContent || '';
+    // Astryx useAnnounce, Best Practices: "Do: Announce the outcome, not the interaction": a typed name that is no Product became a search, and says so first
+    const note = pickNote ? `${TEXT[lang].notListed(pickNote)} ` : '';
+    $('announce').textContent = note + (count ? TEXT[lang].found(count) : $('empty').querySelector('p, strong')?.textContent || '');
   }, 700);
 }
 
@@ -1540,9 +1545,10 @@ function filterPanel() {
   const dates = el('div', 'fp-dates');
   dates.append(field(f.from, input('date', 'from', filter.from)), field(f.to, input('date', 'to', filter.to)));
   grid.append(
-    (() => { const set = checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)); set.append(el('p', 'fp-note', f.riskNote)); return set; })(),
+    // Astryx Field, Best Practices: "Do: Wire inputID/descriptionID to htmlFor and aria-describedby on the inner control." (each note describes its group)
+    (() => { const set = checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)); set.append(Object.assign(el('p', 'fp-note', f.riskNote), { id: 'fp-risk-note' })); set.setAttribute('aria-describedby', 'fp-risk-note'); return set; })(),
     checks(f.flags, 'flag', [['kev', t.qfKev], ...LINK_KINDS.map((k) => [k, f.has[k]])], (v) => (v === 'kev' ? filter.kev : filter.has.includes(v))),
-    (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(el('p', 'fp-note', f.osNote)); return set; })(),
+    (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(Object.assign(el('p', 'fp-note', f.osNote), { id: 'fp-os-note' })); set.setAttribute('aria-describedby', 'fp-os-note'); return set; })(),
     // What a dashed chip means: one full-width line right under the chips, and each dashed chip points to it (critique 13).
     Object.assign(el('p', 'fp-note fp-zero-note', f.zeroNote), { id: 'fp-zero-note' }),
     field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
@@ -1551,7 +1557,9 @@ function filterPanel() {
   );
   const actions = el('div', 'fp-actions');
   const reset = Object.assign(el('button', 'btn', f.reset), { type: 'button' });
-  reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()); filterPanel(); });
+  // The panel is drawn again under the pressed button: 필터 초기화 in the new one takes the focus, never <body>.
+  const refocus = () => $('filters').querySelector('.fp-actions .btn')?.focus({ preventScroll: true });
+  reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()).then(refocus); filterPanel(); refocus(); });
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
@@ -1714,7 +1722,7 @@ $('product-pick').addEventListener('change', (event) => {
   // Several Products contain it ("ssh"): keep the text so the list narrows to them, and say so.
   if (found.length > 1) {
     pickNote = '';
-    $('announce').textContent = TEXT[lang].manyProducts(found.length);
+    // Astryx useAnnounce, Best Practices: "Don't: Announce content that is already visible and correctly labeled in the DOM; that doubles up for screen reader users." (#pick-hint is a status region)
     $('pick-hint').textContent = TEXT[lang].manyProducts(found.length);
     return;
   }
@@ -2193,7 +2201,8 @@ function cveMarks(incident, cve, note = true) {
   if (hit) {
     const mark = el('span', 'cve-src');
     const a = anchor(hit.url, hit.kind === 'kev' ? t.kevSource : host(hit.url), note);
-    if (!note) a.setAttribute('aria-label', `${cve} ${t.kevReason}: ${a.textContent}`);
+    // Astryx Link, Best Practices: "Don't: Set `label` on text links; `aria-label` prevents assistive technology from reading the actual link content."
+    if (!note) a.prepend(el('span', 'sr-only', `${cve} ${t.kevReason}: `));
     mark.append(el('span', 'kev', t.kevReason), ' ', a);
     out.push(mark);
   }
@@ -2221,7 +2230,7 @@ function cveList(incident) {
         seen[l.kind] = (seen[l.kind] || 0) + 1;
         const name = TEXT[lang].linkKind[l.kind] || host(l.url);
         const a = anchor(l.url, many(l.kind) ? `${name} ${seen[l.kind]}` : name, false);
-        a.setAttribute('aria-label', `${line.cve} ${a.textContent}`);
+        a.prepend(el('span', 'sr-only', `${line.cve} `)); // Astryx Link, Best Practices: "Don't: Set `label` on text links; …" (as above)
         src.append(...(n ? [' · '] : []), a);
       });
       li.append(' ', src);
@@ -2287,6 +2296,8 @@ function commandLine(text) {
       button.settle = setTimeout(() => { button.textContent = TEXT[lang].copy; p.classList.remove('stamped'); }, 2000);
     } catch {
       getSelection().selectAllChildren(code); // clipboard blocked: select it for a manual copy
+      // Astryx CodeBlock, Props, onCopyError: "The copy button shows a cross and is named and announced as "Failed to copy value to clipboard."" (ours: said, the selection shown)
+      $('announce').textContent = TEXT[lang].copyFailed;
     }
   });
   p.append(code, ' ', button);
@@ -2925,7 +2936,10 @@ function row(incident, pinned, vendor = '') {
     if (!incident.rows) return body.childElementCount || body.append(...details(incident, Boolean(ev)));
     if (fullFailed && !asked) return body.replaceChildren(para('preparing', TEXT[lang].loadError));
     body.replaceChildren(para('preparing', TEXT[lang].loading));
-    ensureFull().catch(() => body.replaceChildren(para('preparing', TEXT[lang].loadError)));
+    ensureFull().catch(() => { // Astryx Banner, Best Practices: "Announce async outcomes from the transition handler with useAnnounce."
+      body.replaceChildren(para('preparing', TEXT[lang].loadError));
+      $('announce').textContent = TEXT[lang].loadError;
+    });
   };
   button.addEventListener('click', () => {
     const opening = !open.has(key);

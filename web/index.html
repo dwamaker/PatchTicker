@@ -630,7 +630,7 @@
     .list li.fresh-out:not(.alert) { animation-name: fresh-out-tint; }
     @keyframes fresh-out { from { box-shadow: inset 0 0 0 2px var(--focus); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
     @keyframes fresh-out-tint { from { box-shadow: inset 0 0 0 2px var(--focus); background-color: color-mix(in srgb, var(--focus) 7%, var(--bg)); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
-    @media (prefers-reduced-motion: reduce) { li.fresh-out { animation-duration: 200ms; } }
+    @media (prefers-reduced-motion: reduce) { li.fresh-out, .alert.fresh-out .strip { animation-duration: 200ms; } }
     /* new Incidents above the window: an inverse pill at the top centre, the strongest mark on the page while it shows */
     .new-above { position: fixed; top: calc(var(--stick, 0px) + 0.5rem); left: 50%; z-index: 15; display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 1.125rem; border: 0; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font: inherit; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; box-shadow: 0 6px 20px -6px var(--shadow), 0 0 0 3px color-mix(in srgb, var(--focus) 45%, transparent); cursor: pointer; transform: translateX(-50%); }
     /* in: drops 12px and fades (240ms); out: lifts and fades faster (160ms); hidden from tab order and readers once out */
@@ -669,7 +669,8 @@
       .jump .step button::before { content: ""; position: absolute; inset: 6px; z-index: -1; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--panel); box-shadow: var(--lift-float); }
     }
     @media (max-width: 767px) { .jump-idle .jump .step:not(:focus-within) { opacity: 0; visibility: hidden; transition-duration: 400ms; } }
-    @media (prefers-reduced-motion: reduce) { .jump button, .jump button.off, .new-above.off { transform: none; translate: none; } .jump button:active, .new-above:active { transform: none; scale: none; } }
+    /* Astryx Motion, Respecting User Preferences: "opacity only, in 200 ms or less": the pill keeps its centring transform, only its movement goes */
+    @media (prefers-reduced-motion: reduce) { .jump button, .jump button.off { transform: none; translate: none; } .new-above.off { translate: none; } .jump button:active { transform: none; scale: none; } .new-above:active { scale: none; } .new-above { transition-duration: 200ms, 0s, 120ms, 0s; } }
     /* 쉬운 설명 beckons as the Board arrives in 기본 (until it has been tried once; owner, 11-09: it sits at the very top,
        so it must be loud): twice, 1.4s each, the whole 기본|쉬운 설명 switch swells to 112% and settles with a bounce, a
        rainbow ring spins around it, the word 쉬운 설명 runs through the rainbow and swells to 116%, and a rainbow band

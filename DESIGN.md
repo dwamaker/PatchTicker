@@ -861,6 +861,12 @@ Restrained outlined buttons for theme, language and copying a command.
     the search hint is measured: the long one, else the short one, else "검색".
   - The collection notice left the top: it is the first of the footer's notes (no close button) and a note of the guide.
   - The first-visit line shows once: drawing it with the Board marks the guide as seen.
+- **Astryx pass 2 (owner, 11-19: "the whole thing"):** the polite announcer also says a failed first load, a row whose
+  full data failed, and a blocked copy (복사하지 못했습니다 …); a name the picker turned into a search is said before the
+  count; "맞는 제품이 N개" is said once, by its own status line. Per-CVE links keep their words as their name, with the CVE
+  said before them for screen readers (no aria-label). The filter panel's risk and OS notes describe their chip groups;
+  필터 초기화 keeps the focus. Under reduced motion the "↑ 새 사건" pill only fades (200ms) and a new Highlight's strip
+  lets go in 200ms.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts
