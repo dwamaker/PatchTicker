@@ -65,6 +65,20 @@ class AdvisorySeverityTest(unittest.TestCase):
         plain = input_text([("writeup", GHSA)], [(GHSA, GHSA_TEXT + " " + json.dumps(SSHOLE_SUMMARY, ensure_ascii=False))])
         self.assertNotIn("severity", summaries.parse(FakeClaude.message(reply), plain, [GHSA]))
 
+    def test_a_re_summary_whose_advisory_page_did_not_load_keeps_the_stored_word(self):
+        def resummarize(mentions, text):
+            incident = {"id": SYNOLOGY, "cves": [], "brief": {"text": "x"}, "mentions": mentions,
+                        "summary": SSHOLE_SUMMARY | {"severity": "critical", "severity_source": SYNOLOGY}}
+            reply = SSHOLE_SUMMARY | {"lead": WRITEUP}
+            body = json.dumps(SSHOLE_SUMMARY, ensure_ascii=False)
+            summaries.save_reply(incident, FakeClaude.message(reply), input_text([(m["kind"], m["url"]) for m in mentions], text(body)),
+                                 summaries.basis(incident), "2026-11-19T12:00:00Z")
+            return incident["summary"].get("severity")
+        both = [{"kind": "advisory", "url": SYNOLOGY}, {"kind": "writeup", "url": WRITEUP}]
+        self.assertEqual(resummarize(both, lambda body: [(WRITEUP, body)]), "critical")  # the advisory failed to load: kept
+        self.assertEqual(resummarize(both, lambda body: [(WRITEUP, body), (SYNOLOGY, "Severity Low")]), "low")  # read again: new word
+        self.assertIsNone(resummarize(both[1:], lambda body: [(WRITEUP, body)]))  # no longer an advisory Mention: gone
+
 
 if __name__ == "__main__":
     unittest.main()

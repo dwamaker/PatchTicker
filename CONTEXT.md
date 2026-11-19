@@ -76,8 +76,8 @@ an August Incident listed this week stood among them): every exploited one, then
 the product's tier of reach on the hand-kept list (1 on most computers or phones, 2 the standard of its field, 3 known
 inside it; a product on no list counts as 3), tier 1 before 2 before 3 and by importance inside a tier (owner,
 2026-11-17: "많은 사람이 사용하는걸 위로"), then the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). Importance counts, besides attacks,
-discussion, curators, the score and Mentions, how new the Incident is: the newest gain as much as the whole score can
-give, falling evenly to nothing at seven days old (owner, 2026-11-19: "최신소식이 위에 올라와야"); an Incident with a
+discussion, curators, the score and Mentions, how new the Incident is: one just published gains as much as a CVSS 10 adds, falling evenly to
+nothing at seven days old (owner, 2026-11-19: "최신소식이 위에 올라와야"); an Incident with a
 provisional level counts as its level's lowest score (9 or 7). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
 owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), each of a different vendor

@@ -1188,6 +1188,12 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
         return
     name_titles(summary, trusted_names(incident, text))
     stored = incident.get("summary") or {}
+    # An advisory page that failed to load this time never takes its level down (owner, 11-19): the stored severity stays
+    # while its source is still one of the Incident's advisory Mentions and the new input holds no text of that page.
+    source = stored.get("severity_source")
+    if ("severity" not in summary and source and not re.search(rf"^Text of {re.escape(source)}[ :]", text, re.M)
+            and any(m["url"] == source and m["kind"] == "advisory" for m in incident["mentions"])):
+        summary["severity"], summary["severity_source"] = stored.get("severity"), source
     # A new reply that says "not exploited" never takes down attacks the Board shows with a source (owner, 11-18: ARTEX,
     # N-central in the re-summary dry run): the review is asked whether attacks happened, and only its no drops the flag
     # (settle_attacks).
