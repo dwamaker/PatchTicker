@@ -103,6 +103,16 @@
          --fs-meta: status, dates, secondary lines; --fs-small: labels, controls, detail text. */
       --ts: 1; /* text scale from the 가−/가+ buttons: only font sizes use it, layout stays */
       --tap: 44px;
+      /* Astryx Button (owner, 11-19): a control is drawn at --size-element-lg (36px) under a mouse and grows to 44px under a
+         finger (src/internal/touchHitArea.stylex.ts grows the hit area on touch); --tap still holds the layout's heights.
+         --ctl-*: the secondary fill (Astryx --color-neutral, "Primary for the single most important action. Secondary or
+         ghost for the rest"), its hover and its pressed or open step; opaque, so a native select's list keeps a ground. */
+      --ctl-h: 36px;
+      --ctl-fill: light-dark(#dedfe1, #353739);
+      --ctl-hover: light-dark(#d5d6d8, #424446);
+      --ctl-on: light-dark(#cccdd0, #4f5053);
+      --lift-low: 0 1px 1px rgb(0 0 0 / 0.1), 0 2px 8px rgb(0 0 0 / 0.1); /* Astryx --shadow-low: the switch's raised segment */
+      --seg-on: light-dark(#ffffff, #4f5053); /* that segment: the panel by day; by night a step lighter than its track, so it reads raised, not sunk */
       --r-pill: 999px;
       --r-frame: 10px;
       --r-ctl: 8px;
@@ -118,6 +128,7 @@
       --fs-meta: 0.8125rem;
       --fs-small: 0.875rem;
     }
+    @media (pointer: coarse) { :root { --ctl-h: var(--tap); } }
     :root[data-theme="light"] { color-scheme: light; }
     :root[data-theme="dark"] { color-scheme: dark; }
     *, *::before, *::after { box-sizing: border-box; }
@@ -138,9 +149,9 @@
     #prefs-btn svg { width: 18px; height: 18px; }
     .top .wrap { min-height: 4rem; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; }
     .brand { display: flex; align-items: center; gap: 0.375rem; min-width: 0; }
-    #repo { padding: 0; border-color: transparent; border-radius: 50%; color: var(--ink-2); } /* the public repository, beside the name */
+    #repo { padding: 0; color: var(--ink-2); } /* the public repository, beside the name */
     #repo svg { width: 20px; height: 20px; fill: currentColor; }
-    @media (hover: hover) { #repo:hover { color: var(--ink); background: var(--panel-2); } }
+    @media (hover: hover) { #repo:hover { color: var(--ink); } }
     /* Support badge (owner, 11-18): the README's Buy Me a Coffee badge, drawn here (no third-party image), in the footer's
        top right corner beside the notices (capped at 46rem) from 1024px; narrower, on a row of its own above them,
        centred. First in the markup, so the narrow order needs no reordering. Its yellow is the one brand colour outside
@@ -158,11 +169,11 @@
     .feeds-btn { gap: 0.5rem; } /* one icon-label gap for every button, 0.5rem as 필터 and the panel buttons have (Astryx src/Button/Button.tsx:122 "gap: spacingVars['--spacing-2']"; their Button page renders 8px beside a 16px icon) */
     .feeds-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
     .feeds-btn circle { fill: currentColor; stroke: none; }
-    #feeds-btn { padding: 0 0.75rem; border-color: transparent; border-radius: var(--r-pill); color: var(--ink-2); }
-    #feeds-btn[aria-expanded="true"] { background: var(--panel-2); color: var(--ink); }
-    @media (hover: hover) { #feeds-btn:hover { color: var(--ink); background: var(--panel-2); } }
+    #feeds-btn { padding: 0 0.75rem; color: var(--ink-2); }
+    #feeds-btn[aria-expanded="true"] { color: var(--ink); }
+    @media (hover: hover) { #feeds-btn:hover { color: var(--ink); } }
     #feeds-btn-phone { display: none; }
-    @media (max-width: 599px) { #feeds-btn-phone { display: inline-flex; } #feeds-btn-phone[aria-expanded="true"] { background: var(--panel-2); } .feeds { margin-block: 0.75rem; } }
+    @media (max-width: 599px) { #feeds-btn-phone { display: inline-flex; } .feeds { margin-block: 0.75rem; } }
     /* 600-1023px: the three-part grid gave the name its third of the line, and the name, GitHub and 후원 already ran under
        the switch at 600px (and at 700-768px with 150% text). Here RSS shows its icon alone (the word stays its
        name), the name keeps one line, and the line wraps rather than overlap where even that does not fit. */
@@ -171,12 +182,12 @@
       #views { margin-inline: auto; }
       .end { margin-left: auto; }
       h1 { white-space: nowrap; }
-      #feeds-btn { padding: 0; border-radius: 50%; }
+      #feeds-btn { padding: 0; }
       #feeds-btn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     }
     @supports not selector(:popover-open) { .feeds-btn { display: none !important; } }
     #feeds:not(:is(:popover-open)) { display: none; } /* also where popovers are unknown: never drawn in the header line */
-    .feeds { width: min(23rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); margin: 0; padding: 0.375rem; overflow: auto; border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: var(--lift-menu); font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; }
+    .feeds { width: min(23rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); margin: 0; padding: 0.25rem; overflow: auto; border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: var(--lift-menu); font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; }
     @supports (position-area: block-end) { .feeds { inset: auto; margin-block: 0.25rem; position-area: block-end span-inline-end; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; } }
     @supports not (position-area: block-end) { .feeds { position: fixed; inset: auto; } }
     .feeds-head { margin: 0.25rem 0.5rem 0.375rem; color: var(--ink-2); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
@@ -203,23 +214,40 @@
     h1 a { display: flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; border-radius: var(--r-ctl); } /* the logo: back to the top of the Board, conditions and search cleared (app.mjs #home) */
     @media (pointer: coarse) { h1 a { min-height: var(--tap); } } /* 44px to tap; centred in the header line, which its 44px buttons already set */
     h1 svg { flex: none; height: 1em; width: auto; fill: var(--focus); } /* the logo symbol (.scratch/logo), Wayfinding Blue in both themes */
-    #views { display: inline-flex; padding: 3px; border: 1px solid var(--edge); border-radius: var(--r-pill); background: var(--panel-2); }
-    #views button { min-height: var(--tap); padding: 0 1.25rem; border: 0; border-radius: var(--r-pill); background: none; color: var(--ink-2); font-weight: 500; cursor: pointer; }
-    #views button[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 700; }
-    .end { justify-self: end; display: flex; gap: 0.5rem; }
-    /* outlined button: theme, language, copy command */
-    .btn { min-height: var(--tap); min-width: var(--tap); padding: 0 1rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: none; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-    @media (hover: hover) { .btn:hover:where(:not([aria-disabled="true"])) { background: var(--panel-2); color: var(--ink); } }
+    /* 기본|쉬운 설명 as Astryx's SegmentedControl (owner, 11-19): a borderless recessed track (2px in, the control radius), the
+       chosen segment a raised panel with the low shadow and semibold ink, the other in Secondary Ink (src/SegmentedControl/
+       SegmentedControl.tsx container + SegmentedControlItem.tsx selected; concentric radius 8 - 2 = 6) */
+    #views { display: inline-flex; padding: 2px; border: 0; border-radius: var(--r-ctl); background: var(--ctl-fill); }
+    #views button { min-height: calc(var(--ctl-h) - 4px); padding: 0 1rem; border: 0; border-radius: var(--r-code); background: none; color: var(--ink-2); font-weight: 500; cursor: pointer; }
+    @media (pointer: coarse) { #views button { min-height: var(--tap); } } /* 44px under a finger */
+    #views button[aria-pressed="true"] { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
+    .end { justify-self: end; display: flex; gap: 0.25rem; }
+    /* Astryx Button, secondary (the default): the neutral fill, no edge, 8px corners, 12px in, an 8px icon gap, medium weight;
+       a press dips to 98% (src/Button/Button.tsx base, pressable, variants.secondary). The 1px edge stays transparent, so
+       sizes hold and forced colours still draw it. */
+    .btn { min-height: var(--ctl-h); min-width: var(--ctl-h); gap: 0.5rem; padding: 0 0.75rem; border: 1px solid transparent; border-radius: var(--r-ctl); background: var(--ctl-fill); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    @media (hover: hover) { .btn:hover:where(:not([aria-disabled="true"])) { background: var(--ctl-hover); color: var(--ink); } }
+    .btn[aria-expanded="true"] { background: var(--ctl-on); color: var(--ink); } /* its menu or panel is open: the pressed step */
+    /* ghost (Astryx IconButton, Best Practices: "Use ghost in toolbars + dense areas to reduce visual clutter"): the header's
+       controls and the icon-only closes; the fill comes on hover and while open */
+    :where(#repo, #feeds-btn, #feeds-btn-phone, #prefs-btn, #theme, #lang, .p-close, .fp-close):not([aria-expanded="true"]) { background: none; } /* as weak as .btn, so .btn:hover still fills it */
+    /* Astryx Button, isLoading: a spinner in the label's colour while it works (the button stays focusable) */
+    .btn[aria-busy="true"]::before { content: ""; flex: none; width: 14px; height: 14px; box-sizing: border-box; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 700ms linear infinite; }
+    @keyframes spin { to { rotate: 1turn; } }
+    @media (prefers-reduced-motion: reduce) { .btn[aria-busy="true"]::before { animation-duration: 2s; } }
     /* Astryx Button, Props, isLoading: "blocks re-activation but stays focusable (aria-disabled, not native disabled)" */
     .btn[aria-disabled="true"] { cursor: default; color: var(--ink-3); } /* the loading button dims (approved Astryx item 26; Button.tsx:399-400 keeps a spinner undimmed, and the Board has no spinner) */
     #theme { padding: 0; }
     /* text size: 가− and 가+ in one outline, the glyph grows left to right (px, so the
        control itself does not jump); everything else is rem, so the root size scales the Board */
-    .sizes { display: inline-flex; border: 1px solid var(--edge); border-radius: var(--r-ctl); overflow: hidden; }
-    .sizes button { min-width: var(--tap); min-height: var(--tap); padding: 0; border: 0; background: none; font-weight: 700; line-height: 1; cursor: pointer; }
-    .sizes button + button { border-left: 1px solid var(--rule-2); }
+    /* a ButtonGroup of two ghost buttons (Astryx ButtonGroup, Best Practices: "Same variant for all buttons to look like one
+       unit"): no outline of its own, a hairline between the two */
+    .sizes { display: inline-flex; align-items: center; border-radius: var(--r-ctl); }
+    .sizes button { min-width: var(--ctl-h); min-height: var(--ctl-h); padding: 0; border: 0; border-radius: var(--r-ctl); background: none; font-weight: 700; line-height: 1; cursor: pointer; }
+    .sizes button + button { position: relative; }
+    .sizes button + button::before { content: ""; position: absolute; left: 0; top: 25%; bottom: 25%; border-left: 1px solid var(--rule-2); }
     /* an end step is aria-disabled, not disabled, so it keeps the focus (Astryx Button, Props, isDisabled: "uses aria-disabled instead of native disabled") */
-    @media (hover: hover) { .sizes button:hover:not([aria-disabled="true"]) { background: var(--panel-2); } }
+    @media (hover: hover) { .sizes button:hover:not([aria-disabled="true"]) { background: var(--ctl-hover); } }
     .sizes button[aria-disabled="true"] { cursor: default; }
     /* one disabled look for the end steps of 가−/가+ and 한 화면 위로/아래로: the glyph at half strength (src/Button/Button.tsx:205-206 "disabled: { opacity: 0.5 }"); the pair's divider stays */
     .sizes button[aria-disabled="true"] > span { opacity: 0.5; }
@@ -228,23 +256,24 @@
     .sizes .g3 { font-size: 18px; }
     #lang { gap: 0.5rem; }
     #lang svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; }
-    #lang[aria-expanded="true"] { background: var(--panel-2); }
     #lang .short { display: none; }
     /* the language menu (owner, 11-17): a popover under the button, like the RSS menu; one entry per language, in itself */
     #langs:not(:is(:popover-open)) { display: none; }
-    .langs { min-width: 9rem; margin: 0; padding: 0.375rem; border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: var(--lift-menu); }
+    .langs { min-width: 9rem; margin: 0; padding: 0.25rem; border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: var(--lift-menu); }
     @supports (position-area: block-end) { .langs { inset: auto; margin-block: 0.25rem; position-area: block-end span-inline-start; position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; } }
     @supports not (position-area: block-end) { .langs { position: fixed; inset: auto; } }
     .langs ul { margin: 0; padding: 0; list-style: none; }
-    /* Astryx Shape, Concentric Radius: "give nested elements a radius of outer radius minus padding" (10px - 6px) */
-    .langs button { display: flex; align-items: center; width: 100%; min-height: var(--tap); padding: 0 0.75rem; border: 0; border-radius: var(--r-marker); background: none; color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); text-align: start; cursor: pointer; }
-    @media (hover: hover) { .langs button:hover { background: var(--panel-2); } }
+    /* Astryx Shape, Concentric Radius: "give nested elements a radius of outer radius minus padding" (10px - 4px); a menu row
+       as DropdownMenuItem draws it: 4px around the list, 8px in, the control height, the hover fill also on a keyboard focus */
+    .langs button { display: flex; align-items: center; width: 100%; min-height: var(--ctl-h); padding: 0 0.5rem; border: 0; border-radius: var(--r-code); background: none; color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); text-align: start; cursor: pointer; }
+    .langs button:focus-visible { background: var(--ctl-fill); outline-offset: -2px; }
+    @media (hover: hover) { .langs button:hover { background: var(--ctl-fill); } }
     .langs button[aria-current="true"] { font-weight: 700; }
     .langs button[aria-current="true"]::after { content: ""; width: 0.375rem; height: 0.625rem; margin-left: auto; border: solid var(--focus); border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -1px; }
     @media (max-width: 599px) { #lang .full { display: none; } #lang .short { display: inline; } h1 { white-space: nowrap; } } /* the header fits 375px */
     #theme svg { width: 18px; height: 18px; }
     #theme[aria-checked="true"] .moon, #theme[aria-checked="false"] .sun { display: none; } /* the icon is the theme it switches to */
-    @media (hover: hover) { #views button:not([aria-pressed="true"]):hover { background: var(--panel-2); color: var(--ink); } }
+    @media (hover: hover) { #views button:not([aria-pressed="true"]):hover { background: var(--ctl-hover); color: var(--ink); } }
     @media (max-width: 599px) {
       /* name and controls share the first line while they fit; at 320px or with larger text the controls
          drop under the name instead of pushing the page sideways; the 기본|쉬운 설명 switch always gets its own line */
@@ -256,7 +285,7 @@
       .end { display: none; }
       .end.open { display: flex; position: absolute; top: calc(100% - 0.25rem); right: 1rem; z-index: 18; padding: 0.5rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); box-shadow: var(--lift-menu); }
     }
-    @media (max-width: 359px) { /* 320px: tighter name and switch keep the one header line (it wrapped by 26px) */
+    @media (max-width: 374px) { /* 320-374px: tighter name and switch keep the one header line (at 360px the settings button had wrapped under the name) */
       .top .wrap { column-gap: 0.375rem; }
       h1 { gap: 0.375rem; font-size: calc(1.1875rem * var(--ts)); } /* 19px: a 1.25 step over the 15px body (critique 13) */
       #views button { min-width: var(--tap); padding: 0 0.5rem; } /* 기본 was 42px wide */
@@ -281,7 +310,7 @@
     /* under 360px 정렬 is a 44px icon over a see-through native select (still the real control for readers
        and keyboards), so the search field keeps 160px+ (critique 13: it had 123px) */
     @media (max-width: 359px) {
-      .search-tools .sort { position: relative; justify-content: center; width: var(--tap); height: var(--tap); border: 1px solid var(--edge); border-radius: var(--r-ctl); color: var(--ink); }
+      .search-tools .sort { position: relative; justify-content: center; width: var(--ctl-h); height: var(--ctl-h); border-radius: var(--r-ctl); background: var(--ctl-fill); color: var(--ink); }
       .search-tools .sort-ic { display: block; width: 18px; height: 18px; }
       .search-tools .sort select { position: absolute; inset: 0; width: 100%; max-width: none; min-height: 0; opacity: 0; cursor: pointer; }
       .search-tools .sort:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -364,16 +393,15 @@
     .list-head #fold-toggle { margin-left: auto; } /* wrapped under a long heading on a phone (English, 150% text) it still keeps the right edge */
     .list-head:has(#all-head[hidden]) { display: none; }
     .sort { display: inline-flex; align-items: center; gap: 0.5rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
-    .sort select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
-    @media (hover: hover) { .sort select:hover { background: var(--panel-2); } } /* beside 필터 it takes the buttons' hover: src/Selector/Selector.doc.mjs:441-443 "Use variant=\"secondary\" when a selector sits … beside secondary buttons … so it shares their treatment" */
+    .sort select { min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid transparent; border-radius: var(--r-ctl); background: var(--ctl-fill); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
+    @media (hover: hover) { .sort select:hover { background: var(--ctl-hover); } } /* beside 필터 it takes the buttons' hover: src/Selector/Selector.doc.mjs:441-443 "Use variant=\"secondary\" when a selector sits … beside secondary buttons … so it shares their treatment" */
     #filter-btn { gap: 0.5rem; padding: 0 1rem; }
     .cond { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--rule-2); border-radius: var(--r-pill); background: var(--panel-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; }
     .cond .x { position: relative; width: 10px; height: 10px; }
     .cond .x::before, .cond .x::after { content: ""; position: absolute; left: 4px; top: -1px; width: 1.5px; height: 12px; background: currentColor; transform: rotate(45deg); }
     .cond .x::after { transform: rotate(-45deg); }
     #filter-btn svg { width: 16px; height: 16px; }
-    #filter-btn[aria-expanded="true"] { background: var(--panel-2); }
-    #filter-count { /* the 필터 badge only: a bare .count once styled a panel line as a pill */
+        #filter-count { /* the 필터 badge only: a bare .count once styled a panel line as a pill */
       min-width: 1.375rem; padding: 0 0.375rem; border-radius: var(--r-pill); background: var(--focus); color: var(--bg); font-size: calc(0.75rem * var(--ts)); font-weight: 700; line-height: 1.375rem; text-align: center; }
     /* advanced filter panel */
     .filters { margin-bottom: 1.25rem; padding: 1.25rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
@@ -392,31 +420,35 @@
     .fp-dates { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; }
     .fp-note { flex-basis: 100%; margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     .fp-label { padding: 0; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
-    .fp-field input, .fp-field select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); }
+    .fp-field input, .fp-field select { min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); }
     .fp-field select { align-self: flex-start; max-width: 16rem; } /* as wide as its words, not the column (critique 13: 356px) */
     .fp-grid > .fp-zero-note { grid-column: 1 / -1; margin-top: -0.5rem; } /* right under the chips it explains */
     .fp-checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .fp-checks legend { flex-basis: 100%; margin-bottom: 0.375rem; }
     .fp-chip { position: relative; display: inline-flex; }
     .fp-chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-    .fp-chip span { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 0.875rem; border: 1px solid var(--rule-2); border-radius: var(--r-pill); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; color: var(--ink-2); }
+    .fp-chip span { display: inline-flex; align-items: center; min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid transparent; border-radius: var(--r-ctl); background: var(--ctl-fill); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; color: var(--ink-2); }
     .fp-chip input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 700; }
     .fp-chip.risk-highest input:checked + span { background: color-mix(in srgb, var(--high) 12%, var(--panel)); border: 1.5px solid var(--high); color: var(--high); }
     .fp-chip.risk-high input:checked + span { background: color-mix(in srgb, var(--mid-mark) 12%, var(--panel)); border: 1.5px solid var(--mid-mark); color: var(--mid); }
     .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
-    @media (hover: hover) { .fp-chip:hover input:not(:checked) + span { background: var(--panel-2); } .chip:hover .ln { text-decoration: underline; text-underline-offset: 2px; } } /* a chip under the pointer says so, as the tag buttons do (src/Token/Token.tsx:442 interactionOverlayStyles.backgroundImage) */
+    @media (hover: hover) { .fp-chip:hover input:not(:checked) + span { background: var(--ctl-hover); } .chip:hover .ln { text-decoration: underline; text-underline-offset: 2px; } } /* a chip under the pointer says so, as the tag buttons do (src/Token/Token.tsx:442 interactionOverlayStyles.backgroundImage) */
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .fp-chip.zero span { border-style: dashed; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
+    .fp-chip.zero span { border-style: dashed; border-color: var(--edge); background: none; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
     .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
-    .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bg); font-weight: 700; }
-    @media (hover: hover) { .btn.primary:hover { background: var(--ink-2); } }
+    /* Astryx Button, primary: the accent fill (our Wayfinding Blue), the one per view (필터 적용); white on it 6.4:1 by day, Ink Black 9:1+ by night */
+    .btn.primary { background: var(--focus); border-color: var(--focus); color: var(--bg); font-weight: 700; }
+    @media (hover: hover) { .btn.primary:hover:where(:not([aria-disabled="true"])) { background: color-mix(in srgb, var(--focus) 85%, var(--ink)); color: var(--bg); } }
     /* phones: the panel is a bottom sheet with 필터 적용 always in reach */
     @media (max-width: 599px) {
       .filters { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; max-height: 85vh; overflow-y: auto; margin: 0; border-radius: var(--r-frame) var(--r-frame) 0 0; padding-bottom: 0; }
       .fp-actions { position: sticky; bottom: 0; margin: 1rem -1.25rem 0; padding: 0.75rem 1.25rem; background: var(--panel); }
       /* the Board behind the sheet dims; a tap on it closes the sheet (app.mjs) */
       .filters:not([hidden]) { box-shadow: 0 0 0 100vmax var(--scrim); }
-      .fp-head { position: sticky; top: -1.25rem; z-index: 1; margin: -1.25rem -1.25rem 0.75rem; padding: 0.75rem 1.25rem; background: var(--panel); border-bottom: 1px solid var(--rule); }
+      .fp-head { position: sticky; top: -1.25rem; z-index: 1; margin: -1.25rem -1.25rem 0.75rem; padding: 1.25rem 1.25rem 0.75rem; background: var(--panel); border-bottom: 1px solid var(--rule); touch-action: none; }
+      /* Astryx BottomSheet, Anatomy: "Handle | Yes | Decorative grab affordance and drag region at the top of the panel" (36 x 4,
+         the border colour, BottomSheetPanel.tsx handleBar); a drag down on the head closes the sheet (app.mjs sheetDrag) */
+      .fp-head::before { content: ""; position: absolute; top: 0.5rem; left: 50%; width: 36px; height: 4px; translate: -50% 0; border-radius: var(--r-pill); background: var(--rule-2); }
     }
     /* wider screens, opened from the frozen copy: the panel floats right under the frozen row over the dimmed Board, so
        the reader stays where they were (critique 13: it scrolled the page back to the bar) */
@@ -471,9 +503,10 @@
     .p-pair { display: flex; align-items: center; gap: 0.375rem; }
     .primer > .btn { flex: none; }
     .p-close { width: var(--tap); padding: 0; justify-content: center; }
-    .p-close .x { position: relative; width: 12px; height: 12px; }
-    .p-close .x::before, .p-close .x::after { content: ""; position: absolute; left: 5px; top: -1px; width: 1.5px; height: 14px; background: currentColor; transform: rotate(45deg); }
-    .p-close .x::after { transform: rotate(-45deg); }
+    .fp-close { width: var(--ctl-h); padding: 0; color: var(--ink-2); } /* the filter panel's close: an icon-only ghost button, as Astryx Dialog's header has */
+    :is(.p-close, .fp-close) .x { position: relative; width: 12px; height: 12px; }
+    :is(.p-close, .fp-close) .x::before, :is(.p-close, .fp-close) .x::after { content: ""; position: absolute; left: 5px; top: -1px; width: 1.5px; height: 14px; background: currentColor; transform: rotate(45deg); }
+    :is(.p-close, .fp-close) .x::after { transform: rotate(-45deg); }
     @media (max-width: 599px) {
       .primer { position: relative; padding: 0.5rem var(--tap) 0.5rem 0.75rem; }
       .p-keys { gap: 0.375rem 0.625rem; }
@@ -513,9 +546,9 @@
     @media (max-width: 599px) { .legend { gap: 0.5rem; } .legend dd { font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.45; } }
     .legend .c-date { align-items: flex-start; }
     .g-pin { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 0.75rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: var(--r-frame); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; } /* the band's strip in small: framed, no coloured edge (critique P2, 11-19) */
-    .g-views { display: inline-flex; padding: 2px; border: 1px solid var(--edge); border-radius: var(--r-pill); font-size: calc(0.75rem * var(--ts)); }
-    .g-views span { padding: 0.125rem 0.5rem; border-radius: var(--r-pill); color: var(--ink-2); }
-    .g-views .on { background: var(--ink); color: var(--bg); font-weight: 700; }
+    .g-views { display: inline-flex; padding: 2px; border-radius: var(--r-code); background: var(--ctl-fill); font-size: calc(0.75rem * var(--ts)); } /* the guide's small 기본|쉬운 설명, drawn as the switch */
+    .g-views span { padding: 0.125rem 0.5rem; border-radius: var(--r-marker); color: var(--ink-2); }
+    .g-views .on { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
     .g-word { font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 700; }
     .g-note { margin: 1rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--rule); max-width: 46rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     @media (max-width: 599px) {
@@ -721,7 +754,7 @@
     @property --spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
     #view-easy { position: relative; overflow: hidden; }
     #views.beckon { animation: beckon-switch 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) 500ms 2; }
-    #views.beckon::after { content: ""; position: absolute; inset: -4px; z-index: -2; border-radius: var(--r-pill); padding: 3px; pointer-events: none;
+    #views.beckon::after { content: ""; position: absolute; inset: -4px; z-index: -2; border-radius: calc(var(--r-ctl) + 4px); padding: 3px; pointer-events: none;
       background: conic-gradient(from var(--spin), var(--rainbow));
       mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
       animation: beckon-spin 1400ms linear 500ms 2 both, beckon-ring-fade 2800ms ease-in-out 500ms 1 both; }
@@ -882,11 +915,12 @@
     /* micro-feedback: presses and toggles answer within 100-250ms; under reduced motion only colours change */
     /* + the search ×, the language rows and 정렬 tint like every control (src/Field/InputClearButton.tsx:129-131 a ghost Button; src/DropdownMenu/DropdownMenuItem.tsx:68-72 ':focus' paint; src/Selector/Selector.tsx:292-297 "The hover and pressed answers still come from the shared interaction overlay") */
     .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row, .field .clear, .langs button, .sort select { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
-    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span { transform: scale(0.96); } /* the filter chips press in too (DESIGN.md: chips press to 96%) */
+    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active { transform: scale(0.98); } /* Astryx Button, pressable: "scale(0.98)" */
+    .cond:active, .chip:active, .fp-chip:active span { transform: scale(0.96); } /* the filter chips press in too (DESIGN.md: chips press to 96%) */
     #views { position: relative; isolation: isolate; }
-    #views.slid::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-pill); background: var(--ink); }
+    #views.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-code); background: var(--seg-on); box-shadow: var(--lift-low); }
     #views.ready::before { transition: left 240ms var(--ease-out), width 240ms var(--ease-out); }
-    #views.slid button[aria-pressed="true"] { background: none; }
+    #views.slid button[aria-pressed="true"] { background: none; box-shadow: none; }
     ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
     /* rows in a Board redraw: staying rows glide (260ms ease-out), new ones fade in, gone ones leave faster;
        a row's old and new picture keep their top edge, so an opening row grows downwards */
@@ -930,7 +964,7 @@
     .skel .c-title { display: grid; gap: 0.5rem; }
     .skel .c-date { gap: 0.375rem; }
     .sk-head { width: 6rem; height: 0.875rem; }
-    .sk-btn { width: 9rem; height: var(--tap); border-radius: var(--r-ctl); }
+    .sk-btn { width: 9rem; height: var(--ctl-h); border-radius: var(--r-ctl); }
     .sk-pill { width: 3.5rem; height: 1.5rem; border-radius: var(--r-pill); }
     .sk-name { width: min(15rem, 70%); height: 1rem; }
     .sk-sub { width: min(26rem, 95%); height: 0.75rem; }
@@ -966,6 +1000,9 @@
     .foot-fold[open] summary::before { transform: rotate(45deg); }
     @media (hover: hover) { .foot-fold summary:hover { color: var(--ink); } }
     @media (max-width: 599px) { .foot-fold summary { min-height: var(--tap); } }
+    /* an icon button's name in a bubble (app.mjs; Astryx Tooltip): Ink ground, page-coloured text, fades in over 120ms */
+    .tip { position: fixed; top: 0; left: 0; z-index: 30; max-width: 18rem; padding: 0.25rem 0.5rem; border-radius: var(--r-code); background: var(--ink); color: var(--bg); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 500; line-height: 1.4; white-space: nowrap; pointer-events: none; transition: opacity 120ms ease-out; }
+    @starting-style { .tip { opacity: 0; } }
     /* the about text and latest Incident links are for readers that run no script (search crawlers); the Board replaces them */
     #about { max-width: 46rem; }
     .js #about { display: none; }
