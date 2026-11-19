@@ -488,10 +488,9 @@
       .fp-grid > .fp-dates { grid-column: auto; }
     }
     .fp-dates { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; }
-    .fp-note { flex-basis: 100%; margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
+    .fp-note { margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     .fp-label { padding: 0; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
     .fp-dates input { min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); } /* the dates are the panel's only fields: they keep a field's edge (Astryx TextInput) */
-    .fp-grid > .fp-zero-note { grid-column: 1 / -1; margin-top: -0.5rem; } /* right under the chips it explains */
     .fp-checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .fp-checks legend { flex-basis: 100%; margin-bottom: 0.375rem; }
     .fp-chip { position: relative; display: inline-flex; }
@@ -503,7 +502,7 @@
     .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
     @media (hover: hover) { .fp-chip:hover input:not(:checked) + span { background: var(--ctl-hover); } } /* a chip under the pointer says so (src/Token/Token.tsx:442 interactionOverlayStyles.backgroundImage) */
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .fp-chip.zero span { border-style: dashed; border-color: var(--edge); background: none; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
+    .fp-chip.zero input:not(:checked) + span { border: 1px dashed var(--mid-ink); background: var(--mid-wash); color: var(--mid-ink); } /* adding it would leave nothing: the caution tone with a dashed edge, seen at once (owner, 11-19), and the same under the pointer; ink on wash 8.7:1 by day, 6.7:1 by night (measured) */
     /* a chosen chip carries a tick as well as its fill (Astryx ToggleButton, Best Practices: "Filled/colored icon for pressed
        state so users see current state at a glance"), so the state never rests on colour alone */
     .fp-chip input:checked + span::before { content: ""; flex: none; width: 0.3125rem; height: 0.5625rem; margin: -0.125rem 0.5rem 0 0.0625rem; border: solid currentColor; border-width: 0 2px 2px 0; rotate: 45deg; }
@@ -516,14 +515,19 @@
     .fp-seg input:checked + span { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
     @media (hover: hover) { .fp-seg label:hover input:not(:checked) + span { background: var(--ctl-hover); color: var(--ink); } }
     .fp-seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
-    .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+    /* the footer: the groups' notes on the left, 필터 초기화 / 필터 적용 on the right (owner, 11-19) */
+    .fp-foot { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+    .fp-notes { flex: 1 1 20rem; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+    .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
     /* Astryx Button, primary: the accent fill (our Wayfinding Blue), the one per view (필터 적용); the page ground on it 5.76:1 by day, 9.84:1 by night */
     .btn.primary { background: var(--focus); border-color: var(--focus); color: var(--bg); font-weight: 700; }
     @media (hover: hover) { .btn.primary:hover:where(:not([aria-disabled="true"])) { background: color-mix(in srgb, var(--focus) 85%, var(--ink)); color: var(--bg); } }
     /* phones: the panel is a bottom sheet with 필터 적용 always in reach */
     @media (max-width: 599px) {
       .filters { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; max-height: 85vh; overflow-y: auto; margin: 0; border-radius: var(--r-frame) var(--r-frame) 0 0; padding-bottom: 0; }
-      .fp-actions { position: sticky; bottom: 0; margin: 1rem -1.25rem 0; padding: 0.75rem 1.25rem; background: var(--panel); }
+      .fp-foot { display: contents; } /* the notes scroll with the sheet above the buttons; only the buttons stay pinned */
+      .fp-notes { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+      .fp-actions { position: sticky; bottom: 0; margin: 1rem -1.25rem 0; padding: 0.75rem 1.25rem; border-top: 1px solid var(--rule); background: var(--panel); }
       /* the Board behind the sheet dims; a tap on it closes the sheet (app.mjs) */
       .filters:not([hidden]) { box-shadow: 0 0 0 100vmax var(--scrim); }
       .fp-head { position: sticky; top: -1.25rem; z-index: 1; margin: -1.25rem -1.25rem 0.75rem; padding: 1.25rem 1.25rem 0.75rem; background: var(--panel); border-bottom: 1px solid var(--rule); touch-action: none; }
@@ -559,6 +563,7 @@
     .js:not(.pr-off) body:has(#primer:not([hidden])) .statusline #guide-btn { display: none; } /* the first-visit line carries 읽는 법 자세히: one way in at a time */
     .fp-zero-note { display: none; }
     .has-zero .fp-zero-note { display: block; }
+    .fp-zero-note::before { content: ""; display: inline-block; width: 1.25em; height: 0.875em; margin-right: 0.375rem; vertical-align: -0.0625em; border: 1px dashed var(--mid-ink); border-radius: var(--r-marker); background: var(--mid-wash); } /* a dashed chip in small, so the note and the chips read together */
     @media (prefers-reduced-motion: no-preference) { .has-zero .fp-zero-note { animation: words-in 240ms var(--ease-out); } }
     .statusline { display: flex; align-items: center; justify-content: space-between; column-gap: 1rem; padding-top: 0.5rem; }
     #status { margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }

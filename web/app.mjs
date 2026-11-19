@@ -1715,11 +1715,9 @@ function filterPanel() {
   dates.append(field(f.from, input('date', 'from', filter.from)), field(f.to, input('date', 'to', filter.to)));
   grid.append(
     // Astryx Field, Best Practices: "Do: Wire inputID/descriptionID to htmlFor and aria-describedby on the inner control." (each note describes its group)
-    (() => { const set = checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)); set.append(Object.assign(el('p', 'fp-note', f.riskNote), { id: 'fp-risk-note' })); set.setAttribute('aria-describedby', 'fp-risk-note'); return set; })(),
+    (() => { const set = checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)); set.setAttribute('aria-describedby', 'fp-risk-note'); return set; })(),
     checks(f.flags, 'flag', [['kev', t.qfKev], ...LINK_KINDS.map((k) => [k, f.has[k]])], (v) => (v === 'kev' ? filter.kev : filter.has.includes(v))),
-    (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(Object.assign(el('p', 'fp-note', f.osNote), { id: 'fp-os-note' })); set.setAttribute('aria-describedby', 'fp-os-note'); return set; })(),
-    // What a dashed chip means: one full-width line right under the chips, and each dashed chip points to it (critique 13).
-    Object.assign(el('p', 'fp-note fp-zero-note', f.zeroNote), { id: 'fp-zero-note' }),
+    (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.setAttribute('aria-describedby', 'fp-os-note'); return set; })(),
     segments(f.cvss, 'cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin),
     segments(f.cve, 'cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve),
     dates,
@@ -1731,6 +1729,13 @@ function filterPanel() {
   reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()).then(refocus); filterPanel(); refocus(); });
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
+  // The groups' notes sit in the footer, left of the buttons (owner, 11-19); each group still points to its own note.
+  // The dashed-chip note shows only while a dashed chip does (countDraft), and each dashed chip points to it.
+  const notes = el('div', 'fp-notes');
+  notes.append(...[['fp-risk-note', f.riskNote], ['fp-os-note', f.osNote], ['fp-zero-note', f.zeroNote]]
+    .map(([id, text]) => Object.assign(el('p', id === 'fp-zero-note' ? 'fp-note fp-zero-note' : 'fp-note', text), { id })));
+  const foot = el('div', 'fp-foot');
+  foot.append(notes, actions);
   // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
   // Astryx Dialog's header: the title and an icon-only ghost close, named and with its hover hint.
   const close = Object.assign(el('button', 'btn fp-close'), { type: 'button' });
@@ -1740,7 +1745,7 @@ function filterPanel() {
   close.addEventListener('click', () => closePanel());
   const head = el('div', 'g-head fp-head');
   head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
-  form.replaceChildren(head, grid, actions);
+  form.replaceChildren(head, grid, foot);
   countDraft();
 }
 
