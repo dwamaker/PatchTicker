@@ -937,7 +937,16 @@
     .facts dd { margin: 0; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .details .sec-head, .details .fix-head, .details .cve-lines-head { margin: 1.5rem 0 0; font-size: calc(1rem * var(--ts)); font-weight: 700; line-height: 1.4; letter-spacing: -0.01em; color: var(--ink); }
     .details .sec-head + p, .details .fix-head + .fix-list, .details .sec-head + .cond-list, .details .cve-lines-head + .cve-lines { margin-top: 0.375rem; }
-    .details .facts + .sec-head, .details .why-line + .sec-head { margin-top: 1rem; }
+    .details .facts + .sec-head, .details .p-top + .sec-head, .details .why-line + .sec-head { margin-top: 1rem; }
+    /* Owner 11-19: an opened row's ring and tags move from its header to the panel's top (app.mjs p-side): beside the facts,
+       wrapping under them when the line is too narrow (phones, larger text); the header's copies step aside meanwhile. */
+    .p-top { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.75rem 2rem; }
+    .p-top > .facts { flex: 1 1 22rem; }
+    .p-side { flex: 0 1 24rem; display: flex; align-items: flex-start; gap: 0.75rem; min-width: 0; }
+    .p-side > .c-score { flex: none; } /* the ring keeps its size; the tags take what is left */
+    .p-prod { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+    .p-label { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; }
+    li:has(> .details:not([hidden]) > .p-top > .p-side) > .row-h > .row > :is(.c-score, .c-tags) { display: none; }
     .details > .sec-head:first-child { margin-top: 0; }
     .details .lead { max-width: 46rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
     .details .lead ~ .mentions { margin-top: 0.5rem; padding-top: 0; border-top: 0; }

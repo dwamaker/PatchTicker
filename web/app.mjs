@@ -2847,7 +2847,7 @@ function tagsCell(incident) {
   if (isGroup(incident)) cell.append(patchTag(), ' ');
   const os = new Set(Array.isArray(incident.summary?.platforms) ? incident.summary.platforms : []);
   const keys = lineKeys(incident, lang);
-  // Past five tags the row shows four and says how many more (foldTags); the opened row lists them all.
+  // Past five tags the row shows four and says how many more (foldTags); opened, the panel's top takes them over (p-side).
   const { shown: names, more } = foldTags(rowTags(incident, lang));
   const lastOs = names.findLastIndex((name) => os.has(name));
   // Spaces between badges keep screen readers from running the names together; the flex row hides them.
@@ -2880,7 +2880,7 @@ function dateCell(incident) {
 // Both views end with the Lead and every Mention, so links a CVE record gains later show up in either.
 // Critique P2 (11-19): what to do comes first in both views. The Normal panel keeps its small ID, score and date lines on
 // top as a header strip; the Easy panel opens on the red line and the action, and keeps those identifiers at its foot.
-// Since 11-19 (owner) both open on the row's tags as a 제품 line, so a filter is never a long scroll away.
+// Since 11-19 (owner) both open on the row's ring and tags, moved down from the header (p-side).
 function details(incident, onStrip = false) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
@@ -2926,11 +2926,20 @@ function details(incident, onStrip = false) {
     if (!idsAtFoot) facts.push([reason.kind === 'kev' ? t.kevReason : t.attackSource.replace(/[:：]\s*$/, ''), [...why.childNodes]]);
   }
   const ids = facts.length ? [factList(facts)] : [];
-  // Owner 11-19: the row's tags as working filters with the facts, so no one scrolls past a long panel to pick one. In the
-  // Easy view the identifiers sit at the foot, so the tags get their own one-line list on top there.
+  // Owner 11-19: opening a row moves its ring and tags from the header down into the panel's top, the tags as working
+  // filters, so no one scrolls past a long panel to pick one; CSS hides the header's while this group is drawn. Beside the
+  // facts in the Normal view (under them when the line is too narrow), on top alone in the Easy view (facts at its foot).
+  const side = el('div', 'p-side');
+  side.append(scoreCell(incident));
   const tags = tagLine(incident);
-  if (!idsAtFoot) head.push(...(tags.length ? [factList([...facts, [t.tagsHead, tags]])] : ids));
-  else if (tags.length) head.push(factList([[t.tagsHead, tags]]));
+  if (tags.length) {
+    const products = el('div', 'p-prod');
+    products.append(el('span', 'p-label', t.tagsHead), ...tags);
+    side.append(products);
+  }
+  const block = el('div', 'p-top');
+  block.append(...(idsAtFoot ? [] : ids), side);
+  head.push(block);
   if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
   if (why && idsAtFoot) head.push(why);
   // Public exploit code without reported attacks: no sign, a red line (owner, 2026-11-09); in the Easy view over the
@@ -3018,7 +3027,7 @@ function details(incident, onStrip = false) {
   return [...parts, leadLine(incident), ...list, mentions, shareLine(incident)];
 }
 
-// The opened row's 제품 fact (owner, 11-10; on top since 11-19): each tag as a button that adds its Product or OS to the
+// The opened row's 제품 line (owner, 11-10; at the panel's top since 11-19): each tag as a button that adds its Product or OS to the
 // picks (or takes it out again), or searches a device name; only here, since the closed row is one button already.
 // A release group's 함께 공개 leads it as on the row, as a mark, not a button.
 // Past five tags the line shows four and a 나머지 N개 보기 toggle that opens the rest in place (foldTags); a pressed tag
