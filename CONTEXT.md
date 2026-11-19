@@ -80,8 +80,9 @@ exploited Incidents took the first places whatever their score, two CVSS 6.1 fla
 as 9, one with a provisional level as its level's lowest score, 9 or 7); how widely the product is used, by its tier
 of reach on the hand-kept list (1 on most computers or phones, 2 the standard of its field, 3 known inside it; a
 product on no list that the Summary calls widely used counts as 3); urgency (exploited counts most, any other 최고
-row a little); then how new it is, falling evenly to nothing at seven days old (one day weighs about a third of a CVSS
-point: a fresh 9.0 passes a 9.8 five days old, a fresh 7.0 does not). Discussion, curators and Mentions only break
+row a little); then how new it is, falling evenly to nothing at seven days old (owner, 2026-11-19: "최신 소식이 위에", raised the same
+day when no Incident of the day reached the list: one day weighs about 0.7 of a CVSS point, so a fresh 7.0 passes a
+9.8 five days old, and a fresh 9.8 passes an exploited 9.8 three days old). Discussion, curators and Mentions only break
 ties. Each Incident already chosen of the same vendor and category of the hand-kept list costs the next one of them
 two CVSS points, so one release does not fill the list. Twelve in all. This replaced every exploited one first
 (2026-11-10), the lifted best-scored well-known row per product (2026-11-11, 2026-11-16) and the tier order

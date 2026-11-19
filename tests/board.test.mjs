@@ -460,12 +460,12 @@ test('Mentions count up to ten and only break ties: a 9.8 release with 300 stays
 });
 
 test('the Highlights run by score whatever the sort', () => {
-  // The newer 8.5 heads the newest-first list; by score the older 9.0 leads (2.5 points and 긴급's 3 over two days' 2.86).
+  // The older 9.0 heads the risk and CVSS sorts; by score the newer 8.5 leads (two days' 7.14 over 2.5 points and 긴급's 3).
   const older = { ...incident('CVE-2026-221', daysAgo(3)), cvss: 9 };
   const newer = { ...incident('CVE-2026-222', daysAgo(1)), cvss: 8.5, mentions: [{ kind: 'cve_record', url: '' }, { kind: 'advisory', url: '' }] };
-  assert.ok(highlightScore(older, NOW) > highlightScore(newer, NOW));
+  assert.ok(highlightScore(newer, NOW) > highlightScore(older, NOW));
   for (const sort of ['new', 'risk', 'cvss']) {
-    assert.deepEqual(ids(filterBoard([older, newer], [], '', NOW, { sort }).highlights), ['CVE-2026-221', 'CVE-2026-222'], sort);
+    assert.deepEqual(ids(filterBoard([older, newer], [], '', NOW, { sort }).highlights), ['CVE-2026-222', 'CVE-2026-221'], sort);
   }
 });
 
@@ -554,7 +554,7 @@ test('Highlights of the shared case: one score, the same pick as the collector',
   assert.deepEqual(ids(filterBoard(kase.kev_week.incidents, [], '', now).highlights), kase.kev_week.expected);
   // Owner, 11-17: an old event is no Highlight (all CVEs two or more years old, or an event date over 14 days back).
   assert.deepEqual(ids(filterBoard(kase.old_events.incidents, [], '', now).highlights), kase.old_events.expected);
-  // Owner, 11-19: an advisory's Critical without a score is a candidate; date counts last, so a 9.8 five days old leads a fresh 7.2.
+  // Owner, 11-19: an advisory's Critical without a score is a candidate; recency at 25 puts a fresh 7.2 over a 9.8 five days old.
   assert.deepEqual(ids(filterBoard(kase.severity.incidents, [], '', now).highlights), kase.severity.expected);
 });
 
@@ -575,11 +575,16 @@ test('an advisory rated Critical or High sets a provisional level, shown as pend
 });
 
 // Owner, 11-19 ("매일같이 터지는데, 최신소식이 위에 올라와야"): recency falls in a straight line over the seven days.
-test('date counts last: a fresh 9.0 beats a 9.8 five days old, a fresh 7.0 does not', () => {
-  const fresh9 = { ...incident('CVE-2026-960', daysAgo(0)), cvss: 9.0 }; // 45 + 3 + 10
-  const older = { ...incident('CVE-2026-961', daysAgo(5)), cvss: 9.8 }; // 49 + 3 + 2.86
-  const fresh7 = { ...incident('CVE-2026-962', daysAgo(0)), cvss: 7.0 }; // 35 + 10
-  assert.deepEqual(ids(filterBoard([fresh7, older, fresh9], [], '', NOW).highlights), ['CVE-2026-960', 'CVE-2026-961', 'CVE-2026-962']);
+// Owner, 11-19 ("최신 소식이 위에"): recency 25, about 0.71 CVSS point a day.
+test('recency: a fresh 9.0 and a fresh 7.0 both beat a 9.8 five days old; a fresh 9.8 beats an exploited 9.8 three days old', () => {
+  const fresh9 = { ...incident('CVE-2026-960', daysAgo(0)), cvss: 9.0 }; // 45 + 3 + 25 = 73
+  const older = { ...incident('CVE-2026-961', daysAgo(5)), cvss: 9.8 }; // 49 + 3 + 7.14 = 59.14
+  const fresh7 = { ...incident('CVE-2026-962', daysAgo(0)), cvss: 7.0 }; // 35 + 25 = 60
+  assert.deepEqual(ids(filterBoard([older, fresh7, fresh9], [], '', NOW).highlights), ['CVE-2026-960', 'CVE-2026-962', 'CVE-2026-961']);
+  const freshPlain = { ...incident('CVE-2026-963', daysAgo(0)), cvss: 9.8 }; // 49 + 3 + 25 = 77
+  const kev3 = { ...incident('CVE-2026-964', daysAgo(3)), cvss: 9.8, kev: true }; // 49 + 12 + 14.29 = 75.29
+  const kev2 = { ...incident('CVE-2026-965', daysAgo(2)), cvss: 9.8, kev: true }; // 49 + 12 + 17.86 = 78.86
+  assert.deepEqual(ids(filterBoard([kev3, freshPlain, kev2], [], '', NOW).highlights), ['CVE-2026-965', 'CVE-2026-963', 'CVE-2026-964']);
   // the gap between two rows does not change as time passes (rows.json's pick still holds minutes later)
   const gap = (t) => highlightScore(fresh9, t) - highlightScore({ ...older, published: daysAgo(1) }, t);
   assert.ok(Math.abs(gap(NOW) - gap(NOW + 3600000)) < 1e-9);

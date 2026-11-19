@@ -235,7 +235,7 @@ def published_at(incident):
 # The Highlight score: a port of highlightScore in web/board.mjs, where its parts are explained (owner, 11-19: score,
 # wide use, urgency, date, in that order; tests/fixtures/board/rows-case.json keeps the two in step). rows.json keeps the
 # week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more.
-RECENCY = 10  # when published at now, falling in a straight line to 0 at RECENCY_DAYS old; one day ~0.29 CVSS point
+RECENCY = 25  # when published at now, falling in a straight line to 0 at RECENCY_DAYS old; one day ~0.71 CVSS point
 RECENCY_DAYS = 7  # the Highlight window (RECENT_DAYS in collector/cycle.py)
 SEVERITY_FLOOR = {"highest": HIGHEST_CVSS, "high": 7}  # a provisional level counts as its band's floor
 WIDE_USE = {1: 14, 2: 10, 3: 5}  # by tier_of; no label 0
