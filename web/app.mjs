@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
@@ -57,6 +57,7 @@ const TEXT = {
     aliasHint: (w, names) => `‘${w}’${ro(w)} 검색해 ${names.join(', ')}도 함께 찾았습니다.`,
     aliasTextHint: (w, names) => `제품 이름이 ${names.join(', ')}인 사건은 없어 본문에서 찾았습니다.`,
     searched: (cve) => `검색한 ${cve}`, notExploited: '공격 보고 없음',
+    answer: (who, when, n) => `${who}: ${when ? `${when} ` : ''}${n}건`, answerWeek: '최근 7일', answerHeld: '최근 90일',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
@@ -110,6 +111,7 @@ const TEXT = {
     aliasHint: (w, names) => `‘${w}’ was also searched as ${names.join(', ')}.`,
     aliasTextHint: (w, names) => `No product is named ${names.join(', ')}, so the text was searched for it.`,
     searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
+    answer: (who, when, n) => `${who}: ${n} Incident${n === 1 ? '' : 's'}${when ? ` ${when}` : ''}`, answerWeek: 'in the last 7 days', answerHeld: 'in the last 90 days',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
@@ -163,6 +165,7 @@ const TEXT = {
     aliasHint: (w, names) => `「${w}」で ${names.join('、')} もあわせて検索しました。`,
     aliasTextHint: (w, names) => `製品名が ${names.join('、')} のインシデントはないため、本文から探しました。`,
     searched: (cve) => `検索した ${cve}`, notExploited: '攻撃の報告なし',
+    answer: (who, when, n) => `${who}: ${when ? `${when} ` : ''}${n}件`, answerWeek: '直近7日', answerHeld: '直近90日',
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
     mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
     normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
@@ -864,16 +867,22 @@ function pageText() {
   $('theme').setAttribute('aria-pressed', theme() === 'dark');
 }
 
-// The fields' hints: short ones on phones and from 125% text; on a phone while the copy of 필터 and 정렬 rides beside
-// it, the search field says only "검색" (critique 13: the hint was cut at 320px).
+// The fields' hints: short ones on phones and from 125% text; where even that does not fit beside 필터 and 정렬, the
+// search field says only "검색" (critique 13: the hint was cut at 320px). Measured, since language and text size decide it.
+const measure = document.createElement('canvas').getContext('2d');
 function searchPlaceholder() {
   const t = TEXT[lang];
   const narrow = phoneSheet();
   for (const node of document.querySelectorAll('[data-t-placeholder]')) {
     const key = node.dataset.tPlaceholder;
-    node.placeholder = node.id === 'search' && narrow && stuckOn ? t.search : ((narrow || textPct() >= 125) && t[`${key}Short`]) || t[key];
+    node.placeholder = ((narrow || textPct() >= 125) && t[`${key}Short`]) || t[key];
+    if (node.id !== 'search') continue;
+    measure.font = getComputedStyle(node).font;
+    const fits = (text) => measure.measureText(text).width <= node.clientWidth;
+    if (!fits(node.placeholder)) node.placeholder = fits(t[`${key}Short`]) ? t[`${key}Short`] : t.search;
   }
 }
+addEventListener('resize', searchPlaceholder);
 
 // The 기본|쉬운 설명 switch: one dark pill under the pressed side that slides across when the view changes.
 function placePill() {
@@ -928,7 +937,7 @@ function statusLine(list) {
 
 // 이 현황판 읽는 법 opens only on request. A first visit gets one line instead (the three risk signs and the ring, with
 // 읽는 법 자세히), so the first screen still shows Incidents (critique 9: the full guide pushed the first row below the
-// fold). Closing that line or the full guide marks the guide as seen; the line never comes back.
+// fold). Showing that line once marks the guide as seen (critique 11-17); the line never comes back.
 const SAVED_GUIDE = 'vr-guide';
 let guideOpen = false;
 // Storage blocked: closed, since it could never be dismissed for good, so the 읽는 법 button carries it alone.
@@ -993,7 +1002,9 @@ function guide() {
   views.append(el('span', '', t.normal), el('span', 'on', t.easy));
   item(g.easy, views);
   item(g.filter, el('span', 'g-word', g.filterWord));
-  box.replaceChildren(head, list, el('p', 'g-note', g.note));
+  // What the Board holds (owner's notice, 11-17), here and in the footer since it left the top (critique 11-17).
+  const facts = collectionFacts(document.documentElement.dataset.collectedSince, Date.now(), { since: t.noticeSince.join(' '), keep: t.noticeKeep });
+  box.replaceChildren(head, list, el('p', 'g-note', g.note), el('p', 'g-note', facts));
 }
 
 // The first-visit line: the row's own risk signs and ring, each with a few words, then 읽는 법 자세히 and a close button.
@@ -1028,6 +1039,8 @@ function primer() {
   close.append(el('span', 'x'));
   close.addEventListener('click', () => fold($('primer'), false, () => { setGuide(false); $('guide-btn').focus({ preventScroll: true }); }));
   box.replaceChildren(keys, more, close);
+  // Shown once (critique 11-17): the next visit has only 읽는 법, as after closing it. Marked once the Board is drawn.
+  if (updated) store(SAVED_GUIDE, 'seen');
 }
 
 // The rest of the 90 days the store keeps (every month index.json lists), merged into the week already on screen.
@@ -1115,9 +1128,13 @@ let highlightedNow = new Set(); // every Highlight, pinned or behind 주요 사�
 // a linked row's place in the same items, so the two never disagree.
 function boardLists() {
   const { highlights: chosen, list, variants, inText } = filtered();
+  // A product or search filter is a question: no pinned block repeating the list's own rows above it, one sentence
+  // answering instead (answerLine; critique 11-17, P1). The list still edges its Highlights (highlightedNow). A search
+  // counts from the moment it is typed or restored, so no block shows while it waits for the full week (applied).
+  const answering = Boolean(filter.picks.length || filter.query);
   // The pins go to four different vendors and show by importance, whatever the visitor's sort (owner, 11-16; pinOrder);
   // 주요 사건 더 보기 appends the rest below them, a pinned vendor's other rows first, then by importance too.
-  const { pins, rest: extra } = pinOrder(chosen);
+  const { pins, rest: extra } = answering ? { pins: [], rest: [] } : pinOrder(chosen);
   const highlights = [...pins, ...(pinAll ? extra : [])];
   const pinned = new Set(highlights);
   // Owner, 11-16: the list is the whole Board in the visitor's order, Highlights included at their own place (edged in
@@ -1127,14 +1144,31 @@ function boardLists() {
   // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
   // A Highlight never folds (owner, 11-17): it stands at its own place, banded, and its fold counts the rest.
   const folded = filter.picks.length || applied() ? rest : foldByVendor(rest, undefined, undefined, (i) => highlightedNow.has(i));
-  return { list, variants, inText, extra, highlights, pinned, rest, folded, items: folding ? folded : rest };
+  return { list, variants, inText, extra, highlights, pinned, rest, folded, items: folding ? folded : rest, answering };
+}
+
+// The filtered Board's answer, one sentence over its list: "Gitea: 최근 7일 2건 · 위험 2 · 공격 보고 없음". The period is the
+// one searched (the week, or the 90 days once the older months are in); a date condition, shown as a chip, replaces it.
+function answerLine(list) {
+  const t = TEXT[lang];
+  const c = answerCounts(list);
+  const n = (x) => x.toLocaleString(lang);
+  const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || OSES.find((o) => `os:${o.toLowerCase()}` === id) || id);
+  // Two names, then a count: a saved filter of many Products keeps the sentence to a line or two (the chips list them all).
+  const shown = names.length > 3 ? [names.slice(0, 2).join(', '), t.moreProducts(names.length - 2)].join(' ') : names.join(', ');
+  const who = [shown, ...(applied() ? [`‘${applied()}’`] : [])].filter(Boolean).join(', ');
+  const when = filter.from || filter.to ? '' : olderMonths.length ? t.answerWeek : t.answerHeld;
+  const easy = defaultView === 'easy';
+  const levels = ['highest', 'high', 'notice'].filter((l) => c[l]).map((l) => `${easy ? t[l] : t.levels[l]} ${n(c[l])}`);
+  const attacked = c.exploited ? `${(easy && t.kevReasonEasy) || t.kevReason} ${n(c.exploited)}` : t.notExploited;
+  return [t.answer(who, when, n(c.total)), ...levels, attacked].join(' · ');
 }
 
 function render() {
   pageText();
   feedRows();
   if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
-  const { list, variants, inText, extra, highlights, pinned, rest, folded, items } = boardLists();
+  const { list, variants, inText, extra, highlights, pinned, rest, folded, items, answering } = boardLists();
   shownList = list;
   $('search-clear').hidden = !$('search').value; // the field is also filled from the address and Back
   showStatus();
@@ -1155,11 +1189,9 @@ function render() {
   const count = panelCount();
   $('filter-count').textContent = count ? String(count) : '';
   $('filter-count').hidden = !count;
-  $('stuck-count').textContent = count ? String(count) : '';
-  $('stuck-count').hidden = !count;
-  if (count && count !== shownCount) { pop($('filter-count')); if (stuckOn) pop($('stuck-count')); }
+  if (count && count !== shownCount) pop($('filter-count'));
   shownCount = count;
-  for (const id of ['filter-btn', 'stuck-filter']) $(id).setAttribute('aria-expanded', !$('filters').hidden);
+  $('filter-btn').setAttribute('aria-expanded', !$('filters').hidden);
   // 묶음 풀기 / 묶어 보기: only where a fold exists to undo or to bring back.
   $('fold-toggle').hidden = folded === rest || !folded.some((i) => i.fold);
   $('fold-toggle').textContent = folding ? TEXT[lang].unfold : TEXT[lang].refold;
@@ -1175,11 +1207,14 @@ function render() {
     // A picked Product also shows Incidents filed under a variant of its name (board.mjs, critique 14); say how many.
     ...(variants && list.length ? [el('p', 'pick-note', TEXT[lang].variants(variants))] : []));
   $('conds').replaceChildren(...conds, ...(conds.length ? clearAll : []));
+  // Not a live region: #announce already says the count; with nothing found the empty state answers instead. While the
+  // data loads it stands empty, keeping its line (index.html), so the rows do not move when the answer arrives.
+  $('answer').hidden = !answering || (updated && !list.length) || Boolean(loadError);
+  const waiting = filter.query && !applied(); // the list is not the search's yet
+  $('answer').textContent = $('answer').hidden || !updated || waiting ? '' : answerLine(list);
   $('all-head').hidden = !list.length;
   $('all-head').textContent = TEXT[lang].fp.sorts[filter.sort]; // the list's heading says its order
   $('sort').replaceChildren(...SORTS.map((key) => Object.assign(new Option(TEXT[lang].fp.sorts[key], key), { selected: key === filter.sort })));
-  $('stuck-sort').replaceChildren(...[...$('sort').options].map((o) => o.cloneNode(true)));
-  $('stuck-sort').value = filter.sort;
   // Keys, not ids: a Highlight's list copy opens on its own (rowKey), so 모두 펼치기 counts each drawn row once.
   visibleIds = [...highlights.map((i) => i.id), ...itemKeys(items.slice(0, shown))];
   drawn = { result: lastBoard.result, folding, pinAll, items, shown };
@@ -1530,7 +1565,7 @@ $('filters').addEventListener('change', countDraft);
 
 function applyPanel(event) {
   event.preventDefault();
-  const fromCopy = panelFrom?.opener === $('stuck-filter');
+  const fromCopy = panelFrom?.stuck;
   const drawn = update(panelDraft());
   closePanel(true); // the results are the answer; the applied conditions stay visible as chips
   if (fromCopy) drawn.then(toBoardHead); // opened mid-list: the new results start under the frozen row
@@ -1564,14 +1599,15 @@ function sheetInert(on) {
 // The panel remembers who opened it and where the page stood (critique 13: closing it threw the reader to the top and
 // the focus to the bar's 필터). Closed without 필터 적용, both come back.
 let panelFrom = null;
+let stuckOn = false; // placeJump: the reader is mid-list, the Board's head gone under the frozen row
 const phoneSheet = () => matchMedia('(max-width: 599px)').matches;
 function openPanel(opener) {
   const form = $('filters');
-  panelFrom = { opener, y: scrollY };
-  // A phone's bottom sheet, or (wider) the panel opened from the frozen copy floating under the frozen row: a modal
-  // dialog over the page, which stays where it was. From the bar on wider screens it opens inline under the bar.
+  panelFrom = { opener, y: scrollY, stuck: stuckOn };
+  // A phone's bottom sheet, or (wider) the panel opened from the frozen row mid-list floating under it: a modal dialog
+  // over the page, which stays where it was. At the top of the page on wider screens it opens inline under the fields.
   // Floating is set before it shows, or the inline panel would push the page (scroll anchoring) for a frame.
-  const floating = opener === $('stuck-filter') && !phoneSheet();
+  const floating = stuckOn && !phoneSheet();
   form.classList.toggle('floating', floating);
   form.hidden = false;
   filterPanel();
@@ -1595,10 +1631,9 @@ function closePanel(applied = false) {
   sheetInert(false);
   $('filters').hidden = true;
   $('filters').classList.remove('floating');
-  for (const id of ['filter-btn', 'stuck-filter']) $(id).setAttribute('aria-expanded', 'false');
+  $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
-  const back = from?.opener?.offsetParent ? from.opener : $('filter-btn'); // the copy may have left meanwhile
-  back.focus({ preventScroll: true });
+  $('filter-btn').focus({ preventScroll: true });
 }
 
 // The Board's head (the bar with 주요 사건) just under the frozen row: where a new order or filter starts reading.
@@ -1732,18 +1767,14 @@ document.addEventListener('keydown', (event) => {
   event.preventDefault();
   $('search').focus();
 });
-// The frozen copy of 정렬: a new order is read from its start, so the Board's head comes up under the frozen row
-// (critique 13: the reader was left mid-list in the new order).
-$('stuck-sort').addEventListener('change', (event) => sortBy(event.target.value).then(toBoardHead));
-// The frozen copy of 필터 opens the panel where the reader is: a sheet on a phone, a panel under the frozen row wider.
-$('stuck-filter').addEventListener('click', () => {
-  if ($('filters').hidden) openPanel($('stuck-filter'));
-  else $('filters').querySelector('input, select, button')?.focus();
+// 정렬 changed mid-list (the frozen row): a new order is read from its start, so the Board's head comes up under the
+// frozen row (critique 13: the reader was left mid-list in the new order).
+$('sort').addEventListener('change', (event) => {
+  const mid = stuckOn;
+  sortBy(event.target.value).then(() => mid && toBoardHead());
 });
-$('sort').addEventListener('change', (event) => sortBy(event.target.value));
 function sortBy(sort) {
   $('sort').value = sort;
-  $('stuck-sort').value = sort;
   const drawn = update({ sort });
   // The count does not change with the order, so say the order itself (the count line stays quiet).
   $('announce').textContent = TEXT[lang].sorted(TEXT[lang].fp.sorts[sort]);
@@ -1764,6 +1795,7 @@ $('expand-all').addEventListener('click', () => boardTransition(() => {
   render();
   $('expand-all').focus({ preventScroll: true });
 }));
+// 필터 opens the panel where the reader is: a sheet on a phone, inline at the top, floating under the frozen row mid-list.
 $('filter-btn').addEventListener('click', () => ($('filters').hidden ? openPanel($('filter-btn')) : closePanel()));
 function setPrefs(open) {
   const box = $('prefs');
@@ -1888,9 +1920,8 @@ function placeJump() {
   $('jump-up').classList.toggle('off', scrollY < room);
   $('jump-down').classList.toggle('off', scrollY + innerHeight > document.documentElement.scrollHeight - room);
   document.body.classList.toggle('scrolled', scrollY > 40);
-  // the bar's 필터 and 정렬 have passed under the frozen row: their copy shows at the end of the search line
-  const past = $('board-start').getBoundingClientRect().bottom < stickyPart().getBoundingClientRect().bottom;
-  stuckTools(past);
+  // the Board's head has passed under the frozen row: 필터 opens a floating panel, a new order scrolls back to the head
+  stuckOn = $('board-start').getBoundingClientRect().bottom < stickyPart().getBoundingClientRect().bottom;
   // 맨 위로 wears how far down the page is, as a ring that fills clockwise
   const room2 = document.documentElement.scrollHeight - innerHeight;
   $('jump-up').style.setProperty('--read', room2 > 0 ? Math.min(scrollY / room2, 1).toFixed(3) : 0);
@@ -1917,32 +1948,6 @@ for (const [id, sign] of [['step-up', -1], ['step-down', 1]]) {
   });
 }
 let jumpIdle;
-// The frozen copy of 필터 and 정렬 rises into the frozen row as the bar passes under it (owner: "자연스럽게 올라가는").
-// It rises 10px into place while its width opens (280ms), and sinks and closes faster when the bar comes back.
-// Reduced motion: it simply appears.
-let stuckOn = false;
-function stuckTools(on) {
-  if (on === stuckOn) return;
-  stuckOn = on;
-  const box = $('stuck-tools');
-  box.sliding?.cancel();
-  // Tab meets one 필터 and one 정렬 (critique 13): the bar's originals leave the tab order while the copy shows, and a
-  // focus inside the leaving copy moves to the original it stands for.
-  for (const id of ['filter-btn', 'sort']) if (on) $(id).setAttribute('tabindex', '-1'); else $(id).removeAttribute('tabindex');
-  if (!on && box.contains(document.activeElement)) (document.activeElement === $('stuck-sort') ? $('sort') : $('filter-btn')).focus({ preventScroll: true });
-  box.hidden = false;
-  searchPlaceholder();
-  const done = () => { box.style.overflow = ''; box.sliding = null; box.hidden = !stuckOn; measureStick(); };
-  if (reducedMotion.matches) return done();
-  // Its width opens with it, so the search field gives way smoothly (owner kept this after critique 13); the controls
-  // sit at the right edge of the opening box, so they are under the pointer from the first frame.
-  const full = `${box.scrollWidth}px`;
-  const shut = { width: '0px', opacity: 0, transform: 'translateY(10px)' };
-  const open = { width: full, opacity: 1, transform: 'none' };
-  box.style.overflow = 'clip';
-  box.sliding = box.animate(on ? [shut, open] : [open, shut], { duration: on ? 280 : 180, easing: on ? EASE_OUT : 'cubic-bezier(0.4, 0, 1, 1)' });
-  box.sliding.onfinish = done;
-}
 // 맨 위로 / 맨 아래로: the arrow leaves the way the page will go and comes back from the other side.
 function launch(button, up) {
   if (reducedMotion.matches) return;
@@ -1997,13 +2002,6 @@ $('search').addEventListener('focus', () => ensureFull().catch(() => {})); // un
 // The clear button (owner, 11-17; index.html #search-clear): shown while the field holds text (render() and every
 // keystroke), it empties the field, redraws the whole list and gives the field the focus back. Firefox draws no X of its own.
 const syncClear = () => { $('search-clear').hidden = !$('search').value; };
-// The collection notice (index.html #collect-note; owner, 11-17): closing it hides it now and on later visits, by its
-// start date (a later notice shows again); without storage it simply shows again. Focus goes on to the search.
-$('cn-close').addEventListener('click', () => {
-  document.documentElement.classList.add('cn-off');
-  try { localStorage.setItem('vr-note', document.documentElement.dataset.collectedSince); } catch {}
-  $('search').focus({ preventScroll: true });
-});
 $('search').addEventListener('input', syncClear);
 $('search-clear').addEventListener('click', () => {
   $('search').value = '';

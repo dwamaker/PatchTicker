@@ -532,6 +532,17 @@ export function statusCounts(incidents, since, now = new Date()) {
     week: shown.filter((i) => !since || Date.parse(i.first_seen) >= Date.parse(since)).length };
 }
 
+// The answer a product or search filter gives (critique 11-17, P1): how many Incidents, how many at each Risk level, how
+// many attacked, counted from the very list the Board draws under it.
+export function answerCounts(list) {
+  const counts = { total: list.length, highest: 0, high: 0, notice: 0, exploited: 0 };
+  for (const i of list) {
+    counts[riskLevel(i)] += 1;
+    if (isExploited(i)) counts.exploited += 1;
+  }
+  return counts;
+}
+
 // A command or stopgap a reader may paste into a terminal: it starts with a package manager or service tool.
 // Anything else ("PasswordAuthentication no") is a line for a config file and must not look runnable.
 const SHELL = /^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|snap|flatpak|winget|choco|npm|pnpm|yarn|pip3?|pipx|gem|cargo|go|composer|docker|podman|kubectl|helm|systemctl|service|rc-service|launchctl)\s/;

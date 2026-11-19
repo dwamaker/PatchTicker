@@ -835,6 +835,20 @@ Restrained outlined buttons for theme, language and copying a command.
     a WordPress fold is no company.
   - List head on phones: gap 0.75rem keeps 최신순 · 모두 펼치기 · 묶음 풀기 on one line at 320px in Korean (all three
     sorts); a longer English heading wraps 묶음 풀기 under it at the right edge, never on top of 모두 펼치기.
+- **Critique 11-17 (distill, 11-19; supersedes the frozen copy of 필터 and 정렬 above):**
+  - A product or search filter is a question: the 주요 사건 block is not drawn (the list still edges its Highlights), and
+    one sentence over the list answers it, as heavy as a row title: "Gitea: 최근 7일 2건 · 위험 2 · 공격 보고 없음" (`answerLine`,
+    counts from `answerCounts`; the period is the one searched, none under a date condition; the risk words of the view).
+    More than three picks name two, then "외 N개 제품". A search counts from the moment it is typed or restored (no block
+    while it waits for the full week). Not a live region; with no result the empty state answers. The loading Board
+    under such a filter (head script `pf-on`) draws no Highlight frames and keeps the answer's line, so nothing moves
+    when the rows arrive (a two-line answer on a phone still moves the list by one line).
+  - 필터 and 정렬 live at the end of the search line at every width (one control each, no copy, no rise motion); mid-list
+    (the Board's head under the frozen row) 필터 opens the floating panel and a new order scrolls back to the head. Up to
+    1023px 필터 is its icon, and from 768px the search line takes the larger share (1 : 1.25) beside the product field;
+    the search hint is measured: the long one, else the short one, else "검색".
+  - The collection notice left the top: it is the first of the footer's notes (no close button) and a note of the guide.
+  - The first-visit line shows once: drawing it with the Board marks the guide as seen.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts

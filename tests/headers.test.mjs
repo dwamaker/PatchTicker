@@ -71,15 +71,36 @@ test("the inline script starts the first load's four files, and getJson takes ea
 test("the inline script draws the first-visit line from the first paint only while the guide is unseen (CLS, 11-17)", async () => {
   const vm = await import('node:vm');
   const early = html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1];
-  const classes = (saved) => {
+  const classes = (saved, hash = '') => {
     const added = [];
-    vm.runInContext(early, vm.createContext({ location: { hostname: 'localhost' }, fetch: () => Promise.resolve(), navigator: { language: 'ko-KR' },
+    vm.runInContext(early, vm.createContext({ location: { hostname: 'localhost', hash }, URLSearchParams, fetch: () => Promise.resolve(), navigator: { language: 'ko-KR' },
       localStorage: { getItem: (k) => saved[k] ?? null },
       document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) }, style: { setProperty() {} } } } }));
     return added;
   };
   assert.ok(!classes({}).includes('pr-off')); // a first visit: app.mjs will show it, so the page paints it
   assert.ok(classes({ 'vr-guide': 'seen' }).includes('pr-off'));
+});
+
+// Critique 11-17: a Board opened on a product or search filter answers in one line and draws no Highlights, so its
+// loading skeleton draws no Highlight frames either (pf-on), whether the filter comes from the address or was saved.
+test('the inline script marks a page that will open on a product or search filter (pf-on)', async () => {
+  const vm = await import('node:vm');
+  const early = html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1];
+  const classes = (saved, hash = '') => {
+    const added = [];
+    vm.runInContext(early, vm.createContext({ location: { hostname: 'localhost', hash }, URLSearchParams, fetch: () => Promise.resolve(),
+      navigator: { language: 'ko-KR' }, localStorage: { getItem: (k) => saved[k] ?? null },
+      document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) }, style: { setProperty() {} } } } }));
+    return added.includes('pf-on');
+  };
+  assert.equal(classes({}), false);
+  assert.equal(classes({}, '#p=gitea:gitea'), true);
+  assert.equal(classes({}, '#q=openssh'), true);
+  assert.equal(classes({}, '#r=highest'), false); // a panel condition alone keeps the Highlights
+  assert.equal(classes({ 'vr-filter': 'p=gitea:gitea' }), true); // the saved filter, with no address
+  assert.equal(classes({ 'vr-filter': 'p=gitea:gitea' }, '#r=high'), false); // the address wins, as in loadFilter
+  assert.equal(classes({ 'vr-filter': 'q=openssh' }), false); // a saved search is not restored (loadFilter)
 });
 
 // The Board's requests and live checks (web/app.mjs, from getJson to the online listener) in node:vm. asked holds each

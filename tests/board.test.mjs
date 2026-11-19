@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -1792,4 +1792,17 @@ test('statusCounts: today from local midnight, the week from the file\'s since, 
   const story = { id: 'https://news.ycombinator.com/item?id=1', cves: [], first_seen: new Date(2026, 10, 17, 2).toISOString() };
   const list = [at(17), at(12), at(1), story]; // today, earlier this week, older than the window, off the Board
   assert.deepEqual(statusCounts(list, new Date(2026, 10, 10, 15).toISOString(), new Date(2026, 10, 17, 15)), { today: 1, week: 2 });
+});
+
+// Critique 11-17 P1: a product or search filter states its answer ("Gitea: 최근 7일 2건 · 위험 2 · 공격 보고 없음").
+test('answerCounts counts the filtered list by Risk level and attacks, as the rows show them', () => {
+  const list = [
+    { id: 'a', cvss: 9.8 }, // 긴급 by score
+    { id: 'b', cvss: 5.0, kev: true }, // 긴급 by attack, whatever the score
+    { id: 'c', cvss: 7.5 },
+    { id: 'd', cvss: 4.0 },
+    { id: 'e' }, // no score yet: 참고, as its dashed sign
+  ];
+  assert.deepEqual(answerCounts(list), { total: 5, highest: 2, high: 1, notice: 2, exploited: 1 });
+  assert.deepEqual(answerCounts([]), { total: 0, highest: 0, high: 0, notice: 0, exploited: 0 });
 });
