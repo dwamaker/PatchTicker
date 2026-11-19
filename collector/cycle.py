@@ -55,6 +55,10 @@ BULK_SECONDS = 120
 # with the sources (~2 min), the sheets (at most 10, ~36 s), the titles and BULK_SECONDS, a cycle stays inside its 10
 # minutes and the Board is written before the next mark. The rest wait for the next cycle, most urgent first (priority).
 INSTANT_SECONDS = 180
+# 긴급 rows are asked in the cycle that sees them even past INSTANT_SECONDS and CYCLE_SECONDS, at most this many past
+# either (owner, 11-20: "긴급은 우선도 강제로"; PHP's 9.2 release sat on its stale Summary while 134 kernel CVEs ran the
+# clock out). A cycle that runs long only delays the next mark (compose.yaml), and each Summary is about a minute.
+URGENT_PAST_LIMIT = 4
 # Seconds from a cycle's start after which the Summary step starts no new work: no page sheet, instant Summary, titles
 # request or batch request (11-18: cycles took 600-612 s, so every other mark was skipped; the Summary step ran 244-295
 # s, the batch inputs alone fetching pages and records for 46 Incidents). At least one instant Summary, one titles
@@ -507,12 +511,16 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     # Every candidate in the cycle that sees it (a breaking-news board, owner 2026-11-09), inside INSTANT_SECONDS: the
     # rest keep their Brief and quick title until a later cycle. The first is asked even past the cycle's deadline.
     more = bulk_budget(clock, INSTANT_SECONDS)
+    past = 0
     for n, incident in enumerate(instant):
         if n and not (more() and open_()):
-            line.count("summaries_kept_back", len(instant) - n)
-            if not open_():
-                line.count("summaries_deadline", len(instant) - n)
-            break
+            if past < URGENT_PAST_LIMIT and risk_level(incident) == "highest":  # priority() puts every 긴급 row first
+                past += 1
+            else:
+                line.count("summaries_kept_back", len(instant) - n)
+                if not open_():
+                    line.count("summaries_deadline", len(instant) - n)
+                break
         line.count("summaries_asked")
         summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident))
         changed.add(month_of(incident["first_seen"]))

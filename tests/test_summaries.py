@@ -364,6 +364,12 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertNotIn("exploited_cves", summaries.INSTRUCTIONS)
         self.assertIn("Lead CVE", summaries.INSTRUCTIONS)
 
+    def test_the_conditions_come_from_every_source_not_only_the_lead(self):
+        # 11-19, Ruby2Shell folded into its CVE row: the GHSA and ruby-lang.org named only the faulty function, and the
+        # Summary dropped the stock Rails exposure only the write-up gave (4 of 8 draws kept it; 7 of 8 with this rule).
+        self.assertIn("Take the conditions from every source, not only the Lead", summaries.INSTRUCTIONS)
+        self.assertIn("does not narrow the exposure a write-up names", summaries.INSTRUCTIONS)
+
     def test_the_instructions_ask_for_the_attack_source_and_name_the_product_in_easy_headlines(self):
         self.assertIn("exploited_source", summaries.INSTRUCTIONS)
         self.assertIn("in the wild", summaries.INSTRUCTIONS)
@@ -557,6 +563,32 @@ class InstantSummaryTest(unittest.TestCase):
         # Kept back, not failed: no try counted, still due, and still an instant candidate for the next cycle.
         self.assertNotIn("summary_error", rows[3])
         self.assertTrue(summaries.needs_summary(rows[3]) and summaries.is_candidate(rows[3], now))
+
+    def test_urgent_rows_go_first_and_are_asked_past_the_budget_up_to_a_limit(self):
+        # Owner, 11-20: PHP's 9.2 release (CVE-2026-115560) kept its stale Summary while a kernel flood ran the clock out.
+        from datetime import datetime
+        from collector.cycle import URGENT_PAST_LIMIT, route_summaries
+        from collector.logfile import CycleLine
+        now, t = datetime(2026, 11, 9, 12, 0), [0]
+        row = lambda n, cvss: {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss, "mentions": [],  # noqa: E731
+                               "first_seen": "2026-11-09T11:00:00Z", "published": "2026-11-09T10:00:00Z",
+                               "products": [], "brief": {"text": "A flaw.", "lead": ""}}
+        rows = [row(1, 7.5), row(2, 8.0)] + [row(10 + n, 9.2) for n in range(URGENT_PAST_LIMIT + 3)]
+        claude = FakeClaude(*["{"] * 40)
+        create = claude.messages.create
+
+        def slow(**params):  # each Summary takes 200 s: the budget is spent after the first
+            t[0] += 200 if "Incident:" in params["messages"][0]["content"] else 0
+            return create(**params)
+        claude.messages.create = slow
+        asked = lambda: [p["messages"][0]["content"].split("\n")[0] for p in claude.sent if "Incident:" in p["messages"][0]["content"]]  # noqa: E731
+        line = CycleLine("2026-11-09T12:00:00Z", lambda: t[0])
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries(rows, [], claude, lambda url, headers=None: b"", now, "2026-11-09T12:00:00Z", set(), probe=False,
+                            clock=lambda: t[0], line=line, deadline=400)
+        # the first as ever, then URGENT_PAST_LIMIT more 긴급 rows past both limits; the 위험 rows wait
+        self.assertEqual(asked(), [f"Incident: CVE-2026-{10 + n}" for n in range(URGENT_PAST_LIMIT + 1)])
+        self.assertEqual(line.counts["summaries_kept_back"], 2 + 2)
 
     def test_past_the_cycle_deadline_only_the_first_summary_titles_request_and_batch_request_go_out(self):
         # 11-18: cycles took 600-612 s, the Summary step 244-295 s of them; past CYCLE_SECONDS nothing new starts.
