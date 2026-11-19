@@ -34,6 +34,22 @@ export function filterToQuery({ picks, query, risk = [], kev = false, from = '',
 }
 
 export const SORTS = ['new', 'risk', 'cvss'];
+
+// A listbox key (정렬's menu, owner 11-19): the option index it moves to from `at`, or -1 to leave the key alone. The
+// arrows stop at the ends, Home and End jump; `typed` (the characters typed in a short burst) jumps to the next label
+// that starts with it, a single character from the option after the current one, so pressing it again cycles.
+export function listboxStep(key, at, labels, typed = '') {
+  const last = labels.length - 1;
+  const moved = { ArrowDown: Math.min(at + 1, last), ArrowUp: Math.max(at - 1, 0), Home: 0, End: last }[key];
+  if (moved !== undefined) return moved;
+  if (!typed) return -1;
+  const from = typed.length === 1 ? at + 1 : at;
+  for (let n = 0; n < labels.length; n++) {
+    const i = (from + n + labels.length) % labels.length;
+    if (labels[i].toLowerCase().startsWith(typed.toLowerCase())) return i;
+  }
+  return -1;
+}
 export const LINK_KINDS = ['advisory', 'repo'];
 
 // The risk filter's choices, in risk order: the three risk levels, and Score pending above the lowest (N3, owner 11-15).

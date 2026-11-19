@@ -1,5 +1,5 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep } from './board.mjs';
 
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
@@ -1292,7 +1292,17 @@ function render() {
   $('answer').textContent = $('answer').hidden || !updated || waiting ? '' : answerLine(list);
   $('all-head').hidden = !list.length;
   $('all-head').textContent = TEXT[lang].fp.sorts[filter.sort]; // the list's heading says its order
-  $('sort').replaceChildren(...SORTS.map((key) => Object.assign(new Option(TEXT[lang].fp.sorts[key], key), { selected: key === filter.sort })));
+  const sorts = TEXT[lang].fp.sorts;
+  $('sort-now').textContent = sorts[filter.sort];
+  $('sort').setAttribute('aria-label', `${TEXT[lang].sortLabel}: ${sorts[filter.sort]}`);
+  $('sorts').setAttribute('aria-label', TEXT[lang].sortLabel);
+  $('sorts').replaceChildren(...SORTS.map((key) => {
+    const option = Object.assign(el('div', 'mi', sorts[key]), { tabIndex: -1 });
+    option.dataset.sort = key;
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(key === filter.sort));
+    return option;
+  }));
   // Keys, not ids: a Highlight's list copy opens on its own (rowKey), so 모두 펼치기 counts each drawn row once.
   visibleIds = [...highlights.map((i) => i.id), ...itemKeys(items.slice(0, shown))];
   drawn = { result: lastBoard.result, folding, pinAll, items, shown };
@@ -1608,10 +1618,10 @@ function suggest() {
   input.setAttribute('aria-expanded', String(!box.hidden));
   input.removeAttribute('aria-activedescendant');
   if (box.hidden) return box.replaceChildren();
-  const head = el('p', 'sg-head', t.sgHead);
+  const head = el('p', 'menu-head', t.sgHead);
   head.setAttribute('aria-hidden', 'true');
   box.replaceChildren(head, ...suggested.map((e, n) => {
-    const option = Object.assign(el('div', 'sg-item'), { id: `sg-${n}` });
+    const option = Object.assign(el('div', 'mi sg-item'), { id: `sg-${n}` });
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', 'false');
     option.append(el('span', 't', label(e)), ...(e.n ? [el('span', 'd', t.sgCount(e.n))] : []));
@@ -1972,7 +1982,7 @@ $('view-easy').addEventListener('click', () => setDefaultView('easy'));
 $('theme').addEventListener('click', toggleTheme);
 // Escape closes what is open, the latest layer first: the filter panel, then the reading guide, then the row the focus is in.
 document.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
+  if (event.key !== 'Escape' || sortsOpen()) return; // an open 정렬 menu takes the Escape alone
   if (!$('filters').hidden) return closePanel();
   if (guideOpen && !$('guide').dataset.leaving) return closeGuide();
   let item = document.activeElement;
@@ -2023,12 +2033,13 @@ document.addEventListener('keydown', (event) => {
 });
 // 정렬 changed mid-list (the frozen row): a new order is read from its start, so the Board's head comes up under the
 // frozen row (critique 13: the reader was left mid-list in the new order).
-$('sort').addEventListener('change', (event) => {
+function pickSort(sort) {
+  if (canPop) $('sorts').hidePopover();
+  if (sort === filter.sort) return;
   const mid = stuckOn;
-  sortBy(event.target.value).then(() => mid && toBoardHead());
-});
+  sortBy(sort).then(() => mid && toBoardHead());
+}
 function sortBy(sort) {
-  $('sort').value = sort;
   const drawn = update({ sort });
   // The count does not change with the order, so say the order itself (the count line stays quiet).
   $('announce').textContent = TEXT[lang].sorted(TEXT[lang].fp.sorts[sort]);
@@ -2070,7 +2081,7 @@ document.addEventListener('pointerdown', (event) => {
     && !$('feeds').contains(event.target) && !$('langs').contains(event.target)) setPrefs(false); // a menu opened from the panel keeps it
 });
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && $('prefs').classList.contains('open') && !feedsOpen() && !langsOpen()) { // Escape closes an open menu alone
+  if (event.key === 'Escape' && $('prefs').classList.contains('open') && !feedsOpen() && !langsOpen() && !sortsOpen()) { // Escape closes an open menu alone
     setPrefs(false);
     $('prefs-btn').focus();
   }
@@ -2134,6 +2145,50 @@ function popMenu(menu, buttons) {
 }
 if (canPop) popMenu($('langs'), [$('lang')]);
 else $('lang').addEventListener('click', () => setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]));
+// 정렬 (owner, 11-19: its native list was the browser's own): a button opening a listbox menu like the language menu's,
+// keyed as a listbox; without popovers the button steps to the next order, as 언어 does.
+const sortsOpen = () => canPop && $('sorts').matches(':popover-open');
+const sortOptions = () => [...$('sorts').querySelectorAll('[role="option"]')];
+if (canPop) {
+  const menu = $('sorts');
+  popMenu(menu, [$('sort')]);
+  menu.addEventListener('click', (event) => {
+    const option = event.target.closest('[data-sort]');
+    if (option) pickSort(option.dataset.sort);
+  });
+  // Open, the focus starts on the current order (APG listbox); closing returns it to the button (the browser's popover).
+  menu.addEventListener('toggle', (event) => {
+    if (event.newState === 'open') sortOptions().find((o) => o.getAttribute('aria-selected') === 'true')?.focus();
+  });
+  let typed = '';
+  let typedAt = 0;
+  menu.addEventListener('keydown', (event) => {
+    const options = sortOptions();
+    const at = options.indexOf(document.activeElement);
+    if ((event.key === 'Enter' || event.key === ' ') && at >= 0) {
+      event.preventDefault();
+      return pickSort(options[at].dataset.sort);
+    }
+    // shortcut: type-ahead reads event.key, so Korean typed through an IME ("Process") finds nothing; arrows still work.
+    const printed = event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+    if (printed) {
+      typed = (event.timeStamp - typedAt < 600 ? typed : '') + event.key;
+      typedAt = event.timeStamp;
+    }
+    const next = listboxStep(event.key, at, options.map((o) => o.textContent), printed ? typed : '');
+    if (next < 0) return;
+    event.preventDefault();
+    options[next].focus();
+  });
+  // The closed button opens the list on an arrow key, as a select does.
+  $('sort').addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    if (!sortsOpen()) menu.showPopover({ source: $('sort') });
+  });
+} else $('sort').addEventListener('click', () => pickSort(SORTS[(SORTS.indexOf(filter.sort) + 1) % SORTS.length]));
+// The frosted menus are an experiment (owner, 11-19): ?menu=solid draws them solid to compare (index.html .menu-solid).
+if (new URLSearchParams(location.search).get('menu') === 'solid') document.documentElement.classList.add('menu-solid');
 if (canPop) {
   const menu = $('feeds');
   popMenu(menu, feedButtons);
