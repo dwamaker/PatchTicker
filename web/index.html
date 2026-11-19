@@ -524,13 +524,17 @@
     .risk-notice .c-risk, .risk-notice.c-risk { color: var(--note); }
     /* Both views: the risk word is a sign, a ring in its level's colour (red, gold, slate) with no dot; rings are
        never filled (user, 11-09); the same reds and golds as everywhere (Two Alphabets). */
-    .loud .word { padding: calc(0.25rem - 1.5px) calc(0.75rem - 1.5px); border: 1.5px solid var(--note); border-radius: var(--r-pill); font-size: calc(0.9375rem * var(--ts)); font-weight: 800; line-height: 1.2; }
+    .loud .word { padding: calc(0.25rem - 1.5px) calc(var(--sign-inset) - 1.5px); border: 1.5px solid var(--note); border-radius: var(--r-pill); font-size: calc(0.9375rem * var(--ts)); font-weight: 800; line-height: 1.2; }
     .loud.risk-highest .word { border-color: var(--high); }
     .loud.risk-high .word { border-color: var(--mid-mark); }
     /* the sign and the reason under it both keep to the column's start, so every sign starts at the same x down the Board
        (owner, 11-19: a wider reason such as 점수 대기 had pushed its centred sign right) */
-    .loud { flex-direction: column; align-items: flex-start; justify-self: start; }
-    .loud .why { flex-basis: auto; padding-left: 0; text-align: start; }
+    /* One text line for the risk column (owner, 11-19: the reason started at the ring, the word inside it): the reason under the sign starts
+       where the word does, the ring alone crosses the line. Astryx docs layout/layout-spacing: "Pick one content line per region and hold it constant". */
+    .loud { --sign-inset: 0.75rem; flex-direction: column; align-items: flex-start; justify-self: start; }
+    .loud .why { flex-basis: auto; padding-left: var(--sign-inset); text-align: start; }
+    .strip .loud .why { padding-left: 0; } /* the band's strip puts the reason beside the sign, on its own line */
+    :lang(ja) .loud .why { word-break: normal; } /* keep-all left 攻撃されています one line over the title at 150%: Japanese breaks between kana, every line on the content line */
     .c-title { grid-area: t; min-width: 0; }
     .title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; overflow-wrap: anywhere; text-wrap: pretty; }
     .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin-top: 0.1875rem; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; color: var(--ink-2); letter-spacing: -0.01em; overflow-wrap: anywhere; }

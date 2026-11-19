@@ -529,7 +529,7 @@ Restrained outlined buttons for theme, language and copying a command.
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
 - In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 긴급!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
-  15px/800. Rings are never filled (user, 11-09). 공격 발생 sits centred under the ring (beside it on phones), and a
+  15px/800. Rings are never filled (user, 11-09). 공격 발생 sits under the ring, its text starting where the word starts (one text line for the column; the ring alone crosses it; owner, 11-19), beside it on phones and in the band's strip, and a
   row with no CVSS shows its dash centred where a score ring would be.
 
 ### Easy view panel
