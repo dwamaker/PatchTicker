@@ -937,15 +937,10 @@ function staleNote() {
   const note = $('stale');
   const stale = isStale();
   const text = stale ? TEXT[lang].stale : ''; // the age is in the status line just above (critique 12)
-  if ((note.dataset.text || '') === text) return; // unchanged: screen readers hear it once (role=status)
-  note.dataset.text = text;
+  if (note.textContent === text) return; // unchanged: screen readers hear it once (role=status)
   note.hidden = !stale;
   note.innerHTML = stale ? WARN : '';
-  // Astryx Banner: the first sentence is its title, the rest its description under it.
-  const [, title = text, rest = ''] = /^(.+?[.。])\s*(.*)$/su.exec(text) || [];
-  const words = el('span', 'b-text');
-  words.append(el('strong', '', title), ...(rest ? [el('span', '', rest)] : []));
-  if (stale) note.append(words);
+  if (stale) note.append(el('span', '', text));
 }
 let shownList = [];
 // The status line; on phones a stale Board says so on this line in two words (critique 13: the notice box pushed the
@@ -1029,7 +1024,7 @@ function guide() {
   $('guide-btn').setAttribute('aria-expanded', guideOpen && !box.dataset.leaving);
   box.hidden = !guideOpen;
   if (!guideOpen) return box.replaceChildren();
-  const close = closeX(g.close);
+  const close = Object.assign(el('button', 'btn', g.close), { type: 'button' });
   close.addEventListener('click', closeGuide);
   const head = el('div', 'g-head');
   head.append(Object.assign(el('h2', '', g.title), { id: 'guide-title' }), close);
@@ -1465,12 +1460,7 @@ function emptyState() {
   const lines = sinceStillTrue(document.documentElement.dataset.collectedSince, Date.now()) ? [...t.noticeSince, t.noticeKeep] : [t.noticeKeep];
   const facts = Object.assign(el('p', 'scope'), { lang });
   lines.forEach((line, n) => { const box = el('span', 'sentence'); box.append(...keepIds(line)); facts.append(...(n ? [' ', box] : [box])); });
-  // Astryx EmptyState: an icon that says what happened (a search that came back empty), the sentence as its title,
-  // what the Board holds as its description, the ways back under them, all centred.
-  const icon = el('span', 'e-mark');
-  icon.setAttribute('aria-hidden', 'true');
-  icon.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-  return [icon, para('', message), scope, ...(query ? [facts] : []), ...actions];
+  return [para('', message), scope, ...(query ? [facts] : []), ...actions];
 }
 
 function allClear() {
@@ -1686,20 +1676,12 @@ function filterPanel() {
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
-  const close = closeX(f.close);
+  const close = Object.assign(el('button', 'btn', f.close), { type: 'button' });
   close.addEventListener('click', closePanel);
   const head = el('div', 'g-head fp-head');
   head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
   form.replaceChildren(head, grid, actions);
   countDraft();
-}
-
-// A panel's close: a ghost X named by its word (Astryx DialogHeader), as the first-visit line's (index.html .p-close).
-function closeX(name) {
-  const button = Object.assign(el('button', 'btn p-close'), { type: 'button', title: name });
-  button.setAttribute('aria-label', name);
-  button.append(el('span', 'x'));
-  return button;
 }
 
 // Reset clears the panel only; Products picked at the top and the search stay.

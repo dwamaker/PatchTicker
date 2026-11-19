@@ -277,14 +277,8 @@
     .search-tools > * { flex: none; }
     .search-tools .btn { position: relative; gap: 0.375rem; padding: 0 0.75rem; }
     .search-tools svg { width: 16px; height: 16px; }
-    /* one control size and one corner on the search line (Astryx tokens-size, radius-element: buttons, inputs and selectors
-       share them): 필터 and 정렬 stand 48px with the bar's 10px corners, not 44px beside it */
-    .search-tools .btn, .search-tools .sort select { min-height: 48px; border-radius: var(--r-frame); }
-    /* 정렬 as an Astryx Selector: its sort icon at the start, a drawn chevron at the end, the browser's arrow gone */
-    .search-tools .sort { position: relative; }
-    .search-tools .sort-ic { position: absolute; left: 0.75rem; width: 16px; height: 16px; color: var(--ink-2); pointer-events: none; }
-    .search-tools .sort select { appearance: none; padding: 0 2.25rem 0 2.25rem; }
-    .search-tools .sort::after { content: ""; position: absolute; right: 0.875rem; top: 50%; width: 0.4375rem; height: 0.4375rem; border: solid var(--ink-2); border-width: 0 1.5px 1.5px 0; transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+    .search-tools select { max-width: 7.5rem; }
+    .search-tools .sort-ic { display: none; }
     @media (max-width: 599px) { .search-tools .btn { padding: 0 0.625rem; } }
     /* phones: the bar takes the whole line, 필터 and 정렬 under it at the end, so picked tokens and the typed words have room */
     @media (max-width: 599px) { .search-row { flex-wrap: wrap; row-gap: 0.5rem; } .search-row > .sbar { flex-basis: 100%; } .search-tools { flex: 1 1 100%; padding-left: 0; } }
@@ -483,11 +477,8 @@
     @media (prefers-reduced-motion: no-preference) { .has-zero .fp-zero-note { animation: words-in 240ms var(--ease-out); } }
     .statusline { display: flex; align-items: center; justify-content: space-between; column-gap: 1rem; padding-top: 0.5rem; }
     #status { margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-    /* 읽는 법 opens the guide in place, so it is a button, not a link (Astryx Link: "Don't: Use Link for actions that do not
-       navigate; use a Button instead"): a ghost button in Ink with its chevron, tinted on hover, its edge on the line's end */
-    #guide-btn { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); margin-right: -0.75rem; padding: 0 0.75rem; border: 0; border-radius: var(--r-ctl); background: none; color: var(--ink); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; cursor: pointer; }
-    @media (hover: hover) { #guide-btn:hover { background: var(--panel-2); } }
-    #guide-btn[aria-expanded="true"] { background: var(--panel-2); }
+    #guide-btn { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0; border: 0; background: none; color: var(--focus); font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; cursor: pointer; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--focus) 50%, transparent); text-underline-offset: 3px; }
+    @media (hover: hover) { #guide-btn:hover { text-decoration-color: currentColor; } }
     #guide-btn .chev, .legend .chev { display: inline-block; flex: none; border-color: currentColor; transform: rotate(45deg) translate(-2px, -2px); }
     #guide-btn[aria-expanded="true"] .chev { transform: rotate(-135deg) translate(-2px, -2px); }
     /* 이 게시판 읽는 법: each mark of a row, drawn with the row's own parts, beside what it means */
@@ -500,11 +491,7 @@
     .p-key .gauge { width: calc(2.25rem * var(--ts)); height: calc(2.25rem * var(--ts)); }
     .p-pair { display: flex; align-items: center; gap: 0.375rem; }
     .primer > .btn { flex: none; }
-    /* a panel's close (the first-visit line, the reading guide, the filter panel): Astryx DialogHeader's close, a ghost
-       icon-only button with an X, in the header's end corner */
-    .p-close { width: var(--tap); padding: 0; justify-content: center; border-color: transparent; }
-    .fp-head .p-close, .g-head .p-close { margin: -0.5rem -0.625rem -0.5rem 0; }
-    @media (hover: hover) { .p-close:hover { background: var(--panel-2); } }
+    .p-close { width: var(--tap); padding: 0; justify-content: center; }
     .p-close .x { position: relative; width: 12px; height: 12px; }
     .p-close .x::before, .p-close .x::after { content: ""; position: absolute; left: 5px; top: -1px; width: 1.5px; height: 14px; background: currentColor; transform: rotate(45deg); }
     .p-close .x::after { transform: rotate(-45deg); }
@@ -522,7 +509,7 @@
       .p-key { flex: none; }
       .p-key dd { white-space: nowrap; }
       .primer .p-more { display: none; }
-      .primer .p-close { position: absolute; top: 0; right: 0; }
+      .p-close { position: absolute; top: 0; right: 0; border-color: transparent; }
     }
     .guide { margin-top: 0.5rem; padding: 1.25rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
     .g-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
@@ -533,14 +520,9 @@
     .legend dt { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; min-width: 0; }
     .legend dd { margin: 0; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.55; }
     .caution svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; }
-    /* stale data, as an Astryx Banner (owner, 11-19): the content column's width, 12px 16px inside, 10px corners, the icon,
-       then the first sentence as its title (14px/600) over the rest as its description (12px Secondary Ink). Ink on
-       Recessed Panel, not Banner's warning tint: amber and red stay for risk (Two Alphabets) */
-    .stale { display: flex; align-items: flex-start; gap: 0.625rem; margin: 0.5rem 0 0; padding: 0.75rem 1rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: var(--r-frame); color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); }
-    .stale svg { flex: none; width: 18px; height: 18px; margin-top: 0.1em; }
-    .stale .b-text { display: flex; flex-direction: column; gap: 0.125rem; }
-    .stale strong { font-weight: 600; }
-    .stale .b-text > span { font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
+    /* stale data: a notice in Ink on Recessed Panel; amber and red stay for risk (Two Alphabets) */
+    .stale { display: flex; align-items: flex-start; gap: 0.5rem; max-width: 46rem; margin: 0.5rem 0 0; padding: 0.625rem 0.875rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: var(--r-ctl); color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
+    .stale svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; }
     /* phones: the stale notice is two words on the status line; the full sentence stays for screen readers (critique 13) */
     .stale-short { display: none; font-weight: 700; color: var(--ink); }
     @media (max-width: 599px) {
@@ -850,15 +832,6 @@
     .allclear strong { font-size: calc(1.0625rem * var(--ts)); font-weight: 700; }
     .allclear .note { font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); max-width: 40rem; }
     .empty .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; font-weight: 400; }
-    /* nothing found (Astryx EmptyState): a column centred under the rule, an icon in a 48px Panel 2 disc, the sentence as
-       the title (18px/700), the Board's reach as the description in Secondary Ink, the ways back in a centred row */
-    .empty:has(> .e-mark) { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 2.5rem 1.5rem; text-align: center; }
-    .empty:has(> .e-mark) p { max-width: 32rem; }
-    .empty:has(> .e-mark) > p:first-of-type { font-size: calc(1.125rem * var(--ts)); font-weight: 700; text-wrap: balance; }
-    .empty:has(> .e-mark) .scope { margin: 0; }
-    .empty:has(> .e-mark) .actions { justify-content: center; margin-top: 0.75rem; }
-    .e-mark { display: grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 0.25rem; border-radius: 50%; background: var(--panel-2); color: var(--ink-2); }
-    .e-mark svg { width: 24px; height: 24px; }
     .details .preparing { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); }
     .details .devices { margin: 0.25rem 0 0; padding-left: 1.25rem; }
     .details .fixes { margin: 0.375rem 0 0; padding-left: 1.25rem; }
