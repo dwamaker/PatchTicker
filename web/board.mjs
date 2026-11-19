@@ -843,8 +843,7 @@ export const LINES = [
   { bg: '#c25bb8', ink: '#0d0f12' }, { bg: '#960078', ink: '#ffffff' },
 ];
 
-// A Product's line from its language-free key (the Product id, "openbsd:openssh"), so it is the same on every visit,
-// row and language. FNV-1a, then a final mix: plain FNV-1a mod 8 put six of ten real Products on one line (critique 4).
+// A line from a fixed key (nameLine's "name:openssh"), so it is the same on every visit and row. FNV-1a, then a final mix: plain FNV-1a mod 8 put six of ten real Products on one line (critique 4).
 // WordPress keeps the pink line whatever key names it (owner, 11-16): hashed, its keys landed on two colours. Keyed by the
 // id's vendor, or the name of a name-only Product; the value is the line's index in LINES.
 const OWN_LINES = Object.assign(Object.create(null), { wordpress: 3 });
@@ -857,6 +856,11 @@ export function productLine(key) {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return LINES[((h ^ (h >>> 16)) >>> 0) % LINES.length];
 }
+// A badge's line from the name it shows (critique P2, 11-19): keyed by the Product id, one name showed in two colours on
+// one screen ("N-able N-central" as n-able:n-central and as a name-only Product; "Newsletters" of two vendors). The name
+// goes through productKey, so case, a company word or a known vendor in front ("Chrome", "Google Chrome") keep one line.
+// Names are never translated, so the line is the same in every language, except a Product the Summary names in Hangul.
+export const nameLine = (name) => productLine(`name:${productKey(name)}`);
 
 // Each row badge's line key: the Product id behind a shown name (a Summary name in either language, an NVD name);
 // a name with no Product (a device model) has none and keys by itself.

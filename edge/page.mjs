@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -213,7 +213,7 @@ function banner(i, t) {
 function products(i, lang) {
   const t = TEXT[lang];
   const items = tagFilters(i, lang).map((tag) => {
-    const { bg, ink } = productLine(tag.pick || tag.name); // colours from the Board's fixed table, never from data
+    const { bg, ink } = nameLine(tag.name); // colours from the Board's fixed table by the shown name, as the Board badge
     const pill = tag.kind === 'os' ? `<span class="os">${esc(tag.name)}</span>` : `<span style="--line:${bg};--line-ink:${ink}">${esc(tag.name)}</span>`;
     return `<li><a href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${pill}</a></li>`;
   });

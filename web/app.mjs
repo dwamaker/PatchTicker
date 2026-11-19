@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
@@ -2420,13 +2420,13 @@ function titleCell(incident, vendor = '') {
   return cell;
 }
 
-// A Product's line badge, in that Product's fixed colour.
-// key: the Product id (language-free), so a Product keeps its line in both languages; else the name itself.
-function lineBadge(name, key = name) {
+// A Product's line badge, in the fixed colour of the name it shows (nameLine), so one name is one colour on every
+// screen. Callers still pass the Product id as a second argument; it no longer decides the colour.
+function lineBadge(name) {
   // One line always: a long name ends in "…" inside the pill and shows whole on hover (title) and to screen readers.
   const badge = Object.assign(el('span', 'ln'), { title: name });
   badge.append(el('span', 'ln-t', name));
-  const { bg, ink } = productLine(key);
+  const { bg, ink } = nameLine(name);
   badge.style.setProperty('--line', bg);
   badge.style.setProperty('--line-ink', ink);
   return badge;
@@ -2745,7 +2745,8 @@ function foldRows(group) {
   title.append(el('strong', 'title', foldTitle),
     el('small', 'sub', products.slice(0, 3).join(', ') + (products.length > 3 ? ` ${t.moreProducts(products.length - 3)}` : '')));
   const tags = el('span', 'c-tags');
-  tags.append(groupTag(), ' ', lineBadge(wp ? 'WordPress' : vendor, group.vendor)); // Product names are never translated
+  // Product names are never translated. A vendor named like an OS ("Linux") keeps the OS outline its name has on every row.
+  tags.append(groupTag(), ' ', OSES.includes(vendor) ? osBadge(vendor, false) : lineBadge(wp ? 'WordPress' : vendor));
   const chevron = el('i', 'chev');
   chevron.setAttribute('aria-hidden', 'true');
   button.append(riskCell(gravest), title, scoreCell(top), tags, dateCell(newest), chevron);
