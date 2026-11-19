@@ -960,6 +960,23 @@
     .p-side > .c-score { flex: none; } /* the ring keeps its size; the tags take what is left */
     .p-prod { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
     .p-label { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; }
+    /* Owner 11-19 (no diagonal path): from 768px the panel's top repeats the header's columns from the title on, so the
+       ring and tags stand straight under their header places and travel only up and down (app.mjs carry). The last track
+       stands for the header's date and chevron less the panel's wider right padding (2.5rem against 0.75rem). A Highlight's
+       header runs to the band's edge, so its panel top reaches out over the padding instead. Phones: alignRing. */
+    @media (min-width: 768px) {
+      .p-top { display: grid; grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 15rem) calc(0.25rem + 5.5rem * var(--ts)); grid-template-areas: "facts ring tags ."; column-gap: var(--gap); }
+      .p-top > .facts { grid-area: facts; }
+      .p-side { display: contents; }
+      .p-side > .c-score { grid-area: ring; }
+      .p-prod { grid-area: tags; }
+      .alert .p-top { grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 26rem); grid-template-areas: "facts ring tags"; margin-right: calc(0.75rem - 1px - 2.5rem); }
+    }
+    @media (min-width: 768px) and (max-width: 1023px) { /* the header's tags have their own line under the title: so do the panel's */
+      .p-top { grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) calc(0.25rem + 5.5rem * var(--ts)); grid-template-areas: "facts ring ." "tags tags tags"; }
+      .alert .p-top { grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)); grid-template-areas: "facts ring" "tags tags"; }
+    }
+    @media (max-width: 767px) { .p-side { flex-direction: column; } .p-prod { margin-left: -0.25rem; } } /* the tags at the header's tag line (0.5rem in, the panel 0.75rem) */
     /* open: the header's ring and tags have gone to the panel (app.mjs carry flies them there and back with the fold); their
        places are kept, so the title never moves, except the tags' own line on narrow screens (the fold takes up the step) */
     li:has(> .details > .p-top > .p-side) > .row-h > .row[aria-expanded="true"] > :is(.c-score, .c-tags) { visibility: hidden; }

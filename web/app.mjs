@@ -3297,6 +3297,17 @@ function carryStarts(button, body, flights, opening) {
   // a ghost still in flight is where its copy is seen; one that has landed is gone from the page
   return carryParts(button, body).map(([head, there], n) => ((flights[n]?.ghost.isConnected && flights[n].ghost) || (opening ? head : there))?.getBoundingClientRect());
 }
+// Owner 11-19 (no diagonal path): the panel's ring stands straight under the header's. From 768px the columns do it
+// (index.html .p-top); on phones the header ring follows the risk sign, whose width varies, so the panel's is moved
+// sideways to match (a translate, so nothing around it reflows). The header's keeps its place while open.
+function alignRing(button, body) {
+  const head = button.querySelector(':scope > .c-score');
+  const there = body.querySelector(':scope > .p-top > .p-side > .c-score');
+  if (!head || !there) return;
+  there.style.translate = '';
+  const dx = head.getBoundingClientRect().left - there.getBoundingClientRect().left;
+  if (Math.abs(dx) > 0.5) there.style.translate = `${dx}px 0`;
+}
 function carry(li, button, body, opening, starts, flights) {
   flights.forEach((f) => f?.stop());
   const parts = carryParts(button, body);
@@ -3384,6 +3395,7 @@ function row(incident, pinned, vendor = '') {
   let flights = []; // the ring and tags in flight between the header and the panel (carry)
   button.addEventListener('click', () => {
     const opening = !open.has(key);
+    if (!opening) alignRing(button, body); // a row drawn open (a redraw) was never lined up
     // Where the ring and tags are seen now and how tall the header is, before the change moves them.
     const starts = carryStarts(button, body, flights, opening);
     const before = heading.offsetHeight;
@@ -3392,6 +3404,7 @@ function row(incident, pinned, vendor = '') {
       open.add(key);
       fill(true);
       body.hidden = false;
+      alignRing(button, body);
     } else open.delete(key);
     const shift = Math.max(0, opening ? before - heading.offsetHeight : heading.offsetHeight - before);
     flights = carry(li, button, body, opening, starts, flights);
