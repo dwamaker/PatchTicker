@@ -543,10 +543,10 @@
     .loud.risk-high .word { border-color: var(--mid-mark); }
     /* the sign and the reason under it both keep to the column's start, so every sign starts at the same x down the Board
        (owner, 11-19: a wider reason such as 점수 대기 had pushed its centred sign right) */
-    /* One text line for the risk column (owner, 11-19: the reason started at the ring, the word inside it): the reason under the sign starts
-       where the word does, the ring alone crosses the line. Astryx docs layout/layout-spacing: "Pick one content line per region and hold it constant". */
+    /* The reason under the sign starts at the sign's own left edge (owner, 11-19: indenting it to the word looked misaligned,
+       "이것들 진짜 화나네"): one edge for the sign and its reason down the column. */
     .loud { --sign-inset: 0.75rem; flex-direction: column; align-items: flex-start; justify-self: start; }
-    .loud .why { flex-basis: auto; padding-left: var(--sign-inset); text-align: start; }
+    .loud .why { flex-basis: auto; padding-left: 0; text-align: start; }
     .strip .loud .why { padding-left: 0; } /* the band's strip puts the reason beside the sign, on its own line */
     :lang(ja) .strip .loud .why { word-break: keep-all; } /* the strip's reason sits beside the sign: unchanged */
     :lang(ja) .loud .why { word-break: normal; } /* keep-all left 攻撃されています one line over the title at 150%: Japanese breaks between kana, every line on the content line */
