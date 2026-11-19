@@ -188,6 +188,12 @@ EASY_BANNED = ("OAuth", "SAML", "MFA", "WSDL", "CGI", "FIPS", "SQL", "API", "has
 EASY_FIELDS = ("easy", "easy_title", "easy_action", "easy_conditions")
 
 
+def easy_said(word, where):
+    """A banned word written as a word: not \\b, as Hangul is a word character ("API를" had no boundary, audit F15), and
+    not a bare substring either ("RCE" in "Datasource", "API" in "capital"; 11-19: CVE-2026-87956's titles were dropped)."""
+    return re.search(rf"(?<![A-Za-z]){re.escape(word)}(?![A-Za-z])", where, re.I) if word.isascii() else word in where
+
+
 def easy_jargon(summary):
     """The banned words in the Easy fields, leaving out a word that is part of a Product's own name: "Perl SQL::Abstract"
     may stay, and so may "Perl CGI" or "CGI.pm" for "CGI for Perl" (11-16: only the whole name was let through, so
@@ -196,11 +202,7 @@ def easy_jargon(summary):
                        if isinstance(n, str))  # parse() leaves a name that is not text in place (audit F12)
     fields = [summary[lang][field] for lang in ("ko", "en") for field in EASY_FIELDS]
     text = " / ".join(" / ".join(f) if isinstance(f, list) else f for f in fields)  # easy_conditions is a list
-
-    def said(word, where):
-        # Not \b: Hangul is a word character, so "API를" had no boundary (audit F15).
-        return re.search(rf"(?<![A-Za-z]){re.escape(word)}(?![A-Za-z])", where, re.I) if word.isascii() else word in where
-    return sorted(word for word in EASY_BANNED if said(word, text) and not said(word, names))
+    return sorted(word for word in EASY_BANNED if easy_said(word, text) and not easy_said(word, names))
 
 
 OPENING, CLOSING = "([（［", ")]）］"
@@ -1042,7 +1044,8 @@ def title_params(incidents):
 
 def title_now(incidents, claude, stamp):
     """One request for these Incidents' titles; each checked title pair is kept as "quick_title" until the Summary comes.
-    A title with a CVE ID, a number its own line lacks or a banned word is dropped, and the row keeps its Brief.
+    A title with a CVE ID or a number its own line lacks is dropped, and the row keeps its Brief. A banned word in the easy
+    titles drops only those: the row keeps its titles, and the Easy view names the Product until the Summary comes.
     A reply cut at max_tokens is asked again in two halves, down to one Incident."""
     reply = claude.messages.create(**title_params(incidents))
     try:
@@ -1070,18 +1073,19 @@ def title_now(incidents, claude, stamp):
         own = " ".join([incident["brief"]["text"], *names])
         text = " ".join(item[k] for k in TITLE_FIELDS)
         easy = " ".join(item[k] for k in ("ko_easy_title", "en_easy_title"))
-        for name in names:
-            easy = easy.replace(name, "")  # "Perl SQL::Abstract" may keep its own name
         unknown = (ko_numbers(item["ko_title"] + " " + item["ko_easy_title"])
                    | numbers(item["en_title"] + " " + item["en_easy_title"])) - numbers(own) - number_words(own)
-        reason = ("CVE ID inside" if CVE_ID.search(text) else f"numbers not in its line {sorted(unknown)}" if unknown
-                  else "banned word" if any(w.lower() in easy.lower() for w in EASY_BANNED) else "")
+        reason = "CVE ID inside" if CVE_ID.search(text) else f"numbers not in its line {sorted(unknown)}" if unknown else ""
         if reason:
             dropped.append(f"{incident['id']}: {reason}")
             continue
+        # "Perl SQL::Abstract" may keep its own name, whatever its case ("Mqtt Datasource" / "MQTT Datasource")
+        banned = sorted(w for w in EASY_BANNED if easy_said(w, easy) and not easy_said(w, " / ".join(names)))
+        if banned:
+            dropped.append(f"{incident['id']}: easy titles only, banned word {banned}")
         kept.add(incident["id"])
-        incident["quick_title"] = {"ko": {"title": item["ko_title"], "easy_title": item["ko_easy_title"]},
-                                   "en": {"title": item["en_title"], "easy_title": item["en_easy_title"]}, "at": stamp}
+        incident["quick_title"] = {lang: {"title": item[f"{lang}_title"], "easy_title": "" if banned else item[f"{lang}_easy_title"]}
+                                   for lang in ("ko", "en")} | {"at": stamp}
     dropped += [f"{i['id']}: left out" for i in incidents
                 if i["id"] not in kept and not any(d.startswith(f"{i['id']}: ") for d in dropped)]
     if dropped:
