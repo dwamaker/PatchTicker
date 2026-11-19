@@ -2497,7 +2497,7 @@ function titleCell(incident, vendor = '') {
 // A Product's line badge, in the fixed colour of the name it shows (nameLine), so one name is one colour on every
 // screen. Callers still pass the Product id as a second argument; it no longer decides the colour.
 function lineBadge(name) {
-  // One line always: a long name ends in "…" inside the pill and shows whole on hover (title) and to screen readers.
+  // A long name wraps inside the pill, never cut (critique 12); the title repeats it on hover.
   const badge = Object.assign(el('span', 'ln'), { title: name });
   badge.append(el('span', 'ln-t', name));
   const { bg, ink } = nameLine(name);
@@ -2561,7 +2561,7 @@ function dateCell(incident) {
 // Both views end with the Lead and every Mention, so links a CVE record gains later show up in either.
 // Critique P2 (11-19): what to do comes first in both views. The Normal panel keeps its small ID, score and date lines on
 // top as a header strip; the Easy panel opens on the red line and the action, and keeps those identifiers at its foot.
-function details(incident) {
+function details(incident, onStrip = false) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
   const body = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident);
@@ -2592,14 +2592,16 @@ function details(incident) {
   const idsAtFoot = easy && Boolean(incident.summary);
   if (!idsAtFoot) head.push(...ids);
   if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
-  // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks.
+  // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks. A Highlight's strip
+  // already says "CISA KEV 등재 <day>" (evidenceCell), so its panel does not say it again unless it names the attacked CVEs
+  // of a group; a reporting source stays, as the strip has no link.
   const reason = exploitReason(incident);
-  if (reason) {
+  const hit = reason && incident.cves.length > 1 ? exploitedCves(incident) : [];
+  if (reason && !(onStrip && reason.kind === 'kev' && !hit.length)) {
     const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
     if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
     if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
     // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
-    const hit = incident.cves.length > 1 ? exploitedCves(incident) : [];
     if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
     head.push(why);
   }
@@ -2918,7 +2920,7 @@ function row(incident, pinned, vendor = '') {
   // A row view (rows.json) has no details: a loading line until ensureFull redraws the Board with the full Incident, the
   // load error if that fails; after a failure a redraw shows the error and only opening the row asks again (owner, 11-10).
   const fill = (asked = false) => {
-    if (!incident.rows) return body.childElementCount || body.append(...details(incident));
+    if (!incident.rows) return body.childElementCount || body.append(...details(incident, Boolean(ev)));
     if (fullFailed && !asked) return body.replaceChildren(para('preparing', TEXT[lang].loadError));
     body.replaceChildren(para('preparing', TEXT[lang].loading));
     ensureFull().catch(() => body.replaceChildren(para('preparing', TEXT[lang].loadError)));

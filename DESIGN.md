@@ -373,6 +373,10 @@ Restrained outlined buttons for theme, language and copying a command.
   size at weight 500.
 - **Hover / Focus:** Recessed Panel fill and Sign Ink text on hover; a 2px Wayfinding Blue ring at
   2px offset on keyboard focus.
+- **Names (Astryx pass, owner 11-19):** an icon-only button (theme, GitHub, RSS, settings, 필터 below 1024px, the search
+  ×, the jump buttons) also shows its name on hover. The theme button is a switch (`role="switch"`, `aria-checked`):
+  a lasting setting, not a pressed button. A button that is waiting (이전 사건 불러오기 while it loads) is `aria-disabled`
+  and `aria-busy` and keeps the focus; it takes no hover tint.
 
 ### Support badge (owner, 2026-11-18)
 - The README's Buy Me a Coffee badge, alone, drawn by the page itself (no third-party image: `img-src 'self'`): Buy Me
@@ -424,6 +428,7 @@ Restrained outlined buttons for theme, language and copying a command.
   44 px high.
 - **State:** the pressed option fills with Sign Ink and turns its text to the ground colour at weight
   700; the other option is Secondary Ink, gaining the Recessed hover fill.
+- **Keys (Astryx pass, owner 11-19):** Left or Right on either option picks the other one and takes the focus.
 
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
@@ -441,7 +446,8 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Text size
 - Two buttons, 가− and 가+ (A− and A+ on the English page), in one outlined control left of the theme button (the user's pick), glyphs 12 and 18 px
   (px on purpose, so the control does not grow with the text). Steps 87.5, 100, 112.5, 125, 150%, remembered; the end
-  steps disable their button. Only text grows: every font size is multiplied by `--ts`; gaps, columns and controls
+  steps disable their button (`aria-disabled`, so the focus stays on it; Astryx pass, owner 11-19). The pair is one Tab
+  stop: Left and Right move between the two, Home and End to the ends. Only text grows: every font size is multiplied by `--ts`; gaps, columns and controls
   stay the same size (the first version scaled the root size, which zoomed the whole page).
 
 ### Inputs / Fields
@@ -474,7 +480,9 @@ Restrained outlined buttons for theme, language and copying a command.
   post), in the visitor's time zone as `YYYY-MM-DD` over `HH:MM`; how long ago sits in the tooltip.
   The list orders by it.
 - **Details:** both views end with the Lead link and every Mention, so links a CVE record gains later
-  appear in either view. Every panel starts flush, whichever line leads. An 공격 발생 panel starts with its reason
+  appear in either view. Every panel starts flush, whichever line leads. An 공격 발생 panel starts with its reason (in the
+  주요 사건 band only a reporting source's linked line or a group's attacked CVEs: the strip already says "CISA KEV 등재
+  <day>", polish 11-19)
   (Easy: under the CVE IDs and the red "지금 실제 공격에 쓰이고 있어요!"), the KEV day kept whole on one line; in Easy the
   red line and its reason are one group and "이럴 때만 해당돼요" starts the next, 0.5rem below (critique 14 polish).
 - **State:** Recessed Panel on hover; an opened row and its details take Kiosk Panel; `aria-expanded`
@@ -637,7 +645,8 @@ Restrained outlined buttons for theme, language and copying a command.
   filter count pops when it changes; the all-clear check draws itself when the sign first appears; the theme icon
   turns in, and a theme or language change cross-fades the page (View Transitions, 200ms, where supported).
 - **Reduced motion:** the ring fill and every movement are dropped; opened panels keep only the fade, so the
-  change is still seen.
+  change is still seen. A row's details fade in and out (opacity only, 200ms) instead of growing; the phone sheet's
+  fade is 200ms, not 300ms (Astryx pass, owner 11-19: "opacity only, in 200 ms or less").
 - **First visit (critique 9, 11-09):** the reading guide no longer opens by itself. A first visit gets one framed line
   under the status line: the three risk signs and a CVSS ring, each with a few words, then 읽는 법 자세히 (opens the full
   guide) and a close button. Closing either marks the guide seen (`vr-guide`); the line never returns. The first row
@@ -695,7 +704,8 @@ Restrained outlined buttons for theme, language and copying a command.
   ("Up one screen" / "Down one screen") move by a press, not a scroll, 87% of the window's height below the frozen
   search row, so the line the reader was on stays in view (`stepDistance`), smooth unless motion is reduced. Top and
   bottom wear an arrow against a bar, the steps a plain chevron; every button names itself on hover and to screen
-  readers. A step with nowhere to go dims and is disabled; the pill shows whenever the page scrolls. On a phone the
+  readers. A step with nowhere to go dims and is disabled (`aria-disabled`: the focus stays on it); the two are one Tab
+  stop, Up and Down moving between them. The pill shows whenever the page scrolls. On a phone the
   group rests 6 s after a step press instead of 2 s, so the next press finds it under the finger; once rested, a small
   scroll brings it back (a tap cannot, as the buttons are hidden). Page Up/Down, Space, Home and End stay the browser's.
 - **Phone header (critique 10, a.1):** one line with the name, 기본|쉬운 설명 and a settings button; 가−/가+, theme and
@@ -861,8 +871,11 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Do** let a long line badge name wrap inside its pill; never cut it with "…" (critique 12).
 - **Do** list several 해당 조건 one per line; never join them with " · " (a condition may hold its own dot, "팩스·SMS").
 - **Do** draw the focus ring inside a 주요 사건 row (`outline-offset: -3px`): the band clips anything outside it.
-- **Do** use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
-  `--fs-small`) and the shared `.btn` for any new outlined button.
+- **Do** use the `:root` tokens (`--tap`, `--r-marker`, `--r-code`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
+  `--fs-small`, the floating controls' `--lift-menu` and `--lift-float`, the curves `--ease-out` and `--ease-exit`) and
+  the shared `.btn` for any new outlined button.
+- **Do** say "새 탭에서 열림" to screen readers on every link that opens a new tab, the Board's own buttons included
+  (GitHub, 틀린 내용 알리기, Buy Me a Coffee).
 - **Do** keep every interactive target at least 44 px.
 - **Do** theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link
   underline offset (3px).
