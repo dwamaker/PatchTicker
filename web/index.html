@@ -1063,6 +1063,17 @@
     :root::view-transition-old(*.frozen) { display: none; }
     :root::view-transition-new(*.frozen), :root::view-transition-group(*.frozen) { animation: none; }
     :root::view-transition-group(*.frozen) { z-index: 1; } /* the groups' own order put the rows on top */
+    :root::view-transition-group(*.frozen) { overflow: visible; } /* or the open suggestion list is cut at the bar's edge while typing redraws */
+    /* typing in search: the same redraw, quicker, so the next keystroke never waits on one (rows glide 200ms, gone ones
+       leave in 120ms, the page, the answer line and the result count cross-fade in 160ms); reduced motion: no row is
+       named, so the whole change is one 160ms cross-fade */
+    .vt-search::view-transition-group(*) { animation-duration: 200ms; }
+    .vt-search::view-transition-old(*):only-child { animation-duration: 120ms; }
+    .vt-search::view-transition-old(root), .vt-search::view-transition-new(root),
+    .vt-search::view-transition-old(vt-count), .vt-search::view-transition-new(vt-count) { animation-duration: 160ms; }
+    .vt-search #result-count { view-transition-name: vt-count; } /* inside the frozen bar, whose live picture would swap it at once */
+    :root.vt-search::view-transition-group(vt-count) { z-index: 2; }
+    .vt-search.vt-still li[data-vt] { view-transition-name: none !important; }
     /* a row that arrived by a refresh drops into its place at the top of the Board (where supported) */
     li.fresh { view-transition-class: fresh; }
     @media (prefers-reduced-motion: no-preference) {

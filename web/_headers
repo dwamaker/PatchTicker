@@ -7,7 +7,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-7QAY1o/6jjbAG+eaFLAyWz4YI9o38r+2Lis0GSsdyEU=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-SF+RP5JiTZQgmnWe/MnCQrAIHHOoEUiPKFnFRVsdL/4=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 =======
   Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-eIf0JbIiWnnjA1kQ5Vvbyhitmk4Ob/P0UuJrTkmz050=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 >>>>>>> claude/vis-badges-81c266
