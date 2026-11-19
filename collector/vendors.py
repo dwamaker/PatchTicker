@@ -39,6 +39,7 @@ FEEDS = {
         "own": re.compile(r"^Drupal core - (?!.*Third-party libraries)"),
     },
 }
+FIRST_READ_DAYS = 3  # a feed's first read lets its last 3 days through (owner, 11-19: SA-26:21 must reach the Board)
 MAX_AGE_DAYS = 30  # an unseen item older than this starts nothing: a changed guid format must not refill the Board
 MAX_SEEN = 1000  # shortcut: ids kept per feed; raise it before listing a feed that holds more items than this
 
@@ -47,11 +48,12 @@ def fetch(checkpoints, http_get, feeds, stamp):
     """Return (Mention groups for items not seen before, next checkpoints). feeds: {feed URL: rules}, as FEEDS.
 
     Checkpoints are {feed URL: [guids seen]}: dates cannot order these feeds (date-only and revised dates exist). A
-    feed's first read records its items and starts nothing (no backfill). A feed that fails, or reads as empty, keeps
+    feed's first read records its items older than FIRST_READ_DAYS as seen and reads the rest as new (no older backfill). A feed that fails, or reads as empty, keeps
     its checkpoint, so one dead site never stops the Board and never makes every old item new again.
     """
     checkpoints = dict(checkpoints or {})
-    oldest = stamp_ago(datetime.strptime(stamp, STAMP).replace(tzinfo=timezone.utc), days=MAX_AGE_DAYS)
+    now = datetime.strptime(stamp, STAMP).replace(tzinfo=timezone.utc)
+    oldest, recent = stamp_ago(now, days=MAX_AGE_DAYS), stamp_ago(now, days=FIRST_READ_DAYS)
     groups = []
     for feed, rules in feeds.items():
         try:
@@ -63,8 +65,8 @@ def fetch(checkpoints, http_get, feeds, stamp):
         if not items:
             continue
         if feed not in checkpoints:
-            checkpoints[feed] = [key for key, _ in reversed(items)][-MAX_SEEN:]  # oldest first, as later ones append
-            continue
+            # oldest first, as later ones append; the recent ones stay unseen and go through the loop below
+            checkpoints[feed] = [key for key, item in reversed(items) if not posted_since(item, recent)][-MAX_SEEN:]
         seen = list(checkpoints[feed])
         for key, item in items:
             if key in seen:
@@ -79,6 +81,13 @@ def fetch(checkpoints, http_get, feeds, stamp):
                 groups.append(group)
         checkpoints[feed] = seen[-MAX_SEEN:]
     return groups, checkpoints
+
+
+def posted_since(item, stamp):
+    try:
+        return rss.posted(item) >= stamp
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return False  # an unreadable date counts as old: recorded, never started
 
 
 def item_id(item):

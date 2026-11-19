@@ -56,13 +56,22 @@ class VendorFeedTest(unittest.TestCase):
         self.assertEqual((group["cves"], group["join_only"], group["mentions"][0]["kind"]), (["CVE-2026-132165"], False, "advisory"))
         self.assertEqual(group["published"], "2026-11-18T17:43:11Z")
 
-    def test_the_first_read_records_every_item_and_starts_nothing(self):
+    def test_the_first_read_lets_the_last_days_through_and_records_the_rest(self):
+        # owner, 11-19: SA-26:21 (posted that day, no CVE record yet) must reach the Board when the feed is first read
         groups, checkpoints = vendors.fetch({}, get, vendors.FEEDS, STAMP)
-        self.assertEqual(groups, [])
+        self.assertEqual([(g["mentions"][0]["url"], g["join_only"]) for g in groups], [
+            (ADVISORY.format(21), False), (ADVISORY.format(20), True),
+            ("https://www.drupal.org/sa-core-2026-018", False), ("https://www.drupal.org/sa-core-2026-017", False)])
+        self.assertTrue(all(g["published"] >= "2026-11-16T12:00:00Z" for g in groups))
         self.assertEqual(len(checkpoints[SYNOLOGY]), 5)
-        self.assertEqual(checkpoints[DRUPAL], ["3623427 at https://www.drupal.org", "3636972 at https://www.drupal.org",
-                                               "3637891 at https://www.drupal.org"])  # oldest first, so a trim drops old ids
+        self.assertEqual(checkpoints[DRUPAL], ["3623427 at https://www.drupal.org", "3637891 at https://www.drupal.org",
+                                               "3636972 at https://www.drupal.org"])  # the old one first, then as read
         self.assertEqual(vendors.fetch(checkpoints, get, vendors.FEEDS, STAMP), ([], checkpoints))
+
+    def test_a_first_read_long_after_the_last_post_starts_nothing(self):
+        groups, checkpoints = vendors.fetch({}, get, vendors.FEEDS, "2026-12-01T00:00:00Z")
+        self.assertEqual(groups, [])
+        self.assertEqual((len(checkpoints[SYNOLOGY]), len(checkpoints[DRUPAL])), (5, 3))
 
     def test_only_unseen_items_are_built_and_then_recorded(self):
         before = unseen(SA.format(21))
