@@ -1271,7 +1271,7 @@ function render() {
   $('pinned-head').hidden = !highlights.length;
   $('pin-more').replaceChildren(...(extra.length ? [pinToggle(extra.length)] : []));
   const count = panelCount();
-  $('filter-count').textContent = count ? String(count) : '';
+  if (count) $('filter-count').textContent = String(count); // gone, it keeps its number while it fades out (index.html)
   $('filter-count').hidden = !count;
   if (count && count !== shownCount) pop($('filter-count'));
   shownCount = count;
@@ -1557,13 +1557,14 @@ function unpick(e) {
 // Every token in the bar, in order: picked Products, then the filter panel's conditions (Astryx PowerSearch: each
 // filter is a token). [text nodes, name, remove]
 function barTokens() {
-  const products = pickedEntries().map((e) => [[label(e)], label(e), () => unpick(e)]);
+  const products = pickedEntries().map((e) => [[label(e)], label(e), () => unpick(e), `p:${e.ids.join()}`]);
   const conditions = conditionList().map(([value, change, field]) => [field ? [el('span', 'f', `${field} `), el('b', '', value)] : [value],
-    field ? `${field} ${value}` : value, () => { update(change); $('search').focus({ preventScroll: true }); }]);
+    field ? `${field} ${value}` : value, () => { update(change); $('search').focus({ preventScroll: true }); }, `c:${JSON.stringify(change)}`]);
   return [...products, ...conditions];
 }
-function token([text, name, remove]) {
+function token([text, name, remove, key]) {
   const item = el('span');
+  item.dataset.key = key;
   item.setAttribute('role', 'listitem');
   const button = Object.assign(el('button', 'token'), { type: 'button' });
   const words = el('span', 't');
@@ -1579,7 +1580,18 @@ function token([text, name, remove]) {
 function barEnd(list) {
   const t = TEXT[lang];
   const tokens = barTokens();
-  $('tokens').replaceChildren(...tokens.map(token));
+  const box = $('tokens');
+  // A token that was not there pops in, one that went shrinks out (owner, 11-19); a redraw that keeps them (typing, a
+  // refresh, the first draw, a new language) moves nothing. Keys do not depend on the language.
+  const before = tokensLang === lang ? [...box.children].filter((n) => !n.classList.contains('leaving')) : null;
+  tokensLang = lang;
+  box.replaceChildren(...tokens.map(token));
+  if (before) {
+    const was = new Set(before.map((n) => n.dataset.key));
+    const now = new Set(tokens.map((t) => t[3]));
+    for (const item of box.children) if (!was.has(item.dataset.key)) pop(item.firstChild, 'scale(0.8)', 180);
+    before.forEach((old, n) => { if (!now.has(old.dataset.key)) tokenLeave(old, box.children[n] || null); });
+  }
   $('bar').classList.toggle('has-tokens', tokens.length > 0);
   const narrowed = activeFilters() > 0 || Boolean($('search').value);
   $('result-count').hidden = !narrowed || !updated || Boolean(loadError) || (filter.query && !applied());
@@ -1587,12 +1599,25 @@ function barEnd(list) {
   $('search-clear').hidden = !narrowed;
   tokenOverflow();
 }
+let tokensLang = null; // the language the bar's tokens were last drawn in; null before the first draw
+// A removed token stays a moment as an inert copy where it was, shrinking out; reduced motion: it only fades.
+function tokenLeave(item, next) {
+  item.classList.add('leaving');
+  item.inert = true;
+  item.setAttribute('aria-hidden', 'true');
+  item.removeAttribute('role');
+  $('tokens').insertBefore(item, next);
+  const gap = getComputedStyle($('bar')).columnGap;
+  const out = reducedMotion.matches ? [{ opacity: 1 }, { opacity: 0 }]
+    : [{ opacity: 1, scale: '1', width: `${item.offsetWidth}px`, marginInlineEnd: '0px' }, { opacity: 0, scale: '0.8', width: '0px', marginInlineEnd: `-${gap}` }];
+  item.animate(out, { duration: 160, easing: EASE_EXIT }).finished.finally(() => item.remove());
+}
 // Unfocused, the bar keeps its tokens on one row (Astryx Tokenizer tokenOverflowBehavior "unfocusedInline", index.html
 // .sbar:not(:focus-within)) and says how many it cannot show; focused, every token wraps into view.
 function tokenOverflow() {
   const bar = $('bar');
   const edge = bar.getBoundingClientRect().right - parseFloat(getComputedStyle(bar).paddingRight) + 0.5;
-  const tokens = [...bar.querySelectorAll('.token')];
+  const tokens = [...bar.querySelectorAll('#tokens > :not(.leaving) > .token')];
   const hidden = tokens.filter((t) => !t.offsetWidth || t.getBoundingClientRect().right > edge).length;
   const all = hidden > 0 && hidden === tokens.length; // a phone's closed bar shows none: say what is set, as a token
   $('token-more').hidden = !hidden;
@@ -1734,9 +1759,10 @@ function filterPanel() {
   );
   const actions = el('div', 'fp-actions');
   const reset = Object.assign(el('button', 'btn', f.reset), { type: 'button' });
-  // The panel is drawn again under the pressed button: 필터 초기화 in the new one takes the focus, never <body>.
+  // The panel is drawn again under the pressed button: 필터 초기화 in the new one takes the focus, never <body>. It is
+  // redrawn inside the Board transition (update), not before it, so the chosen chips cross-fade to clear (owner, 11-19).
   const refocus = () => $('filters').querySelector('.fp-actions .btn')?.focus({ preventScroll: true });
-  reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()).then(refocus); filterPanel(); refocus(); });
+  reset.addEventListener('click', () => update(PANEL_EMPTY_WITH_OS()).then(refocus));
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // The groups' notes sit in the footer, left of the buttons (owner, 11-19); each group still points to its own note.
@@ -1756,7 +1782,21 @@ function filterPanel() {
   const head = el('div', 'g-head fp-head');
   head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
   form.replaceChildren(head, grid, foot);
+  for (const track of form.querySelectorAll('.fp-seg-track')) new ResizeObserver(placeSegs).observe(track); // text size, width
   countDraft();
+}
+// 최소 CVSS and CVE 번호: one pill under the chosen option that slides across, as the 기본|쉬운 설명 switch's does (placePill).
+function placeSegs() {
+  for (const track of $('filters').querySelectorAll('.fp-seg-track')) {
+    const on = track.querySelector('input:checked')?.parentElement;
+    if (!on) continue;
+    track.style.setProperty('--pill-x', `${on.offsetLeft}px`);
+    track.style.setProperty('--pill-w', `${on.offsetWidth}px`);
+    if (!track.classList.contains('slid')) {
+      track.classList.add('slid');
+      requestAnimationFrame(() => requestAnimationFrame(() => track.classList.add('ready'))); // no slide as the panel opens
+    }
+  }
 }
 
 // Reset clears the panel only; Products picked at the top and the search stay.
@@ -1779,7 +1819,15 @@ function countDraft() {
   const n = count(panelDraft());
   const apply = $('filters').querySelector('button[type=submit]');
   if (apply) {
-    apply.textContent = TEXT[lang].fp.applyN(n);
+    // the number swaps in quickly when a choice changes it, never as the panel opens (a new button has no data-n yet)
+    const was = apply.dataset.n;
+    apply.dataset.n = n;
+    const words = el('span', '', TEXT[lang].fp.applyN(n));
+    apply.replaceChildren(words);
+    if (was !== undefined && was !== String(n)) {
+      words.animate([reducedMotion.matches ? { opacity: 0 } : { opacity: 0, translate: '0 0.375em' }, { opacity: 1, translate: '0 0' }],
+        { duration: 160, easing: EASE_OUT });
+    }
     apply.classList.toggle('primary', n > 0); // nothing to show: no longer the obvious next step
   }
   // A chip that would leave nothing if added (악용 발생만 with 위험, say) is marked before it is chosen.
@@ -1798,7 +1846,7 @@ function countDraft() {
   // the dashed style says what it means while any chip wears it
   $('filters').classList.toggle('has-zero', Boolean($('filters').querySelector('.fp-chip.zero')));
 }
-$('filters').addEventListener('change', countDraft);
+$('filters').addEventListener('change', () => { countDraft(); placeSegs(); });
 
 function applyPanel(event) {
   event.preventDefault();
@@ -1865,8 +1913,7 @@ function closePanel(applied = false) {
   const from = panelFrom;
   panelFrom = null;
   sheetInert(false);
-  $('filters').hidden = true;
-  $('filters').classList.remove('floating');
+  $('filters').hidden = true; // it fades out (index.html .filters[hidden]); floating stays until the next open sets it
   $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
   $('filter-btn').focus({ preventScroll: true });
