@@ -459,7 +459,8 @@ template card's, and with four 긴급 in a row they told nothing); it is set apa
 
 ### Frosted menus (owner, 11-19, an experiment)
 The four menus (search suggestions, 정렬, language, RSS) are 70% Kiosk Panel over a 12px blur (owner, 11-19: 90% before) (saturate 1.2) of what
-lies behind, where the browser has `backdrop-filter`. `?menu=solid` draws them solid to compare; deleting the one CSS
+lies behind, where the browser has `backdrop-filter`. While the Board redraws through its transition they are solid: the
+frozen search bar is drawn apart from the page, so a see-through menu in it showed the old rows sharp (owner, 11-19). `?menu=solid` draws them solid to compare; deleting the one CSS
 rule makes them solid for good. Every menu text keeps 4.5:1+ even over a solid ink or white ground behind it, the hover
 fill included.
 

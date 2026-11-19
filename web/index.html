@@ -1116,6 +1116,9 @@
     .vt-board #jump { view-transition-name: vt-jump; view-transition-class: frozen; }
     .vt-board #new-above { view-transition-name: vt-new; view-transition-class: frozen; }
     .vt-board #feeds:popover-open { view-transition-name: vt-feeds; view-transition-class: frozen; } /* an open RSS menu stays over the moving rows */
+    /* A frozen group is drawn apart from the page, so a menu inside it has nothing behind it to blur and the 70% panel let
+       the old rows show through sharp (owner, 11-19, typing with the suggestions open): solid until the redraw ends. */
+    :root.vt-board .menu { background: var(--panel); -webkit-backdrop-filter: none; backdrop-filter: none; }
     :root::view-transition-old(*.frozen) { display: none; }
     :root::view-transition-new(*.frozen), :root::view-transition-group(*.frozen) { animation: none; }
     :root::view-transition-group(*.frozen) { z-index: 1; } /* the groups' own order put the rows on top */
