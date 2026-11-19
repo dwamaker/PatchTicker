@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -200,7 +200,7 @@ function banner(i, t) {
   const pending = !isExploited(i) && !rating;
   // In a group the score names the CVE it belongs to (step 4): in the ring's label and a small line.
   const top = rating ? scoreCve(i) : null;
-  const under = isExploited(i) ? `<small class="why kev">${esc(t.kevReason)}</small>` : pending ? `<small class="why unrated">${esc(t.unratedWhy)}</small>` : '';
+  const under = isExploited(i) ? `<small class="why kev">${esc(t.kevReason)}</small>` : pending ? `<small class="why unrated">${esc(pendingWhy(i, t))}</small>` : '';
   const sign = `<p class="sign"><b class="word">${esc(t.levels[level])}</b>${under ? ` ${under}` : ''}</p>`;
   const ring = rating
     ? `<span class="gauge sev-${rating}" role="img" aria-label="CVSS ${cvss.toFixed(1)} (${esc(t.rating[rating])})${top ? ` · ${esc(t.scoreOf(top))}` : ''}" style="--fill:${(Math.min(cvss, 10) / 10).toFixed(3)}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg><b>${cvss.toFixed(1)}</b></span>`

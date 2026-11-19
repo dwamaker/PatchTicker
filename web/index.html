@@ -690,6 +690,9 @@
     @media (min-width: 768px) {
       .row > .c-risk.loud { display: grid; grid-template-columns: max-content; justify-items: center; justify-self: start; }
       .row > .c-risk.loud .why { width: 0; display: flex; justify-content: center; white-space: nowrap; text-align: center; }
+      /* An advisory's word (점수 대기 · 공지 등급 Critical, 11-19) ran into the title as one line: here it takes a second line. */
+      .row > .c-risk.loud .why:has(.adv-word) { flex-direction: column; align-items: center; }
+      .row > .c-risk.loud .why .adv-sep { display: none; }
     }
     .strip .loud .why { padding-left: 0; } /* the band's strip puts the reason beside the sign, on its own line */
     :lang(ja) .strip .loud .why { word-break: keep-all; } /* the strip's reason sits beside the sign: unchanged */

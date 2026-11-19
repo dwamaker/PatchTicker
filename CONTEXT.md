@@ -77,7 +77,10 @@ _Avoid_: 0-day, pre-CVE
 an August Incident listed this week stood among them): every exploited one, then one Incident at 최고 for each well-known product not already held by an exploited one (the best-scored; owner, 2026-11-11, 2026-11-16), by
 the product's tier of reach on the hand-kept list (1 on most computers or phones, 2 the standard of its field, 3 known
 inside it; a product on no list counts as 3), tier 1 before 2 before 3 and by importance inside a tier (owner,
-2026-11-17: "많은 사람이 사용하는걸 위로"), then the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). A product is well known when it is
+2026-11-17: "많은 사람이 사용하는걸 위로"), then the rest by importance, at least ten and at most twenty in all (owner, 2026-11-10). Importance counts, besides attacks,
+discussion, curators, the score and Mentions, how new the Incident is: one just published gains as much as a CVSS 10 adds, falling evenly to
+nothing at seven days old (owner, 2026-11-19: "최신소식이 위에 올라와야"); an Incident with a
+provisional level counts as its level's lowest score (9 or 7). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
 owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), each of a different vendor
 while four remain (owner, 2026-11-16: "고정 네 자리는 서로 다른 회사로"); the same vendor in another category of the
@@ -146,12 +149,19 @@ report attacks (2026-11-08), naming the source that says
 so (2026-11-09; public exploit code alone is not exploited): the model reports what the sources say; the rule sets the level.
 The Summary must itself say that attacks were seen; a source of any kind counts then, the product's own advisory or CVE
 record included, and never when it only describes the flaw (owner, 2026-11-16: bird-lg-go's own advisory reported none).
+While an Incident has no CVSS score, the severity word its product's own Advisory states under its label ("Severity
+Critical", Drupal's "Security risk: Critical") sets a provisional level: Critical the top one, High the next; Medium, Low
+or none change nothing, and a score, once there, always wins. Code reads the word from the Advisory's page in the
+Summary's input, never from a write-up, news, a discussion or a Mention title, and the row names it (owner, 2026-11-19:
+Ruby2Shell, Synology-SA-26:21 and SA-CORE-2026-017, all Critical, sat at 참고 for hours).
 _Avoid_: alert, badge, warning level
 
 **Score pending** (점수 대기):
 An Incident with no CVSS score yet and no report of attacks. Its own choice in the risk filter beside the three risk
 levels, not part of the lowest one; ordered above the lowest level when the Board is sorted by risk (owner,
-2026-11-15). An exploited Incident without a score is at the top level, never here.
+2026-11-15). An exploited Incident without a score is at the top level, never here. One whose Advisory gives a
+provisional level (Risk banner) is still drawn as pending, with the word ("점수 대기 · 공지 등급 Critical"), but filed
+under that level in the filter (2026-11-19).
 _Avoid_: unrated, unscored, unknown risk
 
 **Mitigation** (대처법):

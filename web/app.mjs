@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, advisoryWord, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
 
 
@@ -77,7 +77,7 @@ const TEXT = {
       title: '이 현황판 읽는 법', close: '닫기',
       primer: { highest: '실제 공격·9점 이상', high: '7점 이상', notice: '7점 미만', unrated: '점수 대기', ring: 'CVSS 점수 (10점 만점)', more: '읽는 법 자세히', dismiss: '안내 닫기' },
       risk: { highest: '실제 공격에 쓰이고 있거나("공격 발생"), CVSS 점수가 10점 중 9점 이상', high: 'CVSS 점수 10점 중 7점 이상', notice: 'CVSS 점수 10점 중 7점 미만.' },
-      unrated: '점수 대기: CVSS 점수가 아직 없는 사건입니다. 실제 공격이 없으면 참고 표시를 점선으로 그립니다. 위험 단계 필터에서는 따로 고르고, 위험도순과 CVSS 높은순에서는 점수가 있는 참고 사건보다 위에 둡니다.',
+      unrated: '점수 대기: CVSS 점수가 아직 없는 사건입니다. 실제 공격이 없으면 참고 표시를 점선으로 그립니다. 제품의 공식 공지가 Critical이나 High로 매겼으면 그 등급(긴급, 위험)을 점선으로 그리고 "공지 등급"이라고 적고, 필터에서도 그 등급에 넣습니다. 나머지 점수 대기 사건은 위험 단계 필터에서 따로 고르고, 위험도순과 CVSS 높은순에서는 점수가 있는 참고 사건보다 위에 둡니다.',
       ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 점선 링 안에 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기이고, 같은 제품은 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각입니다. 본인 시간대로 보여 줍니다. 원문에 시각이 없으면 이 현황판이 처음 본 시각을 "처음 확인"과 함께 보여 줍니다.',
@@ -132,7 +132,7 @@ const TEXT = {
       title: 'How to read this Board', close: 'Close',
       primer: { highest: 'Attacked or 9+', high: '7+', notice: 'Below 7', unrated: 'Score pending', ring: 'CVSS score (out of 10)', more: 'How to read', dismiss: 'Dismiss this note' },
       risk: { highest: 'Attacked (attacks reported), or a CVSS score of 9 or more out of 10', high: 'A CVSS score of 7 or more out of 10', notice: 'A CVSS score below 7 out of 10.' },
-      unrated: 'Score pending: no CVSS score yet. Unless attacked it shows a dashed Notice sign, has its own choice in the risk filter, and sorts above scored Notice rows by risk or by CVSS.',
+      unrated: 'Score pending: no CVSS score yet. Unless attacked it shows a dashed Notice sign, or, when the product’s own advisory rates it Critical or High, that level dashed with "advisory:" and the word, filed under that level in the filter. Any other pending row has its own choice in the risk filter, and sorts above scored Notice rows by risk or by CVSS.',
       ring: 'The CVSS score: how severe a flaw is, out of 10, on an international standard. The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as — in a dashed ring.',
       tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
       date: 'When it was first published, in your time zone. With no time in the source, "first seen" shows when the Board first saw it.',
@@ -187,7 +187,7 @@ const TEXT = {
       title: 'このボードの見方', close: '閉じる',
       primer: { highest: '実際の攻撃・9点以上', high: '7点以上', notice: '7点未満', unrated: 'スコア待ち', ring: 'CVSS スコア（10点満点）', more: '見方を詳しく', dismiss: '案内を閉じる' },
       risk: { highest: '実際の攻撃に使われている（「攻撃発生」）か、CVSS スコアが10点中9点以上', high: 'CVSS スコアが10点中7点以上', notice: 'CVSS スコアが10点中7点未満。' },
-      unrated: 'スコア待ち: CVSS スコアがまだないインシデントです。実際の攻撃がなければ参考の表示を点線で描き、危険度フィルターでは別に選べ、危険度順と CVSS の高い順では、スコアのある参考のインシデントより上に置きます。',
+      unrated: 'スコア待ち: CVSS スコアがまだないインシデントです。実際の攻撃がなければ参考の表示を点線で描き、製品の公式アドバイザリーが Critical か High とする場合はその段階（緊急、警戒）を点線で描いて「公式評価」と添え、フィルターでもその段階に入れます。ほかのスコア待ちは危険度フィルターで別に選べ、危険度順と CVSS の高い順では、スコアのある参考のインシデントより上に置きます。',
       ring: 'CVSS スコア: 脆弱性の深刻さを10点満点で評価する国際的な基準です。リングはスコアの分だけ満ち、色もスコアに従います。実際の攻撃に使われると、スコアに関係なく最上位になります。スコアがまだなければ、点線のリングに — と表示されます。',
       tags: '色付きのバッジは影響を受ける製品や機器で、製品ごとに常に同じ色です。枠線のバッジは、その製品が動く OS です。',
       date: '最初に公開された日時（お使いのタイムゾーン）。原文に時刻がない場合は「初確認」とともに、このボードが最初に確認した時刻を表示します。',
@@ -1217,14 +1217,14 @@ let highlightedNow = new Set(); // every Highlight, pinned or behind 주요 사�
 // What render() draws, in its order: the pinned Highlights, then the list items (rows and vendor folds); openLinked counts
 // a linked row's place in the same items, so the two never disagree.
 function boardLists() {
-  const { highlights: chosen, list, variants, inText } = filtered();
+  const { highlights: chosen, list, variants, inText, now } = filtered();
   // A product or search filter is a question: no pinned block repeating the list's own rows above it, one sentence
   // answering instead (answerLine; critique 11-17, P1). The list still edges its Highlights (highlightedNow). A search
   // counts from the moment it is typed or restored, so no block shows while it waits for the full week (applied).
   const answering = Boolean(filter.picks.length || filter.query);
   // The pins go to four different vendors and show by importance, whatever the visitor's sort (owner, 11-16; pinOrder);
   // 주요 사건 더 보기 appends the rest below them, a pinned vendor's other rows first, then by importance too.
-  const { pins, rest: extra } = answering ? { pins: [], rest: [] } : pinOrder(chosen);
+  const { pins, rest: extra } = answering ? { pins: [], rest: [] } : pinOrder(chosen, now);
   const highlights = [...pins, ...(pinAll ? extra : [])];
   const pinned = new Set(highlights);
   // Owner, 11-16: the list is the whole Board in the visitor's order, Highlights included at their own place (edged in
@@ -2827,7 +2827,13 @@ function riskCell(incident) {
   // Why it is this high when the score alone would not say so: exploited (KEV, or attacks its sources report) lifts it to the top level.
   // The space keeps screen readers from running the two words together ("긴급!악용 발생"); flex hides it on screen.
   if (isExploited(incident)) cell.append(' ', el('small', 'why kev', (easy && TEXT[lang].kevReasonEasy) || TEXT[lang].kevReason));
-  else if (pending) cell.append(' ', el('small', 'why unrated', TEXT[lang].unratedWhy));
+  else if (pending) {
+    // The advisory's word (owner, 11-19) in its own part, so a wide screen's list row can put it on a second line.
+    const why = el('small', 'why unrated', TEXT[lang].unratedWhy);
+    const word = advisoryWord(incident, TEXT[lang]);
+    if (word) why.append(el('span', 'adv-sep', ' · '), el('span', 'adv-word', word)); // no-break spaces: a flex strip trims plain ones
+    cell.append(' ', why);
+  }
   return cell;
 }
 
