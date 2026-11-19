@@ -290,12 +290,14 @@ export function pinReason(i) {
 // - 5 x CVSS; with none, an exploited row counts 9 (owner, 11-10) and a provisional level its band's floor, 9 or 7.
 // - wide use: tier 1 +14, tier 2 +10, tier 3 or a label on no list +5 (tierOf), no label 0.
 // - urgency: exploited +12, any other 긴급 row (CVSS 9+ or an advisory's Critical) +3; no automatic place.
-// - recency: +10 when published at now, falling in a straight line to 0 at seven days old (owner, 11-19: "최신소식이 위에");
+// - recency: +25 when published at now, falling in a straight line to 0 at seven days old (owner, 11-19: "최신소식이 위에";
+//   10 at first, raised to 25 the same day when no row of the day reached the twelve);
 //   straight, so the gap between two rows never changes and the collector's pick for rows.json holds minutes later. One
-//   day is worth about 0.29 CVSS point: a fresh 9.0 beats a 9.8 five days old, a fresh 7.0 does not.
+//   day is worth about 0.71 CVSS point: a fresh 9.0 and a fresh 7.0 both beat a 9.8 five days old, and a fresh
+//   plain 9.8 beats an exploited 9.8 more than about two and a half days old.
 // - tie-breakers, 2 at most: HN points (1 at 500), a curator issue 0.5, Mentions 0.05 each up to ten (owner, 11-10: a
 //   release counts one per CVE, and FFmpeg's 331 took every pin).
-const RECENCY = 10;
+const RECENCY = 25;
 const recency = (i, now) => RECENCY * Math.min(1, Math.max(0, 1 - (now - Date.parse(publishedAt(i))) / (7 * DAY_MS)));
 const SEVERITY_FLOOR = { __proto__: null, highest: 9, high: 7 }; // 9: HIGHEST_CVSS, declared further down
 const WIDE_USE = { __proto__: null, 1: 14, 2: 10, 3: 5 };
