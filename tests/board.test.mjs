@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese } from '../web/board.mjs';
+import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -589,7 +589,35 @@ test('a Product keeps its line colour, and Products spread over the lines', () =
   assert.ok(Math.max(...per) <= (2 * ids.length) / LINES.length, `lines hold ${per}`); // at most twice a fair share
 });
 
-test('a Product\'s line follows its id, so Korean and English pages colour it the same', () => {
+test('a shown name has one line, whatever Product id is behind it (critique P2, 11-19)', () => {
+  // Pairs seen live on 11-19, each one name in two colours while the line followed the id.
+  const rows = [
+    { products: [{ id: 'n-able:n-central', name: 'N-able N-central' }] },
+    { products: [], summary: { products: ['N-able N-central'] } }, // name-only Product
+    { products: [{ id: 'contrid:newsletters', name: 'Newsletters' }] },
+    { products: [{ id: 'tribulant_software:newsletters', name: 'Newsletters' }] }, // two vendors, one name
+    { products: [{ id: 'openstack:cinder', name: 'OpenStack Cinder' }] },
+    { products: [], summary: { products: ['openstack cinder'] } }, // letter case
+  ].map((r) => ({ cves: [], ...r }));
+  const lines = new Map();
+  for (const i of rows) for (const name of rowTags(i, 'en')) {
+    const key = name.toLowerCase();
+    lines.set(key, [...(lines.get(key) || []), nameLine(name)]);
+  }
+  assert.deepEqual([...lines.keys()].sort(), ['n-able n-central', 'newsletters', 'openstack cinder']);
+  for (const [name, seen] of lines) assert.equal(new Set(seen).size, 1, name);
+  assert.equal(nameLine('Google Chrome'), nameLine('Chrome')); // a known vendor in front is the same Product
+  assert.equal(nameLine('WordPress'), LINES.find((l) => l.bg === '#c25bb8')); // WordPress keeps its pink line
+  const names = ['OpenSSH', 'SonicOS', 'Paint', 'CPython', 'Apache Allura', 'Apache Axis2', 'ForgeRock Access Management',
+    'InfiniteWP Client', 'Tower of Fantasy', 'RRD::CGI::Image', 'Perl SQL::Abstract', 'OpenWrt', 'Alpine Linux', 'Python',
+    'Keycloak', 'Dropbear SSH', 'Google Chrome', 'Firefox', 'Safari', 'Linux Kernel', 'DiskStation Manager', 'Archer C6',
+    'FortiOS', 'PAN-OS', 'Cisco IOS XE', 'Ivanti Connect Secure', 'NetScaler', 'Confluence', 'GitLab', 'Jenkins',
+    'Apache Tomcat', 'nginx', 'PHP', 'Node.js', 'Java', 'VMware ESXi'];
+  const per = LINES.map((line) => names.filter((n) => nameLine(n) === line).length);
+  assert.ok(Math.max(...per) <= (2 * names.length) / LINES.length, `lines hold ${per}`); // names spread over the lines too
+});
+
+test('a Product\'s pick follows its id, so Korean and English pages filter by the same Product', () => {
   const paint = { products: [], summary: { products: ['Microsoft Paint'], platforms: ['Windows'],
     ko: { names: ['Windows 그림판'] }, en: { names: ['Microsoft Paint'] }, devices: ['TP-Link Archer'] } };
   const [ko, en] = ['ko', 'en'].map((lang) => lineKeys(paint, lang));
@@ -1493,6 +1521,18 @@ test('the fixed-version list starts at four usable lines and shows five of them'
   assert.equal(WORDS.en.fixesMore(12), '12 more');
 });
 
+// Critique P2 (11-19): a list past five lines folds whole on the Board, and the Easy panel leads with the one plain action.
+test('a folded fixed-version list is led by the plain action, a short one by the intro line', () => {
+  const action = { ko: { easy_action: 'Windows를 보안 업데이트로 바로 설치하세요.' }, en: { easy_action: 'Install the update now.' } };
+  assert.equal(fixesLead({ ...fixRows(17), ...action }, 'ko'), 'Windows를 보안 업데이트로 바로 설치하세요.');
+  assert.equal(fixesLead({ ...fixRows(17), ...action }, 'en'), 'Install the update now.');
+  assert.equal(fixesLead({ ...fixRows(5), ...action }, 'ko'), WORDS.ko.fixesIntro); // in view: the intro says "below"
+  assert.equal(fixesLead(fixRows(17), 'ko'), WORDS.ko.fixesIntro); // Summaries made before easy_action
+  assert.equal(fixesLead({ ...fixRows(17), ko: { easy_action: '' } }, 'ko'), WORDS.ko.fixesIntro);
+  for (const l of ['ko', 'en', 'ja']) assert.match(WORDS[l].fixesFold(17), /17/);
+  assert.equal(WORDS.ko.fixesFold(17), '제품별 수정 버전 보기 (17개)');
+});
+
 // Owner, 11-16: the list under the pinned Highlights is the whole Board, so a pinned Incident stands there too, as its own
 // copy: the list copy keys its open state and transition name apart (rowKey); every other row keys by its id.
 test('a pinned Incident\'s list copy has its own key, and every other row keys by its id', () => {
@@ -1752,4 +1792,17 @@ test('statusCounts: today from local midnight, the week from the file\'s since, 
   const story = { id: 'https://news.ycombinator.com/item?id=1', cves: [], first_seen: new Date(2026, 10, 17, 2).toISOString() };
   const list = [at(17), at(12), at(1), story]; // today, earlier this week, older than the window, off the Board
   assert.deepEqual(statusCounts(list, new Date(2026, 10, 10, 15).toISOString(), new Date(2026, 10, 17, 15)), { today: 1, week: 2 });
+});
+
+// Critique 11-17 P1: a product or search filter states its answer ("Gitea: 최근 7일 2건 · 위험 2 · 공격 보고 없음").
+test('answerCounts counts the filtered list by Risk level and attacks, as the rows show them', () => {
+  const list = [
+    { id: 'a', cvss: 9.8 }, // 긴급 by score
+    { id: 'b', cvss: 5.0, kev: true }, // 긴급 by attack, whatever the score
+    { id: 'c', cvss: 7.5 },
+    { id: 'd', cvss: 4.0 },
+    { id: 'e' }, // no score yet: 참고, as its dashed sign
+  ];
+  assert.deepEqual(answerCounts(list), { total: 5, highest: 2, high: 1, notice: 2, exploited: 1 });
+  assert.deepEqual(answerCounts([]), { total: 0, highest: 0, high: 0, notice: 0, exploited: 0 });
 });

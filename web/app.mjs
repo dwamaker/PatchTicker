@@ -1,5 +1,6 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey } from './board.mjs';
+
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
@@ -43,7 +44,7 @@ const TEXT = {
     notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았습니다: ${text}`,
     variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`, manyProducts: (n) => `맞는 제품이 ${n}개입니다. 목록에서 하나를 고르세요.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => (n ? `이전 사건을 모두 불러왔습니다 (${n}건 추가).` : '이전 사건은 이미 모두 목록에 있습니다.'),
-    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
+    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, reportedBy: (h) => `${h} 보도`, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated) => `마지막 업데이트 ${updated}`, counts: (today, week) => ` · 오늘 ${today}건 · 7일 ${week}건`, countAll: (n) => ` · 전체 ${n}건`, shownOf: (shown, all) => ` · ${all}건 중 ${shown}건`,
     products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     repo: 'GitHub 저장소', search: '검색', clearSearch: '검색어 지우기', noticeClose: '알림 닫기', noticeSince: ['Patch Ticker는 2026년 11월 9일부터 수집을 시작했습니다.', '그 전에 공개된 취약점은 목록에 없을 수 있습니다.'], noticeKeep: '패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.', searchHint: '키워드, CVE 번호, 버전', searchHintShort: '키워드, CVE 번호', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 공개', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', stepUp: '한 화면 위로', stepDown: '한 화면 아래로', stepGroup: '한 화면씩 이동', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
@@ -57,10 +58,11 @@ const TEXT = {
     aliasHint: (w, names) => `‘${w}’${ro(w)} 검색해 ${names.join(', ')}도 함께 찾았습니다.`,
     aliasTextHint: (w, names) => `제품 이름이 ${names.join(', ')}인 사건은 없어 본문에서 찾았습니다.`,
     searched: (cve) => `검색한 ${cve}`, notExploited: '공격 보고 없음',
+    answer: (who, when, n) => `${who}: ${when ? `${when} ` : ''}${n}건`, answerWeek: '최근 7일', answerHeld: '최근 90일',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
-    copy: '복사', copied: '복사됨', share: '이 사건 링크 복사',
+    copy: '복사', copied: '복사됨', copyFailed: '복사하지 못했습니다. 선택된 명령을 직접 복사하세요.', share: '이 사건 링크 복사',
     feeds: 'RSS 피드', feedsHead: 'RSS로 받아 보기', feedMain: '주요 피드', feedMainNote: '위험 이상 사건과 CVE 번호 전 속보',
     feedAll: '현황판 전체', feedAllNote: '참고까지 모든 사건', feedMine: '내 제품', feedPick: '제품 고르기',
     feedNone: '위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.',
@@ -79,7 +81,7 @@ const TEXT = {
       ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 점선 링 안에 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기이고, 같은 제품은 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각입니다. 본인 시간대로 보여 줍니다. 원문에 시각이 없으면 이 현황판이 처음 본 시각을 "처음 확인"과 함께 보여 줍니다.',
-      pin: '최근 7일 안에 공개된 ‘위험’이나 ‘긴급’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 중요한 4건을 서로 다른 회사로 골라, 많은 사람이 쓰는 제품부터 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다. 주요 사건은 아래 목록의 제자리에도 그대로 있고, 왼쪽의 위험도 색 띠로 표시됩니다.',
+      pin: '최근 7일 안에 공개된 ‘위험’이나 ‘긴급’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 중요한 4건을 서로 다른 회사로 골라, 많은 사람이 쓰는 제품부터 위에 고정합니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다. 주요 사건은 아래 목록의 제자리에도 그대로 있고, 위험도 표시 아래에 ‘주요 사건’이라고 적혀 있습니다.',
       group: '한 제품의 여러 CVE가 함께 공개된 묶음입니다. 같은 버전에서 고쳐졌거나, 아직 고쳐지지 않았지만 같은 버전까지 영향받는 CVE들입니다. 링은 그중 가장 높은 점수이고, 펼치면 CVE마다 한 줄씩 나옵니다.',
       brief: '아직 요약 전이라 원문을 그대로 보여 주는 사건입니다. 영어일 수 있습니다.',
       open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다. 키보드로는 ↑ ↓ 키로 행 사이를 옮겨 다닙니다.',
@@ -96,7 +98,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: 'Loading…',
     notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`, variants: (n) => `Also showing ${n} under a similar name.`, manyProducts: (n) => `${n} products match. Pick one from the list.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => (n ? `Earlier Incidents are loaded (${n} more).` : 'There are no earlier Incidents: they are already all in the list.'),
-    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
+    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, reportedBy: (h) => `reported by ${h}`, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated) => `Last updated ${updated}`, counts: (today, week) => ` · today ${today} · 7 days ${week}`, countAll: (n) => ` · all ${n}`, shownOf: (shown, all) => ` · ${shown} of ${all}`,
     products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     repo: 'GitHub repository', search: 'Search', clearSearch: 'Clear search', noticeClose: 'Dismiss notice', noticeSince: ['Patch Ticker has collected since 9 November 2026.', 'Vulnerabilities published before then may be missing.'], noticeKeep: 'An Incident is not removed when a patch ships; it stays for 90 days.', searchHint: 'Keyword, CVE ID, version', searchHintShort: 'Keyword or CVE ID', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'Disclosed together', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', stepUp: 'Up one screen', stepDown: 'Down one screen', stepGroup: 'Move one screen', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
@@ -110,10 +112,11 @@ const TEXT = {
     aliasHint: (w, names) => `‘${w}’ was also searched as ${names.join(', ')}.`,
     aliasTextHint: (w, names) => `No product is named ${names.join(', ')}, so the text was searched for it.`,
     searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
+    answer: (who, when, n) => `${who}: ${n} Incident${n === 1 ? '' : 's'}${when ? ` ${when}` : ''}`, answerWeek: 'in the last 7 days', answerHeld: 'in the last 90 days',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
-    copy: 'Copy', copied: 'Copied', share: 'Copy link to this Incident',
+    copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. The command is selected: copy it yourself.', share: 'Copy link to this Incident',
     feeds: 'RSS feeds', feedsHead: 'Follow by RSS', feedMain: 'Main feed', feedMainNote: 'Elevated and up, attacked, or no CVE yet',
     feedAll: 'The whole Board', feedAllNote: 'Every Incident, Notice too', feedMine: 'My products', feedPick: 'Pick products',
     feedNone: 'Pick products in “Products you run” above, and an address with only their Incidents appears here.',
@@ -132,7 +135,7 @@ const TEXT = {
       ring: 'The CVSS score: how severe a flaw is, out of 10, on an international standard. The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as — in a dashed ring.',
       tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
       date: 'When it was first published, in your time zone. With no time in the source, "first seen" shows when the Board first saw it.',
-      pin: 'The four most important Incidents at the Elevated level or above (attacked, or scored 7 or more) made public in the last seven days stay on top, one per vendor, the most widely used products first. More Highlights adds the rest below them. Every Highlight also keeps its place in the list below, marked by a left edge in its risk colour.',
+      pin: 'The four most important Incidents at the Elevated level or above (attacked, or scored 7 or more) made public in the last seven days stay on top, one per vendor, the most widely used products first. More Highlights adds the rest below them. Every Highlight also keeps its place in the list below, with “Highlight” written under its risk level.',
       group: 'CVEs of one product disclosed together, shown as one row: fixed in the same version, or not fixed yet and affecting the same versions. The ring is the highest score among them; open it for a line on each.',
       brief: '',
       open: 'Open a row for the summary, who is affected, the fix and the source links. On a keyboard, ↑ and ↓ move between rows.',
@@ -149,7 +152,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: '読み込み中…',
     notListed: (text) => `製品リストにない名前なので、キーワードとして検索しました: ${text}`, variants: (n) => `似た名前の${n}件もあわせて表示しています。`, manyProducts: (n) => `該当する製品が${n}件あります。リストから1つ選んでください。`,
     loadDetail: (msg) => `詳細: ${msg}`, olderDone: (n) => (n ? `以前のインシデントをすべて読み込みました（${n}件追加）。` : '以前のインシデントはこれ以上ありません。すでにすべて一覧にあります。'),
-    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
+    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, reportedBy: (h) => `${h} の報告`, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
     status: (updated) => `最終更新 ${updated}`, counts: (today, week) => ` · 今日 ${today}件 · 7日間 ${week}件`, countAll: (n) => ` · 全${n}件`, shownOf: (shown, all) => ` · ${all}件中${shown}件`,
     products: '使っている製品', productsHint: '製品名を入力して検索', productsHintShort: '製品名', picked: '選んだ製品', fpApplied: '適用中のフィルター', remove: (name) => `${name}を外す`,
     repo: 'GitHub リポジトリ', search: '検索', clearSearch: '検索をクリア', noticeClose: 'お知らせを閉じる', noticeSince: ['Patch Ticker は2026年11月9日から収集しています。', 'それ以前に公開された脆弱性は一覧にない場合があります。'], noticeKeep: 'パッチが出てもインシデントは消えず、90日間残ります。', searchHint: 'キーワード、CVE 番号、バージョン', searchHintShort: 'キーワード、CVE 番号', all: '新しい順', sortLabel: '並び順', expandAll: 'すべて開く', collapseAll: 'すべて閉じる', unfold: 'まとめを解除', refold: 'まとめて表示', groupTag: 'まとめ', patchTag: '同時公開', prefs: '表示設定', toTop: '先頭へ', toBottom: '末尾へ', stepUp: '1画面上へ', stepDown: '1画面下へ', stepGroup: '1画面ずつ移動', newAbove: (n) => `新着 ${n}件`, newAdded: (n) => `新しいインシデントが${n}件追加されました。`, toNew: '最初の新着インシデントへ移動', foldEnd: (v) => `${v} のまとめを閉じる`, foldOpened: (v, n, wp) => `${v} のまとめを開きました（${wp ? 'プラグイン' : '勧告'} ${n}件）。`, theme: 'ダークテーマ',
@@ -163,10 +166,11 @@ const TEXT = {
     aliasHint: (w, names) => `「${w}」で ${names.join('、')} もあわせて検索しました。`,
     aliasTextHint: (w, names) => `製品名が ${names.join('、')} のインシデントはないため、本文から探しました。`,
     searched: (cve) => `検索した ${cve}`, notExploited: '攻撃の報告なし',
+    answer: (who, when, n) => `${who}: ${when ? `${when} ` : ''}${n}件`, answerWeek: '直近7日', answerHeld: '直近90日',
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
     mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
     normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
-    copy: 'コピー', copied: 'コピーしました', share: 'このインシデントのリンクをコピー',
+    copy: 'コピー', copied: 'コピーしました', copyFailed: 'コピーできませんでした。選択されたコマンドを手動でコピーしてください。', share: 'このインシデントのリンクをコピー',
     feeds: 'RSS フィード', feedsHead: 'RSS で受け取る', feedMain: 'メインフィード', feedMainNote: '警戒以上、実際の攻撃、CVE 未採番のインシデント',
     feedAll: 'ボード全体', feedAllNote: '参考を含むすべてのインシデント', feedMine: '自分の製品', feedPick: '製品を選ぶ',
     feedNone: '上の「使っている製品」で製品を選ぶと、その製品のインシデントだけが届くアドレスがここに表示されます。',
@@ -185,7 +189,7 @@ const TEXT = {
       ring: 'CVSS スコア: 脆弱性の深刻さを10点満点で評価する国際的な基準です。リングはスコアの分だけ満ち、色もスコアに従います。実際の攻撃に使われると、スコアに関係なく最上位になります。スコアがまだなければ、点線のリングに — と表示されます。',
       tags: '色付きのバッジは影響を受ける製品や機器で、製品ごとに常に同じ色です。枠線のバッジは、その製品が動く OS です。',
       date: '最初に公開された日時（お使いのタイムゾーン）。原文に時刻がない場合は「初確認」とともに、このボードが最初に確認した時刻を表示します。',
-      pin: '「警戒」や「緊急」のインシデント（実際の攻撃があるか、CVSS スコア7点以上）のうち、過去7日以内に公開された重要な4件を、異なる会社から選び、多くの人が使う製品から順に上に固定します。「注目のインシデントをもっと見る」を押すと、残りがその下に続きます。注目のインシデントは下の一覧の本来の位置にもあり、左側の危険度の色の帯で示されます。',
+      pin: '「警戒」や「緊急」のインシデント（実際の攻撃があるか、CVSS スコア7点以上）のうち、過去7日以内に公開された重要な4件を、異なる会社から選び、多くの人が使う製品から順に上に固定します。「注目のインシデントをもっと見る」を押すと、残りがその下に続きます。注目のインシデントは下の一覧の本来の位置にもあり、危険度の下に「注目のインシデント」と書かれています。',
       group: '1つの製品の複数の CVE が同時に公開されたまとめです。同じバージョンで修正されたか、まだ修正されていなくても同じバージョンまで影響を受ける CVE です。リングはそのうち最も高いスコアで、開くと CVE ごとに1行ずつ表示されます。',
       brief: 'まだ要約前のため、原文をそのまま表示しているインシデントです。英語の場合があります。',
       open: '行を押すと、要約、該当する条件、対処法、原文リンクが開きます。キーボードでは ↑ ↓ キーで行の間を移動できます。',
@@ -255,12 +259,14 @@ function stepText(direction) {
   pageText(); // placeholders: the short ones from 125%
   measureStick(); // the frozen row grew or shrank with the text
 }
+// Astryx Button, Props, isDisabled: "uses aria-disabled instead of native disabled": an end step keeps the focus.
 function showTextSize() {
   const pct = textPct();
-  $('text-down').disabled = pct === TEXT_STEPS[0];
-  $('text-up').disabled = pct === TEXT_STEPS.at(-1);
+  $('text-down').setAttribute('aria-disabled', pct === TEXT_STEPS[0]);
+  $('text-up').setAttribute('aria-disabled', pct === TEXT_STEPS.at(-1));
 }
 function setTextIndex(index) {
+  if (!TEXT_STEPS[index]) return; // a press on an end step: nothing to say
   stepText(index - TEXT_STEPS.indexOf(textPct()));
   $('announce').textContent = TEXT[lang].textNow(textPct()); // the polite region says the new size
 }
@@ -423,6 +429,8 @@ async function main() {
   // allowed). Later redraws (filters, views) do not replay it.
   document.body.classList.add('arriving');
   render();
+  // Astryx Banner, Best Practices: "Announce async outcomes from the transition handler with useAnnounce." (#empty is no live region)
+  if (loadError) $('announce').textContent = TEXT[lang].loadError;
   // A restored search, an open row or a #i= link that is a row view (or a search field focused before the data came) needs
   // the full week first: the restore scroll would land on another row while that row shows one loading line (owner, 11-10).
   const rowView = (id) => incidents.find((i) => i.id === id)?.rows;
@@ -714,6 +722,7 @@ function reportLink(incident) {
   slug(incident.id).then((s) => { a.href = reportUrl(incident, lang, page, s); }, () => {}); // no crypto.subtle (plain http): the id stays
   a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 14 13H2Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.5v3M8 11.2v.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   a.append(el('span', '', t.report));
+  a.append(el('span', 'sr-only', t.newTab)); // Astryx Link, Props, newTabLabel: "SR text announcing an external link opens in a new tab"
   return a;
 }
 
@@ -729,14 +738,17 @@ addEventListener('pagehide', () => {
 // Something the visitor just opened eases in from where it was opened: a short drop for panels, a rise for the
 // phone's bottom sheet; with reduced motion only the fade remains, so the change is still seen.
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+// The Board's two curves (index.html --ease-out / --ease-exit; WAAPI easing cannot read a CSS variable).
+const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const EASE_EXIT = 'cubic-bezier(0.4, 0, 1, 1)';
 function reveal(node, from = '0 -6px', duration = 200) {
   const start = reducedMotion.matches ? { opacity: 0 } : { opacity: 0, translate: from };
-  node.animate([start, { opacity: 1, translate: '0 0' }], { duration, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+  // Astryx Motion, Respecting User Preferences: under reduced motion "opacity only, in 200 ms or less"
+  node.animate([start, { opacity: 1, translate: '0 0' }], { duration: reducedMotion.matches ? Math.min(duration, 200) : duration, easing: EASE_OUT });
 }
 
 // Small confirmations: a check that draws itself, a badge or icon that pops in. Reduced motion keeps the end state
 // (and a fade for pop), never the movement.
-const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
 function draw(path, duration = 320, delay = 0) {
   if (reducedMotion.matches) return;
   path.setAttribute('pathLength', '1');
@@ -752,6 +764,20 @@ function pop(node, from = 'scale(0.6)', duration = 220) {
 // Both ways on one gentle ease-out (MuMu, frame by frame, owner 11-10): EASE_OUT was three quarters open in 50ms, so a
 // phone-tall panel just appeared; an ease-in close barely moved for 80ms and then shut in three frames.
 const FOLD_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)';
+// A row's details and the reading guide: fold() with motion; under reduced motion they fade and nothing moves. fold()
+// stays as it is for the rest (vendor folds appear at once, DESIGN.md). Astryx Motion, Respecting User Preferences:
+// "opacity only, in 200 ms or less".
+function foldOrFade(node, opening, done = () => {}) {
+  if (!reducedMotion.matches) return fold(node, opening, done);
+  node.folding?.cancel();
+  const run = node.animate([{ opacity: opening ? 0 : 1 }, { opacity: opening ? 1 : 0 }], { duration: 200, easing: EASE_OUT, fill: 'forwards' });
+  node.folding = run;
+  run.onfinish = () => {
+    node.folding = null;
+    done();
+    run.cancel(); // the held end frame lets go only after done() has hidden a closed row
+  };
+}
 function fold(node, opening, done = () => {}) {
   node.folding?.cancel();
   if (reducedMotion.matches) return done();
@@ -853,27 +879,39 @@ function pageText() {
   }
   searchPlaceholder();
   for (const node of document.querySelectorAll('[data-t-aria]')) node.setAttribute('aria-label', t[node.dataset.tAria]);
-  // The jump group's icons alone are ambiguous: each button also says its name on hover.
-  for (const node of document.querySelectorAll('#jump button')) node.title = node.getAttribute('aria-label');
+  // Astryx Link, Props, newTabLabel: "SR text announcing an external link opens in a new tab" (the footer's link: its span)
+  $('repo').setAttribute('aria-label', t.repo + t.newTab);
+  $('support').querySelector('[data-t="newTab"]').lang = lang; // the link itself is lang="en"
+  // Icons alone are ambiguous: each icon button also says its name on hover. Astryx IconButton, Best Practices:
+  // "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
+  for (const node of document.querySelectorAll('#jump button, #theme, #repo, #feeds-btn, #prefs-btn, #search-clear')) node.title = node.getAttribute('aria-label');
+  $('filter-btn').title = t.filterBtn; // named by its word, hidden below 1024px
   // The language menu's button names the page's language (full on wide screens, a short code on phones: the header must
   // fit 375px); screen readers hear what it opens. Each entry is in its own language and marks the current one.
   $('lang').setAttribute('aria-label', `${t.langMenu}: ${t.langName}`);
   for (const item of document.querySelectorAll('#langs [data-lang]')) item.setAttribute('aria-current', item.dataset.lang === lang);
   for (const view of ['normal', 'easy']) $(`view-${view}`).setAttribute('aria-pressed', defaultView === view);
   placePill();
-  $('theme').setAttribute('aria-pressed', theme() === 'dark');
+  // Astryx ToggleButton, Best Practices: "Don't use ToggleButton for persistent settings; use Switch instead."
+  $('theme').setAttribute('aria-checked', theme() === 'dark');
 }
 
-// The fields' hints: short ones on phones and from 125% text; on a phone while the copy of 필터 and 정렬 rides beside
-// it, the search field says only "검색" (critique 13: the hint was cut at 320px).
+// The fields' hints: short ones on phones and from 125% text; where even that does not fit beside 필터 and 정렬, the
+// search field says only "검색" (critique 13: the hint was cut at 320px). Measured, since language and text size decide it.
+const measure = document.createElement('canvas').getContext('2d');
 function searchPlaceholder() {
   const t = TEXT[lang];
   const narrow = phoneSheet();
   for (const node of document.querySelectorAll('[data-t-placeholder]')) {
     const key = node.dataset.tPlaceholder;
-    node.placeholder = node.id === 'search' && narrow && stuckOn ? t.search : ((narrow || textPct() >= 125) && t[`${key}Short`]) || t[key];
+    node.placeholder = ((narrow || textPct() >= 125) && t[`${key}Short`]) || t[key];
+    if (node.id !== 'search') continue;
+    measure.font = getComputedStyle(node).font;
+    const fits = (text) => measure.measureText(text).width <= node.clientWidth;
+    if (!fits(node.placeholder)) node.placeholder = fits(t[`${key}Short`]) ? t[`${key}Short`] : t.search;
   }
 }
+addEventListener('resize', searchPlaceholder);
 
 // The 기본|쉬운 설명 switch: one dark pill under the pressed side that slides across when the view changes.
 function placePill() {
@@ -928,12 +966,44 @@ function statusLine(list) {
 
 // 이 현황판 읽는 법 opens only on request. A first visit gets one line instead (the three risk signs and the ring, with
 // 읽는 법 자세히), so the first screen still shows Incidents (critique 9: the full guide pushed the first row below the
-// fold). Closing that line or the full guide marks the guide as seen; the line never comes back.
+// fold). Showing that line once marks the guide as seen (critique 11-17); the line never comes back.
 const SAVED_GUIDE = 'vr-guide';
 let guideOpen = false;
 // Storage blocked: closed, since it could never be dismissed for good, so the 읽는 법 button carries it alone.
 let primerOpen = !stored(SAVED_GUIDE, true);
 
+// 읽는 법 opens and closes with the rows' fold (owner, 11-19: it had no motion); reduced motion: the 200ms fade. Its top
+// margin moves with it, so nothing below jumps when the fold ends. A press mid-close turns it round.
+function guideEdges(box, opening) {
+  if (reducedMotion.matches) return;
+  box.edging?.cancel(); // a reopen mid-close reads the resting margin, not the one in flight
+  const cs = getComputedStyle(box);
+  // A border never draws thinner than 1px, so the margin also takes back the two border lines.
+  const full = { marginTop: cs.marginTop };
+  const none = { marginTop: `-${parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)}px` };
+  box.edging = box.animate(opening ? [none, full] : [full, none], { duration: opening ? 300 : 240, easing: FOLD_EASE });
+}
+function openGuide(focusClose = false) {
+  const box = $('guide');
+  if (box.dataset.leaving) delete box.dataset.leaving; // closing: turn round where it stands
+  else setGuide(true);
+  $('guide-btn').setAttribute('aria-expanded', 'true');
+  guideEdges(box, true);
+  foldOrFade(box, true);
+  if (focusClose) box.querySelector('.g-head .btn')?.focus({ preventScroll: true });
+}
+function closeGuide() {
+  const box = $('guide');
+  box.dataset.leaving = '1';
+  $('guide-btn').setAttribute('aria-expanded', 'false');
+  $('guide-btn').focus({ preventScroll: true }); // 닫기 sits inside the box that folds away
+  guideEdges(box, false);
+  foldOrFade(box, false, () => {
+    delete box.dataset.leaving;
+    setGuide(false);
+    $('guide-btn').scrollIntoView({ block: 'nearest' }); // closed from deep inside: 읽는 법, now holding the focus, comes back into view
+  });
+}
 function setGuide(open) {
   guideOpen = open;
   primerOpen = false; // either way the visitor has met the guide
@@ -948,11 +1018,11 @@ function guide() {
   const g = t.guide;
   const box = $('guide');
   primer();
-  $('guide-btn').setAttribute('aria-expanded', guideOpen);
+  $('guide-btn').setAttribute('aria-expanded', guideOpen && !box.dataset.leaving);
   box.hidden = !guideOpen;
   if (!guideOpen) return box.replaceChildren();
   const close = Object.assign(el('button', 'btn', g.close), { type: 'button' });
-  close.addEventListener('click', () => { setGuide(false); $('guide-btn').focus(); });
+  close.addEventListener('click', closeGuide);
   const head = el('div', 'g-head');
   head.append(Object.assign(el('h2', '', g.title), { id: 'guide-title' }), close);
   const list = el('dl', 'legend');
@@ -993,7 +1063,9 @@ function guide() {
   views.append(el('span', '', t.normal), el('span', 'on', t.easy));
   item(g.easy, views);
   item(g.filter, el('span', 'g-word', g.filterWord));
-  box.replaceChildren(head, list, el('p', 'g-note', g.note));
+  // What the Board holds (owner's notice, 11-17), here and in the footer since it left the top (critique 11-17).
+  const facts = collectionFacts(document.documentElement.dataset.collectedSince, Date.now(), { since: t.noticeSince.join(' '), keep: t.noticeKeep });
+  box.replaceChildren(head, list, el('p', 'g-note', g.note), el('p', 'g-note', facts));
 }
 
 // The first-visit line: the row's own risk signs and ring, each with a few words, then 읽는 법 자세히 and a close button.
@@ -1018,16 +1090,15 @@ function primer() {
   key(pending, p.unrated);
   key(scoreCell({ cvss: 9.8 }), p.ring);
   const more = Object.assign(el('button', 'btn p-more', p.more), { type: 'button' }); // phones: the 읽는 법 button just above does it
-  more.addEventListener('click', () => {
-    setGuide(true);
-    reveal($('guide'));
-    $('guide').querySelector('.g-head .btn')?.focus({ preventScroll: true });
-  });
+  more.addEventListener('click', () => openGuide(true));
   const close = Object.assign(el('button', 'btn p-close'), { type: 'button' });
   close.setAttribute('aria-label', p.dismiss);
+  close.title = p.dismiss; // Astryx IconButton, Best Practices: "Don't: Skip tooltip: label only reaches screen readers; sighted users need hover hint."
   close.append(el('span', 'x'));
   close.addEventListener('click', () => fold($('primer'), false, () => { setGuide(false); $('guide-btn').focus({ preventScroll: true }); }));
   box.replaceChildren(keys, more, close);
+  // Shown once (critique 11-17): the next visit has only 읽는 법, as after closing it. Marked once the Board is drawn.
+  if (updated) store(SAVED_GUIDE, 'seen');
 }
 
 // The rest of the 90 days the store keeps (every month index.json lists), merged into the week already on screen.
@@ -1044,8 +1115,11 @@ async function fetchOlder() {
 }
 
 async function loadOlder() {
+  if (loadingOlder) return; // the loading button stays focusable, so a second press arrives here
   loadingOlder = true;
   render();
+  // render() replaced the pressed button: its loading twin takes the focus, so it never falls to <body>
+  if (document.activeElement === document.body) document.querySelector('#more [aria-busy="true"], #empty [aria-busy="true"]')?.focus({ preventScroll: true });
   try {
     const added = await fetchOlder();
     clearTimeout(announcing); // a pending count from the last search must not talk over this
@@ -1060,6 +1134,18 @@ async function loadOlder() {
   render();
   // The button that had focus is gone: the next control in the same place takes it, and the page does not move.
   if (document.activeElement === document.body) ($('more').querySelector('button') || $('empty').querySelector('button') || $('more').querySelector('.older-done'))?.focus({ preventScroll: true });
+}
+
+// 이전 사건 불러오기 / 이전 사건에서도 찾기. Astryx Button, Props, isLoading: "blocks re-activation but stays focusable
+// (aria-disabled, not native disabled); announces via live region" (loadOlder() says the outcome in #announce).
+function olderButton(label) {
+  const button = Object.assign(el('button', 'btn', loadingOlder ? TEXT[lang].loading : label), { type: 'button' });
+  if (loadingOlder) {
+    button.setAttribute('aria-disabled', 'true');
+    button.setAttribute('aria-busy', 'true');
+  }
+  button.addEventListener('click', loadOlder);
+  return button;
 }
 
 // Under the list: more rows of what is loaded, then older months.
@@ -1087,9 +1173,7 @@ function moreButtons(rest) {
   if (!olderMonths.length && olderAdded !== null) buttons.push(Object.assign(el('p', 'older-done', t.olderDone(olderAdded)), { tabIndex: -1 })); // takes the focus when the button is gone
   if (olderMonths.length) {
     const label = activeFilters() ? t.searchOlder : t.loadOlder; // with a search or filter on, it is a search
-    const older = Object.assign(el('button', 'btn', loadingOlder ? t.loading : label), { type: 'button', disabled: loadingOlder });
-    older.addEventListener('click', loadOlder);
-    buttons.push(older);
+    buttons.push(olderButton(label));
   }
   return buttons;
 }
@@ -1115,9 +1199,13 @@ let highlightedNow = new Set(); // every Highlight, pinned or behind 주요 사�
 // a linked row's place in the same items, so the two never disagree.
 function boardLists() {
   const { highlights: chosen, list, variants, inText } = filtered();
+  // A product or search filter is a question: no pinned block repeating the list's own rows above it, one sentence
+  // answering instead (answerLine; critique 11-17, P1). The list still edges its Highlights (highlightedNow). A search
+  // counts from the moment it is typed or restored, so no block shows while it waits for the full week (applied).
+  const answering = Boolean(filter.picks.length || filter.query);
   // The pins go to four different vendors and show by importance, whatever the visitor's sort (owner, 11-16; pinOrder);
   // 주요 사건 더 보기 appends the rest below them, a pinned vendor's other rows first, then by importance too.
-  const { pins, rest: extra } = pinOrder(chosen);
+  const { pins, rest: extra } = answering ? { pins: [], rest: [] } : pinOrder(chosen);
   const highlights = [...pins, ...(pinAll ? extra : [])];
   const pinned = new Set(highlights);
   // Owner, 11-16: the list is the whole Board in the visitor's order, Highlights included at their own place (edged in
@@ -1127,14 +1215,31 @@ function boardLists() {
   // A search or a picked Product shows every row as it is; otherwise one vendor's bulk push folds (board.mjs, foldByVendor).
   // A Highlight never folds (owner, 11-17): it stands at its own place, banded, and its fold counts the rest.
   const folded = filter.picks.length || applied() ? rest : foldByVendor(rest, undefined, undefined, (i) => highlightedNow.has(i));
-  return { list, variants, inText, extra, highlights, pinned, rest, folded, items: folding ? folded : rest };
+  return { list, variants, inText, extra, highlights, pinned, rest, folded, items: folding ? folded : rest, answering };
+}
+
+// The filtered Board's answer, one sentence over its list: "Gitea: 최근 7일 2건 · 위험 2 · 공격 보고 없음". The period is the
+// one searched (the week, or the 90 days once the older months are in); a date condition, shown as a chip, replaces it.
+function answerLine(list) {
+  const t = TEXT[lang];
+  const c = answerCounts(list);
+  const n = (x) => x.toLocaleString(lang);
+  const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || OSES.find((o) => `os:${o.toLowerCase()}` === id) || id);
+  // Two names, then a count: a saved filter of many Products keeps the sentence to a line or two (the chips list them all).
+  const shown = names.length > 3 ? [names.slice(0, 2).join(', '), t.moreProducts(names.length - 2)].join(' ') : names.join(', ');
+  const who = [shown, ...(applied() ? [`‘${applied()}’`] : [])].filter(Boolean).join(', ');
+  const when = filter.from || filter.to ? '' : olderMonths.length ? t.answerWeek : t.answerHeld;
+  const easy = defaultView === 'easy';
+  const levels = ['highest', 'high', 'notice'].filter((l) => c[l]).map((l) => `${easy ? t[l] : t.levels[l]} ${n(c[l])}`);
+  const attacked = c.exploited ? `${(easy && t.kevReasonEasy) || t.kevReason} ${n(c.exploited)}` : t.notExploited;
+  return [t.answer(who, when, n(c.total)), ...levels, attacked].join(' · ');
 }
 
 function render() {
   pageText();
   feedRows();
   if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
-  const { list, variants, inText, extra, highlights, pinned, rest, folded, items } = boardLists();
+  const { list, variants, inText, extra, highlights, pinned, rest, folded, items, answering } = boardLists();
   shownList = list;
   $('search-clear').hidden = !$('search').value; // the field is also filled from the address and Back
   showStatus();
@@ -1155,11 +1260,9 @@ function render() {
   const count = panelCount();
   $('filter-count').textContent = count ? String(count) : '';
   $('filter-count').hidden = !count;
-  $('stuck-count').textContent = count ? String(count) : '';
-  $('stuck-count').hidden = !count;
-  if (count && count !== shownCount) { pop($('filter-count')); if (stuckOn) pop($('stuck-count')); }
+  if (count && count !== shownCount) pop($('filter-count'));
   shownCount = count;
-  for (const id of ['filter-btn', 'stuck-filter']) $(id).setAttribute('aria-expanded', !$('filters').hidden);
+  $('filter-btn').setAttribute('aria-expanded', !$('filters').hidden);
   // 묶음 풀기 / 묶어 보기: only where a fold exists to undo or to bring back.
   $('fold-toggle').hidden = folded === rest || !folded.some((i) => i.fold);
   $('fold-toggle').textContent = folding ? TEXT[lang].unfold : TEXT[lang].refold;
@@ -1175,11 +1278,14 @@ function render() {
     // A picked Product also shows Incidents filed under a variant of its name (board.mjs, critique 14); say how many.
     ...(variants && list.length ? [el('p', 'pick-note', TEXT[lang].variants(variants))] : []));
   $('conds').replaceChildren(...conds, ...(conds.length ? clearAll : []));
+  // Not a live region: #announce already says the count; with nothing found the empty state answers instead. While the
+  // data loads it stands empty, keeping its line (index.html), so the rows do not move when the answer arrives.
+  $('answer').hidden = !answering || (updated && !list.length) || Boolean(loadError);
+  const waiting = filter.query && !applied(); // the list is not the search's yet
+  $('answer').textContent = $('answer').hidden || !updated || waiting ? '' : answerLine(list);
   $('all-head').hidden = !list.length;
   $('all-head').textContent = TEXT[lang].fp.sorts[filter.sort]; // the list's heading says its order
   $('sort').replaceChildren(...SORTS.map((key) => Object.assign(new Option(TEXT[lang].fp.sorts[key], key), { selected: key === filter.sort })));
-  $('stuck-sort').replaceChildren(...[...$('sort').options].map((o) => o.cloneNode(true)));
-  $('stuck-sort').value = filter.sort;
   // Keys, not ids: a Highlight's list copy opens on its own (rowKey), so 모두 펼치기 counts each drawn row once.
   visibleIds = [...highlights.map((i) => i.id), ...itemKeys(items.slice(0, shown))];
   drawn = { result: lastBoard.result, folding, pinAll, items, shown };
@@ -1248,8 +1354,13 @@ function placeholder(pinned) {
     c.append(...bars.map((b) => el('i', `sk ${b}`)));
     return c;
   };
-  r.append(cell('c-risk', 'sk-pill'), cell('c-title', 'sk-name', 'sk-sub'), cell('c-score', 'sk-ring'),
-    cell('c-tags', 'sk-tag', 'sk-tag'), cell('c-date', 'sk-date', 'sk-time'));
+  const [risk, title, score, tags, date] = [cell('c-risk', 'sk-pill'), cell('c-title', 'sk-name', 'sk-sub'), cell('c-score', 'sk-ring'),
+    cell('c-tags', 'sk-tag', 'sk-tag'), cell('c-date', 'sk-date', 'sk-time')];
+  if (pinned) { // a Highlight's header strip, as row() draws it
+    const strip = el('span', 'strip');
+    strip.append(risk, date);
+    r.append(strip, title, score, tags);
+  } else r.append(risk, title, score, tags, date);
   li.append(r);
   return li;
 }
@@ -1264,25 +1375,26 @@ function settleRows() {
   { duration: reducedMotion.matches ? 200 : 360, delay: reducedMotion.matches ? 0 : n * 28, easing: EASE_OUT, fill: 'backwards' }));
 }
 
-// The Easy view: the plain answer, then the affected models when there are too many to list inline.
+// The Easy view: the plain answer, the affected models when there are too many to list inline, then when it applies.
 function easyPanel(incident) {
   const s = incident.summary;
   // The chatbot hint names the CVE the visitor searched for when it is not the Lead (N1), else the Lead.
   const cve = searchedCve(filter.query, incident, lang)?.cve || incident.cves?.[0];
   const parts = easyAnswer(s, riskLevel(incident), cve, firstProduct(incident, lang), isLibrary(incident), `easy:${incident.id}`);
-  // "Does this touch me?" comes before "what to do": the Summary's conditions, in its own words, at body weight so the
-  // action stays the one heavy line. One condition on the line, several as a list.
+  if ((s.devices || []).length > MANY_DEVICES) parts.push(modelList(s.devices, fixLines(s)));
+  // Critique P2 (11-19): "what to do" first, then "does this touch me?" (critique 11 had it the other way round): the
+  // Summary's conditions, in its own words, at body weight so the action stays the one heavy line. One condition on the
+  // line, several as a list.
   // The everyday-words version when the Summary has one (easy_conditions, after critique 12), else the conditions as written.
   // H4 (owner, 11-16): no CVE id here; a condition of some CVEs only says so in words after its text.
   const when = (s[lang].easy_conditions?.length ? s[lang].easy_conditions : s[lang].conditions || []).filter((c) => typeof c === 'string' && c)
     .map((c) => { const { ids, text } = conditionIds(c, incident.cves); return ids.length ? `${text} (${TEXT[lang].someFlaws})` : c; });
-  if (when.length === 1) parts.unshift(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
+  if (when.length === 1) parts.push(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
   if (when.length > 1) {
     const list = el('ul', 'cond-list');
     list.append(...when.map((c) => el('li', '', c)));
-    parts.unshift(para('when', TEXT[lang].easyWhen), list);
+    parts.push(para('when', TEXT[lang].easyWhen), list);
   }
-  if ((s.devices || []).length > MANY_DEVICES) parts.push(modelList(s.devices, fixLines(s)));
   return parts;
 }
 
@@ -1312,7 +1424,9 @@ function announce(count, key) {
   if (first) return;
   // Nothing found: the empty state's own sentence, not its buttons (critique 13: #empty was a live region holding them).
   announcing = setTimeout(() => {
-    $('announce').textContent = count ? TEXT[lang].found(count) : $('empty').querySelector('p, strong')?.textContent || '';
+    // Astryx useAnnounce, Best Practices: "Do: Announce the outcome, not the interaction": a typed name that is no Product became a search, and says so first
+    const note = pickNote ? `${TEXT[lang].notListed(pickNote)} ` : '';
+    $('announce').textContent = note + (count ? TEXT[lang].found(count) : $('empty').querySelector('p, strong')?.textContent || '');
   }, 700);
 }
 
@@ -1331,9 +1445,7 @@ function emptyState() {
   // Say how far back this looked: "nothing" in one week is not "nothing" in 90 days.
   const scope = para('scope', olderMonths.length ? t.scopeWeek : t.scopeMonths);
   if (olderMonths.length) {
-    const older = Object.assign(el('button', 'btn', loadingOlder ? t.loading : t.searchOlder), { type: 'button', disabled: loadingOlder });
-    older.addEventListener('click', loadOlder);
-    buttons.append(older);
+    buttons.append(olderButton(t.searchOlder));
   }
   if (query) buttons.append(clearButton(t.clearSearch, { query: '' }, true));
   // Filters left nothing: each condition can go on its own, the ones that bring the most back first (at most three).
@@ -1463,9 +1575,10 @@ function filterPanel() {
   const dates = el('div', 'fp-dates');
   dates.append(field(f.from, input('date', 'from', filter.from)), field(f.to, input('date', 'to', filter.to)));
   grid.append(
-    (() => { const set = checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)); set.append(el('p', 'fp-note', f.riskNote)); return set; })(),
+    // Astryx Field, Best Practices: "Do: Wire inputID/descriptionID to htmlFor and aria-describedby on the inner control." (each note describes its group)
+    (() => { const set = checks(f.risk, 'risk', RISKS.map((r) => [r, words[r], `risk-${r}`]), (r) => filter.risk.includes(r)); set.append(Object.assign(el('p', 'fp-note', f.riskNote), { id: 'fp-risk-note' })); set.setAttribute('aria-describedby', 'fp-risk-note'); return set; })(),
     checks(f.flags, 'flag', [['kev', t.qfKev], ...LINK_KINDS.map((k) => [k, f.has[k]])], (v) => (v === 'kev' ? filter.kev : filter.has.includes(v))),
-    (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(el('p', 'fp-note', f.osNote)); return set; })(),
+    (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(Object.assign(el('p', 'fp-note', f.osNote), { id: 'fp-os-note' })); set.setAttribute('aria-describedby', 'fp-os-note'); return set; })(),
     // What a dashed chip means: one full-width line right under the chips, and each dashed chip points to it (critique 13).
     Object.assign(el('p', 'fp-note fp-zero-note', f.zeroNote), { id: 'fp-zero-note' }),
     field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
@@ -1474,7 +1587,9 @@ function filterPanel() {
   );
   const actions = el('div', 'fp-actions');
   const reset = Object.assign(el('button', 'btn', f.reset), { type: 'button' });
-  reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()); filterPanel(); });
+  // The panel is drawn again under the pressed button: 필터 초기화 in the new one takes the focus, never <body>.
+  const refocus = () => $('filters').querySelector('.fp-actions .btn')?.focus({ preventScroll: true });
+  reset.addEventListener('click', () => { update(PANEL_EMPTY_WITH_OS()).then(refocus); filterPanel(); refocus(); });
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
@@ -1529,7 +1644,7 @@ $('filters').addEventListener('change', countDraft);
 
 function applyPanel(event) {
   event.preventDefault();
-  const fromCopy = panelFrom?.opener === $('stuck-filter');
+  const fromCopy = panelFrom?.stuck;
   const drawn = update(panelDraft());
   closePanel(true); // the results are the answer; the applied conditions stay visible as chips
   if (fromCopy) drawn.then(toBoardHead); // opened mid-list: the new results start under the frozen row
@@ -1563,14 +1678,15 @@ function sheetInert(on) {
 // The panel remembers who opened it and where the page stood (critique 13: closing it threw the reader to the top and
 // the focus to the bar's 필터). Closed without 필터 적용, both come back.
 let panelFrom = null;
+let stuckOn = false; // placeJump: the reader is mid-list, the Board's head gone under the frozen row
 const phoneSheet = () => matchMedia('(max-width: 599px)').matches;
 function openPanel(opener) {
   const form = $('filters');
-  panelFrom = { opener, y: scrollY };
-  // A phone's bottom sheet, or (wider) the panel opened from the frozen copy floating under the frozen row: a modal
-  // dialog over the page, which stays where it was. From the bar on wider screens it opens inline under the bar.
+  panelFrom = { opener, y: scrollY, stuck: stuckOn };
+  // A phone's bottom sheet, or (wider) the panel opened from the frozen row mid-list floating under it: a modal dialog
+  // over the page, which stays where it was. At the top of the page on wider screens it opens inline under the fields.
   // Floating is set before it shows, or the inline panel would push the page (scroll anchoring) for a frame.
-  const floating = opener === $('stuck-filter') && !phoneSheet();
+  const floating = stuckOn && !phoneSheet();
   form.classList.toggle('floating', floating);
   form.hidden = false;
   filterPanel();
@@ -1594,10 +1710,9 @@ function closePanel(applied = false) {
   sheetInert(false);
   $('filters').hidden = true;
   $('filters').classList.remove('floating');
-  for (const id of ['filter-btn', 'stuck-filter']) $(id).setAttribute('aria-expanded', 'false');
+  $('filter-btn').setAttribute('aria-expanded', 'false');
   if (!applied && from && scrollY !== from.y) scrollTo(0, from.y);
-  const back = from?.opener?.offsetParent ? from.opener : $('filter-btn'); // the copy may have left meanwhile
-  back.focus({ preventScroll: true });
+  $('filter-btn').focus({ preventScroll: true });
 }
 
 // The Board's head (the bar with 주요 사건) just under the frozen row: where a new order or filter starts reading.
@@ -1637,7 +1752,7 @@ $('product-pick').addEventListener('change', (event) => {
   // Several Products contain it ("ssh"): keep the text so the list narrows to them, and say so.
   if (found.length > 1) {
     pickNote = '';
-    $('announce').textContent = TEXT[lang].manyProducts(found.length);
+    // Astryx useAnnounce, Best Practices: "Don't: Announce content that is already visible and correctly labeled in the DOM; that doubles up for screen reader users." (#pick-hint is a status region)
     $('pick-hint').textContent = TEXT[lang].manyProducts(found.length);
     return;
   }
@@ -1681,10 +1796,7 @@ $('theme').addEventListener('click', toggleTheme);
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (!$('filters').hidden) return closePanel();
-  if (guideOpen) {
-    setGuide(false);
-    return $('guide-btn').focus();
-  }
+  if (guideOpen && !$('guide').dataset.leaving) return closeGuide();
   let item = document.activeElement;
   while (item && !(item.tagName === 'LI' && item.querySelector(':scope > h3.row-h'))) item = item.parentElement;
   const row = item?.querySelector(':scope > h3.row-h > button.row');
@@ -1731,18 +1843,14 @@ document.addEventListener('keydown', (event) => {
   event.preventDefault();
   $('search').focus();
 });
-// The frozen copy of 정렬: a new order is read from its start, so the Board's head comes up under the frozen row
-// (critique 13: the reader was left mid-list in the new order).
-$('stuck-sort').addEventListener('change', (event) => sortBy(event.target.value).then(toBoardHead));
-// The frozen copy of 필터 opens the panel where the reader is: a sheet on a phone, a panel under the frozen row wider.
-$('stuck-filter').addEventListener('click', () => {
-  if ($('filters').hidden) openPanel($('stuck-filter'));
-  else $('filters').querySelector('input, select, button')?.focus();
+// 정렬 changed mid-list (the frozen row): a new order is read from its start, so the Board's head comes up under the
+// frozen row (critique 13: the reader was left mid-list in the new order).
+$('sort').addEventListener('change', (event) => {
+  const mid = stuckOn;
+  sortBy(event.target.value).then(() => mid && toBoardHead());
 });
-$('sort').addEventListener('change', (event) => sortBy(event.target.value));
 function sortBy(sort) {
   $('sort').value = sort;
-  $('stuck-sort').value = sort;
   const drawn = update({ sort });
   // The count does not change with the order, so say the order itself (the count line stays quiet).
   $('announce').textContent = TEXT[lang].sorted(TEXT[lang].fp.sorts[sort]);
@@ -1763,6 +1871,7 @@ $('expand-all').addEventListener('click', () => boardTransition(() => {
   render();
   $('expand-all').focus({ preventScroll: true });
 }));
+// 필터 opens the panel where the reader is: a sheet on a phone, inline at the top, floating under the frozen row mid-list.
 $('filter-btn').addEventListener('click', () => ($('filters').hidden ? openPanel($('filter-btn')) : closePanel()));
 function setPrefs(open) {
   const box = $('prefs');
@@ -1774,7 +1883,7 @@ function setPrefs(open) {
   }
   if (!box.classList.contains('open')) return;
   if (reducedMotion.matches) return box.classList.remove('open');
-  box.closing = box.animate([{ opacity: 1 }, { opacity: 0, translate: '0 -4px' }], { duration: 120, easing: 'cubic-bezier(0.4, 0, 1, 1)' });
+  box.closing = box.animate([{ opacity: 1 }, { opacity: 0, translate: '0 -4px' }], { duration: 120, easing: EASE_EXIT });
   box.closing.onfinish = () => { box.closing = null; box.classList.remove('open'); };
 }
 $('prefs-btn').addEventListener('click', () => setPrefs(!$('prefs').classList.contains('open')));
@@ -1887,9 +1996,8 @@ function placeJump() {
   $('jump-up').classList.toggle('off', scrollY < room);
   $('jump-down').classList.toggle('off', scrollY + innerHeight > document.documentElement.scrollHeight - room);
   document.body.classList.toggle('scrolled', scrollY > 40);
-  // the bar's 필터 and 정렬 have passed under the frozen row: their copy shows at the end of the search line
-  const past = $('board-start').getBoundingClientRect().bottom < stickyPart().getBoundingClientRect().bottom;
-  stuckTools(past);
+  // the Board's head has passed under the frozen row: 필터 opens a floating panel, a new order scrolls back to the head
+  stuckOn = $('board-start').getBoundingClientRect().bottom < stickyPart().getBoundingClientRect().bottom;
   // 맨 위로 wears how far down the page is, as a ring that fills clockwise
   const room2 = document.documentElement.scrollHeight - innerHeight;
   $('jump-up').style.setProperty('--read', room2 > 0 ? Math.min(scrollY / room2, 1).toFixed(3) : 0);
@@ -1897,8 +2005,9 @@ function placeJump() {
   // 한 화면 위로 / 아래로: the pill shows while the page scrolls at all; a step with nowhere to go is disabled
   const max = document.documentElement.scrollHeight - innerHeight;
   $('step').hidden = max < 2;
-  $('step-up').disabled = scrollY <= 1;
-  $('step-down').disabled = scrollY >= max - 1;
+  // Astryx IconButton, Props, isDisabled: "uses aria-disabled instead of native disabled": an end step keeps the focus
+  $('step-up').setAttribute('aria-disabled', scrollY <= 1);
+  $('step-down').setAttribute('aria-disabled', scrollY >= max - 1);
   document.body.classList.remove('jump-idle');
   clearTimeout(jumpIdle);
   // after a step press the group stays STEP_HOLD, not 2 s, so the next press finds it under the finger
@@ -1911,37 +2020,12 @@ const STEP_HOLD = 6000;
 const frozenHeight = () => { const r = stickyPart().getBoundingClientRect(); return r.top <= 1 && r.bottom > 0 ? r.bottom : 0; };
 for (const [id, sign] of [['step-up', -1], ['step-down', 1]]) {
   $(id).addEventListener('click', () => {
+    if ($(id).getAttribute('aria-disabled') === 'true') return; // nowhere to go
     stepPressed = Date.now();
     scrollBy({ top: sign * stepDistance(innerHeight, frozenHeight()), behavior: reducedMotion.matches ? 'auto' : 'smooth' });
   });
 }
 let jumpIdle;
-// The frozen copy of 필터 and 정렬 rises into the frozen row as the bar passes under it (owner: "자연스럽게 올라가는").
-// It rises 10px into place while its width opens (280ms), and sinks and closes faster when the bar comes back.
-// Reduced motion: it simply appears.
-let stuckOn = false;
-function stuckTools(on) {
-  if (on === stuckOn) return;
-  stuckOn = on;
-  const box = $('stuck-tools');
-  box.sliding?.cancel();
-  // Tab meets one 필터 and one 정렬 (critique 13): the bar's originals leave the tab order while the copy shows, and a
-  // focus inside the leaving copy moves to the original it stands for.
-  for (const id of ['filter-btn', 'sort']) if (on) $(id).setAttribute('tabindex', '-1'); else $(id).removeAttribute('tabindex');
-  if (!on && box.contains(document.activeElement)) (document.activeElement === $('stuck-sort') ? $('sort') : $('filter-btn')).focus({ preventScroll: true });
-  box.hidden = false;
-  searchPlaceholder();
-  const done = () => { box.style.overflow = ''; box.sliding = null; box.hidden = !stuckOn; measureStick(); };
-  if (reducedMotion.matches) return done();
-  // Its width opens with it, so the search field gives way smoothly (owner kept this after critique 13); the controls
-  // sit at the right edge of the opening box, so they are under the pointer from the first frame.
-  const full = `${box.scrollWidth}px`;
-  const shut = { width: '0px', opacity: 0, transform: 'translateY(10px)' };
-  const open = { width: full, opacity: 1, transform: 'none' };
-  box.style.overflow = 'clip';
-  box.sliding = box.animate(on ? [shut, open] : [open, shut], { duration: on ? 280 : 180, easing: on ? EASE_OUT : 'cubic-bezier(0.4, 0, 1, 1)' });
-  box.sliding.onfinish = done;
-}
 // 맨 위로 / 맨 아래로: the arrow leaves the way the page will go and comes back from the other side.
 function launch(button, up) {
   if (reducedMotion.matches) return;
@@ -1974,9 +2058,33 @@ $('jump-up').addEventListener('click', (event) => launch(event.currentTarget, tr
 $('jump-down').addEventListener('click', (event) => launch(event.currentTarget, false));
 $('jump-down').addEventListener('click', () => scrollTo({ top: document.documentElement.scrollHeight, behavior: glide() }));
 
-$('guide-btn').addEventListener('click', () => {
-  setGuide(!guideOpen);
-  if (guideOpen) reveal($('guide'));
+$('guide-btn').addEventListener('click', () => (guideOpen && !$('guide').dataset.leaving ? closeGuide() : openGuide()));
+// Two-button groups take one Tab stop and move by arrows (groupKey, Astryx ButtonGroup): 가−/가+ left and right, with
+// Home/End; 한 화면 위로/아래로 up and down only, since Home and End stay the browser's (DESIGN.md, jump buttons).
+function rove(group, keys) {
+  const members = [...group.querySelectorAll('button')];
+  members.forEach((b, n) => { b.tabIndex = n ? -1 : 0; });
+  group.addEventListener('focusin', (event) => { for (const b of members) b.tabIndex = b === event.target ? 0 : -1; });
+  group.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return; // Alt+arrows: the browser's Back/Forward
+    const to = groupKey(event.key, members.indexOf(event.target), members.length, keys);
+    if (to < 0) return;
+    event.preventDefault();
+    members[to].focus();
+  });
+}
+rove(document.querySelector('.sizes'), {});
+rove($('step'), { prev: ['ArrowUp'], next: ['ArrowDown'], ends: false });
+// 기본|쉬운 설명 answers the arrows as a two-way switch: either arrow picks the other view and takes the focus. Astryx
+// SegmentedControl (description): "the selection slides to the new segment, whether a tap, an arrow key or a new value moved it".
+$('views').addEventListener('keydown', (event) => {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return; // Alt+arrows: the browser's Back/Forward
+  const views = ['normal', 'easy'];
+  const to = groupKey(event.key, views.indexOf(event.target.id.slice(5)), 2, { ends: false, wrap: true });
+  if (to < 0) return;
+  event.preventDefault();
+  if (views[to] !== defaultView) setDefaultView(views[to]);
+  $(`view-${views[to]}`).focus();
 });
 $('text-down').addEventListener('click', () => setTextIndex(TEXT_STEPS.indexOf(textPct()) - 1));
 $('text-up').addEventListener('click', () => setTextIndex(TEXT_STEPS.indexOf(textPct()) + 1));
@@ -1996,13 +2104,6 @@ $('search').addEventListener('focus', () => ensureFull().catch(() => {})); // un
 // The clear button (owner, 11-17; index.html #search-clear): shown while the field holds text (render() and every
 // keystroke), it empties the field, redraws the whole list and gives the field the focus back. Firefox draws no X of its own.
 const syncClear = () => { $('search-clear').hidden = !$('search').value; };
-// The collection notice (index.html #collect-note; owner, 11-17): closing it hides it now and on later visits, by its
-// start date (a later notice shows again); without storage it simply shows again. Focus goes on to the search.
-$('cn-close').addEventListener('click', () => {
-  document.documentElement.classList.add('cn-off');
-  try { localStorage.setItem('vr-note', document.documentElement.dataset.collectedSince); } catch {}
-  $('search').focus({ preventScroll: true });
-});
 $('search').addEventListener('input', syncClear);
 $('search-clear').addEventListener('click', () => {
   $('search').value = '';
@@ -2086,8 +2187,17 @@ function distroFold(incident) {
   return [foldable(el('details', 'models'), head, body)];
 }
 
-function summary(s, cves) {
-  const parts = [para('summary', s.summary)];
+// Normal view (critique P2, 11-19): 대처법 first and heaviest, the fixed versions under it, then what it is and when it applies.
+function summary(incident) {
+  const s = incident.summary[lang];
+  const cves = incident.cves;
+  // Owner, 11-16: four or more fixed lines as an aligned list (the Easy view draws its own, in easyAnswer).
+  const table = fixTable(incident.summary);
+  // Always said, so the panel always opens on what to do, even with no known fix. Beside a folded list its text spells
+  // out the same versions (Microsoft: 17 of them), so it steps down a weight rather than set ten bold lines.
+  const parts = [labelled(table?.more ? 'mitigation listing' : 'mitigation', TEXT[lang].mitigation, s.mitigation || TEXT[lang].none)];
+  if (table) parts.push(...fixList(table, `normal:${incident.id}`, TEXT[lang].fixesTitle));
+  parts.push(para('summary', s.summary));
   // One condition stays on its line; several are a list ("팩스·SMS" has its own dot, so " · " between them misread).
   if (s.conditions.length === 1) {
     const line = labelled('conditions', TEXT[lang].conditions, '');
@@ -2099,8 +2209,6 @@ function summary(s, cves) {
     list.append(...s.conditions.map((c) => { const li = el('li', ''); li.append(...condition(c, cves)); return li; }));
     parts.push(labelled('conditions', TEXT[lang].conditions, ''), list);
   }
-  // Always said, so a row with no known fix does not go straight from the summary to the source link.
-  parts.push(labelled('mitigation', TEXT[lang].mitigation, s.mitigation || TEXT[lang].none));
   return parts;
 }
 
@@ -2117,7 +2225,8 @@ function cveMarks(incident, cve, note = true) {
   if (hit) {
     const mark = el('span', 'cve-src');
     const a = anchor(hit.url, hit.kind === 'kev' ? t.kevSource : host(hit.url), note);
-    if (!note) a.setAttribute('aria-label', `${cve} ${t.kevReason}: ${a.textContent}`);
+    // Astryx Link, Best Practices: "Don't: Set `label` on text links; `aria-label` prevents assistive technology from reading the actual link content."
+    if (!note) a.prepend(el('span', 'sr-only', `${cve} ${t.kevReason}: `));
     mark.append(el('span', 'kev', t.kevReason), ' ', a);
     out.push(mark);
   }
@@ -2145,7 +2254,7 @@ function cveList(incident) {
         seen[l.kind] = (seen[l.kind] || 0) + 1;
         const name = TEXT[lang].linkKind[l.kind] || host(l.url);
         const a = anchor(l.url, many(l.kind) ? `${name} ${seen[l.kind]}` : name, false);
-        a.setAttribute('aria-label', `${line.cve} ${a.textContent}`);
+        a.prepend(el('span', 'sr-only', `${line.cve} `)); // Astryx Link, Best Practices: "Don't: Set `label` on text links; …" (as above)
         src.append(...(n ? [' · '] : []), a);
       });
       li.append(' ', src);
@@ -2211,6 +2320,8 @@ function commandLine(text) {
       button.settle = setTimeout(() => { button.textContent = TEXT[lang].copy; p.classList.remove('stamped'); }, 2000);
     } catch {
       getSelection().selectAllChildren(code); // clipboard blocked: select it for a manual copy
+      // Astryx CodeBlock, Props, onCopyError: "The copy button shows a cross and is named and announced as "Failed to copy value to clipboard."" (ours: said, the selection shown)
+      $('announce').textContent = TEXT[lang].copyFailed;
     }
   });
   p.append(code, ' ', button);
@@ -2240,7 +2351,7 @@ function easyAnswer(s, level, cve = '', product = '', library = false, key = '')
   // long model list folded away under them. From four lines on, the aligned list (owner, 11-16).
   const fixes = usableFixes(s);
   const table = fixTable(s);
-  if (table) parts.push(para('action', t.fixesIntro), ...fixList(table, key));
+  if (table) parts.push(para('action', fixesLead(s, lang)), ...fixList(table, key));
   else if (fixes.length > 1) {
     const list = el('ul', 'fixes');
     for (const f of fixes) {
@@ -2420,13 +2531,13 @@ function titleCell(incident, vendor = '') {
   return cell;
 }
 
-// A Product's line badge, in that Product's fixed colour.
-// key: the Product id (language-free), so a Product keeps its line in both languages; else the name itself.
-function lineBadge(name, key = name) {
-  // One line always: a long name ends in "…" inside the pill and shows whole on hover (title) and to screen readers.
+// A Product's line badge, in the fixed colour of the name it shows (nameLine), so one name is one colour on every
+// screen. Callers still pass the Product id as a second argument; it no longer decides the colour.
+function lineBadge(name) {
+  // A long name wraps inside the pill, never cut (critique 12); the title repeats it on hover.
   const badge = Object.assign(el('span', 'ln'), { title: name });
   badge.append(el('span', 'ln-t', name));
-  const { bg, ink } = productLine(key);
+  const { bg, ink } = nameLine(name);
   badge.style.setProperty('--line', bg);
   badge.style.setProperty('--line-ink', ink);
   return badge;
@@ -2485,14 +2596,60 @@ function dateCell(incident) {
 }
 
 // Both views end with the Lead and every Mention, so links a CVE record gains later show up in either.
-function details(incident) {
+// Critique P2 (11-19): what to do comes first in both views. The Normal panel keeps its small ID, score and date lines on
+// top as a header strip; the Easy panel opens on the red line and the action, and keeps those identifiers at its foot.
+function details(incident, onStrip = false) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
-  const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang], incident.cves);
-  // Owner, 11-16: four or more fixed lines, under the Mitigation as an aligned list (the Easy view draws its own, above).
-  const fixTab = !easy && incident.summary ? fixTable(incident.summary) : null;
-  if (fixTab) parts.push(...fixList(fixTab, `normal:${incident.id}`, t.fixesTitle));
-  // M1 (owner, 11-15): under the Mitigation, the Board filtered to the row's first Product when it had other Incidents
+  const body = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident);
+  const head = [];
+  // N1 (owner, 11-15): the CVE the visitor searched for, when it is not the Lead, gets one line on top of the card: its
+  // own line, score and whether it is attacked. Title and Summary stay the Incident's.
+  const searched = searchedCve(filter.query, incident, lang);
+  if (searched) {
+    const line = para('why-line', `${t.searched(searched.cve)}:`);
+    if (searched.text) line.append(' ', searched.text);
+    const marks = cveMarks(incident, searched.cve);
+    if (searched.exploited === false) marks.push(...(marks.length ? [' · '] : []), t.notExploited);
+    if (marks.length) line.append(' · ', ...marks);
+    head.push(line);
+  }
+  const ids = [];
+  // Every Incident with a CVE has the same line, as the row header writes it ("CVE-… 외 212건"), so it can be copied
+  // (owner, 11-10: the line came and went by count); the full list stays in the fold.
+  if (incident.cves.length) ids.push(idLine(incident.cves));
+  // The group's score with the CVE it belongs to (step 4), in both views. A score a page raised shows both standards'
+  // scores there instead (owner 11-18), one-CVE Incidents too: "CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…".
+  const top = scoreCve(incident);
+  const pair = scorePair(incident);
+  if (top || pair) ids.push(para('why-line', [pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · ')));
+  // M4 (owner, 11-15): the Lead CVE's Public date, when it is not the day of the Published time.
+  if (publicDay(incident)) ids.push(para('why-line', `${t.publicDate} ${publicDay(incident)}`));
+  // A Brief has no plain sentence to lead with, so its identifiers stay on top in both views (critique 14).
+  const idsAtFoot = easy && Boolean(incident.summary);
+  if (!idsAtFoot) head.push(...ids);
+  if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
+  // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks. A Highlight's strip
+  // already says "CISA KEV 등재 <day>" (evidenceCell), so its panel does not say it again unless it names the attacked CVEs
+  // of a group; a reporting source stays, as the strip has no link.
+  const reason = exploitReason(incident);
+  const hit = reason && incident.cves.length > 1 ? exploitedCves(incident) : [];
+  if (reason && !(onStrip && reason.kind === 'kev' && !hit.length)) {
+    const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
+    if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
+    if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
+    // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
+    if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
+    head.push(why);
+  }
+  // Public exploit code without reported attacks: no sign, a red line (owner, 2026-11-09); in the Easy view over the
+  // action with the other red line, in the Normal view after the summary sentence, as before, so 대처법 still leads.
+  if (incident.summary?.poc_public === true && !isExploited(incident)) {
+    if (easy) head.push(para('kev', t.pocEasy));
+    else body.splice(body.findIndex((n) => n.classList.contains('summary')) + 1, 0, para('kev', t.poc));
+  }
+  const parts = [...head, ...body];
+  // M1 (owner, 11-15): under the answer, the Board filtered to the row's first Product when it had other Incidents
   // in the last 30 days; same tab, as the address is this page's own filter.
   ensureOthers();
   const elsewhere = productOthers(incident, lang, productCounts);
@@ -2503,57 +2660,26 @@ function details(incident) {
   }
   if (!easy) parts.push(...distroFold(incident)); // Normal view only (owner, 11-16)
   const list = easy ? [] : cveList(incident); // every CVE's issue in the Normal view (user, 2026-11-09)
-  // Public exploit code without reported attacks: no sign, a red line in the summary text (owner, 2026-11-09).
-  if (incident.summary?.poc_public === true && !isExploited(incident)) parts.splice(easy ? 0 : 1, 0, para('kev', easy ? t.pocEasy : t.poc));
-  // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks, first in the panel.
-  const reason = exploitReason(incident);
-  if (reason) {
-    const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
-    if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
-    if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
-    // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
-    const hit = incident.cves.length > 1 ? exploitedCves(incident) : [];
-    if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
-    parts.unshift(why);
-  }
-  // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
-  if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
-  // Easy: a few IDs lead the panel; a group's count follows the action instead of a wall of IDs.
-  // "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09). Both views show the IDs as text here:
+  // "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09). Both views show the IDs as text:
   // the row is a button, and browsers do not let a drag select text inside one (owner, 11-10: "CVE를 긁을 수가 없어").
+  const cveFold = [];
   if (incident.cves.length > 2) {
     const fold = el('details', 'models cve-fold');
-    const ids = el('ul', '');
+    const all = el('ul', '');
     for (const cve of incident.cves) {
       const li = el('li', '');
       li.append(anchor(cveUrl(cve), cve, false));
-      ids.append(li);
+      all.append(li);
     }
-    const head = el('summary', '', t.cveCount(incident.cves.length));
-    head.append(el('span', 'sr-only', t.newTabAll));
-    parts.push(foldable(fold, head, ids));
+    const label = el('summary', '', t.cveCount(incident.cves.length));
+    label.append(el('span', 'sr-only', t.newTabAll));
+    cveFold.push(foldable(fold, label, all));
   }
-  // M4 (owner, 11-15): the Lead CVE's Public date, under the score, when it is not the day of the Published time.
-  if (publicDay(incident)) parts.unshift(para('why-line', `${t.publicDate} ${publicDay(incident)}`));
-  // The group's score with the CVE it belongs to (step 4), under the IDs, in both views. A score a page raised shows
-  // both standards' scores there instead (owner 11-18), one-CVE Incidents too: "CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…".
-  const top = scoreCve(incident);
-  const pair = scorePair(incident);
-  if (top || pair) parts.unshift(para('why-line', [pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · ')));
-  // Every Incident with a CVE opens on the same line, as the row header writes it ("CVE-… 외 212건"), so it can be
-  // copied (owner, 11-10: the line came and went by count); the full list stays in the fold.
-  if (incident.cves.length) parts.unshift(idLine(incident.cves));
-  // N1 (owner, 11-15): the CVE the visitor searched for, when it is not the Lead, gets one line on top of the card: its
-  // own line, score and whether it is attacked. Title and Summary stay the Incident's.
-  const searched = searchedCve(filter.query, incident, lang);
-  if (searched) {
-    const line = para('why-line', `${t.searched(searched.cve)}:`);
-    if (searched.text) line.append(' ', searched.text);
-    const marks = cveMarks(incident, searched.cve);
-    if (searched.exploited === false) marks.push(...(marks.length ? [' · '] : []), t.notExploited);
-    if (marks.length) line.append(' · ', ...marks);
-    parts.unshift(line);
-  }
+  if (idsAtFoot) {
+    const foot = el('div', 'id-foot');
+    foot.append(...ids, ...cveFold);
+    if (foot.childElementCount) parts.push(foot);
+  } else parts.push(...cveFold);
   const mentions = el('ul', 'mentions');
   const rank = (m) => (MENTION_ORDER.includes(m.kind) ? MENTION_ORDER.indexOf(m.kind) : MENTION_ORDER.length);
   const lastPart = (url) => {
@@ -2682,35 +2808,17 @@ function tagLine(incident) {
 let rowCount = 0;
 
 // Owner, 11-16: the Summary's fixed versions from four lines on, one dt/dd pair per line in one grid, so the versions line
-// up; rows past FIXES_SHOWN wait behind a real button, whose state is kept by row and view (key) through every redraw.
+// up. Critique P2 (11-19): past FIXES_SHOWN lines the whole list folds under the panel's one action, with the panel's own
+// fold motion; whether it is open is kept by row and view (key) through every redraw.
 const openFixLists = new Set();
 function fixList(table, key, head = '') {
   const t = TEXT[lang];
-  const list = Object.assign(el('dl', 'fix-list'), { id: `fixes-${++rowCount}` });
-  table.rows.forEach((f, n) => {
-    const cls = n >= FIXES_SHOWN ? 'rest' : '';
-    list.append(el('dt', cls, f.for), el('dd', cls, t.orNewer(f.version)));
-  });
-  const out = [...(head ? [para('fix-head', head)] : []), list];
-  if (table.more) {
-    const button = Object.assign(el('button', 'tag-toggle'), { type: 'button' });
-    button.setAttribute('aria-controls', list.id);
-    const sync = () => {
-      const shown = openFixLists.has(key);
-      list.classList.toggle('all', shown);
-      button.setAttribute('aria-expanded', String(shown));
-      button.textContent = shown ? t.foldLess : t.fixesMore(table.more);
-    };
-    button.addEventListener('click', () => {
-      if (!openFixLists.delete(key)) openFixLists.add(key);
-      sync();
-    });
-    sync();
-    const line = el('p', 'fix-more');
-    line.append(button);
-    out.push(line);
-  }
-  return out;
+  const list = el('dl', 'fix-list');
+  for (const f of table.rows) list.append(el('dt', '', f.for), el('dd', '', t.orNewer(f.version)));
+  if (!table.more) return [...(head ? [para('fix-head', head)] : []), list];
+  const box = Object.assign(el('details', 'models fix-fold'), { open: openFixLists.has(key) });
+  const label = el('summary', '', t.fixesFold(table.rows.length));
+  return [foldable(box, label, list, (on) => { if (on) openFixLists.add(key); else openFixLists.delete(key); })];
 }
 
 // A vendor's bulk push as one line ("IBM 보안 공지 25건 · 최고 9.9"); opened, its rows follow it as ordinary rows.
@@ -2745,7 +2853,8 @@ function foldRows(group) {
   title.append(el('strong', 'title', foldTitle),
     el('small', 'sub', products.slice(0, 3).join(', ') + (products.length > 3 ? ` ${t.moreProducts(products.length - 3)}` : '')));
   const tags = el('span', 'c-tags');
-  tags.append(groupTag(), ' ', lineBadge(wp ? 'WordPress' : vendor, group.vendor)); // Product names are never translated
+  // Product names are never translated. A vendor named like an OS ("Linux") keeps the OS outline its name has on every row.
+  tags.append(groupTag(), ' ', OSES.includes(vendor) ? osBadge(vendor, false) : lineBadge(wp ? 'WordPress' : vendor));
   const chevron = el('i', 'chev');
   chevron.setAttribute('aria-hidden', 'true');
   button.append(riskCell(gravest), title, scoreCell(top), tags, dateCell(newest), chevron);
@@ -2801,17 +2910,24 @@ function foldRows(group) {
 }
 
 
-// One board row: a button that opens the details below it, like opening a post. A Highlight is a framed
-// alert edged in its Risk colour, with the details inside the frame.
+// A Highlight's header strip says in a few words why it is 공격 발생; the link stays in the panel (the row is a button).
+function evidenceCell(incident) {
+  const reason = exploitReason(incident);
+  if (!reason) return null;
+  const t = TEXT[lang];
+  return el('small', 'c-ev', reason.kind === 'kev' ? [t.kevListed, reason.date].filter(Boolean).join(' ') : t.reportedBy(host(reason.url)));
+}
+
+// One board row: a button that opens the details below it, like opening a post. A Highlight is one alert of the
+// 주요 사건 band: a header strip (risk sign, 공격 발생 and its evidence, time, chevron) over its title, ring and badges.
 function row(incident, pinned, vendor = '') {
   const li = el('li', pinned ? `alert risk-${riskLevel(incident)}` : isGroup(incident) ? 'grouped' : '');
   li.dataset.ids = incident.id;
   if (fresh.has(incident.id)) li.classList.add('fresh');
   // A Highlight's list copy keys apart (rowKey): its own open state and transition name, never a duplicate.
   const key = rowKey(incident, highlightedNow, pinned);
-  // A Highlight in the list wears the pinned frame's Risk-colour edge (owner, 11-16); screen readers hear the word.
+  // A Highlight in the list says so in words under its sign (critique P2, 11-19: no edge, so a row never wears two).
   const marked = !pinned && highlightedNow.has(incident);
-  if (marked) li.classList.add('hl', `hl-${riskLevel(incident)}`);
   li.dataset.vt = rowName(key); // boardTransition names it: the same row before and after a redraw
   const body = Object.assign(el('div', defaultView === 'easy' ? 'details easy' : 'details'), { id: `details-${++rowCount}`, hidden: !open.has(key) });
   const button = Object.assign(el('button', 'row'), { type: 'button' });
@@ -2822,24 +2938,32 @@ function row(incident, pinned, vendor = '') {
   const risk = riskCell(incident);
   const why = pinned && pinReason(incident);
   if (why) risk.append(el('small', 'why', TEXT[lang].why[why]));
-  if (marked) risk.append(el('span', 'sr-only', ` ${TEXT[lang].pinOne}`)); // part of the row's name, read after its level
-  const cells = { risk, title: titleCell(incident, vendor), score: scoreCell(incident), tags: tagsCell(incident), date: dateCell(incident) };
+  if (marked) risk.append(' ', el('small', 'why pin', TEXT[lang].pinOne)); // part of the row's name, read after its level
+  const ev = pinned && evidenceCell(incident);
+  const cells = { risk, title: titleCell(incident, vendor), score: scoreCell(incident), tags: tagsCell(incident), date: dateCell(incident), ...(ev ? { ev } : {}) };
   for (const [k, cell] of Object.entries(cells)) cell.id = `${body.id}-${k}`;
   cells.title.querySelector('.title').id = `${body.id}-name`;
   cells.title.querySelector('.sub').id = `${body.id}-sub`;
   // Screen readers hear the bold title and risk as the row's name, the rest as its description, not one long name.
   button.setAttribute('aria-labelledby', `${body.id}-name ${body.id}-risk`);
-  button.setAttribute('aria-describedby', `${body.id}-sub ${body.id}-score ${body.id}-tags ${body.id}-date`);
-  button.append(...Object.values(cells), chevron);
+  button.setAttribute('aria-describedby', `${body.id}-sub ${ev ? `${body.id}-ev ` : ''}${body.id}-score ${body.id}-tags ${body.id}-date`);
+  if (pinned) {
+    const strip = el('span', 'strip');
+    strip.append(cells.risk, ...(ev ? [ev] : []), cells.date, chevron);
+    button.append(strip, cells.title, cells.score, cells.tags);
+  } else button.append(cells.risk, cells.title, cells.score, cells.tags, cells.date, chevron);
   // Details are built when a row first opens: every closed row's hidden details made 62% of the page's elements, and
   // a phone took half a second to redraw them on a view switch (owner, 2026-11-10).
   // A row view (rows.json) has no details: a loading line until ensureFull redraws the Board with the full Incident, the
   // load error if that fails; after a failure a redraw shows the error and only opening the row asks again (owner, 11-10).
   const fill = (asked = false) => {
-    if (!incident.rows) return body.childElementCount || body.append(...details(incident));
+    if (!incident.rows) return body.childElementCount || body.append(...details(incident, Boolean(ev)));
     if (fullFailed && !asked) return body.replaceChildren(para('preparing', TEXT[lang].loadError));
     body.replaceChildren(para('preparing', TEXT[lang].loading));
-    ensureFull().catch(() => body.replaceChildren(para('preparing', TEXT[lang].loadError)));
+    ensureFull().catch(() => { // Astryx Banner, Best Practices: "Announce async outcomes from the transition handler with useAnnounce."
+      body.replaceChildren(para('preparing', TEXT[lang].loadError));
+      $('announce').textContent = TEXT[lang].loadError;
+    });
   };
   button.addEventListener('click', () => {
     const opening = !open.has(key);
@@ -2848,10 +2972,10 @@ function row(incident, pinned, vendor = '') {
       open.add(key);
       fill(true);
       body.hidden = false;
-      fold(body, true);
+      foldOrFade(body, true);
     } else {
       open.delete(key);
-      fold(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
+      foldOrFade(body, false, () => { body.hidden = !open.has(key); }); // reopened mid-way: stay open
     }
   });
   if (!body.hidden) fill();

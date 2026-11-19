@@ -532,6 +532,17 @@ export function statusCounts(incidents, since, now = new Date()) {
     week: shown.filter((i) => !since || Date.parse(i.first_seen) >= Date.parse(since)).length };
 }
 
+// The answer a product or search filter gives (critique 11-17, P1): how many Incidents, how many at each Risk level, how
+// many attacked, counted from the very list the Board draws under it.
+export function answerCounts(list) {
+  const counts = { total: list.length, highest: 0, high: 0, notice: 0, exploited: 0 };
+  for (const i of list) {
+    counts[riskLevel(i)] += 1;
+    if (isExploited(i)) counts.exploited += 1;
+  }
+  return counts;
+}
+
 // A command or stopgap a reader may paste into a terminal: it starts with a package manager or service tool.
 // Anything else ("PasswordAuthentication no") is a line for a config file and must not look runnable.
 const SHELL = /^(sudo\s+)?(apt|apt-get|apk|yum|dnf|zypper|pacman|opkg|brew|port|snap|flatpak|winget|choco|npm|pnpm|yarn|pip3?|pipx|gem|cargo|go|composer|docker|podman|kubectl|helm|systemctl|service|rc-service|launchctl)\s/;
@@ -709,7 +720,7 @@ export const WORDS = {
     command: '이 명령으로 업데이트하세요:', commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, devices: '이 기기들을 지금 업데이트하세요!',
     version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
     fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
-    fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, foldLess: '접기',
+    fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, fixesFold: (n) => `제품별 수정 버전 보기 (${n}개)`, foldLess: '접기',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '공격 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
@@ -731,7 +742,7 @@ export const WORDS = {
     command: 'Run this to update:', commandFor: (w) => `${w}, run this to update:`, devices: 'Update these devices now!',
     version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
     fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
-    fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, foldLess: 'Show less',
+    fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, fixesFold: (n) => `Fixed version by product (${n})`, foldLess: 'Show less',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Attacked', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
@@ -753,7 +764,7 @@ export const WORDS = {
     command: 'このコマンドで更新してください:', commandFor: (w) => `${w}、このコマンドで更新してください:`, devices: 'これらの機器を今すぐ更新してください！',
     version: (v, p) => `${p ? `${p} を` : ''}${v} 以降に更新してください。`, fixedIn: (v) => `バージョン ${v} で修正されました。`,
     fixesIntro: 'お使いの製品に合ったバージョン以降に更新してください:', stopgap: 'すぐに更新できない場合:',
-    fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, foldLess: '閉じる',
+    fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, fixesFold: (n) => `製品別の修正バージョンを表示 (${n})`, foldLess: '閉じる',
     setting: '設定ファイルにこの行を追加してください:', settingIn: (f) => `設定ファイル ${f} にこの行を追加してください:`,
     levels: { highest: '緊急', high: '警戒', pending: 'スコア待ち', notice: '参考' }, kevReason: '攻撃発生', kevListed: 'CISA KEV 掲載', attackSource: '攻撃の報告:', poc: '攻撃コード公開済み',
     unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', conditions: '該当する条件', published: '初出',
@@ -785,6 +796,9 @@ export const fixTable = (s) => {
   const rows = usableFixes(s || {});
   return rows.length >= 4 ? { rows, more: Math.max(0, rows.length - FIXES_SHOWN) } : null;
 };
+// Critique P2 (11-19): on the Board a table past FIXES_SHOWN rows folds whole, and the Easy panel leads with the
+// Summary's one plain action over it ("Windows와 Office를 … 설치하세요."); a shorter table stays open under the intro line.
+export const fixesLead = (s, lang) => (fixTable(s)?.more && s[lang]?.easy_action) || WORDS[lang].fixesIntro;
 
 // 틀린 내용 알리기: a new issue in the public repository with the Incident filled in (ticket 09); link is where the visitor
 // saw it (the Board's #i= address or its Incident page). Korean then English in both languages, so anyone can follow it (owner).
@@ -843,8 +857,7 @@ export const LINES = [
   { bg: '#c25bb8', ink: '#0d0f12' }, { bg: '#960078', ink: '#ffffff' },
 ];
 
-// A Product's line from its language-free key (the Product id, "openbsd:openssh"), so it is the same on every visit,
-// row and language. FNV-1a, then a final mix: plain FNV-1a mod 8 put six of ten real Products on one line (critique 4).
+// A line from a fixed key (nameLine's "name:openssh"), so it is the same on every visit and row. FNV-1a, then a final mix: plain FNV-1a mod 8 put six of ten real Products on one line (critique 4).
 // WordPress keeps the pink line whatever key names it (owner, 11-16): hashed, its keys landed on two colours. Keyed by the
 // id's vendor, or the name of a name-only Product; the value is the line's index in LINES.
 const OWN_LINES = Object.assign(Object.create(null), { wordpress: 3 });
@@ -857,6 +870,11 @@ export function productLine(key) {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return LINES[((h ^ (h >>> 16)) >>> 0) % LINES.length];
 }
+// A badge's line from the name it shows (critique P2, 11-19): keyed by the Product id, one name showed in two colours on
+// one screen ("N-able N-central" as n-able:n-central and as a name-only Product; "Newsletters" of two vendors). The name
+// goes through productKey, so case, a company word or a known vendor in front ("Chrome", "Google Chrome") keep one line.
+// Names are never translated, so the line is the same in every language, except a Product the Summary names in Hangul.
+export const nameLine = (name) => productLine(`name:${productKey(name)}`);
 
 // Each row badge's line key: the Product id behind a shown name (a Summary name in either language, an NVD name);
 // a name with no Product (a device model) has none and keys by itself.
@@ -992,4 +1010,16 @@ export function productFeed(names, lang) {
   if (!unique.length) return null;
   const used = unique.slice(0, FEED_NAMES);
   return { href: `${feedPath(lang)}?products=${used.map(encodeURIComponent).join(',')}`, names: used, left: unique.length - used.length };
+}
+
+// Astryx ButtonGroup, Best Practices: "Single Tab stop; arrows move between members, Home/End to ends (APG roving tabindex)".
+// Where a key moves the focus in a group of `count` controls from member `index`: the new index, or -1 when the key is
+// left to the browser. `wrap`: the last member's next is the first (a two-way switch).
+export function groupKey(key, index, count, { prev = ['ArrowLeft'], next = ['ArrowRight'], ends = true, wrap = false } = {}) {
+  if (index < 0 || count < 1) return -1;
+  if (prev.includes(key)) return index > 0 ? index - 1 : wrap ? count - 1 : 0;
+  if (next.includes(key)) return index < count - 1 ? index + 1 : wrap ? 0 : count - 1;
+  if (ends && key === 'Home') return 0;
+  if (ends && key === 'End') return count - 1;
+  return -1;
 }

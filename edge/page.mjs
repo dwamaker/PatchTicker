@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, productLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -50,7 +50,7 @@ const TEXT = {
 
 // On a touch screen a list link is a 44px box, ~10px of air over its text: the list under a label pulls up by that much.
 // CVE columns: 9rem + a 1.25rem marker gap is the most that still gives two columns at 360px (328px less the list's 20px).
-const CSS = `:root{color-scheme:light dark;--bg:light-dark(#f4f5f7,#121417);--panel:light-dark(#fff,#191c20);--panel-2:light-dark(#eceef1,#1f2328);--ink:light-dark(#16191d,#ececec);--ink-2:light-dark(#4f5862,#a8afb7);--ink-3:light-dark(#5f6872,#8c949d);--rule:light-dark(#dde1e5,#2a2f35);--rule-2:light-dark(#c4c9cf,#3a4048);--edge:light-dark(#858e97,#6b737c);--shadow:light-dark(rgb(20 25 30 / 0.07),rgb(0 0 0 / 0.32));--high:light-dark(#c4231c,#ff6b62);--mid:light-dark(#8a6100,#f5b400);--mid-mark:light-dark(#a87700,#f5b400);--note:light-dark(#5a6570,#9aa3ad);--focus:light-dark(#1a5fb4,#7cc4ff);--sans:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+const CSS = `:root{color-scheme:light dark;--bg:light-dark(#f4f5f7,#121417);--panel:light-dark(#fff,#191c20);--panel-2:light-dark(#eceef1,#1f2328);--ink:light-dark(#16191d,#ececec);--ink-2:light-dark(#4f5862,#a8afb7);--ink-3:light-dark(#5f6872,#8c949d);--rule:light-dark(#dde1e5,#2a2f35);--rule-2:light-dark(#c4c9cf,#3a4048);--edge:light-dark(#858e97,#6b737c);--shadow:light-dark(rgb(20 25 30 / 0.07),rgb(0 0 0 / 0.32));--high:light-dark(#c0262c,#ff6b62);--mid:light-dark(#8a6100,#f5b400);--mid-mark:light-dark(#a87700,#f5b400);--high-wash:light-dark(#ffc4be,#5b2b28);--high-ink:light-dark(#76000c,#ffaea7);--mid-wash:light-dark(#fae19e,#453a1c);--mid-ink:light-dark(#4b3900,#eec448);--note-wash:light-dark(#dae2ea,#323940);--note-ink:light-dark(#434f5a,#bdc5ce);--note:light-dark(#5a6570,#9aa3ad);--focus:light-dark(#1a5fb4,#7cc4ff);--sans:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
 *,*::before,*::after{box-sizing:border-box}
 html{background:var(--bg);scrollbar-color:var(--rule-2) var(--bg)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 0.9375rem/1.55 var(--sans);letter-spacing:-0.005em;word-break:keep-all;overflow-wrap:anywhere;-webkit-font-smoothing:antialiased}
@@ -89,13 +89,15 @@ ul{margin:.25rem 0;padding-left:1.25rem}
 .sign{margin:0;display:flex;flex-direction:column;align-items:center;gap:.125rem;color:var(--note)}
 .risk-highest .sign{color:var(--high)}
 .risk-high .sign{color:var(--mid)}
-.word{padding:calc(.25rem - 1.5px) calc(.75rem - 1.5px);border:1.5px solid var(--note);border-radius:999px;font-size:.9375rem;font-weight:800;line-height:1.2}
-.risk-highest .word{border-color:var(--high)}
-.risk-high .word{border-color:var(--mid-mark)}
+.word{display:inline-flex;align-items:center;min-height:1.5rem;padding:0 .5rem;border-radius:4px;background:var(--note-wash);color:var(--note-ink);font-size:.875rem;font-weight:700;line-height:1.2}
+.risk-highest .word{background:var(--high-wash);color:var(--high-ink)}
+.risk-high .word{background:var(--mid-wash);color:var(--mid-ink)}
 .gauge{position:relative;flex:none;width:2.75rem;height:2.75rem;display:grid;place-items:center;color:var(--note)}
 .gauge svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 .gauge circle{fill:none;stroke-width:3.5}
-.gauge .track{stroke:var(--rule-2)}
+.gauge .track{stroke:var(--rule-2);fill:var(--note-wash)}
+.gauge.sev-critical .track{fill:var(--high-wash)}
+.gauge.sev-high .track{fill:var(--mid-wash)}
 .gauge .arc{stroke:currentColor;stroke-dasharray:var(--fill) 1;stroke-linecap:round}
 .gauge.sev-none .arc{display:none}
 .gauge b{position:relative;color:var(--ink);font-size:.8125rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
@@ -213,7 +215,7 @@ function banner(i, t) {
 function products(i, lang) {
   const t = TEXT[lang];
   const items = tagFilters(i, lang).map((tag) => {
-    const { bg, ink } = productLine(tag.pick || tag.name); // colours from the Board's fixed table, never from data
+    const { bg, ink } = nameLine(tag.name); // colours from the Board's fixed table by the shown name, as the Board badge
     const pill = tag.kind === 'os' ? `<span class="os">${esc(tag.name)}</span>` : `<span style="--line:${bg};--line-ink:${ink}">${esc(tag.name)}</span>`;
     return `<li><a href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${pill}</a></li>`;
   });

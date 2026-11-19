@@ -180,9 +180,9 @@ and "how dangerous" never share a colour.
 
 Density is that of a departure board: rows of 72 px minimum, one hairline between them, generous
 column gaps, nothing decorative. The ground is graphite at night and pale concourse paper by day; the
-visitor's system setting picks one and a remembered toggle overrides it. The only thing that lifts off
-the ground is the "주요 사건" group, stacked like emergency alerts in thin framed rows with a risk-coloured
-edge.
+visitor's system setting picks one and a remembered toggle overrides it. The "주요 사건" group stands
+apart as one alert band: a thin frame, a hairline between Highlights, each opening on a header strip (risk sign, 공격
+발생 and its evidence, time) the way a disaster text opens on its header (critique P2, 11-19).
 
 The Normal view is restrained: calm type, quiet colour, the facts. The Easy view is the same board
 with a friendlier voice: the risk word gains its "!", the row leads with a plain headline ("SonicWall
@@ -195,7 +195,7 @@ action line set heavier than the text around it. The sign does not change; only 
   (eight fixed hues).
 - The CVE ID as the bold name over the Incident title, like a station name over its direction.
 - CVSS as a ring filled to the score out of 10, number inside.
-- Flat rows on hairlines; only the Highlight frames carry a shadow.
+- Flat rows on hairlines; the Highlights band is framed, never lifted, washed or edged in colour.
 - Light and dark twins from one set of `light-dark()` tokens.
 
 ## Colors
@@ -204,12 +204,12 @@ A graphite-and-paper ground, a strict three-colour risk alphabet, and a subway-m
 for Products only.
 
 ### Primary
-- **Emergency Red** (`emergency-red`): the 긴급 risk sign and word, the KEV marker, the left edge
-  and faint wash of a 긴급 Highlight frame. Used only for risk.
+- **Emergency Red** (`emergency-red`): the 긴급 risk sign and word, the KEV marker. Used only for
+  risk.
 - **Caution Amber** (`caution-amber`, text) and **Caution Amber Mark** (`caution-amber-mark`, marks): the 위험 word is
-  the dark gold (#8a6100 by day, 4.77:1+); its sign ring, CVSS ring arc, frame edge and wash are the brighter gold (#a87700 by day,
+  the dark gold (#8a6100 by day, 4.77:1+); its sign ring and CVSS ring arc are the brighter gold (#a87700 by day,
   non-text, 3.4:1+), so 위험 reads gold and never as the red of 긴급 (user, 11-08). By night both are #f5b400.
-- **Notice Slate** (`notice-slate`): the 참고 risk sign and word (#5a6570 by day since critique 13: 4.96:1+ on the hover and group grounds), the default Highlight edge, and the
+- **Notice Slate** (`notice-slate`): the 참고 risk sign and word (#5a6570 by day since critique 13: 4.96:1+ on the hover and group grounds), and the
   CVSS ring below 7.0.
 - The CVSS ring uses the same three: Emergency Red at 9.0+, Caution Amber at 7.0+, Notice Slate below.
   (A separate orange for 7.0+ was dropped on 11-08: in light theme it read as the amber mark, 1.03:1.)
@@ -241,13 +241,13 @@ for Products only.
 
 ### Neutral
 - **Platform Graphite / Concourse Paper** (`platform-ground`): the page and the scrollbar track.
-- **Kiosk Panel** (`kiosk-panel`): input fields, Highlight frames, an opened row and its details.
+- **Kiosk Panel** (`kiosk-panel`): input fields, the Highlights band, an opened row and its details.
 - **Recessed Panel** (`recessed-panel`): row and button hover, the view switch track, command code.
 - **Sign Ink** (`sign-ink`): titles and body text; also the active view-switch fill.
 - **Secondary Ink** (`secondary-ink`): the Incident title under the CVE ID, dates, status line, group headings.
 - **Hint Ink** (`hint-ink`): placeholders and field icons.
 - **Hairline** (`hairline`): the line between rows and around the top bar and footer.
-- **Rail** (`rail`): the top rule of the list, Highlight frame borders, label dividers.
+- **Rail** (`rail`): the top rule of the list, the Highlights band's border and the line between its Highlights, label dividers.
 - **Control Edge** (`control-edge`): borders of buttons, fields and the view switch.
 - **Chevron Ring** (`chev-ring`, `--chev-ring`): the ring around a row's chevron, #737c86 by day and #737b84 by night (owner,
   11-16: Control Edge was 2.8:1 on the day group ground). On the page, group, panel and hover grounds 3.53 to 4.24:1 by
@@ -256,8 +256,8 @@ for Products only.
   kinds of group (owner, 11-16): a release group (함께 공개) is teal (#007c88 by day, #3fc1cc by night); a
   vendor fold (묶음) violet (#7340f2 by day, #a98bff by night). Both were Product lines once (line-07, line-06); since
   11-16 no Product line is either, or within 0.13 of either. Each colours its kind's tag (outline and
-  word) and its frame's 3px left band; the fold's 1px frame and its members' guide line take 45% of it. As tag text on
-  Kiosk Panel: teal 4.95:1 / 7.91:1, violet 5.61:1 / 6.37:1 (day / night); as a band on the group ground 4.13:1 /
+  word); Fold Violet also draws the rail and stops an opened fold's members hang on (critique P2, 11-19). As tag text on
+  Kiosk Panel: teal 4.95:1 / 7.91:1, violet 5.61:1 / 6.37:1 (day / night); as the rail on the group ground 4.13:1 /
   7.15:1 and 4.68:1 / 5.76:1, on the page higher. Apart in both themes under simulated protan, deutan and tritan vision
   (CIELAB distance 31+). Never a risk colour; the Highlights' blue stays theirs. The words stay, so colour is never the
   only signal; a tag is an outlined square, never a Product's filled pill.
@@ -342,23 +342,23 @@ to be understood, the column is wrong.
 ## Elevation & Depth
 
 Flat by default. Depth comes from tonal steps (ground, recessed panel, kiosk panel) and hairlines.
-The one exception is the Highlight frame, which lifts slightly to read as a stacked alert.
+The Highlights band no longer lifts (critique P2, 11-19: the lift, the wash and the risk edge were a
+template card's, and with four 긴급 in a row they told nothing); it is set apart by its frame and its header strips.
 
 ### Shadow Vocabulary
-- **Alert lift** (`box-shadow: 0 6px 18px -8px` in a theme shadow colour, 7% ink by day, 32% black
-  by night): Highlight frames only.
+- Floating controls only (menus, the jump buttons, the new-Incidents pill); nothing in the Board's flow.
 
 ### Named Rules
-**The One Lift Rule.** Only the "주요 사건" frames cast a shadow. Plain rows, fields, buttons and opened
+**The Flat Board Rule.** No row, band, field, button or opened detail casts a shadow. Plain rows, fields, buttons and opened
 details stay flat. The phone filter sheet is set apart by the Scrim (`--scrim`, 45% black over the Board), not by a lift.
 
 ## Shapes
 
 Three radii: gently rounded controls (8px), slightly softer frames for fields and Highlights (10px),
 and full pills for line badges and the view switch (999px). Command code uses 6px, the small
-"원문" marker 4px. Borders are 1px throughout; the only thicker edge is the 3px risk-coloured left
-edge of a Highlight frame (also at the left of a Highlight's row in the list) and the 3px band of a group's frame, in
-its kind's colour. The risk sign is a 1.5px ring around the word
+"원문" marker 4px. Borders are 1px throughout, and no row wears a coloured side edge (critique P2,
+11-19); the one coloured line is an opened vendor fold's 2px Fold Violet rail with a 0.875rem stop ring (2px) at each
+member's sign, like stations on a subway line. The risk sign is a 1.5px ring around the word
 (dashed while no score), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring
 (1.75rem, Chevron Ring; Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a
 control without moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it, and the chevron 0.5rem in from the row's edge, so the
@@ -373,6 +373,10 @@ Restrained outlined buttons for theme, language and copying a command.
   size at weight 500.
 - **Hover / Focus:** Recessed Panel fill and Sign Ink text on hover; a 2px Wayfinding Blue ring at
   2px offset on keyboard focus.
+- **Names (Astryx pass, owner 11-19):** an icon-only button (theme, GitHub, RSS, settings, 필터 below 1024px, the search
+  ×, the jump buttons) also shows its name on hover. The theme button is a switch (`role="switch"`, `aria-checked`):
+  a lasting setting, not a pressed button. A button that is waiting (이전 사건 불러오기 while it loads) is `aria-disabled`
+  and `aria-busy` and keeps the focus; it takes no hover tint.
 
 ### Support badge (owner, 2026-11-18)
 - The README's Buy Me a Coffee badge, alone, drawn by the page itself (no third-party image: `img-src 'self'`): Buy Me
@@ -424,6 +428,7 @@ Restrained outlined buttons for theme, language and copying a command.
   44 px high.
 - **State:** the pressed option fills with Sign Ink and turns its text to the ground colour at weight
   700; the other option is Secondary Ink, gaining the Recessed hover fill.
+- **Keys (Astryx pass, owner 11-19):** Left or Right on either option picks the other one and takes the focus.
 
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
@@ -441,7 +446,8 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Text size
 - Two buttons, 가− and 가+ (A− and A+ on the English page), in one outlined control left of the theme button (the user's pick), glyphs 12 and 18 px
   (px on purpose, so the control does not grow with the text). Steps 87.5, 100, 112.5, 125, 150%, remembered; the end
-  steps disable their button. Only text grows: every font size is multiplied by `--ts`; gaps, columns and controls
+  steps disable their button (`aria-disabled`, so the focus stays on it; Astryx pass, owner 11-19). The pair is one Tab
+  stop: Left and Right move between the two, Home and End to the ends. Only text grows: every font size is multiplied by `--ts`; gaps, columns and controls
   stay the same size (the first version scaled the root size, which zoomed the whole page).
 
 ### Inputs / Fields
@@ -474,7 +480,9 @@ Restrained outlined buttons for theme, language and copying a command.
   post), in the visitor's time zone as `YYYY-MM-DD` over `HH:MM`; how long ago sits in the tooltip.
   The list orders by it.
 - **Details:** both views end with the Lead link and every Mention, so links a CVE record gains later
-  appear in either view. Every panel starts flush, whichever line leads. An 공격 발생 panel starts with its reason
+  appear in either view. Every panel starts flush, whichever line leads. An 공격 발생 panel starts with its reason (in the
+  주요 사건 band only a reporting source's linked line or a group's attacked CVEs: the strip already says "CISA KEV 등재
+  <day>", polish 11-19)
   (Easy: under the CVE IDs and the red "지금 실제 공격에 쓰이고 있어요!"), the KEV day kept whole on one line; in Easy the
   red line and its reason are one group and "이럴 때만 해당돼요" starts the next, 0.5rem below (critique 14 polish).
 - **State:** Recessed Panel on hover; an opened row and its details take Kiosk Panel; `aria-expanded`
@@ -494,15 +502,19 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Rule:** the guide never invents a mark; anything it shows comes from the same render functions as
   the rows, so it cannot drift.
 
-### Highlight frame (signature)
-- **Style:** Kiosk Panel, 1px Rail border, 10px radius, 3px left edge in the risk colour, the Alert
-  lift shadow. A 긴급 frame adds a faint red wash (7%) and a 위험 frame a fainter amber one (5%), each fading out by 40% of its width. Details open inside
-  the frame.
+### Highlights band (signature; critique P2, 11-19)
+- **Style:** one frame for all the Highlights: Kiosk Panel, 1px Rail border, 10px radius, a Rail hairline between
+  Highlights; no lift, no wash, no risk edge. Each Highlight opens on a header strip edge to edge (Recessed Panel, a
+  Hairline under it, at least 2.5rem): the risk sign with 공격 발생 and its evidence in Secondary Ink ("CISA KEV 등재
+  2026-11-13", or "<site> 보도" for a reporting source; text only, the link stays in the panel), or the pin reason
+  (뉴스레터, HN), then the date and time on one line and the chevron at the right. Under it the title, the ring and
+  the badges (26rem); under 1024px the badges take a line of their own. Details open inside the band, under the title.
+  The loading Board draws the same strip, and on phones the strip's two-line title and badge rows' height.
 - **In the list too (owner, 11-16):** the list under the frames is the whole Board, so every Highlight also stands at its
   own place there (never inside a vendor fold, which holds and counts the rest or unfolds below its minimum; owner,
-  11-17), as an ordinary row with the frame's 3px Risk-colour edge at its
-  left (`li.hl`, drawn over the row so it sits beside a group frame's band) and no wash, lift or badge; screen readers
-  hear "주요 사건" / "Highlight" after its level. A pinned one is then drawn twice: each copy opens on its own, `#i=`
+  11-17), as an ordinary row that says "주요 사건" / "Highlight" in
+  Secondary Ink under its sign (critique P2, 11-19: the 3px edge it wore made two stripes on a grouped row); screen
+  readers hear it after its level. A pinned one is then drawn twice: each copy opens on its own, `#i=`
   links land on the pinned copy, and counts (results, new rows above) count Incidents, not rows.
 
 ### Command line
@@ -517,7 +529,7 @@ Restrained outlined buttons for theme, language and copying a command.
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
 - In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 긴급!) in
   Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
-  15px/800. Rings are never filled (user, 11-09). 공격 발생 sits centred under the ring (beside it on phones), and a
+  15px/800. Rings are never filled (user, 11-09). 공격 발생 sits under the ring, its text starting where the word starts (one text line for the column; the ring alone crosses it; owner, 11-19), beside it on phones and in the band's strip, and a
   row with no CVSS shows its dash centred where a score ring would be.
 
 ### Easy view panel
@@ -579,8 +591,9 @@ Restrained outlined buttons for theme, language and copying a command.
   without replaying it.
 - **Folding:** an opened row's details and a folded model list grow from 0 to their height (220ms, ease-out) and
   shrink back faster (160ms) when closed, so the rows below glide; a click mid-way turns them round.
-- **Opening:** the reading guide and the filter panel ease in over 200ms (a 6px drop
-  and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
+- **Opening:** the reading guide opens and closes like a row's details (the same fold, both ways; its top margin moves
+  with it so nothing below jumps; reduced motion: a 200ms fade; owner, 11-19: it had no motion). The filter panel eases
+  in over 200ms (a 6px drop and a fade); the phone's filter sheet rises from the bottom over 300ms, dims the Board behind it (a tap there closes
   it), is a modal dialog with the focus inside (Tab wraps, Escape closes) and keeps its 닫기 header in view; its fields run from risk and exploited down to the dates. Closing is instant. The chevron turns
   in 180ms.
 - **Vendor fold (trial, 11-09; three since late 11-09, owner):** three or more list rows of one vendor (or of WordPress plugins and themes, one
@@ -597,14 +610,12 @@ Restrained outlined buttons for theme, language and copying a command.
   its list (owner, 11-16); the fold keeps its place and its newest date. Its "one publish day" is the visitor's own
   calendar day, the date the rows show, not the UTC day (owner, 11-16: in Korea the UTC day broke folds at 09:00).
 - **Group ground and tag (11-09, owner: groups were hard to find):** a row that stands for several Incidents (a release
-  group of three or more CVEs, or a vendor fold) sits on `--group` (#e6ebf1 / #1a2028, a cool step off the page,
-  distinct from the opened-row white) and leads its badge cell with a "묶음" tag: square corners, ink outline, so it
-  never reads as a Product (filled pill) or an OS (outlined pill). An opened fold keeps that ground for its row and
-  members; its closing "IBM 묶음 접기" is an outlined house button. In 주요 사건 frames only the tag shows.
-  Since 11-16 (owner: two groups that touched read as one) each such row is framed like a Highlight: Rail border,
-  `--r-frame` corners, a 3px band on the left in its kind's colour (Patch Teal, Fold Violet), 0.375rem clear of its neighbours. An opened fold's frame runs
-  the whole height (fold row, members, closing line) and closes below them, so the next row or group starts clear. Row
-  and detail paddings take back the band, so the frame's columns stay on the list's.
+  group of three or more CVEs, or a vendor fold) leads its badge cell with a "묶음" tag: square corners, ink outline, so it
+  never reads as a Product (filled pill) or an OS (outlined pill). Closed, it is a plain row on its hairline (critique
+  P2, 11-19: the 11-16 frames with a 3px band made four kinds of side stripe; the tag's colour still tells two touching
+  groups apart). Opened, a vendor fold stands on `--group` (#e6ebf1 / #1c2531, a cool step off the page) for its row,
+  members and closing line; the members sit 2rem in (1.5rem on phones) and hang on a 2px Fold Violet rail with a stop at
+  each member's sign; its closing "IBM 묶음 접기" is an outlined house button. In the 주요 사건 band only the tag shows.
 - **Live updates (11-09, owner):** the page reads `status.json` every 30 seconds, live like a ticker, and at once when the tab or window comes back (owner, later 11-09: no conditions); the server should cache `status.json` for 30 s or less;
   only a new update time fetches the week again. New Incidents take their place in the visitor's sort and filter.
   Near the top of the page they come in with the Board's motion; further down, the rows on screen stay put (the scroll
@@ -635,7 +646,8 @@ Restrained outlined buttons for theme, language and copying a command.
   filter count pops when it changes; the all-clear check draws itself when the sign first appears; the theme icon
   turns in, and a theme or language change cross-fades the page (View Transitions, 200ms, where supported).
 - **Reduced motion:** the ring fill and every movement are dropped; opened panels keep only the fade, so the
-  change is still seen.
+  change is still seen. A row's details fade in and out (opacity only, 200ms) instead of growing; the phone sheet's
+  fade is 200ms, not 300ms (Astryx pass, owner 11-19: "opacity only, in 200 ms or less").
 - **First visit (critique 9, 11-09):** the reading guide no longer opens by itself. A first visit gets one framed line
   under the status line: the three risk signs and a CVSS ring, each with a few words, then 읽는 법 자세히 (opens the full
   guide) and a close button. Closing either marks the guide seen (`vr-guide`); the line never returns. The first row
@@ -693,7 +705,8 @@ Restrained outlined buttons for theme, language and copying a command.
   ("Up one screen" / "Down one screen") move by a press, not a scroll, 87% of the window's height below the frozen
   search row, so the line the reader was on stays in view (`stepDistance`), smooth unless motion is reduced. Top and
   bottom wear an arrow against a bar, the steps a plain chevron; every button names itself on hover and to screen
-  readers. A step with nowhere to go dims and is disabled; the pill shows whenever the page scrolls. On a phone the
+  readers. A step with nowhere to go dims and is disabled (`aria-disabled`: the focus stays on it); the two are one Tab
+  stop, Up and Down moving between them. The pill shows whenever the page scrolls. On a phone the
   group rests 6 s after a step press instead of 2 s, so the next press finds it under the finger; once rested, a small
   scroll brings it back (a tap cannot, as the buttons are hidden). Page Up/Down, Space, Home and End stay the browser's.
 - **Phone header (critique 10, a.1):** one line with the name, 기본|쉬운 설명 and a settings button; 가−/가+, theme and
@@ -835,6 +848,26 @@ Restrained outlined buttons for theme, language and copying a command.
     a WordPress fold is no company.
   - List head on phones: gap 0.75rem keeps 최신순 · 모두 펼치기 · 묶음 풀기 on one line at 320px in Korean (all three
     sorts); a longer English heading wraps 묶음 풀기 under it at the right edge, never on top of 모두 펼치기.
+- **Critique 11-17 (distill, 11-19; supersedes the frozen copy of 필터 and 정렬 above):**
+  - A product or search filter is a question: the 주요 사건 block is not drawn (the list still edges its Highlights), and
+    one sentence over the list answers it, as heavy as a row title: "Gitea: 최근 7일 2건 · 위험 2 · 공격 보고 없음" (`answerLine`,
+    counts from `answerCounts`; the period is the one searched, none under a date condition; the risk words of the view).
+    More than three picks name two, then "외 N개 제품". A search counts from the moment it is typed or restored (no block
+    while it waits for the full week). Not a live region; with no result the empty state answers. The loading Board
+    under such a filter (head script `pf-on`) draws no Highlight frames and keeps the answer's line, so nothing moves
+    when the rows arrive (a two-line answer on a phone still moves the list by one line).
+  - 필터 and 정렬 live at the end of the search line at every width (one control each, no copy, no rise motion); mid-list
+    (the Board's head under the frozen row) 필터 opens the floating panel and a new order scrolls back to the head. Up to
+    1023px 필터 is its icon, and from 768px the search line takes the larger share (1 : 1.25) beside the product field;
+    the search hint is measured: the long one, else the short one, else "검색".
+  - The collection notice left the top: it is the first of the footer's notes (no close button) and a note of the guide.
+  - The first-visit line shows once: drawing it with the Board marks the guide as seen.
+- **Astryx pass 2 (owner, 11-19: "the whole thing"):** the polite announcer also says a failed first load, a row whose
+  full data failed, and a blocked copy (복사하지 못했습니다 …); a name the picker turned into a search is said before the
+  count; "맞는 제품이 N개" is said once, by its own status line. Per-CVE links keep their words as their name, with the CVE
+  said before them for screen readers (no aria-label). The filter panel's risk and OS notes describe their chip groups;
+  필터 초기화 keeps the focus. Under reduced motion the "↑ 새 사건" pill only fades (200ms) and a new Highlight's strip
+  lets go in 200ms.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
 ## Do's and Don'ts
@@ -844,9 +877,12 @@ Restrained outlined buttons for theme, language and copying a command.
   for screen readers), so the Board, its filters and opened rows stay put.
 - **Do** let a long line badge name wrap inside its pill; never cut it with "…" (critique 12).
 - **Do** list several 해당 조건 one per line; never join them with " · " (a condition may hold its own dot, "팩스·SMS").
-- **Do** draw the focus ring inside a framed 주요 사건 row (`outline-offset: -3px`): the frame clips anything outside it.
-- **Do** use the `:root` tokens (`--tap`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
-  `--fs-small`) and the shared `.btn` for any new outlined button.
+- **Do** draw the focus ring inside a 주요 사건 row (`outline-offset: -3px`): the band clips anything outside it.
+- **Do** use the `:root` tokens (`--tap`, `--r-marker`, `--r-code`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`,
+  `--fs-small`, the floating controls' `--lift-menu` and `--lift-float`, the curves `--ease-out` and `--ease-exit`) and
+  the shared `.btn` for any new outlined button.
+- **Do** say "새 탭에서 열림" to screen readers on every link that opens a new tab, the Board's own buttons included
+  (GitHub, 틀린 내용 알리기, Buy Me a Coffee).
 - **Do** keep every interactive target at least 44 px.
 - **Do** theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link
   underline offset (3px).
@@ -858,6 +894,6 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Don't:
 - **Don't** add a column header row to the Board.
 - **Don't** give a Product line a red, amber or grey hue, or use a line colour for risk.
-- **Don't** put shadows on plain rows, fields or buttons; the Highlight frame is the only lift.
-- **Don't** widen the Highlight's risk edge past 3px or add a coloured edge to plain rows.
+- **Don't** put shadows on rows, the Highlights band, fields or buttons.
+- **Don't** give any row a coloured side edge; risk is said by the sign, a group by its tag (and an open fold's rail).
 - **Don't** set a column of numbers without tabular numerals.
