@@ -79,10 +79,19 @@
       --rule: light-dark(#dde1e5, #2a2f35);
       --rule-2: light-dark(#c4c9cf, #3a4048);
       --edge: light-dark(#858e97, #6b737c);
-      --high: light-dark(#c0262c, #ee736c); /* Astryx neutral red 45 / dark 65 (owner, 11-19): hue 25 sits farther from the gold under deutan vision; by night chroma tapers to 0.15 at the gold's lightness. 4.87:1+ by day, 5.04:1+ by night, chip tint included */
-      --mid: light-dark(#8a6100, #c29900); /* 위험 text: dark gold, 4.62:1+ by day; by night Astryx yellow 65 (11-19), 5.33:1+ and 0.138 from the lime line (#f5b400 was 0.115) */
-      --mid-mark: light-dark(#a87700, #c29900); /* 위험 marks (sign ring, CVSS ring): brighter gold, 3.3:1+ by day (non-text) */
+      --high: light-dark(#c0262c, #ff6b62); /* by day Astryx red 45 (11-19): hue 25 sits farther from the gold under deutan vision; 4.87:1+ */
+      --mid: light-dark(#8a6100, #f5b400); /* 위험 text: dark gold, 4.62:1+ by day */
+      --mid-mark: light-dark(#a87700, #f5b400); /* 위험 marks (CVSS ring arc): brighter gold, 3.3:1+ by day (non-text); the day cap for a 3:1 gold stroke is L 0.62 (#b07e03) */
       --note: light-dark(#5a6570, #9aa3ad); /* 4.96:1+ by day on the hover and group grounds (critique 13) */
+      /* Risk badges after Astryx's Token (owner, 11-19, candidate): a pale wash with dark same-hue text by day, a dark wash with light text by night
+         (Astryx neutral: red 85/25 + 25/80, yellow dark 90/25 + 25/80). Text on its wash 6.4:1+; washes 0.16+ from every line. */
+      --high-wash: light-dark(#ffc4be, #5b2b28);
+      --high-ink: light-dark(#76000c, #ffaea7);
+      --mid-wash: light-dark(#fae19e, #453a1c);
+      --mid-ink: light-dark(#4b3900, #eec448);
+      --note-wash: light-dark(#dae2ea, #323940);
+      --note-ink: light-dark(#434f5a, #bdc5ce);
+      --mid-vivid: #ffce2f; /* Astryx --color-warning: ring variant B's gold arc only (1.2:1 by day, the number carries it) */
       --focus: light-dark(#1a5fb4, #7cc4ff);
       --ok: light-dark(#1f6f1f, #68c8a8); /* done / nothing found: a state, never a risk and never a badge fill; 0.13+ from every line (critique 13) */
       --shadow: light-dark(rgb(20 25 30 / 0.07), rgb(0 0 0 / 0.32));
@@ -557,6 +566,25 @@
     .gauge.unrated { box-sizing: border-box; border: 2px dashed var(--rule-2); border-radius: 50%; color: var(--ink-3); font-weight: 600; }
     .why.unrated { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; } /* as loud as 악용 발생's size (critique 13) */
     .loud.unrated .word { border-style: dashed; } /* no score yet: the sign is dashed like the empty score ring (critique 13) */
+    /* Candidate (owner, 11-19): this reverses "rings are never filled" (11-09). The risk sign takes Astryx's Token shape: a filled
+       square-cornered badge (core Token: radius-inner 4px, padding-inline spacing-2, no border, 20px at 12px text) on --r-marker,
+       the skeleton pill's 1.5rem height; 참고 too. Only a sign with no score yet keeps a dashed edge. */
+    .loud .word { display: inline-flex; align-items: center; min-height: calc(1.5rem * var(--ts)); padding: 0 0.5rem; border: 0; border-radius: var(--r-marker); background: var(--note-wash); color: var(--note-ink); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; line-height: 1.2; }
+    .loud.risk-highest .word { background: var(--high-wash); color: var(--high-ink); }
+    .loud.risk-high .word { background: var(--mid-wash); color: var(--mid-ink); }
+    .loud.unrated .word { border: 1.5px dashed var(--note); }
+    .sk.sk-pill { border-radius: var(--r-marker); }
+    .fp-chip:is(.risk-highest, .risk-high, .risk-notice, .risk-pending) span { border-radius: var(--r-marker); }
+    .fp-chip.risk-highest input:checked + span { background: var(--high-wash); border-color: var(--high-wash); color: var(--high-ink); }
+    .fp-chip.risk-high input:checked + span { background: var(--mid-wash); border-color: var(--mid-wash); color: var(--mid-ink); }
+    .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: var(--note-wash); border-color: var(--note-wash); color: var(--note-ink); }
+    /* CVSS ring, variant A (default): its level's wash inside the ring, the arc 3:1+ on the wash and the ground. Variant B (?ring=b,
+       app.mjs): no wash, Astryx's vivid gold arc, below 3:1 by day. */
+    .gauge.sev-critical .track { fill: var(--high-wash); }
+    .gauge.sev-high .track { fill: var(--mid-wash); }
+    .gauge:is(.sev-medium, .sev-low, .sev-none) .track { fill: var(--note-wash); }
+    .ring-b .gauge .track { fill: none; }
+    .ring-b .gauge.sev-high { color: var(--mid-vivid); }
     .nw { white-space: nowrap; } /* a CVE ID kept whole */
     .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
     .kev { color: var(--high); font-weight: 700; } /* also 공격 코드 공개됨 in the panel: red text, no sign (critique 14) */

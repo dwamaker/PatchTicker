@@ -1,6 +1,9 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey } from './board.mjs';
 
+// Colour candidate (owner, 11-19): ?ring=b shows CVSS ring variant B (index.html, .ring-b); A is the default.
+if (new URLSearchParams(location.search).get('ring') === 'b') document.documentElement.classList.add('ring-b');
+
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
 // drop that branch once the redirect is on.
