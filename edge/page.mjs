@@ -111,11 +111,14 @@ ul{margin:.25rem 0;padding-left:1.25rem}
 .banner.unrated .word{border-style:dashed}
 .why.unrated{color:var(--ink-2);font-size:.875rem;font-weight:700}
 .easy{margin-top:1rem;font-size:1.0625rem;font-weight:600}
-section{margin-top:1.5rem}
-.label{margin:0 0 .375rem;color:var(--ink-2);font-size:.8125rem;font-weight:700}
+section{margin-top:2rem}
+.label{margin:0 0 .5rem;color:var(--ink);font-size:1.0625rem;font-weight:700;line-height:1.4;letter-spacing:-0.01em}
+.facts{display:grid;grid-template-columns:minmax(4rem,max-content) minmax(0,1fr);gap:.25rem 1rem;align-items:baseline;margin:0}
+.facts dt{color:var(--ink-2);font-weight:500}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
 #s-summary~p,#s-todo~p{line-height:1.7}
 code{font-family:var(--mono);font-size:.875rem}
-.command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:.375rem .625rem;white-space:pre-wrap;overflow-wrap:break-word}
+.command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:8px;padding:.75rem 1rem;white-space:pre-wrap;overflow-wrap:break-word}
 .caution{color:var(--ink-2);font-size:.875rem}
 .tags{display:flex;flex-wrap:wrap;gap:.375rem;padding:0;list-style:none}
 .tags li{display:flex;max-width:100%}
@@ -271,9 +274,22 @@ function mentions(i, lang, t) {
   const shown = (m) => http(m.url) && !(m.kind === 'cve_record' && listed.has(m.url));
   // With every link hidden the Lead mention, the first CVE record by the Lead order, keeps Sources (H1, owner 11-15).
   if (!i.mentions.some(shown)) listed.delete(i.mentions.find((m) => http(m.url))?.url);
+  // Three or more links of one kind with no title of their own are named by the last part of their address (GHSA-…,
+  // a bulletin's file name), as the Board's folded sources are: ten "news.typo3.com" in a row told them apart by nothing.
+  const lastPart = (url) => {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get('id') || decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+    } catch {
+      return '';
+    }
+  };
   return ul(kinds.flatMap((kind) => {
-    const links = i.mentions.filter((m) => m.kind === kind && shown(m))
-      .map((m) => link(m.url, named(m), t));
+    const list = i.mentions.filter((m) => m.kind === kind && shown(m));
+    const links = list.map((m) => {
+      const name = named(m);
+      return link(m.url, list.length > 2 && name === host(m.url) ? lastPart(m.url) || name : name, t);
+    });
     return links.length ? [`${esc(t.mentionKinds[kind] || kind)}: ${links.join(' · ')}`] : [];
   }), 'sources');
 }
@@ -351,8 +367,9 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
       datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
       isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` } })].join('\n');
   // M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
-  const times = [i.published ? `${esc(t.published)} ${when(i.published, lang)}` : '',
-    publicDay(i) ? `${esc(t.publicDate)} ${esc(publicDay(i))}` : '', `${esc(t.firstSeen)} ${when(i.first_seen, lang)}`].filter(Boolean);
+  // As label-value pairs, as the Board's opened row draws its facts (Astryx MetadataList).
+  const times = [i.published ? [t.published, when(i.published, lang)] : null,
+    publicDay(i) ? [t.publicDate, esc(publicDay(i))] : null, [t.firstSeen, when(i.first_seen, lang)]].filter(Boolean);
   const main = [`<article><h1>${esc(title)}</h1>`,
     banner(i, t),
     p(plain, 'easy'),
@@ -363,7 +380,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     section('product-pages', t.productPages, productPages(pages, t)),
     section('cves', t.cves, cveList(i, lang, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
-    section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
+    section('times', t.times, `<dl class="facts">${times.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`),
     `<script>${LOCAL_TIME}</script>`,
     '</article>',
     `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
