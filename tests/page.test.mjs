@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { slug } from '../web/board.mjs';
-import { pageResponse } from '../edge/page.mjs';
+import { note, pageResponse } from '../edge/page.mjs';
 import { cached, readJson } from '../edge/shared.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');
@@ -631,4 +631,20 @@ test('readJson gives the Japanese twins only to a Japanese reader: Korean, Engli
   for (const lang of ['ko', 'en', undefined]) assert.equal('ja' in (await readJson(bucket, 'k', lang)).summary, false);
   assert.equal((await readJson(bucket, 'k', 'ja')).summary.ja.title, 'A');
   assert.equal(await readJson({ get: async () => null }, 'k', 'ja'), null);
+});
+
+// Owner, 11-19: a note in place of a page has Astryx EmptyState's anatomy: an icon, its first sentence the title, the
+// rest the description, then the way on.
+test('a note page: an icon, the first sentence as the title, the rest as its description, then the links', async () => {
+  const html = await note('ko', 503, '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', ['<a href="/">현황판</a>']).text();
+  assert.match(html, /<div class="gone"><svg class="gone-icon"[^>]*aria-hidden="true">.*?<\/svg><h1>지금은 사건 페이지를 불러올 수 없습니다\.<\/h1><p>잠시 뒤 다시 시도하세요\.<\/p><nav class="links"><a href="\/">현황판<\/a><\/nav><\/div>/s);
+  const one = await note('en', 404, 'There is no Incident page at this address.', []).text();
+  assert.match(one, /<h1>There is no Incident page at this address\.<\/h1><nav class="links"><\/nav>/);
+});
+
+test('a note splits at a sentence end only, never at a dot inside a word', async () => {
+  const html = await note('en', 503, 'Node.js 1.2 pages cannot load. Try again.', []).text();
+  assert.match(html, /<h1>Node\.js 1\.2 pages cannot load\.<\/h1><p>Try again\.<\/p>/);
+  const ja = await note('ja', 503, '読み込めません。しばらくしてからお試しください。', []).text();
+  assert.match(ja, /<h1>読み込めません。<\/h1><p>しばらくしてからお試しください。<\/p>/);
 });

@@ -96,6 +96,8 @@
       --note-ink: light-dark(#434f5a, #bdc5ce);
       --focus: light-dark(#1a5fb4, #7cc4ff);
       --ok: light-dark(#1f6f1f, #68c8a8); /* done / nothing found: a state, never a risk and never a badge fill; 0.13+ from every line (critique 13) */
+      --skel: light-dark(#ccd3db, #5a5e66); /* Astryx --color-skeleton: the loading bars */
+      --warn-wash: light-dark(#e2a40033, #e2a4003f); /* Astryx --color-warning-muted: the stale and load-error banners only */
       --shadow: light-dark(rgb(20 25 30 / 0.07), rgb(0 0 0 / 0.32));
       --scrim: rgb(0 0 0 / 0.45); /* behind the phone filter sheet only */
       --sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
@@ -535,7 +537,7 @@
     #pick-hint:empty, #alias-hint:empty { display: none; }
     .older-done:focus { outline: none; }
     .older-done { margin: 0; align-self: center; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
-    .empty .load-detail { margin-top: 0.375rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 400; color: var(--ink-2); } /* the cause, apart from the plain sentence */
+    .load-detail { margin-top: 0.25rem; } /* the cause, apart from the plain sentence */
     @media (max-width: 767px) {
       /* phones: the search line freezes; the notes under it scroll away */
       #filter { display: contents; }
@@ -559,7 +561,7 @@
     #guide-btn[aria-expanded="true"] .chev { transform: rotate(-135deg) translate(-2px, -2px); }
     /* 이 게시판 읽는 법: each mark of a row, drawn with the row's own parts, beside what it means */
     /* first visit: the guide's key in one line, in the rows' own signs; 읽는 법 자세히 opens the full guide */
-    .primer { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 0.5rem; padding: 0.625rem 0.75rem 0.625rem 1rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
+    .primer { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 0.5rem; padding: 0.75rem 0.75rem 0.75rem 1rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); } /* Astryx Banner, card: 12/16 padding */
     .p-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.25rem; flex: 1 1 auto; min-width: 0; margin: 0; }
     .p-key { display: flex; align-items: center; gap: 0.5rem; }
     .p-key dt { display: flex; }
@@ -567,7 +569,8 @@
     .p-key .gauge { width: calc(2.25rem * var(--ts)); height: calc(2.25rem * var(--ts)); }
     .p-pair { display: flex; align-items: center; gap: 0.375rem; }
     .primer > .btn { flex: none; }
-    .p-close { width: var(--ctl-h); padding: 0; justify-content: center; }
+    .p-close { width: var(--ctl-h); padding: 0; justify-content: center; border-color: transparent; background: none; color: var(--ink-2); } /* Astryx Banner's dismiss: a ghost icon button (Banner.tsx variant="ghost") */
+    @media (hover: hover) { .p-close:hover { background: var(--panel-2); color: var(--ink); } }
     .fp-close { width: var(--ctl-h); padding: 0; color: var(--ink-2); } /* the filter panel's close: an icon-only ghost button, as Astryx Dialog's header has */
     :is(.p-close, .fp-close) .x { position: relative; width: 12px; height: 12px; }
     :is(.p-close, .fp-close) .x::before, :is(.p-close, .fp-close) .x::after { content: ""; position: absolute; left: 5px; top: -1px; width: 1.5px; height: 14px; background: currentColor; transform: rotate(45deg); }
@@ -582,11 +585,11 @@
       .p-key dd { white-space: normal; }
       /* one line on phones (critique 13: four lines pushed the first row down): the keys run sideways inside the line,
          the page itself never scrolls sideways */
-      .p-keys { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+      .p-keys { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); padding-right: 1.5rem; } /* the cut end fades, so a key never stops mid-word with no sign of more */
       .p-key { flex: none; }
       .p-key dd { white-space: nowrap; }
       .primer .p-more { display: none; }
-      .p-close { position: absolute; top: 0; right: 0; border-color: transparent; }
+      .p-close { position: absolute; top: 0; right: 0; }
     }
     .guide { margin-top: 0.5rem; padding: 1.25rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
     .g-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
@@ -597,9 +600,16 @@
     .legend dt { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; min-width: 0; }
     .legend dd { margin: 0; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.55; }
     .caution svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; }
-    /* stale data: a notice in Ink on Recessed Panel; amber and red stay for risk (Two Alphabets) */
-    .stale { display: flex; align-items: flex-start; gap: 0.5rem; max-width: 46rem; margin: 0.5rem 0 0; padding: 0.625rem 0.875rem; background: var(--panel-2); border: 1px solid var(--rule-2); border-radius: var(--r-ctl); color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
-    .stale svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; }
+    /* stale data and a failed load (owner, 11-19): Astryx Banner, status "warning" (src/Banner/Banner.tsx header: 12/16
+       padding, 8 gap, the container radius, no border, the status's muted fill; title semibold at label size, the
+       description at supporting size in Secondary Ink), as wide as the Board */
+    .stale, .load-err { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: 0.5rem; row-gap: 0.75rem; margin: 0.5rem 0 0; padding: 0.75rem 1rem; background: var(--warn-wash); border-radius: var(--r-frame); color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); }
+    :is(.stale, .load-err) > svg { flex: none; width: 16px; height: 16px; margin-top: 0.2em; color: var(--mid); }
+    .b-text { display: flex; flex-direction: column; flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+    .b-text b { font-weight: 600; line-height: 1.5; }
+    .b-desc { font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.6; color: var(--ink-2); }
+    .load-err > .btn { margin: -0.25rem 0 -0.25rem auto; background: var(--panel); }
+    @media (forced-colors: active) { .stale, .load-err { outline: 1px solid CanvasText; outline-offset: -1px; } }
     /* phones: the stale notice is two words on the status line; the full sentence stays for screen readers (critique 13) */
     .stale-short { display: none; font-weight: 700; color: var(--ink); }
     @media (max-width: 599px) {
@@ -784,12 +794,12 @@
     @keyframes fresh-out-tint { from { box-shadow: inset 0 0 0 2px var(--focus); background-color: color-mix(in srgb, var(--focus) 7%, var(--bg)); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
     @media (prefers-reduced-motion: reduce) { li.fresh-out, .alert.fresh-out .strip { animation-duration: 200ms; } }
     /* new Incidents above the window: an inverse pill at the top centre, the strongest mark on the page while it shows */
-    .new-above { position: fixed; top: calc(var(--stick, 0px) + 0.5rem); left: 50%; z-index: 15; display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 1.125rem; border: 0; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font: inherit; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; box-shadow: 0 6px 20px -6px var(--shadow), 0 0 0 3px color-mix(in srgb, var(--focus) 45%, transparent); cursor: pointer; transform: translateX(-50%); }
+    .new-above { position: fixed; top: calc(var(--stick, 0px) + 0.5rem); left: 50%; z-index: 15; display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 1.125rem; border: 0; border-radius: var(--r-pill); background: var(--ink); color: var(--bg); font: inherit; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.2)), 0 2px 12px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.2)); cursor: pointer; transform: translateX(-50%); } /* Astryx Toast's ground and --shadow-med (Toast.tsx root); no blue halo, which read as keyboard focus at rest */
     /* in: drops 12px and fades (240ms); out: lifts and fades faster (160ms); hidden from tab order and readers once out */
     .new-above { translate: 0 0; transition: opacity 240ms var(--ease-out), translate 240ms var(--ease-out), background-color 120ms ease-out, visibility 0s; }
     .new-above.off { opacity: 0; translate: 0 -12px; visibility: hidden; pointer-events: none; transition: opacity 160ms var(--ease-exit), translate 160ms var(--ease-exit), visibility 0s linear 160ms; }
     .new-above:active { scale: 0.96; }
-    .new-above svg { width: 16px; height: 16px; flex: none; }
+    .new-above svg { width: 16px; height: 16px; flex: none; color: light-dark(#7cc4ff, #1a5fb4); } /* the new rows' blue (--focus, inverted for the inverse ground) on the arrow, where the halo carried it */
     @media (hover: hover) { .new-above:hover { background: var(--ink-2); } }
     /* 맨 위로 / 맨 아래로: a quiet pair at the bottom right, each only when there is somewhere to go */
     .jump { position: fixed; right: max(1rem, env(safe-area-inset-right)); pointer-events: none; bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 14; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -922,18 +932,26 @@
     .details .caution { display: flex; align-items: flex-start; gap: 0.375rem; color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; }
     .more { display: flex; flex-wrap: wrap; gap: 0.5rem; padding-top: 1rem; }
     .more:empty { display: none; }
-    .empty { margin-top: 1.75rem; padding: 1.5rem 0; border-top: 1px solid var(--rule-2); overflow-wrap: anywhere; } /* a 200-letter search word wraps */
-    .empty p { margin: 0; font-size: calc(1.0625rem * var(--ts)); font-weight: 600; max-width: 46rem; }
-    .empty .scope { margin-top: 0.375rem; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 400; color: var(--ink-2); }
-    /* the all-clear sign: picked Products, no Incident on the Board */
-    .allclear { display: flex; align-items: flex-start; gap: 1rem; }
-    .allclear .mark { flex: none; width: 2rem; height: 2rem; margin-top: 0.125rem; color: var(--ok); }
+    /* nothing to show (owner, 11-19): Astryx EmptyState (src/EmptyState/EmptyState.tsx: centred, 32/24 padding, 16 gap,
+       the icon over the title, the title large and semibold, the description in Secondary Ink, the text group narrow,
+       the actions one row 8 apart); a failed load is a banner instead, at the Board's left edge */
+    .empty { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-top: 1.75rem; padding: 2rem 1.5rem; text-align: center; overflow-wrap: anywhere; } /* a 200-letter search word wraps */
+    .empty:has(> .load-err) { display: block; margin-top: 0.5rem; padding: 0; text-align: start; }
+    .e-icon { display: block; width: 2rem; height: 2rem; color: var(--ink-3); }
+    .e-icon svg { display: block; width: 100%; height: 100%; }
+    .e-text { display: grid; justify-items: center; gap: 0.375rem; max-width: 30rem; }
+    .empty p { margin: 0; font-size: calc(1.0625rem * var(--ts)); font-weight: 600; text-wrap: balance; }
+    .empty .scope { font-size: calc(var(--fs-small) * var(--ts)); font-weight: 400; color: var(--ink-2); text-wrap: pretty; }
+    /* the all-clear sign: picked Products, no Incident on the Board; the same anatomy, its check mark the icon */
+    #board:empty { border-top: 0; } /* no rule left hanging under an empty state or a failed load */
+    .allclear { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .allclear .mark { flex: none; width: 2rem; height: 2rem; color: var(--ok); }
     .allclear .mark svg { display: block; width: 100%; height: 100%; }
-    .allclear .lines { display: grid; gap: 0.375rem; min-width: 0; }
-    .allclear .c-tags { grid-area: auto; } /* the row's named area would shove the badges out of order here */
+    .allclear .lines { display: grid; justify-items: center; gap: 0.375rem; min-width: 0; max-width: 30rem; }
+    .allclear .c-tags { grid-area: auto; justify-content: center; } /* the row's named area would shove the badges out of order here */
     .allclear strong { font-size: calc(1.0625rem * var(--ts)); font-weight: 700; }
     .allclear .note { font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); max-width: 40rem; }
-    .empty .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; font-weight: 400; }
+    .empty .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 0.25rem; font-weight: 400; }
     .details .preparing { color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); }
     .details .devices { margin: 0.25rem 0 0; padding-left: 1.25rem; }
     .details .fixes { margin: 0.375rem 0 0; padding-left: 1.25rem; }
@@ -1059,10 +1077,11 @@
     @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .token:active, .fp-chip:active span { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
-    /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it
-       crosses every bar at the same height), like the radar it is named after. It stops the moment the rows arrive. */
-    .sk { --sk-bar: var(--panel-2); display: block; border-radius: var(--r-marker); background: var(--sk-bar); }
-    .strip .sk { --sk-bar: var(--rule); } /* the strip's ground is Recessed Panel: its bars a step darker, as the drawn sign and date stand out */
+    /* loading (owner, 11-19): placeholders in the rows' own cells, as Astryx Skeleton draws them (src/Skeleton/Skeleton.tsx):
+       --color-skeleton (resting at 0.45, not 0.25: on white 0.25 is fainter than the bars it replaced); after one second
+       (no flash on a fast load) each bar pulses to Astryx's 0.925 and back over 550ms,
+       each row 100ms after the one above (its index), a wave down the Board. It stops the moment the rows arrive. */
+    .sk { display: block; border-radius: var(--r-marker); background: var(--skel); opacity: 0.45; }
     .skel .row { cursor: default; }
     .skel .c-title { display: grid; gap: 0.5rem; }
     .skel .c-date { gap: 0.375rem; }
@@ -1071,7 +1090,7 @@
     .sk-pill { width: 3.5rem; height: 1.5rem; border-radius: var(--r-pill); }
     .sk-name { width: min(15rem, 70%); height: 1rem; }
     .sk-sub { width: min(26rem, 95%); height: 0.75rem; }
-    .sk-ring { width: 2.75rem; height: 2.75rem; border-radius: 50%; background: none; border: 3px solid var(--panel-2); }
+    .sk-ring { width: 2.75rem; height: 2.75rem; border-radius: 50%; background: none; border: 3px solid var(--skel); }
     .sk-tag { width: 3.75rem; height: 1.375rem; border-radius: var(--r-pill); }
     .sk-date { width: 4.5rem; height: 0.75rem; }
     .sk-time { width: 2.5rem; height: 0.75rem; }
@@ -1084,20 +1103,26 @@
     #pinned-head { min-height: var(--tap); align-content: center; }
     :root:not(.js) :is(#pinned, .skel, .sk, #status, #primer), .pr-off #primer { display: none; }
     #primer .gauge.sev-critical { --fill: 0.98; } /* the static line's 9.8 ring (a style attribute would need 'unsafe-inline') */
-    @keyframes scan { from { background-position: 0 -40vh; } to { background-position: 0 140vh; } }
+    @keyframes sk-pulse { to { opacity: 0.925; } }
+    .skel:nth-child(2) { --i: 1; } .skel:nth-child(3) { --i: 2; } .skel:nth-child(4) { --i: 3; } .skel:nth-child(5) { --i: 4; } .skel:nth-child(6) { --i: 5; }
+    #board, #pin-more { --o: 4; } /* the list's rows follow the four Highlights */
     @media (prefers-reduced-motion: no-preference) {
-      .loading .sk:not(.sk-ring) { background: linear-gradient(180deg, var(--sk-bar) 0, var(--sk-bar) calc(50% - 4rem), var(--rule-2) 50%, var(--sk-bar) calc(50% + 4rem), var(--sk-bar) 100%) 0 0 / 100% 40vh no-repeat fixed, var(--sk-bar); animation: scan 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+      .loading .sk { animation: sk-pulse 550ms linear calc(1s + (var(--i, 0) + var(--o, 0)) * 100ms) infinite alternate; }
     }
-    @media (prefers-reduced-motion: reduce) { .loading .sk { opacity: 0.7; } }
+    @media (prefers-reduced-motion: reduce) { .loading .sk { opacity: 0.6; } } /* Astryx stops the pulse; ours rests where a bar still reads */
+    @media (forced-colors: active) { .sk { background: GrayText; opacity: 1; } .sk-ring { background: none; border-color: GrayText; } }
     @media (prefers-reduced-motion: no-preference) { .arriving .gauge .arc { animation: ring-fill 700ms var(--ease-out) 120ms backwards; } }
 
     /* until the Board arrives the footer stays below the first screen, so it never shows and then jumps away (CLS 0.39) */
     main.wrap { min-height: 100vh; min-height: 100dvh; }
-    footer { margin-top: 2.5rem; border-top: 1px solid var(--rule); padding: 1rem 0 2.5rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
+    /* Astryx Text "supporting" (Secondary Ink, leading 1.67) and a Divider between what the Board holds and the legal notes */
+    footer { margin-top: 2.5rem; border-top: 1px solid var(--rule); padding: 1.5rem 0 2.5rem; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.65; color: var(--ink-2); }
+    footer .collect-note { margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--rule); }
+    footer .collect-note p { margin: 0; }
     footer p { margin: 0.25rem 0 0; max-width: 46rem; }
     /* the notices fold (owner, 11-18): the reference line and the NVD sentence (a condition of the API, never folded)
        stay; sources and licences open under a summary in the footer's own text, with the folded model list's chevron */
-    .foot-fold summary { display: inline-flex; align-items: center; min-height: 2rem; margin-top: 0.25rem; cursor: pointer; list-style: none; }
+    .foot-fold summary { display: inline-flex; align-items: center; min-height: var(--tap); cursor: pointer; list-style: none; } /* a 44px target at every width (DESIGN.md 864) */
     .foot-fold summary::-webkit-details-marker { display: none; }
     .foot-fold summary::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; margin: 0 0.625rem 0 0.125rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 180ms var(--ease-out); }
     .foot-fold[open] summary::before { transform: rotate(45deg); }

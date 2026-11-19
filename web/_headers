@@ -6,7 +6,8 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-zx6DBrs2tkTipfc0ydUlj/wMnFRV4+lX+Wqc9/tanks=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+<<<<<<< HEAD
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-r/gI2XD8shSQ3m9h2heLx8cjm0QcE8NryTVrQYgoXhg=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 =======
   Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-eIf0JbIiWnnjA1kQ5Vvbyhitmk4Ob/P0UuJrTkmz050=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 >>>>>>> claude/vis-badges-81c266
@@ -16,6 +17,9 @@
 =======
   Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-8XvzDPcJfuexa5tIOvZ6jntsm0v6myGEacmcdsqxBws=' 'sha256-UvACKJEMt/Q7s2Og94KmtkFD1NRZVfT5TJ0UnK1/RcY='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 >>>>>>> claude/vis-controls-d80370
+=======
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-6K9gW2FqLezSub0G69brVtreK5v8TZOykn0ZYxghx2E=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+>>>>>>> claude/vis-feedback-f952dc
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
