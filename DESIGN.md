@@ -13,10 +13,19 @@ colors:
   control-edge: "light-dark(#858e97, #6b737c)"
   patch-edge: "light-dark(#007c88, #3fc1cc)"
   fold-edge: "light-dark(#7340f2, #a98bff)"
-  emergency-red: "light-dark(#c4231c, #ff6b62)"
+  emergency-red: "light-dark(#c0262c, #ff6b62)"
   caution-amber: "light-dark(#8a6100, #f5b400)"
   caution-amber-mark: "light-dark(#a87700, #f5b400)"
   notice-slate: "light-dark(#5a6570, #9aa3ad)"
+  emergency-wash: "light-dark(#ffc4be, #5b2b28)"
+  emergency-ink: "light-dark(#76000c, #ffaea7)"
+  caution-wash: "light-dark(#fae19e, #453a1c)"
+  caution-ink: "light-dark(#4b3900, #eec448)"
+  notice-wash: "light-dark(#dae2ea, #323940)"
+  notice-ink: "light-dark(#434f5a, #bdc5ce)"
+  ring-red: "light-dark(#ff705d, #c9303a)"
+  ring-gold: "light-dark(#ffce2f, #c29900)"
+  ring-slate: "light-dark(#9aa3ad, #5a6570)"
   wayfinding-blue: "light-dark(#1a5fb4, #7cc4ff)"
   clear-green: "light-dark(#1f6f1f, #68c8a8)"
   scrim: "rgb(0 0 0 / 0.45)"
@@ -175,8 +184,8 @@ components:
 The Board is read the way a commuter reads a Seoul subway sign: no column labels, just a
 coloured line, a bold station name and the line under it that says where it goes. Every Product rides
 its own fixed line colour, every CVE ID is set like a station name with the Incident's title under it,
-the CVSS score is a ring filled to its value, and the reader understands a row in one glance. Risk sits apart from the lines as an unfilled ring sign around the risk word at the row start, so "which line"
-and "how dangerous" never share a colour.
+the CVSS score is a ring filled to its value, and the reader understands a row in one glance. Risk sits apart from the lines as a square-cornered badge (a pale wash with dark same-hue text) at the row start, and
+the product lines are round pills, so "which line" and "how dangerous" never share a colour or a shape.
 
 Density is that of a departure board: rows of 72 px minimum, one hairline between them, generous
 column gaps, nothing decorative. The ground is graphite at night and pale concourse paper by day; the
@@ -204,14 +213,19 @@ A graphite-and-paper ground, a strict three-colour risk alphabet, and a subway-m
 for Products only.
 
 ### Primary
-- **Emergency Red** (`emergency-red`): the 긴급 risk sign and word, the KEV marker. Used only for
-  risk.
-- **Caution Amber** (`caution-amber`, text) and **Caution Amber Mark** (`caution-amber-mark`, marks): the 위험 word is
-  the dark gold (#8a6100 by day, 4.77:1+); its sign ring and CVSS ring arc are the brighter gold (#a87700 by day,
-  non-text, 3.4:1+), so 위험 reads gold and never as the red of 긴급 (user, 11-08). By night both are #f5b400.
+- **Emergency Red** (`emergency-red`): the 긴급 word in text, the KEV marker, 공격 발생. Used only for risk. By day
+  #c0262c (Astryx red 45, 11-19: farther from the gold under deutan vision).
+- **Risk badge colours** (owner, 11-19, after Astryx's Token): each level's sign is a wash with ink of the same hue,
+  `emergency-wash`/`emergency-ink`, `caution-wash`/`caution-ink`, `notice-wash`/`notice-ink` (Astryx neutral: pale
+  wash and dark text by day, dark wash and light text by night). Text on its wash 6.4:1+.
+- **Caution Amber** (`caution-amber`, text) and **Caution Amber Mark** (`caution-amber-mark`, marks other than the
+  ring): the 위험 word in text is the dark gold (#8a6100 by day, 4.77:1+), so 위험 reads gold and never as the red of
+  긴급 (user, 11-08). By night both are #f5b400.
 - **Notice Slate** (`notice-slate`): the 참고 risk sign and word (#5a6570 by day since critique 13: 4.96:1+ on the hover and group grounds), and the
   CVSS ring below 7.0.
-- The CVSS ring uses the same three: Emergency Red at 9.0+, Caution Amber at 7.0+, Notice Slate below.
+- The CVSS ring has its own three tones (owner, 11-19: "어둠은 고리 어둡게, 밝은건 밝게"): bright by day, deep by
+  night, as Astryx's status tones run: `ring-red` 9.0+, `ring-gold` 7.0+, `ring-slate` below. No 3:1 floor for the
+  arc (owner: the number inside carries the value). The ring is never filled.
   (A separate orange for 7.0+ was dropped on 11-08: in light theme it read as the amber mark, 1.03:1.)
 
 ### Secondary
@@ -358,8 +372,8 @@ Three radii: gently rounded controls (8px), slightly softer frames for fields an
 and full pills for line badges and the view switch (999px). Command code uses 6px, the small
 "원문" marker 4px. Borders are 1px throughout, and no row wears a coloured side edge (critique P2,
 11-19); the one coloured line is an opened vendor fold's 2px Fold Violet rail with a 0.875rem stop ring (2px) at each
-member's sign, like stations on a subway line. The risk sign is a 1.5px ring around the word
-(dashed while no score), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring
+member's sign, like stations on a subway line. The risk sign is a filled 4px-corner badge (a dashed edge while no
+score; owner, 11-19), the chevron a 1.5px stroked corner that turns when a row opens, inside a still 1.5px ring
 (1.75rem, Chevron Ring; Secondary Ink on hover, Wayfinding Blue on keyboard focus) drawn around it so it reads as a
 control without moving the row's columns (owner, 11-16). On a phone the date stands 0.875rem further left to clear it, and the chevron 0.5rem in from the row's edge, so the
 ring stays inside the row and a group's frame at 320px too.
@@ -470,8 +484,8 @@ Restrained outlined buttons for theme, language and copying a command.
   nothing sits beside it (the risk word is the one severity word, the reading guide names the ring, and a
   "CVSS 7.5" tooltip and screen-reader label carry it); "exploited" is said once, as "공격 발생" / "Attacked" in red (a CISA KEV listing, or a Summary reporting attacks)
   under the risk word, and the opened Normal panel does not repeat it.
-- **Colour:** by CVSS rating: Emergency Red 9.0+, Caution Amber 7.0+, Notice Slate
-  below. Unrated shows an empty dashed ring with a dash in Hint Ink ("CVSS 점수 대기" as its tooltip and label). Shown in both views.
+- **Colour:** by CVSS rating: `ring-red` 9.0+, `ring-gold` 7.0+, `ring-slate` below (bright by day, deep by night,
+  owner 11-19); never filled (owner, 11-19: "누가 내부 채우래?"). Unrated shows an empty dashed ring with a dash in Hint Ink ("CVSS 점수 대기" as its tooltip and label). Shown in both views.
 
 ### Board row (signature)
 - **Style:** a full-width button, 72 px minimum, on a single hairline. Risk sign, the Incident title over
@@ -523,14 +537,19 @@ Restrained outlined buttons for theme, language and copying a command.
 
 ### Risk sign (bolder after critique 6; both views since 11-09)
 - **Not rated yet (critique 12):** an Incident with no CVSS that is not exploited keeps the last level (참고 / 주의) but
-  draws its sign dashed and says "점수 대기" (both views; ring label "CVSS 점수 대기"; English "Score pending") at
+  draws its sign with a dashed edge and says "점수 대기" (both views; ring label "CVSS 점수 대기"; English "Score pending") at
   14px/700 under the sign, where 공격 발생 would sit, and an empty dashed ring stands in the ring's place (also on
   phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged.
-- In both views the risk word is a sign, a 1.5px ring around the word with no dot: the top level (긴급 / 긴급!) in
-  Signal Red, the next (위험 / 경계) gold text in the brighter gold mark's ring, the last (참고 / 주의) in Slate; all
-  15px/800. Rings are never filled (user, 11-09). 공격 발생 sits under the ring, its text starting where the word starts (one text line for the column; the ring alone crosses it; owner, 11-19), beside it on phones and in the band's strip, and a
-  row with no CVSS shows its dash centred where a score ring would be.
+- In both views the risk word is a badge after Astryx's Token (owner, 11-19, replacing the 11-09 unfilled ring: pills
+  and curves read as generated): square corners (`--r-marker`, 4px), no border, 1.5rem tall, 0.5rem side padding, Meta
+  size at 700; the top level (긴급 / 긴급!) on `emergency-wash` in `emergency-ink`, the next (위험 / 경계) on
+  `caution-wash` in `caution-ink`, the last (참고 / 주의) on `notice-wash` in `notice-ink`. Not rated yet keeps a dashed
+  edge. The same badge in the band's strip, the guide's sample, the checked filter chips and the Incident page.
+- Every sign starts at the risk column's start, and the reason under it (공격 발생, 점수 대기, 주요 사건) is centred on
+  the sign (owner, 11-19: "글자 배지 중앙기준으로 정렬시켜"; a reason wider than the sign overflows it evenly). On phones
+  and in the band's strip the reason sits beside the sign. A row with no CVSS shows its dash centred where a score ring
+  would be.
 
 ### Easy view panel
 - **Shape:** an opened Easy row shows the plain action (version, command, devices or the plain action sentence and any
