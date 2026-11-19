@@ -2034,6 +2034,7 @@ function rove(group, keys) {
   members.forEach((b, n) => { b.tabIndex = n ? -1 : 0; });
   group.addEventListener('focusin', (event) => { for (const b of members) b.tabIndex = b === event.target ? 0 : -1; });
   group.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return; // Alt+arrows: the browser's Back/Forward
     const to = groupKey(event.key, members.indexOf(event.target), members.length, keys);
     if (to < 0) return;
     event.preventDefault();
@@ -2045,6 +2046,7 @@ rove($('step'), { prev: ['ArrowUp'], next: ['ArrowDown'], ends: false });
 // 기본|쉬운 설명 answers the arrows as a two-way switch: either arrow picks the other view and takes the focus. Astryx
 // SegmentedControl (description): "the selection slides to the new segment, whether a tap, an arrow key or a new value moved it".
 $('views').addEventListener('keydown', (event) => {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return; // Alt+arrows: the browser's Back/Forward
   const views = ['normal', 'easy'];
   const to = groupKey(event.key, views.indexOf(event.target.id.slice(5)), 2, { ends: false, wrap: true });
   if (to < 0) return;

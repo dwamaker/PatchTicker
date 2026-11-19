@@ -98,10 +98,10 @@
       --r-pill: 999px;
       --r-frame: 10px;
       --r-ctl: 8px;
-      /* Astryx Shape: "Hardcode radius values; they won't scale" -> every DESIGN.md radius is a token (marker 4, code 6). */
+      /* Astryx Shape: "x Hardcode radius values; they won't scale with theme radius multipliers." -> every DESIGN.md radius is a token (marker 4, code 6). */
       --r-marker: 4px;
       --r-code: 6px;
-      /* Astryx Elevation: "Hand-write a box-shadow in app code" (Don't) -> the two lifts the Board repeats are named once. */
+      /* Astryx Elevation: "x Hand-write a `box-shadow` in app code; …" -> the two lifts the Board repeats are named once. */
       --lift-menu: 0 12px 28px -12px var(--shadow);
       --lift-float: 0 6px 16px -8px var(--shadow);
       /* Astryx Motion: "Set transition durations and easing from the motion tokens" -> one decelerate, one accelerate curve. */
@@ -199,7 +199,7 @@
     .end { justify-self: end; display: flex; gap: 0.5rem; }
     /* outlined button: theme, language, copy command */
     .btn { min-height: var(--tap); min-width: var(--tap); padding: 0 1rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: none; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-    @media (hover: hover) { .btn:hover:not([aria-disabled="true"]) { background: var(--panel-2); color: var(--ink); } }
+    @media (hover: hover) { .btn:hover:where(:not([aria-disabled="true"])) { background: var(--panel-2); color: var(--ink); } }
     /* Astryx Button, Props, isLoading: "blocks re-activation but stays focusable (aria-disabled, not native disabled)" */
     .btn[aria-disabled="true"] { cursor: default; color: var(--ink-3); }
     #theme { padding: 0; }
@@ -836,7 +836,7 @@
     }
     /* micro-feedback: presses and toggles answer within 100-250ms; under reduced motion only colours change */
     .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
-    .btn:active:not([aria-disabled="true"]), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active { transform: scale(0.96); }
+    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active { transform: scale(0.96); }
     #views { position: relative; isolation: isolate; }
     #views.slid::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-pill); background: var(--ink); }
     #views.ready::before { transition: left 240ms var(--ease-out), width 240ms var(--ease-out); }
@@ -873,7 +873,7 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:not([aria-disabled="true"]), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it
