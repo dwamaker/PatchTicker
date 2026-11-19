@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, productLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese } from './board.mjs';
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
@@ -1264,25 +1264,26 @@ function settleRows() {
   { duration: reducedMotion.matches ? 200 : 360, delay: reducedMotion.matches ? 0 : n * 28, easing: EASE_OUT, fill: 'backwards' }));
 }
 
-// The Easy view: the plain answer, then the affected models when there are too many to list inline.
+// The Easy view: the plain answer, the affected models when there are too many to list inline, then when it applies.
 function easyPanel(incident) {
   const s = incident.summary;
   // The chatbot hint names the CVE the visitor searched for when it is not the Lead (N1), else the Lead.
   const cve = searchedCve(filter.query, incident, lang)?.cve || incident.cves?.[0];
   const parts = easyAnswer(s, riskLevel(incident), cve, firstProduct(incident, lang), isLibrary(incident), `easy:${incident.id}`);
-  // "Does this touch me?" comes before "what to do": the Summary's conditions, in its own words, at body weight so the
-  // action stays the one heavy line. One condition on the line, several as a list.
+  if ((s.devices || []).length > MANY_DEVICES) parts.push(modelList(s.devices, fixLines(s)));
+  // Critique P2 (11-19): "what to do" first, then "does this touch me?" (critique 11 had it the other way round): the
+  // Summary's conditions, in its own words, at body weight so the action stays the one heavy line. One condition on the
+  // line, several as a list.
   // The everyday-words version when the Summary has one (easy_conditions, after critique 12), else the conditions as written.
   // H4 (owner, 11-16): no CVE id here; a condition of some CVEs only says so in words after its text.
   const when = (s[lang].easy_conditions?.length ? s[lang].easy_conditions : s[lang].conditions || []).filter((c) => typeof c === 'string' && c)
     .map((c) => { const { ids, text } = conditionIds(c, incident.cves); return ids.length ? `${text} (${TEXT[lang].someFlaws})` : c; });
-  if (when.length === 1) parts.unshift(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
+  if (when.length === 1) parts.push(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
   if (when.length > 1) {
     const list = el('ul', 'cond-list');
     list.append(...when.map((c) => el('li', '', c)));
-    parts.unshift(para('when', TEXT[lang].easyWhen), list);
+    parts.push(para('when', TEXT[lang].easyWhen), list);
   }
-  if ((s.devices || []).length > MANY_DEVICES) parts.push(modelList(s.devices, fixLines(s)));
   return parts;
 }
 
@@ -2086,8 +2087,17 @@ function distroFold(incident) {
   return [foldable(el('details', 'models'), head, body)];
 }
 
-function summary(s, cves) {
-  const parts = [para('summary', s.summary)];
+// Normal view (critique P2, 11-19): 대처법 first and heaviest, the fixed versions under it, then what it is and when it applies.
+function summary(incident) {
+  const s = incident.summary[lang];
+  const cves = incident.cves;
+  // Owner, 11-16: four or more fixed lines as an aligned list (the Easy view draws its own, in easyAnswer).
+  const table = fixTable(incident.summary);
+  // Always said, so the panel always opens on what to do, even with no known fix. Beside a folded list its text spells
+  // out the same versions (Microsoft: 17 of them), so it steps down a weight rather than set ten bold lines.
+  const parts = [labelled(table?.more ? 'mitigation listing' : 'mitigation', TEXT[lang].mitigation, s.mitigation || TEXT[lang].none)];
+  if (table) parts.push(...fixList(table, `normal:${incident.id}`, TEXT[lang].fixesTitle));
+  parts.push(para('summary', s.summary));
   // One condition stays on its line; several are a list ("팩스·SMS" has its own dot, so " · " between them misread).
   if (s.conditions.length === 1) {
     const line = labelled('conditions', TEXT[lang].conditions, '');
@@ -2099,8 +2109,6 @@ function summary(s, cves) {
     list.append(...s.conditions.map((c) => { const li = el('li', ''); li.append(...condition(c, cves)); return li; }));
     parts.push(labelled('conditions', TEXT[lang].conditions, ''), list);
   }
-  // Always said, so a row with no known fix does not go straight from the summary to the source link.
-  parts.push(labelled('mitigation', TEXT[lang].mitigation, s.mitigation || TEXT[lang].none));
   return parts;
 }
 
@@ -2240,7 +2248,7 @@ function easyAnswer(s, level, cve = '', product = '', library = false, key = '')
   // long model list folded away under them. From four lines on, the aligned list (owner, 11-16).
   const fixes = usableFixes(s);
   const table = fixTable(s);
-  if (table) parts.push(para('action', t.fixesIntro), ...fixList(table, key));
+  if (table) parts.push(para('action', fixesLead(s, lang)), ...fixList(table, key));
   else if (fixes.length > 1) {
     const list = el('ul', 'fixes');
     for (const f of fixes) {
@@ -2485,14 +2493,54 @@ function dateCell(incident) {
 }
 
 // Both views end with the Lead and every Mention, so links a CVE record gains later show up in either.
+// Critique P2 (11-19): what to do comes first in both views. The Normal panel keeps its small ID, score and date lines on
+// top as a header strip; the Easy panel opens on the red line and the action, and keeps those identifiers at its foot.
 function details(incident) {
   const t = TEXT[lang];
   const easy = defaultView === 'easy';
-  const parts = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident.summary[lang], incident.cves);
-  // Owner, 11-16: four or more fixed lines, under the Mitigation as an aligned list (the Easy view draws its own, above).
-  const fixTab = !easy && incident.summary ? fixTable(incident.summary) : null;
-  if (fixTab) parts.push(...fixList(fixTab, `normal:${incident.id}`, t.fixesTitle));
-  // M1 (owner, 11-15): under the Mitigation, the Board filtered to the row's first Product when it had other Incidents
+  const body = !incident.summary ? briefNote(incident) : easy ? easyPanel(incident) : summary(incident);
+  const head = [];
+  // N1 (owner, 11-15): the CVE the visitor searched for, when it is not the Lead, gets one line on top of the card: its
+  // own line, score and whether it is attacked. Title and Summary stay the Incident's.
+  const searched = searchedCve(filter.query, incident, lang);
+  if (searched) {
+    const line = para('why-line', `${t.searched(searched.cve)}:`);
+    if (searched.text) line.append(' ', searched.text);
+    const marks = cveMarks(incident, searched.cve);
+    if (searched.exploited === false) marks.push(...(marks.length ? [' · '] : []), t.notExploited);
+    if (marks.length) line.append(' · ', ...marks);
+    head.push(line);
+  }
+  const ids = [];
+  // Every Incident with a CVE has the same line, as the row header writes it ("CVE-… 외 212건"), so it can be copied
+  // (owner, 11-10: the line came and went by count); the full list stays in the fold.
+  if (incident.cves.length) ids.push(idLine(incident.cves));
+  // The group's score with the CVE it belongs to (step 4), in both views. A score a page raised shows both standards'
+  // scores there instead (owner 11-18), one-CVE Incidents too: "CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…".
+  const top = scoreCve(incident);
+  const pair = scorePair(incident);
+  if (top || pair) ids.push(para('why-line', [pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · ')));
+  // M4 (owner, 11-15): the Lead CVE's Public date, when it is not the day of the Published time.
+  if (publicDay(incident)) ids.push(para('why-line', `${t.publicDate} ${publicDay(incident)}`));
+  // A Brief has no plain sentence to lead with, so its identifiers stay on top in both views (critique 14).
+  const idsAtFoot = easy && Boolean(incident.summary);
+  if (!idsAtFoot) head.push(...ids);
+  if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
+  // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks.
+  const reason = exploitReason(incident);
+  if (reason) {
+    const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
+    if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
+    if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
+    // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
+    const hit = incident.cves.length > 1 ? exploitedCves(incident) : [];
+    if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
+    head.push(why);
+  }
+  // Public exploit code without reported attacks: no sign, a red line over the answer (owner, 2026-11-09).
+  if (incident.summary?.poc_public === true && !isExploited(incident)) head.push(para('kev', easy ? t.pocEasy : t.poc));
+  const parts = [...head, ...body];
+  // M1 (owner, 11-15): under the answer, the Board filtered to the row's first Product when it had other Incidents
   // in the last 30 days; same tab, as the address is this page's own filter.
   ensureOthers();
   const elsewhere = productOthers(incident, lang, productCounts);
@@ -2503,57 +2551,26 @@ function details(incident) {
   }
   if (!easy) parts.push(...distroFold(incident)); // Normal view only (owner, 11-16)
   const list = easy ? [] : cveList(incident); // every CVE's issue in the Normal view (user, 2026-11-09)
-  // Public exploit code without reported attacks: no sign, a red line in the summary text (owner, 2026-11-09).
-  if (incident.summary?.poc_public === true && !isExploited(incident)) parts.splice(easy ? 0 : 1, 0, para('kev', easy ? t.pocEasy : t.poc));
-  // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks, first in the panel.
-  const reason = exploitReason(incident);
-  if (reason) {
-    const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
-    if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
-    if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
-    // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
-    const hit = incident.cves.length > 1 ? exploitedCves(incident) : [];
-    if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
-    parts.unshift(why);
-  }
-  // The Easy row leads with a plain headline, so the opened panel starts with the CVE IDs.
-  if (easy && isExploited(incident)) parts.unshift(para('kev', t.kevEasy));
-  // Easy: a few IDs lead the panel; a group's count follows the action instead of a wall of IDs.
-  // "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09). Both views show the IDs as text here:
+  // "CVE 3건" opens to every ID, each linked to its CVE record (owner, 11-09). Both views show the IDs as text:
   // the row is a button, and browsers do not let a drag select text inside one (owner, 11-10: "CVE를 긁을 수가 없어").
+  const cveFold = [];
   if (incident.cves.length > 2) {
     const fold = el('details', 'models cve-fold');
-    const ids = el('ul', '');
+    const all = el('ul', '');
     for (const cve of incident.cves) {
       const li = el('li', '');
       li.append(anchor(cveUrl(cve), cve, false));
-      ids.append(li);
+      all.append(li);
     }
-    const head = el('summary', '', t.cveCount(incident.cves.length));
-    head.append(el('span', 'sr-only', t.newTabAll));
-    parts.push(foldable(fold, head, ids));
+    const label = el('summary', '', t.cveCount(incident.cves.length));
+    label.append(el('span', 'sr-only', t.newTabAll));
+    cveFold.push(foldable(fold, label, all));
   }
-  // M4 (owner, 11-15): the Lead CVE's Public date, under the score, when it is not the day of the Published time.
-  if (publicDay(incident)) parts.unshift(para('why-line', `${t.publicDate} ${publicDay(incident)}`));
-  // The group's score with the CVE it belongs to (step 4), under the IDs, in both views. A score a page raised shows
-  // both standards' scores there instead (owner 11-18), one-CVE Incidents too: "CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…".
-  const top = scoreCve(incident);
-  const pair = scorePair(incident);
-  if (top || pair) parts.unshift(para('why-line', [pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · ')));
-  // Every Incident with a CVE opens on the same line, as the row header writes it ("CVE-… 외 212건"), so it can be
-  // copied (owner, 11-10: the line came and went by count); the full list stays in the fold.
-  if (incident.cves.length) parts.unshift(idLine(incident.cves));
-  // N1 (owner, 11-15): the CVE the visitor searched for, when it is not the Lead, gets one line on top of the card: its
-  // own line, score and whether it is attacked. Title and Summary stay the Incident's.
-  const searched = searchedCve(filter.query, incident, lang);
-  if (searched) {
-    const line = para('why-line', `${t.searched(searched.cve)}:`);
-    if (searched.text) line.append(' ', searched.text);
-    const marks = cveMarks(incident, searched.cve);
-    if (searched.exploited === false) marks.push(...(marks.length ? [' · '] : []), t.notExploited);
-    if (marks.length) line.append(' · ', ...marks);
-    parts.unshift(line);
-  }
+  if (idsAtFoot) {
+    const foot = el('div', 'id-foot');
+    foot.append(...ids, ...cveFold);
+    if (foot.childElementCount) parts.push(foot);
+  } else parts.push(...cveFold);
   const mentions = el('ul', 'mentions');
   const rank = (m) => (MENTION_ORDER.includes(m.kind) ? MENTION_ORDER.indexOf(m.kind) : MENTION_ORDER.length);
   const lastPart = (url) => {
@@ -2682,35 +2699,17 @@ function tagLine(incident) {
 let rowCount = 0;
 
 // Owner, 11-16: the Summary's fixed versions from four lines on, one dt/dd pair per line in one grid, so the versions line
-// up; rows past FIXES_SHOWN wait behind a real button, whose state is kept by row and view (key) through every redraw.
+// up. Critique P2 (11-19): past FIXES_SHOWN lines the whole list folds under the panel's one action, with the panel's own
+// fold motion; whether it is open is kept by row and view (key) through every redraw.
 const openFixLists = new Set();
 function fixList(table, key, head = '') {
   const t = TEXT[lang];
-  const list = Object.assign(el('dl', 'fix-list'), { id: `fixes-${++rowCount}` });
-  table.rows.forEach((f, n) => {
-    const cls = n >= FIXES_SHOWN ? 'rest' : '';
-    list.append(el('dt', cls, f.for), el('dd', cls, t.orNewer(f.version)));
-  });
-  const out = [...(head ? [para('fix-head', head)] : []), list];
-  if (table.more) {
-    const button = Object.assign(el('button', 'tag-toggle'), { type: 'button' });
-    button.setAttribute('aria-controls', list.id);
-    const sync = () => {
-      const shown = openFixLists.has(key);
-      list.classList.toggle('all', shown);
-      button.setAttribute('aria-expanded', String(shown));
-      button.textContent = shown ? t.foldLess : t.fixesMore(table.more);
-    };
-    button.addEventListener('click', () => {
-      if (!openFixLists.delete(key)) openFixLists.add(key);
-      sync();
-    });
-    sync();
-    const line = el('p', 'fix-more');
-    line.append(button);
-    out.push(line);
-  }
-  return out;
+  const list = el('dl', 'fix-list');
+  for (const f of table.rows) list.append(el('dt', '', f.for), el('dd', '', t.orNewer(f.version)));
+  if (!table.more) return [...(head ? [para('fix-head', head)] : []), list];
+  const box = Object.assign(el('details', 'models fix-fold'), { open: openFixLists.has(key) });
+  const label = el('summary', '', t.fixesFold(table.rows.length));
+  return [foldable(box, label, list, (on) => { if (on) openFixLists.add(key); else openFixLists.delete(key); })];
 }
 
 // A vendor's bulk push as one line ("IBM 보안 공지 25건 · 최고 9.9"); opened, its rows follow it as ordinary rows.

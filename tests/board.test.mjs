@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
+import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
 import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
@@ -1491,6 +1491,18 @@ test('the fixed-version list starts at four usable lines and shows five of them'
   assert.equal(WORDS.en.fixesTitle, 'Fixed version by product');
   assert.equal(WORDS.ko.fixesMore(12), '12줄 더 보기');
   assert.equal(WORDS.en.fixesMore(12), '12 more');
+});
+
+// Critique P2 (11-19): a list past five lines folds whole on the Board, and the Easy panel leads with the one plain action.
+test('a folded fixed-version list is led by the plain action, a short one by the intro line', () => {
+  const action = { ko: { easy_action: 'Windows를 보안 업데이트로 바로 설치하세요.' }, en: { easy_action: 'Install the update now.' } };
+  assert.equal(fixesLead({ ...fixRows(17), ...action }, 'ko'), 'Windows를 보안 업데이트로 바로 설치하세요.');
+  assert.equal(fixesLead({ ...fixRows(17), ...action }, 'en'), 'Install the update now.');
+  assert.equal(fixesLead({ ...fixRows(5), ...action }, 'ko'), WORDS.ko.fixesIntro); // in view: the intro says "below"
+  assert.equal(fixesLead(fixRows(17), 'ko'), WORDS.ko.fixesIntro); // Summaries made before easy_action
+  assert.equal(fixesLead({ ...fixRows(17), ko: { easy_action: '' } }, 'ko'), WORDS.ko.fixesIntro);
+  for (const l of ['ko', 'en', 'ja']) assert.match(WORDS[l].fixesFold(17), /17/);
+  assert.equal(WORDS.ko.fixesFold(17), '제품별 수정 버전 보기 (17개)');
 });
 
 // Owner, 11-16: the list under the pinned Highlights is the whole Board, so a pinned Incident stands there too, as its own
