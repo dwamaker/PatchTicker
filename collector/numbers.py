@@ -79,7 +79,9 @@ def plain(value):
 
 # Owner, 2026-11-10: Korean words whose digit is part of the word, not a number ("제3자", third party: CVE-2026-106007
 # failed three times on it). To add one, append the whole word; never a pattern, so "3자리" stays a number.
-KO_DIGIT_WORDS = ("제3자",)
+# 11-19: the Korean for MFA, which the Easy view may not write as "MFA" (EASY_BANNED): CVE-2026-16021's group was given
+# up on "2단계 인증" and "2단계 로그인" where no input version held a bare 2.
+KO_DIGIT_WORDS = ("제3자", "2단계 인증", "2단계인증", "2단계 로그인", "2차 인증", "2차인증", "2FA")
 KO_DIGIT_WORD_RE = re.compile("|".join(map(re.escape, KO_DIGIT_WORDS)))
 
 

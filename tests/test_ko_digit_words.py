@@ -23,6 +23,10 @@ class KoreanDigitWordTest(unittest.TestCase):
         self.assertEqual(numbers.ko_numbers("3자리 코드"), {"3"})
         self.assertEqual(numbers.ko_numbers("제30자리"), {"30"})
         self.assertEqual(numbers.numbers("제3자"), {"3"})  # English text and numbers() itself are untouched
+        # 11-19: MFA in Korean (CVE-2026-16021, Mattermost: refused three times for '2').
+        self.assertEqual(numbers.ko_numbers("2단계 인증을 쓰지 않은 사용자, 2단계 로그인 강제, 2차 인증"), set())
+        self.assertEqual(numbers.ko_numbers("2단계인증, 2차인증, 2FA 강제"), set())
+        self.assertEqual(numbers.ko_numbers("2단계로 나눠 공격합니다"), {"2"})
 
     def test_a_version_before_man_meaning_only_stays_the_version(self):
         # 11-16: Zephyr's "4.3.2만" ("only 4.3.2") was read as 4. and 3.2만 = "4.32000" and the Summary rejected.
