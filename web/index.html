@@ -514,9 +514,10 @@
     .loud .word { padding: calc(0.25rem - 1.5px) calc(0.75rem - 1.5px); border: 1.5px solid var(--note); border-radius: var(--r-pill); font-size: calc(0.9375rem * var(--ts)); font-weight: 800; line-height: 1.2; }
     .loud.risk-highest .word { border-color: var(--high); }
     .loud.risk-high .word { border-color: var(--mid-mark); }
-    /* the reason sits centred under the ring; the cell keeps to the column's start so rings line up down the Board */
-    .loud { flex-direction: column; justify-self: start; }
-    .loud .why { flex-basis: auto; padding-left: 0; text-align: center; }
+    /* the sign and the reason under it both keep to the column's start, so every sign starts at the same x down the Board
+       (owner, 11-19: a wider reason such as 점수 대기 had pushed its centred sign right) */
+    .loud { flex-direction: column; align-items: flex-start; justify-self: start; }
+    .loud .why { flex-basis: auto; padding-left: 0; text-align: start; }
     .c-title { grid-area: t; min-width: 0; }
     .title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.35; letter-spacing: -0.02em; overflow-wrap: anywhere; text-wrap: pretty; }
     .sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin-top: 0.1875rem; font-size: calc(var(--fs-small) * var(--ts)); line-height: 1.45; color: var(--ink-2); letter-spacing: -0.01em; overflow-wrap: anywhere; }
