@@ -124,6 +124,36 @@ class QuickTitleTest(unittest.TestCase):
         self.assertIn("CVE-2026-1: numbers not in its line", log.getvalue())
         self.assertIn("CVE-2026-2: malformed", log.getvalue())
 
+    def test_a_banned_word_inside_another_word_is_no_banned_word(self):
+        # 11-19, CVE-2026-87956: "RCE" in "Datasource" dropped both titles; the row showed its English Brief
+        incidents = [row("CVE-2026-1", text="The MQTT data source plugin does not apply TLS.")]
+        incidents[0]["products"] = [{"name": "Mqtt Datasource"}]
+        good = titles("CVE-2026-1")
+        good["items"][0] |= {"ko_easy_title": "MQTT 데이터소스 로그인 노출 위험", "en_easy_title": "Capital Datasource Login Exposure Risk"}
+        summaries.title_now(incidents, FakeClaude(good), STAMP)
+        self.assertEqual(incidents[0]["quick_title"]["en"]["easy_title"], "Capital Datasource Login Exposure Risk")
+
+    def test_a_banned_word_in_the_easy_titles_drops_only_them_and_is_logged(self):
+        incidents = [row("CVE-2026-1")]
+        bad = titles("CVE-2026-1")
+        bad["items"][0]["en_easy_title"] = "Widget SQL hole"
+        log = io.StringIO()
+        with contextlib.redirect_stderr(log):
+            summaries.title_now(incidents, FakeClaude(bad), STAMP)
+        quick = incidents[0]["quick_title"]
+        self.assertEqual((quick["ko"], quick["en"]), ({"title": "위젯 파일 읽기 취약점", "easy_title": ""},
+                                                      {"title": "Widget file read flaw", "easy_title": ""}))
+        self.assertIn("CVE-2026-1: easy titles only, banned word ['SQL']", log.getvalue())
+        self.assertFalse(summaries.needs_title(incidents[0]))  # kept: not asked again every cycle
+
+    def test_a_product_keeps_its_own_banned_word_in_any_case(self):
+        incidents = [row("CVE-2026-1", text="Perl sql::abstract lets an attacker read rows.")]
+        incidents[0]["products"] = [{"name": "Perl SQL::Abstract"}]
+        good = titles("CVE-2026-1")
+        good["items"][0]["en_easy_title"] = "Perl sql::abstract data leak"
+        summaries.title_now(incidents, FakeClaude(good), STAMP)
+        self.assertEqual(incidents[0]["quick_title"]["en"]["easy_title"], "Perl sql::abstract data leak")
+
     def test_a_digit_its_line_spells_as_a_word_is_kept(self):
         # 11-11: the same allowance as the Summary's check (CVE-2026-58805, "zero arbitrary secure memory").
         incidents = [row("CVE-2026-1", text="Widget has a possible way to zero arbitrary secure memory.")]
