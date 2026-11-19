@@ -79,6 +79,17 @@ test('a CVE record the CVE list already links is not listed again under Sources'
   assert.match(sources, /CVE 기록: <a href="https:\/\/nvd\.nist\.gov/); // a record elsewhere stays
 });
 
+test('three or more untitled links of one kind are named by the last part of their address, a titled one keeps its title', async () => {
+  const at = (n) => `https://news.typo3.com/article/typo3-core-sa-2026-02${n}`;
+  const mentions = [{ kind: 'advisory', url: at(5) }, { kind: 'advisory', url: at(6) }, { kind: 'advisory', url: at(7), title: 'TYPO3-CORE-SA-2026-027' }];
+  const sources = (await (await page({ ...SSHOLE, mentions })).text()).split('id="s-mentions"')[1];
+  assert.match(sources, />typo3-core-sa-2026-025<span/);
+  assert.match(sources, />TYPO3-CORE-SA-2026-027<span/);
+  assert.doesNotMatch(sources, />news\.typo3\.com</);
+  const two = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
+  assert.match(two, />news\.typo3\.com</); // two are told apart well enough by their site
+});
+
 test('a one-CVE Incident whose only Mention is its CVE record still shows Sources', async () => {
   const html = await (await page({ ...SSHOLE, mentions: [{ kind: 'cve_record', url: 'https://www.cve.org/CVERecord?id=CVE-2026-123158' }] })).text();
   assert.match(html, /id="s-mentions"/);
@@ -499,12 +510,12 @@ test('the page shows the Public date among the times and links the product\'s ot
   const doc = { ...SSHOLE, public_date: '2026-10-30' };
   const ko = await (await withOthers(doc, 'ko', OTHERS)).text();
   const times = ko.slice(ko.indexOf('id="s-times"'));
-  assert.match(times, /<p>공개일 2026-10-30<\/p>/);
+  assert.match(times, /<dt>공개일<\/dt><dd>2026-10-30<\/dd>/);
   const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));
   // 5 counted, the Incident itself among them (published 11-05, inside the window): 4 others.
   assert.match(todo, /<p class="others"><a href="\/#p=openbsd%3Aopenssh">최근 30일 동안 이 제품의 다른 사건 4건<\/a><\/p><\/section>/);
   const en = await (await withOthers(doc, 'en', OTHERS)).text();
-  assert.match(en, /<p>Public date 2026-10-30<\/p>/);
+  assert.match(en, /<dt>Public date<\/dt><dd>2026-10-30<\/dd>/);
   assert.match(en, />4 other Incidents of this product in the last 30 days<\/a>/);
 });
 

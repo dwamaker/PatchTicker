@@ -62,6 +62,7 @@ const TEXT = {
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
     mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
+    aboutHead: '요약', scoreHead: '점수', cveHead: 'CVE', // the opened row's section and fact labels (Astryx inspector)
     copy: '복사', copied: '복사됨', copyFailed: '복사하지 못했습니다. 선택된 명령을 직접 복사하세요.', share: '이 사건 링크 복사',
     feeds: 'RSS 피드', feedsHead: 'RSS로 받아 보기', feedMain: '주요 피드', feedMainNote: '위험 이상 사건과 CVE 번호 전 속보',
     feedAll: '현황판 전체', feedAllNote: '참고까지 모든 사건', feedMine: '내 제품', feedPick: '제품 고르기',
@@ -116,6 +117,7 @@ const TEXT = {
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
     mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
+    aboutHead: 'Summary', scoreHead: 'Score', cveHead: 'CVE',
     copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. The command is selected: copy it yourself.', share: 'Copy link to this Incident',
     feeds: 'RSS feeds', feedsHead: 'Follow by RSS', feedMain: 'Main feed', feedMainNote: 'Elevated and up, attacked, or no CVE yet',
     feedAll: 'The whole Board', feedAllNote: 'Every Incident, Notice too', feedMine: 'My products', feedPick: 'Pick products',
@@ -170,6 +172,7 @@ const TEXT = {
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
     mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
     normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
+    aboutHead: '要約', scoreHead: 'スコア', cveHead: 'CVE',
     copy: 'コピー', copied: 'コピーしました', copyFailed: 'コピーできませんでした。選択されたコマンドを手動でコピーしてください。', share: 'このインシデントのリンクをコピー',
     feeds: 'RSS フィード', feedsHead: 'RSS で受け取る', feedMain: 'メインフィード', feedMainNote: '警戒以上、実際の攻撃、CVE 未採番のインシデント',
     feedAll: 'ボード全体', feedAllNote: '参考を含むすべてのインシデント', feedMine: '自分の製品', feedPick: '製品を選ぶ',
@@ -1393,7 +1396,7 @@ function easyPanel(incident) {
   if (when.length > 1) {
     const list = el('ul', 'cond-list');
     list.append(...when.map((c) => el('li', '', c)));
-    parts.push(para('when', TEXT[lang].easyWhen), list);
+    parts.push(secHead(TEXT[lang].easyWhen.replace(/[:：]\s*$/, '')), list); // a heading, as the Normal view's 해당 조건
   }
   return parts;
 }
@@ -2140,11 +2143,20 @@ function ro(word) {
   return code < 0 || code > 11171 || code % 28 === 0 || code % 28 === 8 ? '로' : '으로';
 }
 
-// "대처법: ..." with the label bold, so the answer is found by eye.
-function labelled(className, label, text) {
-  const p = para(className, '');
-  p.append(el('b', '', `${label}: `), text);
-  return p;
+// An opened row's section heading (대처법, 요약, 해당 조건), as the Astryx inspector heads each group (pages/incident-console
+// page.tsx: Heading over its content); h4, since the row's own button sits in an h3.
+const secHead = (text) => el('h4', 'sec-head', text);
+
+// The facts of an opened row (CVE, score, public date) as label-value pairs, after Astryx MetadataList (label column in
+// Secondary Ink, value in Ink). rows: [label, [nodes or strings]].
+function factList(rows) {
+  const dl = el('dl', 'facts');
+  for (const [label, value] of rows) {
+    const dd = el('dd');
+    dd.append(...value);
+    dl.append(el('dt', '', label), dd);
+  }
+  return dl;
 }
 
 // H4 (owner, 11-16): a group's condition of some CVEs only shows their ids as a small mark before its text, like the step-4
@@ -2195,19 +2207,20 @@ function summary(incident) {
   const table = fixTable(incident.summary);
   // Always said, so the panel always opens on what to do, even with no known fix. Beside a folded list its text spells
   // out the same versions (Microsoft: 17 of them), so it steps down a weight rather than set ten bold lines.
-  const parts = [labelled(table?.more ? 'mitigation listing' : 'mitigation', TEXT[lang].mitigation, s.mitigation || TEXT[lang].none)];
+  const parts = [secHead(TEXT[lang].mitigation), para(table?.more ? 'mitigation listing' : 'mitigation', s.mitigation || TEXT[lang].none)];
   if (table) parts.push(...fixList(table, `normal:${incident.id}`, TEXT[lang].fixesTitle));
-  parts.push(para('summary', s.summary));
+  parts.push(secHead(TEXT[lang].aboutHead), para('summary', s.summary));
   // One condition stays on its line; several are a list ("팩스·SMS" has its own dot, so " · " between them misread).
+  if (s.conditions.length) parts.push(secHead(TEXT[lang].conditions));
   if (s.conditions.length === 1) {
-    const line = labelled('conditions', TEXT[lang].conditions, '');
+    const line = para('conditions', '');
     line.append(...condition(s.conditions[0], cves));
     parts.push(line);
   }
   if (s.conditions.length > 1) {
     const list = el('ul', 'cond-list');
     list.append(...s.conditions.map((c) => { const li = el('li', ''); li.append(...condition(c, cves)); return li; }));
-    parts.push(labelled('conditions', TEXT[lang].conditions, ''), list);
+    parts.push(list);
   }
   return parts;
 }
@@ -2306,10 +2319,15 @@ function leadLine(incident) {
 }
 
 // A command from a source, shown as is, with a button that copies exactly the text shown.
+// Astryx CodeBlock: one framed block, the code in its own column and Copy a ghost button in the end column beside it
+// (src/CodeBlock/CodeBlock.tsx:155-161 rootCorner, 1163 copy IconButton variant="ghost"); ours keeps the word.
+const COPY_ICON = '<span class="ic" aria-hidden="true"><svg viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 3.5v-.5a1 1 0 0 0-1-1H3.5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>';
 function commandLine(text) {
   const p = el('p', 'command');
   const code = el('code', '', text);
-  const button = Object.assign(el('button', 'btn', TEXT[lang].copy), { type: 'button' });
+  const button = Object.assign(el('button', 'copy'), { type: 'button' });
+  const idle = () => { button.innerHTML = COPY_ICON; button.append(el('span', '', TEXT[lang].copy)); };
+  idle();
   button.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(code.textContent);
@@ -2317,14 +2335,14 @@ function commandLine(text) {
       stampCopied(button);
       p.classList.add('stamped');
       clearTimeout(button.settle);
-      button.settle = setTimeout(() => { button.textContent = TEXT[lang].copy; p.classList.remove('stamped'); }, 2000);
+      button.settle = setTimeout(() => { idle(); p.classList.remove('stamped'); }, 2000);
     } catch {
       getSelection().selectAllChildren(code); // clipboard blocked: select it for a manual copy
       // Astryx CodeBlock, Props, onCopyError: "The copy button shows a cross and is named and announced as "Failed to copy value to clipboard."" (ours: said, the selection shown)
       $('announce').textContent = TEXT[lang].copyFailed;
     }
   });
-  p.append(code, ' ', button);
+  p.append(code, button);
   return p;
 }
 
@@ -2614,34 +2632,37 @@ function details(incident, onStrip = false) {
     if (marks.length) line.append(' · ', ...marks);
     head.push(line);
   }
-  const ids = [];
+  const facts = [];
   // Every Incident with a CVE has the same line, as the row header writes it ("CVE-… 외 212건"), so it can be copied
   // (owner, 11-10: the line came and went by count); the full list stays in the fold.
-  if (incident.cves.length) ids.push(idLine(incident.cves));
+  if (incident.cves.length) facts.push([t.cveHead, [...idLine(incident.cves).childNodes]]);
   // The group's score with the CVE it belongs to (step 4), in both views. A score a page raised shows both standards'
   // scores there instead (owner 11-18), one-CVE Incidents too: "CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…".
   const top = scoreCve(incident);
   const pair = scorePair(incident);
-  if (top || pair) ids.push(para('why-line', [pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · ')));
+  if (top || pair) facts.push([t.scoreHead, keepIds([pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · '))]);
   // M4 (owner, 11-15): the Lead CVE's Public date, when it is not the day of the Published time.
-  if (publicDay(incident)) ids.push(para('why-line', `${t.publicDate} ${publicDay(incident)}`));
+  if (publicDay(incident)) facts.push([t.publicDate, [publicDay(incident)]]);
   // A Brief has no plain sentence to lead with, so its identifiers stay on top in both views (critique 14).
   const idsAtFoot = easy && Boolean(incident.summary);
-  if (!idsAtFoot) head.push(...ids);
-  if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
   // Why the row is 악용 발생 (critique 14): the KEV listing, else the source that reports the attacks. A Highlight's strip
   // already says "CISA KEV 등재 <day>" (evidenceCell), so its panel does not say it again unless it names the attacked CVEs
-  // of a group; a reporting source stays, as the strip has no link.
+  // of a group; a reporting source stays, as the strip has no link. With the facts on top it is one of them (공격 발생).
   const reason = exploitReason(incident);
   const hit = reason && incident.cves.length > 1 ? exploitedCves(incident) : [];
+  let why = null;
   if (reason && !(onStrip && reason.kind === 'kev' && !hit.length)) {
-    const why = para('why-line', reason.kind === 'kev' ? t.kevListed : `${t.attackSource} `);
+    why = para('why-line', reason.kind === 'kev' ? t.kevListed : idsAtFoot ? `${t.attackSource} ` : '');
     if (reason.kind === 'kev' && reason.date) why.append(' · ', el('span', 'nw', reason.date)); // the day never breaks at its hyphens
     if (reason.kind === 'source') why.append(anchor(reason.url, host(reason.url)));
     // In a group, which CVEs are attacked (step 4: the KEV listing and the Summary name them; older data names none).
     if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
-    head.push(why);
+    if (!idsAtFoot) facts.push([reason.kind === 'kev' ? t.kevReason : t.attackSource.replace(/[:：]\s*$/, ''), [...why.childNodes]]);
   }
+  const ids = facts.length ? [factList(facts)] : [];
+  if (!idsAtFoot) head.push(...ids);
+  if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
+  if (why && idsAtFoot) head.push(why);
   // Public exploit code without reported attacks: no sign, a red line (owner, 2026-11-09); in the Easy view over the
   // action with the other red line, in the Normal view after the summary sentence, as before, so 대처법 still leads.
   if (incident.summary?.poc_public === true && !isExploited(incident)) {
