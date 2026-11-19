@@ -1190,6 +1190,10 @@
     main.wrap { min-height: 100vh; min-height: 100dvh; }
     /* Astryx Text "supporting" (Secondary Ink, leading 1.67) and a Divider between what the Board holds and the legal notes */
     footer { margin-top: 2.5rem; border-top: 1px solid var(--rule); padding: 1.5rem 0 2.5rem; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.65; color: var(--ink-2); }
+    /* at the page's end the jump column (four 44px slots, 맨 아래로's kept while it is off) stands at the bottom right; where
+       the page's side margin is narrower than it (up to 81em: 75rem of .wrap plus the column twice), the footer ends below
+       it, so its last lines and 후원 are not under it (audit 11-19) */
+    @media (max-width: 81em) { footer { padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4 * var(--tap) + 1.5rem); } }
     footer .collect-note { margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--rule); }
     footer .collect-note p { margin: 0; }
     footer p { margin: 0.25rem 0 0; max-width: 46rem; }

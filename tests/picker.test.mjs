@@ -118,3 +118,15 @@ test('… and on the real Product list, in both languages, with counts', { skip:
     assert.deepEqual(pickerEntries(products, counts), scanEntries(products, counts));
   }
 });
+test('a Summary-named Product joins its one vendor, stays apart from two, and shares a name-only entry', () => {
+  const products = [
+    { id: 'adobe:photoshop', name: 'Photoshop' }, { id: 'name:photoshop', name: 'Photoshop' }, // one vendor: joins it
+    { id: 'a:widget', name: 'Widget' }, { id: 'b:widget', name: 'Widget' }, { id: 'name:widget', name: 'Widget' }, // two
+    { id: 'name:gizmo_9', name: 'Gizmo 9' }, { id: 'name:gizmo_version_9', name: 'Gizmo Version 9' }, // no vendor: one entry
+  ];
+  const entries = pickerEntries(products);
+  assert.deepEqual(entries, scanEntries(products));
+  assert.equal(entryOf(entries, 'name:photoshop').key, 'adobe|photoshop');
+  assert.ok(entryOf(entries, 'name:widget').key.startsWith('name|'));
+  assert.equal(entryOf(entries, 'name:gizmo_9'), entryOf(entries, 'name:gizmo_version_9'));
+});
