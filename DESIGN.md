@@ -582,9 +582,9 @@ ring stays inside the row and a group's frame at 320px too.
 - **Place:** a 필터 button (funnel icon, the word from 1024 px, a count badge in Wayfinding Blue) and 정렬 at the end of
   the search line, at every width; the panel opens right under the search bar (owner, 11-19).
 - **Order and expand:** 정렬 (see Menus) orders the list, and the list heading names the order; 모두 펼치기 / 모두 접기
-  sits at the end of the 주요 사건 line (at the list head when there are no Highlights). 주요 사건 is chosen and shown in its own order whatever the list's: tier
-  of reach first (1, 2, then exploited rows on tier 3 or no list, then 3, then the rest; owner, 2026-11-17), exploited
-  then by importance inside each, its four pins of four different vendor-and-category pairs (owner, 2026-11-16, 2026-11-17; until then the pins
+  sits at the end of the 주요 사건 line (at the list head when there are no Highlights). 주요 사건 is chosen and shown in its own order whatever the list's: one
+  importance (score, wide use, urgency, date; owner, 2026-11-19, replacing the tier groups of 2026-11-17), twelve at
+  most, its four pins of four different vendor-and-category pairs (owner, 2026-11-16, 2026-11-17; until then the pins
   followed the visitor's order). An old event (its CVEs all two or more years old, or an event date over 14 days
   back) is never a Highlight, though its row stays (owner, 2026-11-17).
 - **Panel:** Kiosk Panel with a Rail border, 6px corners, 1.25rem in; its head holds the title and an icon-only ghost
