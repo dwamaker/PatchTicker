@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8" ?><rss version="2.0" xml:base="https://www.drupal.org/security/core" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Security advisories</title>
+    <link>https://www.drupal.org/security/core</link>
+    <description></description>
+    <language>en</language>
+     <atom:link href="https://www.drupal.org/security/rss.xml" rel="self" type="application/rss+xml" />
+      <item>
+    <title>Drupal core - Moderately critical - Gadget chain - SA-CORE-2026-018</title>
+    <link>https://www.drupal.org/sa-core-2026-018</link>
+    <description>&lt;div class=&quot;field field-name-field-project field-type-entityreference field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Project:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;a href=&quot;/project/drupal&quot;&gt;Drupal core&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-project-machine-name field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Project machine name:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;code&gt;drupal&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-drupalorg-sa-date field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Date:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;2026-November-18&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-criticality field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Security risk:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;a href=&quot;/drupal-security-team/security-risk-levels-defined&quot; class=&quot;moderately-critical&quot; title=&quot;AC - Access complexity: Complex or highly specific (multi-step, unintuitive process with high number of dependencies)
+A - Authentication: Administrator (broad permissions required where “restrict access” is set to false)
+CI - Confidentiality impact: All non-public data is accessible
+II - Integrity impact: All data can be modified or deleted
+E - Exploit (Zero-day impact): Theoretical or white-hat (no public exploit code or documentation on development exists)
+TD - Target distribution: Only uncommon module configurations are exploitable&quot;&gt;&lt;strong&gt;Moderately critical&lt;/strong&gt; 14 ∕ 25 AC:Complex/A:Admin/CI:All/II:All/E:Theoretical/TD:Uncommon&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-type field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Vulnerability:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;Gadget chain&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-affected-versions field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Affected versions:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&amp;lt;10.6.22 || &amp;gt;=11.0.0 &amp;lt;11.3.22 || &amp;gt;=11.4.0 &amp;lt;11.4.13&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-cve field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;CVE IDs:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;CVE-2026-132166&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-description field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Description:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;p&gt;Drupal core contains a chain of methods that could be exploitable when an insecure deserialization vulnerability exists on the site. This so-called &quot;gadget chain&quot; presents no direct threat, but is a vector that can be used to achieve remote code execution if the application deserializes untrusted data due to another vulnerability.&lt;/p&gt;
+&lt;p&gt;This issue is not directly exploitable.&lt;/p&gt;
+&lt;p&gt;This issue is mitigated by the fact that in order for it to be exploitable, a separate vulnerability must be present to allow an attacker to pass unsafe input to &lt;code class=&quot;language-php&quot;&gt;unserialize()&lt;/code&gt;.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-solution field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Solution:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;p&gt;Install the latest version:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Drupal 11&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you use Drupal 11.4.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/11.4.13&quot; rel=&quot;nofollow&quot;&gt;Drupal 11.4.13&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;If you use Drupal 11.3.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/11.3.22&quot; rel=&quot;nofollow&quot;&gt;Drupal 11.3.22&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Drupal 11.2.x and below are end-of-life and do not receive security coverage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Drupal 10&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you use Drupal 10.6.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/10.6.22&quot; rel=&quot;nofollow&quot;&gt;Drupal 10.6.22&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Drupal 10.5.x and below are end-of-life and do not receive security coverage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.drupal.org/psa-2021-06-29&quot; rel=&quot;nofollow&quot;&gt;Drupal 8&lt;/a&gt; and &lt;a href=&quot;https://www.drupal.org/psa-2023-11-01&quot; rel=&quot;nofollow&quot;&gt;Drupal 9&lt;/a&gt; have both reached end-of-life.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-reported-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Reported By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/mcdruid&quot; rel=&quot;nofollow&quot;&gt;Drew Webber (mcdruid)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-fixed-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Fixed By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/alexpott&quot; rel=&quot;nofollow&quot;&gt;Alex Pott (alexpott)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/catch&quot; rel=&quot;nofollow&quot;&gt; catch (catch)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/larowlan&quot; rel=&quot;nofollow&quot;&gt;Lee Rowlands (larowlan)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/mcdruid&quot; rel=&quot;nofollow&quot;&gt;Drew Webber (mcdruid)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/smustgrave&quot; rel=&quot;nofollow&quot;&gt;Stephen Mustgrave (smustgrave)&lt;/a&gt;, provisional member of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/xjm&quot; rel=&quot;nofollow&quot;&gt;Jess  (xjm)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-coordinated-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Coordinated By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/xjm&quot; rel=&quot;nofollow&quot;&gt;Jess  (xjm)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</description>
+     <pubDate>Wed, 18 Nov 2026 17:50:21 +0000</pubDate>
+ <dc:creator>Drupal Security Team</dc:creator>
+ <guid isPermaLink="false">3637891 at https://www.drupal.org</guid>
+  </item>
+<item>
+    <title>Drupal core - Critical - Remote code execution - SA-CORE-2026-017</title>
+    <link>https://www.drupal.org/sa-core-2026-017</link>
+    <description>&lt;div class=&quot;field field-name-field-project field-type-entityreference field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Project:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;a href=&quot;/project/drupal&quot;&gt;Drupal core&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-project-machine-name field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Project machine name:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;code&gt;drupal&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-drupalorg-sa-date field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Date:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;2026-November-18&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-criticality field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Security risk:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;a href=&quot;/drupal-security-team/security-risk-levels-defined&quot; class=&quot;critical&quot; title=&quot;AC - Access complexity: Complex or highly specific (multi-step, unintuitive process with high number of dependencies)
+A - Authentication: None (all/anonymous users)
+CI - Confidentiality impact: All non-public data is accessible
+II - Integrity impact: All data can be modified or deleted
+E - Exploit (Zero-day impact): Proof of concept exists (documented methods for developing exploit exist in the wild)
+TD - Target distribution: Only uncommon module configurations are exploitable&quot;&gt;&lt;strong&gt;Critical&lt;/strong&gt; 18 ∕ 25 AC:Complex/A:None/CI:All/II:All/E:Proof/TD:Uncommon&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-type field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Vulnerability:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;Remote code execution&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-affected-versions field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Affected versions:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&amp;lt;10.6.22 || &amp;gt;=11.0.0 &amp;lt;11.3.22 || &amp;gt;=11.4.0 &amp;lt;11.4.13&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-cve field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;CVE IDs:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;CVE-2026-132165&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-description field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Description:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;p&gt;Drupal core ships with an &lt;code class=&quot;language-php&quot;&gt;install.php&lt;/code&gt; file for installing Drupal core. &lt;/p&gt;
+&lt;p&gt;Under specific conditions, an attacker can use the installer to attempt to reinstall Drupal. This can lead to a site takeover or remote code execution.&lt;/p&gt;
+&lt;p&gt;Some exploit paths are mitigated if the web server cannot write to or change permissions on &lt;code class=&quot;language-php&quot;&gt;settings.php&lt;/code&gt;. In addition to upgrading, the Drupal Security Team recommends &lt;a href=&quot;https://www.drupal.org/docs/administering-a-drupal-site/security-in-drupal/securing-the-installer-installphp&quot; rel=&quot;nofollow&quot;&gt;securing the Drupal installer&lt;/a&gt; after installation.&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Discovered by Anthropic&#039;s OSS Scanner, as vulnerability ANT-2026-GMRPK0BU.&lt;/em&gt;&lt;/p&gt;
+&lt;h4&gt;Drupal Steward protection:&lt;/h4&gt;
+&lt;p&gt;This issue is being protected by &lt;a href=&quot;https://www.drupal.org/steward&quot; rel=&quot;nofollow&quot;&gt;Drupal Steward&lt;/a&gt;. Sites that use Drupal Steward are already protected from known attack vectors, but sites should upgrade in the near future in case additional attack vectors are discovered.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-solution field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Solution:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;p&gt;Install the latest version:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Drupal 11&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you use Drupal 11.4.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/11.4.13&quot; rel=&quot;nofollow&quot;&gt;Drupal 11.4.13&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;If you use Drupal 11.3.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/11.3.22&quot; rel=&quot;nofollow&quot;&gt;Drupal 11.3.22&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Drupal 11.2.x and below are end-of-life and do not receive security coverage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Drupal 10&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you use Drupal 10.6.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/10.6.22&quot; rel=&quot;nofollow&quot;&gt;Drupal 10.6.22&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Drupal 10.5.x and below are end-of-life and do not receive security coverage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;a href=&quot;https://www.drupal.org/psa-2021-06-29&quot; rel=&quot;nofollow&quot;&gt;Drupal 8&lt;/a&gt; and &lt;a href=&quot;https://www.drupal.org/psa-2023-11-01&quot; rel=&quot;nofollow&quot;&gt;Drupal 9&lt;/a&gt; have both reached end-of-life.&lt;/p&gt;
+&lt;h4&gt;If you cannot upgrade immediately:&lt;/h4&gt;
+&lt;p&gt;Follow the &lt;a href=&quot;https://www.drupal.org/docs/administering-a-drupal-site/security-in-drupal/securing-the-installer-installphp&quot; rel=&quot;nofollow&quot;&gt;instructions for securing the Drupal installer&lt;/a&gt; to protect your site from attacks.&lt;/p&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-reported-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Reported By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/larowlan&quot; rel=&quot;nofollow&quot;&gt;Lee Rowlands (larowlan)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/pameeela&quot; rel=&quot;nofollow&quot;&gt;Pamela Barone (pameeela)&lt;/a&gt;
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/scott_euser&quot; rel=&quot;nofollow&quot;&gt;Scott Euser (scott_euser)&lt;/a&gt;
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/szeidler&quot; rel=&quot;nofollow&quot;&gt;Stephan Zeidler (szeidler)&lt;/a&gt;
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/tylerni7-ant&quot; rel=&quot;nofollow&quot;&gt;Tyler Nighswander (tylerni7-ant)&lt;/a&gt;
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-fixed-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Fixed By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/alexpott&quot; rel=&quot;nofollow&quot;&gt;Alex Pott  (alexpott)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/benjifisher&quot; rel=&quot;nofollow&quot;&gt;Benji Fisher (benjifisher)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/catch&quot; rel=&quot;nofollow&quot;&gt; catch (catch)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/cilefen&quot; rel=&quot;nofollow&quot;&gt;cilefen  (cilefen)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/david-strauss&quot; rel=&quot;nofollow&quot;&gt;David Strauss (david strauss)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/larowlan&quot; rel=&quot;nofollow&quot;&gt;Lee Rowlands (larowlan)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/longwave&quot; rel=&quot;nofollow&quot;&gt;Dave Long (longwave)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/mcdruid&quot; rel=&quot;nofollow&quot;&gt;Drew Webber (mcdruid)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/mingsong&quot; rel=&quot;nofollow&quot;&gt;Mingsong  (mingsong)&lt;/a&gt;, provisional member of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/vijaycs85&quot; rel=&quot;nofollow&quot;&gt;Vijay Mani (vijaycs85)&lt;/a&gt;, provisional member of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/xjm&quot; rel=&quot;nofollow&quot;&gt;Jess  (xjm)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-coordinated-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Coordinated By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/alexpott&quot; rel=&quot;nofollow&quot;&gt;Alex Pott (alexpott)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/benjifisher&quot; rel=&quot;nofollow&quot;&gt;Benji Fisher (benjifisher)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/catch&quot; rel=&quot;nofollow&quot;&gt; catch (catch)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/cilefen&quot; rel=&quot;nofollow&quot;&gt;cilefen  (cilefen)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/david-strauss&quot; rel=&quot;nofollow&quot;&gt;David Strauss (david strauss)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/greggles&quot; rel=&quot;nofollow&quot;&gt;Greg Knaddison (greggles)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/larowlan&quot; rel=&quot;nofollow&quot;&gt;Lee Rowlands (larowlan)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/longwave&quot; rel=&quot;nofollow&quot;&gt;Dave Long (longwave)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/mcdruid&quot; rel=&quot;nofollow&quot;&gt;Drew Webber (mcdruid)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/poker10&quot; rel=&quot;nofollow&quot;&gt;Juraj Nemec (poker10)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/prudloff&quot; rel=&quot;nofollow&quot;&gt;Pierre Rudloff (prudloff)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/webchick&quot; rel=&quot;nofollow&quot;&gt;Angie Byron (webchick)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/xjm&quot; rel=&quot;nofollow&quot;&gt;Jess  (xjm)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</description>
+     <pubDate>Wed, 18 Nov 2026 17:43:11 +0000</pubDate>
+ <dc:creator>Drupal Security Team</dc:creator>
+ <guid isPermaLink="false">3636972 at https://www.drupal.org</guid>
+  </item>
+<item>
+    <title>Drupal core - Moderately critical - Third-party libraries - SA-CORE-2026-013</title>
+    <link>https://www.drupal.org/sa-core-2026-013</link>
+    <description>&lt;div class=&quot;field field-name-field-project field-type-entityreference field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Project:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;a href=&quot;/project/drupal&quot;&gt;Drupal core&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-project-machine-name field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Project machine name:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;code&gt;drupal&lt;/code&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-drupalorg-sa-date field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Date:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;2026-September-16&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-criticality field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Security risk:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;a href=&quot;/drupal-security-team/security-risk-levels-defined&quot; class=&quot;moderately-critical&quot; title=&quot;AC - Access complexity: Basic or routine (user must follow specific path)
+A - Authentication: User-level access (basic/commonly assigned permissions)
+CI - Confidentiality impact: Certain non-public data is released
+II - Integrity impact: Some data can be modified
+E - Exploit (Zero-day impact): Theoretical or white-hat (no public exploit code or documentation on development exists)
+TD - Target distribution: Default or common module configurations are exploitable, but a config change can disable the exploit&quot;&gt;&lt;strong&gt;Moderately critical&lt;/strong&gt; 13 ∕ 25 AC:Basic/A:User/CI:Some/II:Some/E:Theoretical/TD:Default&lt;/a&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-type field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Vulnerability:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;Third-party libraries&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-affected-versions field-type-text field-label-inline clearfix&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Affected versions:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&amp;gt;=10.5.0 &amp;lt;10.6.17 || &amp;gt;=11.0.0 &amp;lt;11.3.17 || &amp;gt;=11.4.0 &amp;lt;11.4.7&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-description field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Description:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;p&gt;The Drupal project uses the &lt;a href=&quot;https://github.com/ckeditor/ckeditor5&quot; rel=&quot;nofollow&quot;&gt;CKEditor&lt;/a&gt; library for WYSIWYG editing. CKEditor has released &lt;a href=&quot;https://github.com/ckeditor/ckeditor5/security/advisories/GHSA-rh54-vffm-5fvp&quot; rel=&quot;nofollow&quot;&gt;a security update that impacts Drupal&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Vulnerabilities are possible if Drupal is configured to use CKEditor for WYSIWYG editing. An attacker that can create or edit content (even without access to CKEditor themselves) may be able to exploit this Cross-Site Scripting (XSS) vulnerability to target users with access to the WYSIWYG CKEditor, including site admins with privileged access.&lt;/p&gt;
+&lt;p&gt;For more information, see CKEditor&#039;s security advisory:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/ckeditor/ckeditor5/security/advisories/GHSA-rh54-vffm-5fvp&quot; rel=&quot;nofollow&quot;&gt;High-severity Cross-site scripting (XSS) in the engine package&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-solution field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Solution:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;p&gt;Install the latest version:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Drupal 11&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you use Drupal 11.4.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/11.4.7&quot; rel=&quot;nofollow&quot;&gt;Drupal 11.4.7&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;If you use Drupal 11.3.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/11.3.17&quot; rel=&quot;nofollow&quot;&gt;Drupal 11.3.17&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Drupal 11.2.x and below are end-of-life and do not receive security coverage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;Drupal 10&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;If you use Drupal 10.6.x, update to &lt;a href=&quot;https://www.drupal.org/project/drupal/releases/10.6.17&quot; rel=&quot;nofollow&quot;&gt;Drupal 10.6.17&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;Drupal 10.5.x and below are end-of-life and do not receive security coverage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Note that &lt;a href=&quot;https://www.drupal.org/psa-2021-06-29&quot; rel=&quot;nofollow&quot;&gt;Drupal 8 &lt;/a&gt; and &lt;a href=&quot;https://www.drupal.org/psa-2023-11-01&quot; rel=&quot;nofollow&quot;&gt;Drupal 9&lt;/a&gt; have both reached end-of-life.&lt;/p&gt;
+&lt;h3&gt;Instructions for contributed modules&lt;/h3&gt;
+&lt;p&gt;Site owners should also review their site following the &lt;a href=&quot;https://www.drupal.org/psa-2011-002&quot; rel=&quot;nofollow&quot;&gt;protocol for managing external libraries and plugins&lt;/a&gt;, as contributed projects may use additional CKEditor plugins not packaged in Drupal core.&lt;/p&gt;
+&lt;p&gt;CKEditor has also released another CVE in today&#039;s release that does not affect Drupal, but may affect custom plugins or other usecases:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;https://github.com/ckeditor/ckeditor5/security/advisories/GHSA-v6mg-96c6-gmpq&quot; rel=&quot;nofollow&quot;&gt;Low-severity Cross-site scripting (XSS) in the engine package&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-reported-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Reported By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/reinmar&quot; rel=&quot;nofollow&quot;&gt;Piotrek Koszuliński (Reinmar)&lt;/a&gt;
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-fixed-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Fixed By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/catch&quot; rel=&quot;nofollow&quot;&gt; catch (catch)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/larowlan&quot; rel=&quot;nofollow&quot;&gt;Lee Rowlands (larowlan)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/mohit_aghera&quot; rel=&quot;nofollow&quot;&gt;Mohit Aghera (mohit_aghera)&lt;/a&gt;, provisional member of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/xjm&quot; rel=&quot;nofollow&quot;&gt;Jess  (xjm)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;field field-name-field-sa-coordinated-by field-type-text-long field-label-above&quot;&gt;&lt;div class=&quot;field-label&quot;&gt;Coordinated By:&amp;nbsp;&lt;/div&gt;&lt;div class=&quot;field-items&quot;&gt;&lt;div class=&quot;field-item even&quot;&gt;&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;/u/bramdriesen&quot; rel=&quot;nofollow&quot;&gt;Bram Driesen (bramdriesen)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/catch&quot; rel=&quot;nofollow&quot;&gt; catch (catch)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/greggles&quot; rel=&quot;nofollow&quot;&gt;Greg Knaddison (greggles)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/larowlan&quot; rel=&quot;nofollow&quot;&gt;Lee Rowlands (larowlan)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/longwave&quot; rel=&quot;nofollow&quot;&gt;Dave Long (longwave)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;li&gt;&lt;a href=&quot;/u/xjm&quot; rel=&quot;nofollow&quot;&gt;Jess  (xjm)&lt;/a&gt; of the Drupal Security Team
+&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</description>
+     <pubDate>Wed, 16 Sep 2026 16:21:04 +0000</pubDate>
+ <dc:creator>Drupal Security Team</dc:creator>
+ <guid isPermaLink="false">3623427 at https://www.drupal.org</guid>
+  </item>
+  </channel>
+</rss>

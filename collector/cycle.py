@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import anthropic
 
 from collector import (checks, curators, cve_lines, cvelist, discord, distros, github, hn, kev, kisa, model, news, nvd, osssec,
-                       same_event, sheets, summaries, summary_input)
+                       same_event, sheets, summaries, summary_input, vendors)
 from collector.logfile import CycleLine
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
@@ -148,7 +148,7 @@ def run_cycle(store, http_get, now, collector_id, clock=time.monotonic, **option
 
 
 def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", github_token=None,
-          curator_feeds=(), news_feeds=(), kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False,
+          curator_feeds=(), news_feeds=(), vendor_feeds=None, kisa_feed=None, claude=None, notify=None, ping=None, distro_table=False,
           review=False, clock=time.monotonic, line=None):
     """claude: an anthropic.Anthropic client, or None for Briefs only. notify: discord.make_notifier's function, or None.
     ping: indexnow.make_pinger's function, or None. distro_table: look up the Distribution table (step 10); off by
@@ -192,6 +192,7 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
         line.skip("github")
         repos = []
     articles, checkpoints["news"] = news.fetch(checkpoints.get("news"), http_get, news_feeds, stamp)
+    advisories, checkpoints["vendors"] = vendors.fetch(checkpoints.get("vendors"), http_get, vendor_feeds or {}, stamp)
 
     for story in stories + articles:
         # A story with no CVE in its title may still be about a known Incident; its linked page says which.
@@ -203,7 +204,7 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
 
     line.lap("read", "link")
     # Join-only repos go last, so they can join Incidents that started this cycle.
-    for group in cvelist.mention_groups(records) + posts + stories + articles + repos:
+    for group in cvelist.mention_groups(records) + advisories + posts + stories + articles + repos:
         changed |= link(incidents, group, stamp)
     changed |= group_releases(incidents)
     changed |= refetch_pages(incidents, http_get, now)
