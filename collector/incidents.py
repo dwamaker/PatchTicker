@@ -679,8 +679,10 @@ def page_keys(page, page_url):
         parser.feed(page)
     outside = [h for h, _ in parser.links if h.lower().startswith(("http://", "https://")) and url_key(h).split("/", 1)[0] != own]
     text = " ".join(parser.text + outside) if "<" in page[:2000] else page
-    return {"cves": cves, "urls": sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS],
-            "title": " ".join(parser.title.split())[:300], "many": [c for c in cves if len(re.findall(re.escape(c), text, re.I)) > 1]}
+    cited = sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]
+    ids = cves + [m[1] for m in map(CITED_ADVISORY.fullmatch, cited) if m]  # a GHSA id for cite_advisory
+    return {"cves": cves, "urls": cited,
+            "title": " ".join(parser.title.split())[:300], "many": [c for c in ids if len(re.findall(re.escape(c), text, re.I)) > 1]}
 
 
 class _Links(html.parser.HTMLParser):
@@ -787,15 +789,46 @@ def rejoin(incidents, since):
     first; return the months changed. Citations older than `since` (a stamp) are dropped."""
     changed = set()
     for story in [i for i in incidents if i.get("cites")]:
-        if story["first_seen"] < since or story["cves"]:
-            del story["cites"]
-            changed.add(month_of(story["first_seen"]))
-            continue
-        hits = cited_by([i for i in incidents if i is not story], story["cites"], [m.get("title") for m in story["mentions"]])
+        old = story["first_seen"] < since or story["cves"]
+        hits = [] if old else cited_by([i for i in incidents if i is not story], story["cites"], [m.get("title") for m in story["mentions"]])
         if hits:
             fold(incidents, hits[0], story)
             changed |= {month_of(story["first_seen"]), month_of(hits[0]["first_seen"])}
+        # After the fold check: the advisory's address on the story first would make cited_by count its page twice.
+        target = hits[0] if hits else story
+        if cite_advisory(target, story["cites"]):
+            changed.add(month_of(target["first_seen"]))
+        if old:
+            del story["cites"]
+            changed.add(month_of(story["first_seen"]))
     return changed
+
+
+# A GitHub security advisory, by its url_key: a repository's own (github.com/ruby/ruby/security/advisories/GHSA-...) or
+# GitHub's database entry (github.com/advisories/GHSA-...).
+CITED_ADVISORY = re.compile(r"github\.com/(?:[\w.-]+/[\w.-]+/security/)?advisories/(GHSA(?:-[0-9a-z]{4}){3})", re.I)
+
+
+def cite_advisory(incident, cites):
+    """Make the one official advisory a story's page cites a Mention of the Incident (11-19, Ruby2Shell: the write-up's
+    narrower wording reached the Summary while the GHSA it linked was never read), so the Summary reads it, the Board
+    lists it and it may become the Lead. Only when the page cites exactly one (a round-up linking several says nothing
+    about which is this one's) and is about it: its title names the GHSA id, or its text names it besides the link
+    (cites["many"]; 11-19: a blog on AI security linked an old OpenClaw GHSA once, Ruby2Shell's page named its own ten
+    times). Another Incident may hold it too (Ruby2Shell's GHSA was among CVE-2026-132825's record links, the same flaw);
+    the shared address then lets that record's next update fold the story in (link, matches). True when added."""
+    # shortcut: anyone may publish a security advisory on a repository they own, so a submitted page can bring text the
+    # Summary trusts (summary_input.trusted); check the repository against the Incident's product if that is abused.
+    hits = [m for m in map(CITED_ADVISORY.fullmatch, cites.get("urls", [])) if m]
+    if len(hits) != 1 or hits[0][0] in incident["urls"]:
+        return False
+    key, ghsa = hits[0][0], hits[0][1].lower()
+    if ghsa not in (cites.get("title") or "").lower() and ghsa not in {i.lower() for i in cites.get("many", [])}:
+        return False
+    incident["mentions"].append({"kind": "advisory", "url": f"https://{key}"})
+    incident["urls"] = sorted(set(incident["urls"]) | {key})
+    incident["brief"]["lead"] = lead(incident["mentions"])
+    return True
 
 
 def matches(incident, proto):

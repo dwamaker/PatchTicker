@@ -353,6 +353,58 @@ class StoryPageTest(unittest.TestCase):
         rejoin(self.incidents, "2026-11-09T00:00:00Z")
         self.assertNotIn("cites", self.incidents[2])
 
+    GHSA = "https://github.com/ruby/ruby/security/advisories/GHSA-34m4-m9fh-gqp5"
+
+    def ruby2shell(self, page, n=0):
+        url = f"https://blog{n}.example/post" if n else "https://verialabs.com/ruby2shell/"
+        self.link(self.incidents, self.story(page, url, 50556287 + n), "2026-11-19T05:20:02Z")
+        return self.incidents[-1]
+
+    def test_the_one_advisory_a_page_names_becomes_a_mention_and_the_lead(self):
+        # Ruby2Shell, 11-19: the write-up linked the GHSA, which the Summary never read.
+        story = self.ruby2shell(f'Ruby2Shell, GHSA-34m4-m9fh-gqp5. <a href="{self.GHSA}">advisory</a>')
+        self.assertEqual(self.rejoin(), {"2026-11"})
+        self.assertIn({"kind": "advisory", "url": self.GHSA}, story["mentions"])
+        self.assertIn("github.com/ruby/ruby/security/advisories/GHSA-34m4-m9fh-gqp5", story["urls"])
+        self.assertEqual(story["brief"]["lead"], self.GHSA)
+        self.assertEqual(self.rejoin(), set())  # no second copy
+        from collector.incidents import rejoin
+        rejoin(self.incidents, "2026-11-27T00:00:00Z")  # a week on: the Citations go, the Mention stays
+        self.assertNotIn("cites", story)
+        self.assertEqual([m["url"] for m in story["mentions"]].count(self.GHSA), 1)
+
+    def test_an_advisory_named_in_the_title_counts_and_one_only_linked_or_among_several_does_not(self):
+        story = self.ruby2shell(f'<title>Ruby2Shell (GHSA-34m4-m9fh-gqp5)</title><a href="{self.GHSA}">advisory</a>')
+        self.rejoin()
+        self.assertEqual(story["brief"]["lead"], self.GHSA)
+        # A blog on AI security linked an old OpenClaw GHSA once (11-19): a passing link, not its subject.
+        once = self.ruby2shell(f'<a href="{self.GHSA}">an example</a>', 1)
+        two = self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 GHSA-aaaa-bbbb-cccc <a href="{self.GHSA}">a</a>'
+                               ' <a href="https://github.com/advisories/GHSA-aaaa-bbbb-cccc">b</a>', 2)
+        self.rejoin()
+        for s in (once, two):
+            self.assertEqual([m["kind"] for m in s["mentions"]], ["discussion", "writeup"])
+
+    def test_a_cited_advisory_is_read_for_the_summary_and_trusted(self):
+        from collector.summary_input import summary_input, trusted
+        story = self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 <a href="{self.GHSA}">advisory</a>')
+        self.rejoin()
+        pages = {self.GHSA: b"<html><body><p>Ruby has a one-byte heap-based buffer overflow in the case conversion of strings.</p></body></html>",
+                 "https://verialabs.com/ruby2shell/": b"<html><body><p>Application code that upcases strings.</p></body></html>"}
+        text = summary_input(story, lambda u: pages[u] if u in pages else (_ for _ in ()).throw(OSError(u)))
+        self.assertIn(f"- advisory {self.GHSA}", text)
+        self.assertLess(text.index(f"Text of {self.GHSA}"), text.index("Text of https://verialabs.com/ruby2shell/"))
+        self.assertIn("case conversion", trusted(text)[0])
+
+    def test_a_record_naming_the_cited_advisory_later_folds_the_story_in(self):
+        # CVE-2026-132825's record linked Ruby2Shell's GHSA: the same flaw.
+        story = self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 <a href="{self.GHSA}">advisory</a>')
+        self.rejoin()
+        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-132825"}],
+                                   "cves": ["CVE-2026-132825"], "urls": [self.GHSA], "text": "x"}, "2026-11-19T06:00:00Z")
+        self.assertEqual(story["cves"], ["CVE-2026-132825"])
+        self.assertEqual(len(self.incidents), 3)
+
     def test_tagged_references_in_cna_and_adp_become_mentions(self):
         from collector import cvelist
         record = {"cveMetadata": {"cveId": "CVE-2026-123158", "datePublished": "2026-11-05T15:46:00Z"},
