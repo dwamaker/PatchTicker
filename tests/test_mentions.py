@@ -397,18 +397,36 @@ class StoryPageTest(unittest.TestCase):
         self.assertLess(text.index(f"Text of {self.GHSA}"), text.index("Text of https://verialabs.com/ruby2shell/"))
         self.assertIn("case conversion", trusted(text)[0])
 
-    def test_a_record_naming_the_cited_advisory_folds_the_story_in_on_its_next_update(self):
-        # 11-19: CVE-2026-132825's row held Ruby2Shell's GHSA among its record's links only (no Mention), the same flaw.
+    def test_a_story_folds_into_the_one_incident_whose_record_links_its_cited_advisory(self):
+        # 11-19/20: CVE-2026-132825's row held Ruby2Shell's GHSA among its record's links only (no Mention), the same
+        # flaw; both stood on the Board as Highlights.
         record = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-132825"}],
                   "cves": ["CVE-2026-132825"], "urls": [self.GHSA], "text": "x"}
         self.link(self.incidents, record, "2026-11-19T00:00:02Z")
-        self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 <a href="{self.GHSA}">advisory</a>')
-        self.rejoin()
-        self.assertEqual(len(self.incidents), 4)  # cited_by reads Mentions only: the story stands alone
-        self.link(self.incidents, record, "2026-11-19T06:00:00Z")
+        self.ruby2shell('<title>Ruby2Shell (GHSA-34m4-m9fh-gqp5) | Veria Labs</title>'
+                        f'<a href="{self.GHSA}">advisory</a> <a href="https://github.com/ruby/ruby/commit/d582f8f">fix</a>')
+        self.assertEqual(self.rejoin(), {"2026-11"})
         row = self.incidents[2]
-        self.assertEqual((len(self.incidents), row["cves"], row["brief"]["lead"]), (3, ["CVE-2026-132825"], self.GHSA))
+        self.assertEqual((len(self.incidents), row["id"], row["brief"]["lead"]), (3, "CVE-2026-132825", self.GHSA))
+        self.assertIn({"kind": "advisory", "url": self.GHSA}, row["mentions"])
         self.assertIn("https://verialabs.com/ruby2shell/", [m["url"] for m in row["mentions"]])
+
+    def test_a_story_whose_advisory_two_other_incidents_hold_stands_alone(self):
+        for cve in ("CVE-2026-132825", "CVE-2026-132826"):
+            self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": f"https://www.cve.org/CVERecord?id={cve}"}],
+                                       "cves": [cve], "urls": [self.GHSA], "text": "x"}, "2026-11-19T00:00:02Z")
+        story = self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 <a href="{self.GHSA}">advisory</a>')
+        self.rejoin()
+        self.assertEqual((len(self.incidents), story["brief"]["lead"]), (5, self.GHSA))
+
+    def test_the_pages_own_links_outrank_its_images_under_the_cap(self):
+        # BleepingComputer's Drupal story (11-19): 97 outside keys, the first 50 in sort order images and ads.
+        from collector.incidents import MAX_CITED_LINKS, page_keys
+        page = "".join(f'<img src="https://a{n:03}.example/i.jpg">' for n in range(MAX_CITED_LINKS + 5))
+        page += '<a href="https://www.drupal.org/sa-core-2026-017">advisory</a>'
+        keys = page_keys(page, "https://www.bleepingcomputer.com/news/security/drupal/")
+        self.assertIn("drupal.org/sa-core-2026-017", keys["urls"])
+        self.assertEqual((len(keys["urls"]), keys["urls"]), (MAX_CITED_LINKS, sorted(keys["urls"])))
 
     def test_tagged_references_in_cna_and_adp_become_mentions(self):
         from collector import cvelist

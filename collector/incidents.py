@@ -702,7 +702,7 @@ def page_keys(page, page_url):
     own site are its navigation, not citations. Also the page's title and the cited CVEs named more than once in its
     text and its links to other sites (many: SecurityWeek's N-central story names the Axis CVE once and links its NVD
     page; fortirix's Optimjack post names Java4Shell once), for cited_by, and the cited GHSA ids it names outside a link,
-    for cite_advisory."""
+    for cited_advisory."""
     own = url_key(page_url).split("/", 1)[0]
     urls = {url_key(u) for u in urls_in(page)}
     cves = page_cves(page, page_url)
@@ -711,7 +711,11 @@ def page_keys(page, page_url):
         parser.feed(page)
     outside = [h for h, _ in parser.links if h.lower().startswith(("http://", "https://")) and url_key(h).split("/", 1)[0] != own]
     text = " ".join(parser.text + outside) if "<" in page[:2000] else page
-    cited = sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]
+    # The page's own links first, then the addresses in its markup (images, styles, scripts): 11-19, BleepingComputer's
+    # Drupal story held 97 such keys, and the 50 first in sort order were its images and ads, never its link to
+    # drupal.org/sa-core-2026-017. Kept sorted.
+    anchors = {url_key(h) for h in outside}
+    cited = sorted(sorted((u for u in urls if u.split("/", 1)[0] != own), key=lambda u: (u not in anchors, u))[:MAX_CITED_LINKS])
     # A cited GHSA id the page names outside its links (a link's own text or address is no more than the link).
     prose = " ".join(parser.prose) if "<" in page[:2000] else URL_RE.sub(" ", page)
     named = [m[1] for m in map(CITED_ADVISORY.fullmatch, cited) if m and re.search(re.escape(m[1]), prose, re.I)]
@@ -828,12 +832,22 @@ def rejoin(incidents, since):
     for story in [i for i in incidents if i.get("cites")]:
         old = story["first_seen"] < since or story["cves"]
         hits = [] if old else cited_by([i for i in incidents if i is not story], story["cites"], [m.get("title") for m in story["mentions"]])
+        # After the fold check: the advisory's address on the story first would make cited_by count its page twice.
+        key = None if hits else cited_advisory(story["cites"])
+        if key and key not in story["urls"]:
+            story["mentions"].append({"kind": "advisory", "url": f"https://{key}"})
+            story["urls"] = sorted(set(story["urls"]) | {key})
+            story["brief"]["lead"] = lead(story["mentions"])
+            changed.add(month_of(story["first_seen"]))
+        if key and not old:
+            # The one other Incident that holds the advisory among its own links is the story's (11-19: CVE-2026-132825's
+            # record linked Ruby2Shell's GHSA, which cited_by never sees: it reads Mention pages only). The story's
+            # advisory Mention travels with the fold, so that row's Summary reads it too.
+            holders = [i for i in incidents if i is not story and key in i["urls"]]
+            hits = holders if len(holders) == 1 else []
         if hits:
             fold(incidents, hits[0], story)
             changed |= {month_of(story["first_seen"]), month_of(hits[0]["first_seen"])}
-        # After the fold check: the advisory's address on the story first would make cited_by count its page twice.
-        if not hits and cite_advisory(story, story["cites"]):
-            changed.add(month_of(story["first_seen"]))
         if old:
             del story["cites"]
             changed.add(month_of(story["first_seen"]))
@@ -845,26 +859,21 @@ def rejoin(incidents, since):
 CITED_ADVISORY = re.compile(r"github\.com/(?:[\w.-]+/[\w.-]+/security/)?advisories/(GHSA(?:-[0-9a-z]{4}){3})", re.I)
 
 
-def cite_advisory(incident, cites):
-    """Make the one official advisory a story's page cites a Mention of the Incident (11-19, Ruby2Shell: the write-up's
-    narrower wording reached the Summary while the GHSA it linked was never read), so the Summary reads it, the Board
-    lists it and it may become the Lead. Only when the page cites exactly one (a round-up linking several says nothing
-    about which is this one's) and is about it: its title names the GHSA id, or its text outside links does
-    (cites["many"]; 11-19: a blog on AI security linked an old OpenClaw GHSA once, Ruby2Shell's page named its own ten
-    times). Another Incident may hold it too (Ruby2Shell's GHSA was among CVE-2026-132825's record links, the same flaw);
-    the shared address then lets that record's next update fold the story in (link, matches). True when added."""
+def cited_advisory(cites):
+    """The url_key of the one official advisory a story's page cites, which rejoin makes a Mention of the story (11-19,
+    Ruby2Shell: the write-up's narrower wording reached the Summary while the GHSA it linked was never read), so the
+    Summary reads it, the Board lists it and it may become the Lead; or None. Only when the page cites exactly one (a
+    round-up linking several says nothing about which is this one's) and is about it: its title names the GHSA id, or
+    its text outside links does (cites["many"]; 11-19: a blog on AI security linked an old OpenClaw GHSA once,
+    Ruby2Shell's page named its own ten times)."""
     # shortcut: anyone may publish a security advisory on a repository they own, so a submitted page can bring text the
     # Summary trusts (summary_input.trusted); check the repository against the Incident's product if that is abused.
     hits = [m for m in map(CITED_ADVISORY.fullmatch, cites.get("urls", [])) if m]
-    if len(hits) != 1 or hits[0][0] in incident["urls"]:
-        return False
-    key, ghsa = hits[0][0], hits[0][1].lower()
-    if ghsa not in (cites.get("title") or "").lower() and ghsa not in {i.lower() for i in cites.get("many", [])}:
-        return False
-    incident["mentions"].append({"kind": "advisory", "url": f"https://{key}"})
-    incident["urls"] = sorted(set(incident["urls"]) | {key})
-    incident["brief"]["lead"] = lead(incident["mentions"])
-    return True
+    if len(hits) != 1:
+        return None
+    ghsa = hits[0][1].lower()
+    named = ghsa in (cites.get("title") or "").lower() or ghsa in {i.lower() for i in cites.get("many", [])}
+    return hits[0][0] if named else None
 
 
 def matches(incident, proto):
