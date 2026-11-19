@@ -709,7 +709,7 @@ export const WORDS = {
     command: '이 명령으로 업데이트하세요:', commandFor: (w) => `${w} 이 명령으로 업데이트하세요:`, devices: '이 기기들을 지금 업데이트하세요!',
     version: (v, p) => `${p ? `${p} ` : ''}${v} 이상으로 업데이트하세요.`, fixedIn: (v) => `${v} 버전에서 고쳐졌습니다.`,
     fixesIntro: '내 제품에 맞는 버전 이상으로 업데이트하세요:', stopgap: '당장 못 하면:',
-    fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, foldLess: '접기',
+    fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, fixesFold: (n) => `제품별 수정 버전 보기 (${n}개)`, foldLess: '접기',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '공격 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
     unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', conditions: '해당 조건', published: '처음 게시',
@@ -731,7 +731,7 @@ export const WORDS = {
     command: 'Run this to update:', commandFor: (w) => `${w}, run this to update:`, devices: 'Update these devices now!',
     version: (v, p) => `Update ${p ? `${p} ` : ''}to ${v} or later.`, fixedIn: (v) => `Fixed in version ${v}.`,
     fixesIntro: 'Update to at least the version for your product:', stopgap: "Can't update yet?",
-    fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, foldLess: 'Show less',
+    fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, fixesFold: (n) => `Fixed version by product (${n})`, foldLess: 'Show less',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Attacked', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
     unrated: 'CVSS score pending', unratedWhy: 'Score pending', conditions: 'Affected when', published: 'First published',
@@ -753,7 +753,7 @@ export const WORDS = {
     command: 'このコマンドで更新してください:', commandFor: (w) => `${w}、このコマンドで更新してください:`, devices: 'これらの機器を今すぐ更新してください！',
     version: (v, p) => `${p ? `${p} を` : ''}${v} 以降に更新してください。`, fixedIn: (v) => `バージョン ${v} で修正されました。`,
     fixesIntro: 'お使いの製品に合ったバージョン以降に更新してください:', stopgap: 'すぐに更新できない場合:',
-    fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, foldLess: '閉じる',
+    fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, fixesFold: (n) => `製品別の修正バージョンを表示 (${n})`, foldLess: '閉じる',
     setting: '設定ファイルにこの行を追加してください:', settingIn: (f) => `設定ファイル ${f} にこの行を追加してください:`,
     levels: { highest: '緊急', high: '警戒', pending: 'スコア待ち', notice: '参考' }, kevReason: '攻撃発生', kevListed: 'CISA KEV 掲載', attackSource: '攻撃の報告:', poc: '攻撃コード公開済み',
     unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', conditions: '該当する条件', published: '初出',
@@ -785,6 +785,9 @@ export const fixTable = (s) => {
   const rows = usableFixes(s || {});
   return rows.length >= 4 ? { rows, more: Math.max(0, rows.length - FIXES_SHOWN) } : null;
 };
+// Critique P2 (11-19): on the Board a table past FIXES_SHOWN rows folds whole, and the Easy panel leads with the
+// Summary's one plain action over it ("Windows와 Office를 … 설치하세요."); a shorter table stays open under the intro line.
+export const fixesLead = (s, lang) => (fixTable(s)?.more && s[lang]?.easy_action) || WORDS[lang].fixesIntro;
 
 // 틀린 내용 알리기: a new issue in the public repository with the Incident filled in (ticket 09); link is where the visitor
 // saw it (the Board's #i= address or its Incident page). Korean then English in both languages, so anyone can follow it (owner).
