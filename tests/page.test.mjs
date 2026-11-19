@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { slug } from '../web/board.mjs';
-import { pageResponse } from '../edge/page.mjs';
+import { note, pageResponse } from '../edge/page.mjs';
 import { cached, readJson } from '../edge/shared.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');
@@ -77,6 +77,29 @@ test('a CVE record the CVE list already links is not listed again under Sources'
   const sources = html.split('id="s-mentions"')[1];
   assert.doesNotMatch(sources, /cve\.org\/CVERecord/); // already under CVE 번호
   assert.match(sources, /CVE 기록: <a href="https:\/\/nvd\.nist\.gov/); // a record elsewhere stays
+});
+
+test('three or more untitled links of one kind are named by the last part of their address, a titled one keeps its title', async () => {
+  const at = (n) => `https://news.typo3.com/article/typo3-core-sa-2026-02${n}`;
+  const mentions = [{ kind: 'advisory', url: at(5) }, { kind: 'advisory', url: at(6) }, { kind: 'advisory', url: at(7), title: 'TYPO3-CORE-SA-2026-027' }];
+  const sources = (await (await page({ ...SSHOLE, mentions })).text()).split('id="s-mentions"')[1];
+  assert.match(sources, />typo3-core-sa-2026-025<span/);
+  assert.match(sources, />TYPO3-CORE-SA-2026-027<span/);
+  assert.doesNotMatch(sources, />news\.typo3\.com</);
+  assert.match(sources, /<details class="more"><summary>보안 공지 3건: news\.typo3\.com<\/summary><ul class="sources">/); // folded past two (owner, 11-19)
+  const two = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
+  assert.match(two, />news\.typo3\.com</); // two are told apart well enough by their site
+});
+
+test('the Lead never folds: when its kind folds it keeps a line of its own ahead of the rest (owner, 11-19)', async () => {
+  const lead = 'https://www.openssh.com/txt/release-9.9p2';
+  const mentions = [lead, 'https://a.example/1', 'https://b.example/2', 'https://c.example/3'].map((url) => ({ kind: 'advisory', url }));
+  const sources = (await (await page({ ...SSHOLE, mentions })).text()).split('id="s-mentions"')[1];
+  assert.match(sources, /<ul class="sources"><li>보안 공지: <a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"/);
+  assert.match(sources, /<summary>보안 공지 3건: a\.example, b\.example 외<\/summary>/);
+  assert.equal(sources.split('release-9.9p2').length, 2); // once, outside the fold
+  const few = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
+  assert.match(few, /보안 공지: <a href="https:\/\/www\.openssh\.com[^·]*· <a href="https:\/\/a\.example/); // unfolded: one line as before
 });
 
 test('a one-CVE Incident whose only Mention is its CVE record still shows Sources', async () => {
@@ -498,13 +521,17 @@ const withOthers = (doc, lang, others) => pageResponse(bucket({ 'pages/CVE-2026-
 test('the page shows the Public date among the times and links the product\'s other Incidents under the Mitigation', async () => {
   const doc = { ...SSHOLE, public_date: '2026-10-30' };
   const ko = await (await withOthers(doc, 'ko', OTHERS)).text();
+  // Section titles are headings, so heading navigation reaches 요약, 대처법 and the rest (audit 11-19); the page's one h1 stays.
+  assert.match(ko, /<section aria-labelledby="s-todo"><h2 class="label" id="s-todo">/);
+  assert.doesNotMatch(ko, /<p class="label"/);
+  assert.equal(ko.match(/<h1\b/g).length, 1);
   const times = ko.slice(ko.indexOf('id="s-times"'));
-  assert.match(times, /<p>공개일 2026-10-30<\/p>/);
+  assert.match(times, /<dt>공개일<\/dt><dd>2026-10-30<\/dd>/);
   const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));
   // 5 counted, the Incident itself among them (published 11-05, inside the window): 4 others.
   assert.match(todo, /<p class="others"><a href="\/#p=openbsd%3Aopenssh">최근 30일 동안 이 제품의 다른 사건 4건<\/a><\/p><\/section>/);
   const en = await (await withOthers(doc, 'en', OTHERS)).text();
-  assert.match(en, /<p>Public date 2026-10-30<\/p>/);
+  assert.match(en, /<dt>Public date<\/dt><dd>2026-10-30<\/dd>/);
   assert.match(en, />4 other Incidents of this product in the last 30 days<\/a>/);
 });
 
@@ -620,4 +647,20 @@ test('readJson gives the Japanese twins only to a Japanese reader: Korean, Engli
   for (const lang of ['ko', 'en', undefined]) assert.equal('ja' in (await readJson(bucket, 'k', lang)).summary, false);
   assert.equal((await readJson(bucket, 'k', 'ja')).summary.ja.title, 'A');
   assert.equal(await readJson({ get: async () => null }, 'k', 'ja'), null);
+});
+
+// Owner, 11-19: a note in place of a page has Astryx EmptyState's anatomy: an icon, its first sentence the title, the
+// rest the description, then the way on.
+test('a note page: an icon, the first sentence as the title, the rest as its description, then the links', async () => {
+  const html = await note('ko', 503, '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', ['<a href="/">현황판</a>']).text();
+  assert.match(html, /<div class="gone"><svg class="gone-icon"[^>]*aria-hidden="true">.*?<\/svg><h1>지금은 사건 페이지를 불러올 수 없습니다\.<\/h1><p>잠시 뒤 다시 시도하세요\.<\/p><nav class="links"><a href="\/">현황판<\/a><\/nav><\/div>/s);
+  const one = await note('en', 404, 'There is no Incident page at this address.', []).text();
+  assert.match(one, /<h1>There is no Incident page at this address\.<\/h1><nav class="links"><\/nav>/);
+});
+
+test('a note splits at a sentence end only, never at a dot inside a word', async () => {
+  const html = await note('en', 503, 'Node.js 1.2 pages cannot load. Try again.', []).text();
+  assert.match(html, /<h1>Node\.js 1\.2 pages cannot load\.<\/h1><p>Try again\.<\/p>/);
+  const ja = await note('ja', 503, '読み込めません。しばらくしてからお試しください。', []).text();
+  assert.match(ja, /<h1>読み込めません。<\/h1><p>しばらくしてからお試しください。<\/p>/);
 });

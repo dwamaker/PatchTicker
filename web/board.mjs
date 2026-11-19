@@ -34,6 +34,22 @@ export function filterToQuery({ picks, query, risk = [], kev = false, from = '',
 }
 
 export const SORTS = ['new', 'risk', 'cvss'];
+
+// A listbox key (정렬's menu, owner 11-19): the option index it moves to from `at`, or -1 to leave the key alone. The
+// arrows stop at the ends, Home and End jump; `typed` (the characters typed in a short burst) jumps to the next label
+// that starts with it, a single character from the option after the current one, so pressing it again cycles.
+export function listboxStep(key, at, labels, typed = '') {
+  const last = labels.length - 1;
+  const moved = { ArrowDown: Math.min(at + 1, last), ArrowUp: Math.max(at - 1, 0), Home: 0, End: last }[key];
+  if (moved !== undefined) return moved;
+  if (!typed) return -1;
+  const from = typed.length === 1 ? at + 1 : at;
+  for (let n = 0; n < labels.length; n++) {
+    const i = (from + n + labels.length) % labels.length;
+    if (labels[i].toLowerCase().startsWith(typed.toLowerCase())) return i;
+  }
+  return -1;
+}
 export const LINK_KINDS = ['advisory', 'repo'];
 
 // The risk filter's choices, in risk order: the three risk levels, and Score pending above the lowest (N3, owner 11-15).
@@ -104,6 +120,64 @@ export function matchProducts(products, text, label = (p) => p.name) {
   const whole = products.filter((p) => low(p).includes(want));
   return whole.length ? whole : products.filter((p) => low(p).some((n) => n.includes(want)));
 }
+
+// The picker's entries (owner, 11-19: ".NET 10.0 installed on Linux / on Mac OS / on Windows" stood as three suggestions,
+// each repeated for 8.0, 9.0 and 11.0): one per Product as a person names it. A CVE record's platform tail ("installed on
+// …", "for Windows", "for RHEL 9", "for x64-based Systems (CU9)") drops out of the name, from a closed list of platforms
+// only, so "Telerik UI for Blazor", "Snowflake Connector for .NET" and "Firefox for iOS" stay Products of their own.
+// Entries of one vendor whose names then agree (productKey) are one entry holding every id; a Summary-named id (name:)
+// joins the one vendor entry of its name, if there is exactly one. Ids stay as stored, so links, Incident pages and the
+// filter do not change: picking an entry picks all its ids. counts: board/others.json counts, summed per entry.
+const PLATFORM = /\s+(?:installed\s+on\s+.+|for\s+(?:(?:microsoft\s+)?windows|linux|mac\s?os(?:\s?x)?|os\s?x|rhel\s*\d+|aix|solaris|hp-ux|(?:x64|x86|arm64|32-bit|64-bit)[-\s]based\s+systems)(?=\s|$|\().*)$/iu;
+// A servicing branch is the same Product too ("SQL Server 2019 (GDR)", "… 2025 CU10"), and "Windows 10 Version 1607" is
+// "Windows 10 1607".
+const SERVICING = /\s+(?:\((?:gdr|cu\s?\d+)\)|cu\s?\d+)$/iu;
+export const familyName = (name) => name.replace(PLATFORM, '').replace(SERVICING, '').trim() || name;
+const familyKey = (name) => productKey(name.replace(/\bversion\s+(?=\d)/giu, ''));
+export function pickerEntries(products, counts = {}) {
+  const groups = new Map();
+  const bySuffix = new Map(); // family key → the non-OS group keys ending in it, so a named Product looks up, not scans
+  const add = (key, p, name) => {
+    let entry = groups.get(key);
+    if (!entry) {
+      groups.set(key, entry = { key, name, ids: [], n: 0, os: p.id.startsWith('os:') });
+      if (!key.startsWith('os:')) {
+        const suffix = key.slice(key.indexOf('|') + 1);
+        bySuffix.set(suffix, [...(bySuffix.get(suffix) || []), key]);
+      }
+    }
+    entry.ids.push(p.id);
+    entry.n += counts[p.id] || 0;
+    if (name.length > entry.name.length) entry.name = name; // "Adobe Photoshop" over "Photoshop"
+  };
+  const named = [];
+  for (const p of products) {
+    const name = familyName(p.name);
+    if (p.id.startsWith('os:')) add(p.id, p, p.name);
+    else if (p.id.startsWith('name:')) named.push([p, name]);
+    else add(`${p.id.split(':')[0]}|${familyKey(name)}`, p, name);
+  }
+  for (const [p, name] of named) {
+    const own = familyKey(name);
+    const vendors = bySuffix.get(own) || [];
+    add(vendors.length === 1 ? vendors[0] : `name|${own}`, p, name);
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
+}
+
+// The suggestions for what was typed, ranked as Astryx PowerSearch ranks its field search (maxSearchResults, 10): a whole
+// name first, then names that start with it, then a word inside that starts with it, then any other place; more Incidents
+// first among equals. A Korean word the search knows as English names (크롬: Chrome) suggests those names too.
+export function rankEntries(entries, text, label = (e) => e.name, limit = 10) {
+  const want = text.trim().toLocaleLowerCase();
+  if (!want) return [];
+  const forms = [want, ...(SEARCH_ALIASES[want] || []).map((n) => n.toLocaleLowerCase())];
+  const rank = (name) => Math.min(...forms.map((f) => (name === f ? 0 : name.startsWith(f) ? 1
+    : hasWordStart(name, f) ? 2 : name.includes(f) ? 3 : 9)));
+  return entries.map((e) => [e, rank(label(e).toLocaleLowerCase())]).filter(([, r]) => r < 9)
+    .sort(([a, x], [b, y]) => x - y || b.n - a.n || label(a).localeCompare(label(b))).slice(0, limit).map(([e]) => e);
+}
+const hasWordStart = (name, f) => name.split(/[^\p{L}\p{N}.]+/u).some((w) => w.startsWith(f));
 
 // A refresh while the page is open: the fresh week replaces what it holds (a Summary or exploited flag may have
 // arrived), Incidents the page already had beyond it (older months) stay, and only ids it lacked are new.
@@ -693,6 +767,18 @@ export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[
 
 // Mentions are listed by kind in this order (the Lead order), on the Board and the Incident page alike.
 export const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
+// The Mentions a source list shows, by kind in that order (kinds not in it after, as met), each with its sites in order
+// of appearance (www. dropped). Owner, 11-19: a kind with more than MENTIONS_SHOWN links folds into one line ("분석 글
+// 15건: aikido.dev, hadrian.io 외"), whatever its sites; the Lead has its own line above the list and never folds.
+export const MENTIONS_SHOWN = 2;
+const siteOf = (url) => (URL.canParse(url) ? new URL(url).host.replace(/^www\./, '') : url);
+export function mentionGroups(mentions) {
+  const kinds = [...new Set([...MENTION_ORDER, ...mentions.map((m) => m.kind)])];
+  return kinds.map((kind) => {
+    const list = mentions.filter((m) => m.kind === kind);
+    return { kind, list, sites: [...new Set(list.map((m) => siteOf(m.url)))], fold: list.length > MENTIONS_SHOWN };
+  }).filter((g) => g.list.length);
+}
 
 // The site's languages, in the order the language menu lists them. Korean lives at the root, the others under /<lang>/.
 // Japanese (owner, 11-17) is the interface only: the collector writes Summaries in Korean and English, so a Japanese page
@@ -730,6 +816,7 @@ export const WORDS = {
     scoreOf: (cve) => `${cve}의 점수`, kevSource: 'CISA KEV',
     none: '고친 버전은 아직 확인하지 못했습니다. 아래 원문 링크를 살펴보세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
+    mentionsMany: (label, sites, n) => `${label} ${n}건: ${sites.slice(0, 2).join(', ')}${sites.length > 2 ? ' 외' : ''}`,
     newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기', tagsMore: (n) => `외 ${n}개`, tagsRest: (n) => `나머지 ${n}개 보기`,
     refNote: '이 현황판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 사건은 최근 90일 것만 보관합니다.',
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
@@ -752,6 +839,7 @@ export const WORDS = {
     scoreOf: (cve) => `Score of ${cve}`, kevSource: 'CISA KEV',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
+    mentionsMany: (label, sites, n) => `${label} (${n}): ${sites.slice(0, 2).join(', ')}${sites.length > 2 ? ' and more' : ''}`,
     newTab: ' (opens in a new tab)', report: 'Report a mistake', tagsMore: (n) => `+${n} more`, tagsRest: (n) => `Show ${n} more`,
     refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",
     nvd: '',
@@ -774,6 +862,7 @@ export const WORDS = {
     scoreOf: (cve) => `${cve} のスコア`, kevSource: 'CISA KEV',
     none: '修正バージョンはまだ確認できていません。下の原文リンクを確認してください。',
     mentionKinds: { advisory: 'セキュリティ勧告', writeup: '解説記事', cve_record: 'CVE レコード', discussion: '議論', curator: 'ニュースレター', notice: 'KISA 告知', repo: 'リポジトリ' },
+    mentionsMany: (label, sites, n) => `${label} ${n}件: ${sites.slice(0, 2).join('、')}${sites.length > 2 ? ' ほか' : ''}`,
     newTab: '（新しいタブで開きます）', report: '誤りを報告', tagsMore: (n) => `ほか${n}件`, tagsRest: (n) => `残り${n}件を表示`,
     refNote: 'このボードは参考情報です。対応する前に各インシデントの原文を確認してください。保存するのは過去90日のインシデントのみです。',
     nvd: 'このサービスは NVD API のデータを使用していますが、NVD による保証や認証は受けていません。',
@@ -1015,6 +1104,9 @@ export function productFeed(names, lang) {
 // Astryx ButtonGroup, Best Practices: "Single Tab stop; arrows move between members, Home/End to ends (APG roving tabindex)".
 // Where a key moves the focus in a group of `count` controls from member `index`: the new index, or -1 when the key is
 // left to the browser. `wrap`: the last member's next is the first (a two-way switch).
+// A roving group's one Tab stop while the focus is elsewhere: its first member that can act, so Tab never lands on a dimmed
+// end step alone (audit 11-19: 가+ and 한 화면 아래로 were reachable only by arrows from a disabled first member).
+export const restingStop = (disabled) => Math.max(0, disabled.indexOf(false));
 export function groupKey(key, index, count, { prev = ['ArrowLeft'], next = ['ArrowRight'], ends = true, wrap = false } = {}) {
   if (index < 0 || count < 1) return -1;
   if (prev.includes(key)) return index > 0 ? index - 1 : wrap ? count - 1 : 0;

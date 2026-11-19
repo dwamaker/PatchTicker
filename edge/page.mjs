@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -111,11 +111,14 @@ ul{margin:.25rem 0;padding-left:1.25rem}
 .banner.unrated .word{border-style:dashed}
 .why.unrated{color:var(--ink-2);font-size:.875rem;font-weight:700}
 .easy{margin-top:1rem;font-size:1.0625rem;font-weight:600}
-section{margin-top:1.5rem}
-.label{margin:0 0 .375rem;color:var(--ink-2);font-size:.8125rem;font-weight:700}
+section{margin-top:2rem}
+.label{margin:0 0 .5rem;color:var(--ink);font-size:1.0625rem;font-weight:700;line-height:1.4;letter-spacing:-0.01em}
+.facts{display:grid;grid-template-columns:minmax(4rem,max-content) minmax(0,1fr);gap:.25rem 1rem;align-items:baseline;margin:0}
+.facts dt{color:var(--ink-2);font-weight:500}
+.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
 #s-summary~p,#s-todo~p{line-height:1.7}
 code{font-family:var(--mono);font-size:.875rem}
-.command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:6px;padding:.375rem .625rem;white-space:pre-wrap;overflow-wrap:break-word}
+.command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:8px;padding:.75rem 1rem;white-space:pre-wrap;overflow-wrap:break-word}
 .caution{color:var(--ink-2);font-size:.875rem}
 .tags{display:flex;flex-wrap:wrap;gap:.375rem;padding:0;list-style:none}
 .tags li{display:flex;max-width:100%}
@@ -125,6 +128,12 @@ code{font-family:var(--mono);font-size:.875rem}
 @media (hover:hover) and (pointer:fine){.tags a:hover span{text-decoration:underline;text-underline-offset:2px}}
 @media (pointer:coarse){.tags{row-gap:0}.tags a{min-height:44px;min-width:44px}}
 .links{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule)}
+/* a note in place of a page (note()): Astryx EmptyState, centred, 32/24 padding, 16 gap, an icon over the title, the description in Secondary Ink, the way on one row */
+.gone{display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1.5rem;text-align:center}
+.gone-icon{width:2rem;height:2rem;color:var(--ink-3)}
+.gone h1{margin:0;font-size:1.25rem}
+.gone p{margin:-.5rem 0 0;max-width:30rem;color:var(--ink-2)}
+.gone .links{justify-content:center;margin:.25rem 0 0;padding:0;border:0}
 .sources li+li{margin-top:.25rem}
 .cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
 .cves.lines{display:block}.cves.lines li+li{margin-top:.375rem}
@@ -164,7 +173,7 @@ const cveList = (i, lang, t) => {
   return ul(links.slice(0, CVE_SHOWN), cls)
     + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), cls)}</details>`;
 };
-const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><p class="label" id="s-${key}">${esc(label)}</p>${body}</section>` : '');
+const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><h2 class="label" id="s-${key}">${esc(label)}</h2>${body}</section>` : '');
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
 // Without script, Korean and Japanese pages say their time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in
@@ -265,17 +274,37 @@ function distroFold(i, lang, t) {
 function mentions(i, lang, t) {
   const glosses = Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : [];
   const named = (m) => (lang === 'ko' && glosses.find((g) => g?.url === m.url && typeof g.title === 'string')?.title) || m.title || host(m.url);
-  const kinds = [...new Set([...MENTION_ORDER, ...i.mentions.map((m) => m.kind)])];
   // A group's CVE section links these already (IBM API Connect had 204 twice); with one or two, as on the Board, Sources keeps them.
   const listed = new Set(i.cves.length > 2 ? i.cves.map(cveUrl) : []);
   const shown = (m) => http(m.url) && !(m.kind === 'cve_record' && listed.has(m.url));
   // With every link hidden the Lead mention, the first CVE record by the Lead order, keeps Sources (H1, owner 11-15).
   if (!i.mentions.some(shown)) listed.delete(i.mentions.find((m) => http(m.url))?.url);
-  return ul(kinds.flatMap((kind) => {
-    const links = i.mentions.filter((m) => m.kind === kind && shown(m))
-      .map((m) => link(m.url, named(m), t));
-    return links.length ? [`${esc(t.mentionKinds[kind] || kind)}: ${links.join(' · ')}`] : [];
-  }), 'sources');
+  // In a folded kind, a link with no title of its own whose site repeats there is named by the last part of its address
+  // (GHSA-…, a bulletin's file name), as on the Board: ten "news.typo3.com" in a row told them apart by nothing.
+  const lastPart = (url) => {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get('id') || decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+    } catch {
+      return '';
+    }
+  };
+  // Owner, 11-19: a kind with more links than MENTIONS_SHOWN folds into one line, as on the Board (mentionGroups). The Lead
+  // never folds: this page has no Lead line of its own, so when its kind folds it stays a line of its own ahead of the rest.
+  const kept = i.mentions.filter(shown);
+  const lead = kept.find((m) => m.url === i.brief?.lead);
+  const apart = lead && kept.filter((m) => m.kind === lead.kind).length > MENTIONS_SHOWN ? lead : null;
+  const leadLine = apart ? [`${esc(t.mentionKinds[apart.kind] || apart.kind)}: ${link(apart.url, named(apart), t)}`] : [];
+  return ul([...leadLine, ...mentionGroups(kept.filter((m) => m !== apart)).map(({ kind, list, sites, fold }) => {
+    const label = t.mentionKinds[kind] || kind;
+    const links = list.map((m) => {
+      const name = named(m);
+      const repeats = list.filter((x) => host(x.url) === host(m.url)).length > 1;
+      return link(m.url, fold && repeats && name === host(m.url) ? lastPart(m.url) || name : name, t);
+    });
+    return fold ? `<details class="more"><summary>${esc(t.mentionsMany(label, sites, list.length))}</summary>${ul(links, 'sources')}</details>`
+      : `${esc(label)}: ${links.join(' · ')}`;
+  })], 'sources');
 }
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
@@ -351,8 +380,9 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
       datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
       isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` } })].join('\n');
   // M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
-  const times = [i.published ? `${esc(t.published)} ${when(i.published, lang)}` : '',
-    publicDay(i) ? `${esc(t.publicDate)} ${esc(publicDay(i))}` : '', `${esc(t.firstSeen)} ${when(i.first_seen, lang)}`].filter(Boolean);
+  // As label-value pairs, as the Board's opened row draws its facts (Astryx MetadataList).
+  const times = [i.published ? [t.published, when(i.published, lang)] : null,
+    publicDay(i) ? [t.publicDate, esc(publicDay(i))] : null, [t.firstSeen, when(i.first_seen, lang)]].filter(Boolean);
   const main = [`<article><h1>${esc(title)}</h1>`,
     banner(i, t),
     p(plain, 'easy'),
@@ -363,7 +393,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     section('product-pages', t.productPages, productPages(pages, t)),
     section('cves', t.cves, cveList(i, lang, t)),
     section('mentions', t.mentions, mentions(i, lang, t)),
-    section('times', t.times, times.map((x) => `<p>${x}</p>`).join('')),
+    section('times', t.times, `<dl class="facts">${times.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`),
     `<script>${LOCAL_TIME}</script>`,
     '</article>',
     `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
@@ -375,10 +405,15 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
 const CACHE = 'public, max-age=300';
 const CACHE_404 = 'public, max-age=60';
 
+const GONE_PAGE = '<path d="M6 2.75h8l4.25 4.25V21.25H6Z M13.75 2.75V7.25h4.5M9.5 12.5l5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>';
+const GONE_DOWN = '<path d="M12 3.5 21.5 20h-19Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9.5v4.5M12 16.75v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
 // A short note in place of a page (404, 410, 503): never indexed, always a way on. A 503 is never cached.
 export function note(lang, status, text, links) {
   const head = `<title>Patch Ticker</title>\n<meta name="robots" content="noindex">`;
-  const body = `<h1>${esc(text)}</h1><nav class="links">${links.join('')}</nav>`;
+  // the first sentence is the title, the rest its description; a dot inside a word (Node.js, 1.2) ends no sentence
+  const [, title, desc] = /^(.+?(?:\.(?=\s)|。))\s*(.*)$/s.exec(text) || [, text, ''];
+  const body = `<div class="gone"><svg class="gone-icon" viewBox="0 0 24 24" aria-hidden="true">${status === 503 ? GONE_DOWN : GONE_PAGE}</svg>`
+    + `<h1>${esc(title)}</h1>${desc ? `<p>${esc(desc)}</p>` : ''}<nav class="links">${links.join('')}</nav></div>`;
   const extra = { 503: { 'retry-after': '600' }, 404: { 'cache-control': CACHE_404 }, 410: { 'cache-control': CACHE } }[status];
   return new Response(document(lang, head, body), { status, headers: { 'content-type': 'text/html; charset=utf-8', ...extra } });
 }
