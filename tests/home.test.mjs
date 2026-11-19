@@ -101,7 +101,11 @@ test('the real index.html paints the loading Board, so app.mjs taking over moves
   const skel = '<div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span>'
     + '<span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span>'
     + '<span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div>';
-  assert.equal(part('highlights')[1].split(`<li class="alert skel" aria-hidden="true">${skel}</li>`).length - 1, PINNED);
+  // a Highlight opens on its header strip (risk sign and time) over the title, ring and badges (critique P2, 11-19)
+  const pinSkel = '<div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span>'
+    + '<span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span>'
+    + '<span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div>';
+  assert.equal(part('highlights')[1].split(`<li class="alert skel" aria-hidden="true">${pinSkel}</li>`).length - 1, PINNED);
   assert.equal(part('board')[1].split(`<li class="skel" aria-hidden="true">${skel}</li>`).length - 1, 6);
   for (const id of ['pinned', 'primer', 'step']) assert.doesNotMatch(new RegExp(`<[a-z]+ id="${id}"[^>]*>`).exec(html)[0], /\shidden/, id);
   assert.match(html, /<h2 id="pinned-head"><i class="sk sk-head"><\/i><\/h2>/);

@@ -65,10 +65,10 @@
       --panel: light-dark(#ffffff, #191c20);
       --panel-2: light-dark(#eceef1, #1f2328);
       --group: light-dark(#e6ebf1, #1c2531);
-      /* the two kinds of group, each in its own colour on its tag and its frame's band (owner, 11-16): a release group
+      /* the two kinds of group, each in its own colour on its tag (owner, 11-16) and, for a fold, its open members' rail (critique P2, 11-19): a release group
          (함께 공개, one Incident) teal; a vendor fold (묶음, several Incidents) violet. Neither is a Product line (LINES).
          Apart in both themes and under protan, deutan and tritan vision; never a risk colour, never the Highlights' blue.
-         Text 4.9:1+ on the tag's panel, band 4.1:1+ on the group ground and the page. */
+         Text 4.9:1+ on the tag's panel, rail 4.1:1+ on the group ground. */
       --patch-edge: light-dark(#007c88, #3fc1cc);
       --fold-edge: light-dark(#7340f2, #a98bff);
       --chev-ring: light-dark(#737c86, #737b84); /* a row chevron's ring: 3.5:1+ on the page, group, panel and hover grounds in both themes (WCAG 1.4.11), quieter than Secondary Ink (owner, 11-16) */
@@ -81,7 +81,7 @@
       --edge: light-dark(#858e97, #6b737c);
       --high: light-dark(#c4231c, #ff6b62);
       --mid: light-dark(#8a6100, #f5b400); /* 위험 text: dark gold, 4.77:1+ by day */
-      --mid-mark: light-dark(#a87700, #f5b400); /* 위험 marks (sign ring, CVSS ring, frame edge): brighter gold, 3.4:1+ (non-text) */
+      --mid-mark: light-dark(#a87700, #f5b400); /* 위험 marks (sign ring, CVSS ring): brighter gold, 3.4:1+ (non-text) */
       --note: light-dark(#5a6570, #9aa3ad); /* 4.96:1+ by day on the hover and group grounds (critique 13) */
       --focus: light-dark(#1a5fb4, #7cc4ff);
       --ok: light-dark(#1f6f1f, #68c8a8); /* done / nothing found: a state, never a risk and never a badge fill; 0.13+ from every line (critique 13) */
@@ -555,28 +555,31 @@
     [aria-expanded="true"] .chev { transform: rotate(45deg) translate(-2px, -2px); }
     /* a row's chevron sits in a thin ring, the risk sign's 1.5px stroke, so it reads as a control (owner, 11-16): the
        arrow turns inside a still ring drawn around its 0.5rem box, so the row's columns do not move */
-    .row > .chev { position: relative; justify-self: center; border: 0; transform: none; }
-    .row[aria-expanded="true"] > .chev { transform: none; }
-    .row > .chev::before { content: ""; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
-    .row[aria-expanded="true"] > .chev::before { transform: rotate(45deg) translate(-2px, -2px); }
-    .row > .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--chev-ring); border-radius: 50%; transition: border-color 120ms ease-out; }
-    @media (hover: hover) { .row:hover > .chev::after { border-color: var(--ink-2); } }
-    .row:focus-visible > .chev::after { border-color: var(--focus); }
+    .row .chev { position: relative; justify-self: center; border: 0; transform: none; }
+    .row[aria-expanded="true"] .chev { transform: none; }
+    .row .chev::before { content: ""; position: absolute; inset: 0; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg) translate(-1.5px, -1.5px); transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .row[aria-expanded="true"] .chev::before { transform: rotate(45deg) translate(-2px, -2px); }
+    .row .chev::after { content: ""; position: absolute; inset: -0.625rem; border: 1.5px solid var(--chev-ring); border-radius: 50%; transition: border-color 120ms ease-out; }
+    @media (hover: hover) { .row:hover .chev::after { border-color: var(--ink-2); } }
+    .row:focus-visible .chev::after { border-color: var(--focus); }
 
-    /* 주요 사건: stacked alerts, each framed and edged in its Risk colour, details inside the frame */
-    .stack { display: grid; gap: 0.5rem; }
-    .alert { background: var(--panel); border: 1px solid var(--rule-2); border-left: 3px solid var(--note); border-radius: var(--r-frame); box-shadow: 0 6px 18px -8px var(--shadow); overflow: hidden; }
-    .alert.risk-highest { border-left-color: var(--high); background: linear-gradient(90deg, color-mix(in srgb, var(--high) 7%, transparent), transparent 40%), var(--panel); }
-    .alert.risk-high { border-left-color: var(--mid-mark); background: linear-gradient(90deg, color-mix(in srgb, var(--mid-mark) 5%, transparent), transparent 40%), var(--panel); }
-    .alert .row { padding-left: calc(0.75rem - 2px); }
-    .alert .details { padding-left: calc(0.75rem - 2px + var(--pre) + var(--gap)); } /* starts under the title, as in the list */
-    .alert .row:focus-visible { outline-offset: -3px; } /* the frame clips (overflow: hidden): draw the ring inside */
-    /* a Highlight in the list (owner, 11-16): the pinned frame's Risk-colour edge, 3px at the row's left, so a reader
-       scrolling the list sees it is one; drawn over the row, it sits beside a group frame's own band, never replacing it */
-    .list li.hl { position: relative; }
-    .list li.hl::before { content: ""; position: absolute; inset: 0 auto 0 0; z-index: 1; width: 3px; background: var(--note); pointer-events: none; }
-    .list li.hl-highest::before { background: var(--high); }
-    .list li.hl-high::before { background: var(--mid-mark); }
+    /* 주요 사건: one alert band (critique P2, 11-19). The Highlights share one frame with a hairline between them, flat
+       (no lift, no wash, no edge colour: four 긴급 in a row told nothing). Each opens on a header strip, as a disaster
+       text does: the risk sign with 공격 발생 and its evidence, the time and the chevron, over the title, ring and badges. */
+    .stack { border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); overflow: hidden; }
+    .alert + .alert { border-top: 1px solid var(--rule-2); }
+    .alert .row { --rx: 0.75rem; grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 26rem); grid-template-areas: "strip strip strip" "t score tags"; row-gap: 0.5rem; min-height: 0; padding: 0 var(--rx) 0.625rem; }
+    /* the strip spans the row edge to edge; its chevron sits where a list row's does (centre 1.125rem in) */
+    .strip { grid-area: strip; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; min-height: 2.5rem; margin: 0 calc(-1 * var(--rx)); padding: 0.25rem 0.875rem 0.25rem var(--rx); border-bottom: 1px solid var(--rule); background: var(--panel-2); }
+    .strip .c-risk { flex-direction: row; }
+    .strip .c-date { flex-direction: row; gap: 0.375rem; margin-left: auto; }
+    .strip .chev { margin-left: 0.625rem; }
+    .c-ev { font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .alert .details { padding-left: 0.75rem; } /* starts under the title, which starts at the band's edge */
+    .alert .row:focus-visible { outline-offset: -3px; } /* the band clips (overflow: hidden): draw the ring inside */
+    @media (max-width: 1023px) { .alert .row { grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)); grid-template-areas: "strip strip" "t score" "tags tags"; } .alert .c-tags:empty { display: none; } }
+    /* a Highlight in the list says so in words under its sign: no edge, so a row never wears two (critique P2) */
+    .why.pin { color: var(--ink-2); font-weight: 600; }
     /* The whole list drawn (owner, 11-17: 789 rows, a theme flip 106 ms, each 더 보기 longer): a row off the screen is
        skipped until it nears it, keeping its last measured height (auto) and until then a closed row's usual one (73-94px,
        on phones 158-214px). The first ten stay drawn: the list's share of a first screen holds fewer (73px rows under the
@@ -589,29 +592,22 @@
     .list { border-top: 1px solid var(--rule-2); }
     .list > li { border-bottom: 1px solid var(--rule); }
     .list .row[aria-expanded="true"], .list .details { background: var(--panel); }
-    /* an opened vendor fold: its row, members and closing line share the panel ground; members keep the list's columns */
-    .list li.grouped, .list li.vendor-fold { background: var(--group); }
-    /* a row that stands for several Incidents or CVEs (함께 공개, 묶음) is framed like a Highlight, its left band in
-       its kind's colour (--patch-edge, --fold-edge), so two groups that touch read as two (owner, 11-16); an opened fold's frame holds the fold row,
-       its members and the closing line and closes below them. Paddings take back the band, so columns stay aligned. */
-    .list li.grouped, .list li.vendor-fold { margin: 0.375rem 0; border: 1px solid var(--rule-2); border-left: 3px solid var(--patch-edge); border-radius: var(--r-frame); overflow: hidden; }
-    .list li.vendor-fold { border-color: color-mix(in srgb, var(--fold-edge) 45%, var(--rule-2)); border-left-color: var(--fold-edge); } /* the fold's whole frame in its colour */
-    .list :is(li.grouped, li.vendor-fold) > .row-h > .row { padding-left: calc(0.75rem - 3px); padding-right: calc(0.75rem - 1px); }
-    .list :is(li.grouped, li.vendor-fold) > .row-h > .row:focus-visible { outline-offset: -3px; } /* the frame clips: the ring inside */
-    .list li.grouped > .details { padding-left: calc(0.75rem - 3px + var(--pre) + var(--gap)); }
-    /* opened, a fold's members stand indented inside it, as a nested list does (owner, 11-16) */
-    .vendor-fold .fold-members { margin-left: 2rem; border-left: 1px solid color-mix(in srgb, var(--fold-edge) 45%, var(--rule-2)); }
+    /* a group is a plain row on its hairline, its kind said by its tag (함께 공개 teal, 묶음 violet; critique P2, 11-19).
+       Opened, a vendor fold stands on the group ground and its members hang on one rail in the fold's colour, a stop
+       at each member's sign, like stations on a line; the closing line 〈IBM 묶음 접기〉 marks where it ends. */
+    .list li.vendor-fold.open { background: var(--group); }
     .list .vendor-fold > .row-h > .row[aria-expanded="true"] { background: none; } /* the whole open group keeps one ground */
+    .vendor-fold .fold-members { --rail: 1rem; position: relative; margin-left: calc(2 * var(--rail)); }
+    .vendor-fold .fold-members::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(-1 * var(--rail) - 1px); width: 2px; background: var(--fold-edge); }
+    .fold-members > li > .row-h { position: relative; }
+    .fold-members > li > .row-h::before { content: ""; position: absolute; z-index: 1; top: var(--stop, 50%); left: calc(-1 * var(--rail) - 0.4375rem); width: 0.875rem; height: 0.875rem; box-sizing: border-box; translate: 0 -50%; border: 2px solid var(--fold-edge); border-radius: 50%; background: var(--group); }
     /* a row that arrived while the page was open: a blue edge (the interface colour, never a risk colour) and a faint
        tint, held four seconds after it is on screen, then faded */
     li.fresh { box-shadow: inset 0 0 0 2px var(--focus); }
     .list li.fresh:not(.alert) { background-color: color-mix(in srgb, var(--focus) 7%, var(--bg)); }
-    .alert.fresh { box-shadow: inset 0 0 0 2px var(--focus), 0 6px 18px -8px var(--shadow); }
     /* leaving: the edge thins and fades into the row's own ground (keyframes with only a start end on the row's style) */
     li.fresh-out { animation: fresh-out 520ms cubic-bezier(0.4, 0, 0.2, 1); }
     .list li.fresh-out:not(.alert) { animation-name: fresh-out-tint; }
-    .alert.fresh-out { animation-name: fresh-out-frame; }
-    @keyframes fresh-out-frame { from { box-shadow: inset 0 0 0 2px var(--focus), 0 6px 18px -8px var(--shadow); } }
     @keyframes fresh-out { from { box-shadow: inset 0 0 0 2px var(--focus); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
     @keyframes fresh-out-tint { from { box-shadow: inset 0 0 0 2px var(--focus); background-color: color-mix(in srgb, var(--focus) 7%, var(--bg)); } 40% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 60%, transparent); } }
     @media (prefers-reduced-motion: reduce) { li.fresh-out { animation-duration: 200ms; } }
@@ -798,18 +794,16 @@
       /* the chevron rides with the date: the date reserves its width (margin-right) and the chevron, pulled back
          into that space, takes no room of its own, so the two wrap together and the chevron never sits alone */
       .row > .c-date { order: 3; flex: none; margin-left: auto; margin-right: 2rem; }
-      /* the ring (1.75rem) clears the date, and its right side stays inside the row and a group's frame (0.5rem in) */
+      /* the ring (1.75rem) clears the date, and its right side stays inside the row (0.5rem in) */
       .row > .chev { order: 4; flex: none; margin-left: -1.75rem; margin-right: 0.5rem; }
-      .list :is(li.grouped, li.vendor-fold) > .row-h > .row { padding-left: calc(0.5rem - 3px); padding-right: calc(0.5rem - 1px); }
-      .list li.grouped > .details { padding-left: calc(0.75rem - 3px); }
-      .vendor-fold .fold-members { margin-left: 0.75rem; }
+      .vendor-fold .fold-members { --rail: 0.75rem; }
+      .fold-members > li > .row-h { --stop: 2.25rem; } /* the sign leads the row's first line */
       .row > .c-title { order: 5; flex: 1 1 100%; }
       .row > .c-tags { order: 6; flex: 1 1 100%; }
       .c-score { gap: 0.375rem; }
       .c-score .sev { display: none; }
-      .alert .row { padding-left: calc(0.75rem - 2px); }
+      .alert .row { --rx: 0.5rem; display: grid; }
       .details { padding: 0 0.75rem 1rem; }
-      .alert .details { padding-left: calc(0.75rem - 2px); } /* a Highlight's text too uses the full phone width */
       .fold-end { padding-left: 0.75rem; }
       .c-date { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; column-gap: 0.375rem; }
       /* the risk sign keeps its reason stays whole under it; the date wraps instead (text at 150%) */
@@ -858,7 +852,7 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .row > .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active, .sizes button:active:not(:disabled), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it
@@ -880,6 +874,8 @@
        moves when it takes over. A head's bar sits on the line its words will take; the Highlights head keeps the 44px
        of 모두 펼치기, which comes with the rows. Without script none of it shows. */
     .sk-head { display: inline-block; vertical-align: middle; }
+    /* a Highlight on a phone: a two-line title and two lines of badges, as most are drawn (195px), so the band holds its height */
+    @media (max-width: 767px) { .alert.skel .c-title { min-height: 4.25rem; align-content: start; } .alert.skel .c-tags { min-height: 3.625rem; align-content: start; } }
     #pinned-head { min-height: var(--tap); align-content: center; }
     :root:not(.js) :is(#pinned, .skel, .sk, #status, #primer), .pr-off #primer { display: none; }
     #primer .gauge.sev-critical { --fill: 0.98; } /* the static line's 9.8 ring (a style attribute would need 'unsafe-inline') */
@@ -953,7 +949,7 @@
     <div id="conds" data-t-aria="fpApplied"></div>
     <form id="filters" class="filters" hidden></form>
     <section id="pinned" aria-labelledby="pinned-head">
-      <ol id="highlights" class="stack"><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></div></li></ol>
+      <ol id="highlights" class="stack"><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li><li class="alert skel" aria-hidden="true"><div class="row"><span class="strip"><span class="c-risk"><i class="sk sk-pill"></i></span><span class="c-date"><i class="sk sk-date"></i><i class="sk sk-time"></i></span></span><span class="c-title"><i class="sk sk-name"></i><i class="sk sk-sub"></i></span><span class="c-score"><i class="sk sk-ring"></i></span><span class="c-tags"><i class="sk sk-tag"></i><i class="sk sk-tag"></i></span></div></li></ol>
       <div id="pin-more" class="more"><i class="sk sk-btn"></i></div>
     </section>
     <div id="empty" class="empty" hidden></div>
