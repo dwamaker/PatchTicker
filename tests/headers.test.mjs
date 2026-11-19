@@ -7,6 +7,10 @@ import { withJapanese } from '../web/board.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n'); // the HTML parser reads CRLF as LF
 const html = read('web/index.html');
+
+test('web/_headers holds no merge-conflict markers (a merge once left nine, which unstyles the Board on Pages)', () => {
+  assert.doesNotMatch(read('web/_headers'), /^(<<<<<<< |=======$|>>>>>>> )/m);
+});
 const headers = read('web/_headers');
 const value = (name) => new RegExp(`^\\s+${name}:\\s*(.+)$`, 'im').exec(headers)?.[1] ?? '';
 const csp = Object.fromEntries(value('Content-Security-Policy').split(';').map((d) => d.trim().split(/\s+/)).map(([k, ...v]) => [k, v]));
