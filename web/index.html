@@ -479,6 +479,12 @@
       min-width: 1.375rem; padding: 0 0.375rem; border-radius: var(--r-pill); background: var(--focus); color: var(--bg); font-size: calc(0.75rem * var(--ts)); font-weight: 700; line-height: 1.375rem; text-align: center; }
     /* advanced filter panel */
     .filters { margin-bottom: 1.25rem; padding: 1.25rem; background: var(--panel); border: 1px solid var(--rule-2); border-radius: var(--r-frame); }
+    /* Closing, the panel fades out where it was (a sheet slides down) instead of vanishing; hidden is set at once, display
+       waits for the fade (allow-discrete, as .menu does). Astryx Motion: exits on --ease-exit, fast (175ms). */
+    .filters[hidden] { opacity: 0; translate: 0 -6px; pointer-events: none; transition: opacity 160ms var(--ease-exit), translate 160ms var(--ease-exit), box-shadow 160ms var(--ease-exit), display 160ms allow-discrete; }
+    @media (max-width: 599px) { .filters[hidden] { opacity: 1; translate: 0 100%; transition-duration: 220ms; } }
+    .filters.shut[hidden] { transition: none; } /* 필터 적용: the Board transition fades it (app.mjs applyPanel) */ /* a sheet slides down whole; only the dim behind it fades */
+    #filter-count[hidden] { opacity: 0; scale: 0.6; transition: opacity 140ms var(--ease-exit), scale 140ms var(--ease-exit), display 140ms allow-discrete; }
     .fp-head { margin-bottom: 1rem; }
     .fp-head .fp-title { margin: 0; }
     .fp-title { margin: 0 0 1rem; font-size: calc(var(--fs-small) * var(--ts)); font-weight: 700; }
@@ -509,14 +515,20 @@
     .fp-chip.zero input:not(:checked) + span { border: 1px dashed var(--mid-ink); background: var(--mid-wash); color: var(--mid-ink); } /* adding it would leave nothing: the caution tone with a dashed edge, seen at once (owner, 11-19), and the same under the pointer; ink on wash 8.7:1 by day, 6.7:1 by night (measured) */
     /* a chosen chip carries a tick as well as its fill (Astryx ToggleButton, Best Practices: "Filled/colored icon for pressed
        state so users see current state at a glance"), so the state never rests on colour alone */
-    .fp-chip input:checked + span::before { content: ""; flex: none; width: 0.3125rem; height: 0.5625rem; margin: -0.125rem 0.5rem 0 0.0625rem; border: solid currentColor; border-width: 0 2px 2px 0; rotate: 45deg; }
+    .fp-chip span::before { content: ""; flex: none; width: 0; height: 0.5625rem; margin: -0.125rem 0 0 0; border: 0 solid currentColor; rotate: 45deg; opacity: 0; scale: 0.4; transition: width 160ms var(--ease-out), margin 160ms var(--ease-out), border-width 160ms var(--ease-out), scale 160ms var(--ease-out), opacity 120ms ease-out; }
+    .fp-chip input:checked + span::before { width: 0.3125rem; margin: -0.125rem 0.5rem 0 0.0625rem; border-width: 0 2px 2px 0; opacity: 1; scale: 1; } /* the tick is always there at no size: it grows in with the fill, never snaps (owner, 11-19) */
     /* 최소 CVSS and CVE 번호 as segmented controls, drawn as the 기본|쉬운 설명 switch (app.mjs segments) */
     .fp-seg-track { display: inline-flex; align-self: flex-start; max-width: 100%; padding: 2px; border-radius: var(--r-ctl); background: var(--ctl-fill); }
     .fp-seg label { position: relative; display: flex; min-width: 0; }
     .fp-seg input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
-    .fp-seg span { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ctl-h) - 4px); padding: 0 0.75rem; border-radius: var(--r-code); color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; text-align: center; transition: background-color 120ms ease-out, color 120ms ease-out; }
+    .fp-seg span { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ctl-h) - 4px); padding: 0 0.75rem; border-radius: var(--r-code); color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; text-align: center; transition: background-color 120ms ease-out, color 120ms ease-out, transform 100ms ease-out; }
     @media (pointer: coarse) { .fp-seg span { min-height: var(--tap); } }
     .fp-seg input:checked + span { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
+    /* one pill under the chosen option that slides across, as 기본|쉬운 설명's does (app.mjs placeSegs) */
+    .fp-seg-track { position: relative; isolation: isolate; }
+    .fp-seg-track.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-code); background: var(--seg-on); box-shadow: var(--lift-low); }
+    .fp-seg-track.ready::before { transition: left 200ms var(--ease-out), width 200ms var(--ease-out); }
+    .fp-seg-track.slid input:checked + span { background: none; box-shadow: none; }
     @media (hover: hover) { .fp-seg label:hover input:not(:checked) + span { background: var(--ctl-hover); color: var(--ink); } }
     .fp-seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
     /* the footer: the groups' notes on the left, 필터 초기화 / 필터 적용 on the right (owner, 11-19) */
@@ -565,8 +577,8 @@
     .statusline > #status { flex: 1 1 auto; min-width: 0; }
     .statusline #guide-btn { flex: none; }
     .js:not(.pr-off) body:has(#primer:not([hidden])) .statusline #guide-btn { display: none; } /* the first-visit line carries 읽는 법 자세히: one way in at a time */
-    .fp-zero-note { display: none; }
-    .has-zero .fp-zero-note { display: block; }
+    .fp-zero-note { visibility: hidden; } /* its line stays, so the panel keeps its height and nothing below jumps as dashed chips come and go */
+    .has-zero .fp-zero-note { visibility: visible; }
     .fp-zero-note::before { content: ""; display: inline-block; width: 1.25em; height: 0.875em; margin-right: 0.375rem; vertical-align: -0.0625em; border: 1px dashed var(--mid-ink); border-radius: var(--r-marker); background: var(--mid-wash); } /* a dashed chip in small, so the note and the chips read together */
     @media (prefers-reduced-motion: no-preference) { .has-zero .fp-zero-note { animation: words-in 240ms var(--ease-out); } }
     .statusline { display: flex; align-items: center; justify-content: space-between; column-gap: 1rem; padding-top: 0.5rem; }
@@ -1060,7 +1072,7 @@
     /* + the search ×, the language rows and 정렬 tint like every control (src/Field/InputClearButton.tsx:129-131 a ghost Button; src/DropdownMenu/DropdownMenuItem.tsx:68-72 ':focus' paint; src/Selector/Selector.tsx:292-297 "The hover and pressed answers still come from the shared interaction overlay") */
     .btn, .sizes button, #views button, .token, #guide-btn, .fp-chip span, .row, .field .clear, .mi { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
     .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active { transform: scale(0.98); } /* Astryx Button, pressable: "scale(0.98)" */
-    .token:active, .fp-chip:active span { transform: scale(0.96); } /* the filter chips press in too (DESIGN.md: chips press to 96%) */
+    .token:active, .fp-chip:active span, .fp-seg label:active span, .field .clear:active { transform: scale(0.96); } /* the filter chips press in too (DESIGN.md: chips press to 96%) */
     #views { position: relative; isolation: isolate; }
     #views.slid::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-code); background: var(--seg-on); box-shadow: var(--lift-low); }
     #views.ready::before { transition: left 240ms var(--ease-out), width 240ms var(--ease-out); }
@@ -1089,9 +1101,9 @@
     .vt-search::view-transition-group(*) { animation-duration: 200ms; }
     .vt-search::view-transition-old(*):only-child { animation-duration: 120ms; }
     .vt-search::view-transition-old(root), .vt-search::view-transition-new(root),
-    .vt-search::view-transition-old(vt-count), .vt-search::view-transition-new(vt-count) { animation-duration: 160ms; }
-    .vt-search #result-count { view-transition-name: vt-count; } /* inside the frozen bar, whose live picture would swap it at once */
-    :root.vt-search::view-transition-group(vt-count) { z-index: 2; }
+    .vt-board::view-transition-old(vt-count), .vt-board::view-transition-new(vt-count) { animation-duration: 160ms; }
+    .vt-board #result-count { view-transition-name: vt-count; } /* inside the frozen bar, whose live picture would swap it at once; any redraw, not only typing (owner, 11-19) */
+    :root.vt-board::view-transition-group(vt-count) { z-index: 2; }
     .vt-search.vt-still li[data-vt] { view-transition-name: none !important; }
     /* a row that arrived by a refresh drops into its place at the top of the Board (where supported) */
     li.fresh { view-transition-class: fresh; }
@@ -1108,7 +1120,8 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .token:active, .fp-chip:active span { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .token:active, .fp-chip:active span, .fp-seg label:active span, .field .clear:active { transform: none; } #views.ready::before, .fp-seg-track.ready::before { transition: none; }
+      .fp-chip span::before { transition: opacity 120ms ease-out; } .filters[hidden], #filter-count[hidden] { opacity: 0; translate: none; scale: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading (owner, 11-19): placeholders in the rows' own cells, as Astryx Skeleton draws them (src/Skeleton/Skeleton.tsx):
