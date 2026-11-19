@@ -787,6 +787,11 @@ ROUNDUP = re.compile(r"\b(?:nearly|over|more than|almost|about|around|dozens? of
                      r"|security (?:holes|issues|defects)|zero-days)\b", re.I)
 
 
+def roundup(keys, titles):
+    """A title (the story's or its page's) that speaks of many flaws."""
+    return any(ROUNDUP.search(t) for t in (*titles, keys.get("title")) if t)
+
+
 def about(incident, keys, titles):
     """Whether a story's page, which names one of the Incident's CVEs, is about it and not about something wider (11-18:
     4 of the month's 21 folds were a round-up or a passing mention, fortirix's Optimjack post naming Java4Shell once): no
@@ -795,7 +800,7 @@ def about(incident, keys, titles):
     OpenJDK advisory of 11-17, all ten of the Java group's). Unsure stands alone: a fold cannot be undone."""
     from collector.summary_input import GENERIC_PRODUCT_WORDS  # summary_input imports this module
     heads = [t.lower() for t in (*titles, keys.get("title")) if t]
-    if any(ROUNDUP.search(t) for t in heads):
+    if roundup(keys, titles):
         return False
     terms = {c.lower() for c in incident["cves"]} | {w.lower() for p in incident.get("products", []) for w in re.split(r"[\s/,()]+", p["name"])
                                                      if len(w) >= 4 and w.lower() not in GENERIC_PRODUCT_WORDS}
@@ -808,21 +813,26 @@ def cited_by(incidents, keys, titles=()):
     CVE ID or by a link to one of its advisory, write-up or repo pages. Several or none: [] (stands alone).
     A CVE ID outranks a link: when the page's CVE IDs are held by one Incident, that is the one whatever its links hit
     (11-18, the Java4Shell story also linked two other stories' write-ups), if the page is about it (about(); titles: the
-    story's own); held by several, it stands alone. Only with no CVE hit do links decide, and the one must be named by a
-    page no other Incident links; an advisory with no identifier (a vendor's list of notices, a changelog, a product
+    story's own); held by several, the one of them whose official advisory it links decides (11-20), or it stands alone.
+    Only with no CVE hit do links decide alone, and the one must be named by a page no other Incident links; an advisory with no identifier (a vendor's list of notices, a changelog, a product
     page) names none."""
-    by_cve = [i for i in incidents if set(i["cves"]) & set(keys["cves"])]
-    if by_cve:
-        return by_cve if len(by_cve) == 1 and about(by_cve[0], keys, titles) else []
+    from collector.cvelist import has_id  # cvelist imports this module
     urls = set(keys["urls"])
     pages = lambda i: {url_key(m["url"]): m for m in i["mentions"] if m["kind"] in ("advisory", "writeup", "repo")}
-    hits = [i for i in incidents if pages(i).keys() & urls]
-    if len(hits) != 1:
-        return []
-    from collector.cvelist import has_id  # cvelist imports this module
     linked = Counter(u for i in incidents for u in i["urls"])  # a Mention's page is one of its Incident's urls
-    named = any(linked[u] == 1 and (m["kind"] != "advisory" or has_id(m["url"])) for u, m in pages(hits[0]).items() if u in urls)
-    return hits if named else []
+    named = lambda i, kinds=("advisory", "writeup", "repo"): any(
+        linked[u] == 1 and m["kind"] in kinds and (m["kind"] != "advisory" or has_id(m["url"])) for u, m in pages(i).items() if u in urls)
+    by_cve = [i for i in incidents if set(i["cves"]) & set(keys["cves"])]
+    if len(by_cve) > 1:
+        # Several hold its CVEs: the one of them whose official advisory (one notice) it links, if exactly one, unless its
+        # title speaks of many flaws (11-20: BleepingComputer's story on SA-CORE-2026-017 also named 018's CVE and two
+        # old ones, and linked only drupal.org/sa-core-2026-017). A write-up or repo link never decides (owner, 11-18).
+        picked = [i for i in by_cve if named(i, ("advisory",))]
+        return picked if len(picked) == 1 and not roundup(keys, titles) else []
+    if by_cve:
+        return by_cve if about(by_cve[0], keys, titles) else []
+    hits = [i for i in incidents if pages(i).keys() & urls]
+    return hits if len(hits) == 1 and named(hits[0]) else []
 
 
 def rejoin(incidents, since):

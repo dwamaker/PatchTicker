@@ -26,7 +26,8 @@ is tried again three times in the story's first day (`refetch_pages`, 2026-11-18
 Incident for a week; when they point at exactly one other Incident (a CVE ID, or its advisory, write-up
 or repo page), the story is folded into it, whichever arrived first. A CVE ID outranks a link: when the page's CVE
 IDs are held by one Incident, the story joins it whatever its links point at; held by several, it stands alone
-(owner, 2026-11-18). Links decide only when no CVE ID does. A page counts only when no other Incident
+(owner, 2026-11-18), unless it links exactly one of those Incidents' advisories (one notice) and its title is no round-up: then it
+joins that one (2026-11-20, BleepingComputer's Drupal story on SA-CORE-2026-017). Links decide only when no CVE ID does. A page counts only when no other Incident
 links it, and an advisory only when it names one notice: a vendor's list of notices says nothing about which
 Incident a story is about (owner, 2026-11-15). A story that stands alone and whose page cites exactly one GitHub
 security advisory, naming its GHSA id in its title or outside its links, gets that advisory as a Mention of kind

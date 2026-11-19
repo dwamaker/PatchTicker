@@ -419,6 +419,26 @@ class StoryPageTest(unittest.TestCase):
         self.rejoin()
         self.assertEqual((len(self.incidents), story["brief"]["lead"]), (5, self.GHSA))
 
+    def test_a_page_naming_several_incidents_cves_joins_the_one_whose_advisory_it_links(self):
+        # BleepingComputer, 11-19: "Drupal patches critical RCE flaw" named 017's and 018's CVEs and two old ones, and
+        # linked only drupal.org/sa-core-2026-017.
+        for cve, sa in (("CVE-2026-132165", "017"), ("CVE-2026-132166", "018")):
+            self.link(self.incidents, {"mentions": [{"kind": "advisory", "url": f"https://www.drupal.org/sa-core-2026-{sa}"}],
+                                       "cves": [cve], "urls": [], "text": cve}, "2026-11-19T14:46:33Z")
+        named = "CVE-2026-132165, CVE-2026-132166, CVE-2026-9082 and CVE-2026-118539. "
+        for n, (links, title) in enumerate(((["017", "018"], "Drupal patches critical RCE flaw"),
+                                            (["017"], "Drupal patches two vulnerabilities")), 1):
+            self.link(self.incidents, self.story(named + "".join(f'<a href="https://www.drupal.org/sa-core-2026-{sa}">x</a>' for sa in links),
+                                                 f"https://news{n}.example/drupal", 50560000 + n, title), "2026-11-19T13:20:02Z")
+        self.assertEqual(self.rejoin(), set())  # both links, or a round-up title: stands alone
+        self.link(self.incidents, self.story(named + '<a href="https://www.drupal.org/sa-core-2026-017">SA-CORE-2026-017</a>',
+                                             "https://www.bleepingcomputer.com/news/security/drupal-patches/", 50560003,
+                                             "Drupal patches critical RCE flaw, warns exploits may surface quickly"), "2026-11-19T13:20:02Z")
+        self.assertEqual(self.rejoin(), {"2026-11"})
+        row = next(i for i in self.incidents if i["id"] == "CVE-2026-132165")
+        self.assertIn("https://www.bleepingcomputer.com/news/security/drupal-patches/", [m["url"] for m in row["mentions"]])
+        self.assertEqual(len(self.incidents), 6)
+
     def test_the_pages_own_links_outrank_its_images_under_the_cap(self):
         # BleepingComputer's Drupal story (11-19): 97 outside keys, the first 50 in sort order images and ads.
         from collector.incidents import MAX_CITED_LINKS, page_keys
