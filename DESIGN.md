@@ -447,6 +447,12 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Filter button and panel
 - **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the search line, beside the bar
   (on phones, under the bar at the end); the panel opens right under that row.
+- **Search line controls (owner, 11-19, Astryx tokens-size and radius-element: one size and one corner for the
+  controls of a row):** 필터 and 정렬 stand 48px with 10px corners, as the bar does. 정렬 is drawn as an Astryx
+  Selector: its sort icon at the start in Muted Ink, the current order, a drawn chevron at the end; the browser's own
+  arrow is gone (still the native select for keyboards and readers).
+- **Panel head:** 필터 and the reading guide close with a ghost icon-only X in the head's end corner (Astryx
+  DialogHeader), named 닫기 for screen readers, as the first-visit line's X; it was a bordered 닫기 button.
 - **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line (모두 펼치기 at the list head when there are no Highlights); the order
   serves the list, and the list heading names it. 주요 사건 is chosen and shown in its own order whatever the list's: tier
   of reach first (1, 2, then exploited rows on tier 3 or no list, then 3, then the rest; owner, 2026-11-17), exploited
@@ -518,9 +524,10 @@ Restrained outlined buttons for theme, language and copying a command.
   turns the chevron.
 
 ### Reading guide (이 현황판 읽는 법)
-- **Place:** a link-coloured "읽는 법" disclosure at the right of the status line (wraps under it on
-  phones), 44px tall, chevron turning up when open. The guide opens below it in a Kiosk Panel with a
-  1px Rail border and 10px radius, like the filter panel, with a 닫기 button.
+- **Place:** a "읽는 법" ghost button in Ink at the right of the status line (wraps under it on phones), 44px tall,
+  chevron turning up when open, Panel 2 on hover and while open (owner, 11-19: it opens the guide in place, so it is a
+  button, not a link-coloured disclosure; Astryx Link). The guide opens below it in a Kiosk Panel with a 1px Rail
+  border and 10px radius, like the filter panel, with the ghost X close.
 - **First visit:** opens by itself once on screens 600px and wider (on phones it would fill about a screen
   before the first row, so there it waits for the button); closing it stores `vr-guide` and it stays shut after that.
   With storage blocked it waits for the button.
@@ -601,11 +608,15 @@ Restrained outlined buttons for theme, language and copying a command.
 ### Small moments (delight)
 - **Empty state names every narrowing:** with Products picked and a search, it says both ("고른 제품(OpenSSH) 가운데
   'zzqq'에 맞는 사건이 없습니다."), never "nothing for OpenSSH" while the search hid an OpenSSH row; its recovery
-  buttons say what they bring back ("검색 지우기 · 1건 보기"). Counts appear only in the empty state.
+  buttons say what they bring back ("검색 지우기 · 1건 보기"). Counts appear only in the empty state. Laid out as an
+  Astryx EmptyState (owner, 11-19): centred under the rule, a magnifier in a 48px Panel 2 disc, the sentence as its
+  title at 18px/700, what the Board holds as the description in Secondary Ink, the buttons in a centred row.
 - **Stale data notice:** an hour without an update (six missed 10-minute runs) puts a notice under the status line
   (its text names no age since critique 12: the status line just above says it, and fixed text is announced once):
   Ink on Recessed Panel with a Rail border and the drawn warning mark, never amber or red (Two Alphabets); "업데이트가
-  멈춰 있습니다. 수집이 끊겨 최근 사건이 빠졌을 수 있습니다." (critique 13: no "an hour"; the data may be a day old). On
+  멈춰 있습니다. 수집이 끊겨 최근 사건이 빠졌을 수 있습니다." (critique 13: no "an hour"; the data may be a day old).
+  Laid out as an Astryx Banner (owner, 11-19): the content column's width, 12px 16px inside, 10px corners, the first
+  sentence as its title (14px/600) over the rest in Secondary Ink at 12px; Banner's warning tint is not taken. On
   phones it is "· 업데이트 멈춤" at the end of the status line, the full sentence kept for screen readers. It is a status region (heard once) and is
   rechecked every minute, as is the status line's age, so a tab left open goes stale visibly.
 - **All-clear sign:** when only Products are picked and none is on the Board, the empty state is a sign, not a
@@ -659,8 +670,10 @@ Restrained outlined buttons for theme, language and copying a command.
   it leaves by thinning to 1px and fading into the row's ground (520ms). Screen readers hear one sentence
   per refresh ("새 사건 N건이 추가되었습니다"); focus never moves. Changes to rows already shown (a Summary, an
   exploited flag) apply in place, opened rows stay open.
-- **Applied filter chips (11-09):** conditions from the filter panel sit right under the bar that holds 필터; picked
-  Products are tokens in the search bar (11-19).
+- **Applied filter chips (11-09):** since 11-19 every condition is a token in the search bar after the picked Products
+  (Astryx PowerSearch): "field value", the field in Muted Ink at 400 and the value bold ("위험 단계 긴급", "OS
+  Windows", "CVSS 7.0+", "게시일 …"); a value that names itself stands alone ("공격 발생만"). The row of pills under
+  the status line is gone; the bar's X clears them with the rest.
 - **Bar (11-09):** 주요 사건 heading with 모두 펼치기 on the left, 필터 and 정렬 on the right; the filter panel opens under it.
   With no Highlights, 모두 펼치기 moves to the list head beside 최신순 (critique 14).
 - **Reload keeps the place:** scroll position, 더 보기 counts, opened rows and folds, and loaded older months come back
@@ -822,7 +835,7 @@ Restrained outlined buttons for theme, language and copying a command.
     From the frozen copy it opens where the reader is: the phone sheet in place, wider a panel floating under the frozen
     row over the Scrim (modal like the sheet; a tap on the Board closes it). 필터 적용 or a sort from the copy brings the
     bar under the frozen row. While the copy shows, the bar's 필터 and 정렬 leave the tab order.
-  - Under 360px the copied 정렬 is a 44px icon over a see-through native select; the stuck phone search says "검색".
+  - The stuck phone search says "검색".
   - Korean search words match their English names only in Product names, ids, devices and OS tags, as whole words; the
     typed word still matches any text. A line under the fields says it: "‘맥’으로 검색해 macOS도 함께 찾았습니다."
   - Easy update lines name the product: "OpenEMR 8.3.0 이상으로 업데이트하세요." The collector sends back a Summary whose

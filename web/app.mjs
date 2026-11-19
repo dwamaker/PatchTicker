@@ -43,7 +43,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: '불러오는 중…',
     variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => (n ? `이전 사건을 모두 불러왔습니다 (${n}건 추가).` : '이전 사건은 이미 모두 목록에 있습니다.'),
-    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, reportedBy: (h) => `${h} 보도`, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
+    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', published: '게시일', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, reportedBy: (h) => `${h} 보도`, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated) => `마지막 업데이트 ${updated}`, counts: (today, week) => ` · 오늘 ${today}건 · 7일 ${week}건`, countAll: (n) => ` · 전체 ${n}건`, shownOf: (shown, all) => ` · ${all}건 중 ${shown}건`,
     products: '사용하는 제품', sgHead: '제품', sgCount: (n) => `최근 90일 ${n}건`, resultCount: (n) => `${n.toLocaleString('ko')}건`, picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     repo: 'GitHub 저장소', search: '검색', clearSearch: '검색어 지우기', noticeClose: '알림 닫기', noticeSince: ['Patch Ticker는 2026년 11월 9일부터 수집을 시작했습니다.', '그 전에 공개된 취약점은 목록에 없을 수 있습니다.'], noticeKeep: '패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.', searchHint: '제품, 키워드, CVE 번호', searchHintShort: '제품, 키워드', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 공개', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', stepUp: '한 화면 위로', stepDown: '한 화면 아래로', stepGroup: '한 화면씩 이동', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
@@ -97,7 +97,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: 'Loading…',
     variants: (n) => `Also showing ${n} under a similar name.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => (n ? `Earlier Incidents are loaded (${n} more).` : 'There are no earlier Incidents: they are already all in the list.'),
-    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, reportedBy: (h) => `reported by ${h}`, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
+    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', published: 'Published', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, reportedBy: (h) => `reported by ${h}`, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated) => `Last updated ${updated}`, counts: (today, week) => ` · today ${today} · 7 days ${week}`, countAll: (n) => ` · all ${n}`, shownOf: (shown, all) => ` · ${shown} of ${all}`,
     products: 'Products you run', sgHead: 'Products', sgCount: (n) => `${n} in 90 days`, resultCount: (n) => `${n.toLocaleString('en')} ${n === 1 ? 'result' : 'results'}`, picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     repo: 'GitHub repository', search: 'Search', clearSearch: 'Clear search', noticeClose: 'Dismiss notice', noticeSince: ['Patch Ticker has collected since 9 November 2026.', 'Vulnerabilities published before then may be missing.'], noticeKeep: 'An Incident is not removed when a patch ships; it stays for 90 days.', searchHint: 'Product, keyword, CVE ID', searchHintShort: 'Product or keyword', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'Disclosed together', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', stepUp: 'Up one screen', stepDown: 'Down one screen', stepGroup: 'Move one screen', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
@@ -151,7 +151,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: '読み込み中…',
     variants: (n) => `似た名前の${n}件もあわせて表示しています。`,
     loadDetail: (msg) => `詳細: ${msg}`, olderDone: (n) => (n ? `以前のインシデントをすべて読み込みました（${n}件追加）。` : '以前のインシデントはこれ以上ありません。すでにすべて一覧にあります。'),
-    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, reportedBy: (h) => `${h} の報告`, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
+    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', published: '公開日', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, reportedBy: (h) => `${h} の報告`, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
     status: (updated) => `最終更新 ${updated}`, counts: (today, week) => ` · 今日 ${today}件 · 7日間 ${week}件`, countAll: (n) => ` · 全${n}件`, shownOf: (shown, all) => ` · ${all}件中${shown}件`,
     products: '使っている製品', sgHead: '製品', sgCount: (n) => `直近90日 ${n}件`, resultCount: (n) => `${n.toLocaleString('ja')}件`, picked: '選んだ製品', fpApplied: '適用中のフィルター', remove: (name) => `${name}を外す`,
     repo: 'GitHub リポジトリ', search: '検索', clearSearch: '検索をクリア', noticeClose: 'お知らせを閉じる', noticeSince: ['Patch Ticker は2026年11月9日から収集しています。', 'それ以前に公開された脆弱性は一覧にない場合があります。'], noticeKeep: 'パッチが出てもインシデントは消えず、90日間残ります。', searchHint: '製品、キーワード、CVE 番号', searchHintShort: '製品、キーワード', all: '新しい順', sortLabel: '並び順', expandAll: 'すべて開く', collapseAll: 'すべて閉じる', unfold: 'まとめを解除', refold: 'まとめて表示', groupTag: 'まとめ', patchTag: '同時公開', prefs: '表示設定', toTop: '先頭へ', toBottom: '末尾へ', stepUp: '1画面上へ', stepDown: '1画面下へ', stepGroup: '1画面ずつ移動', newAbove: (n) => `新着 ${n}件`, newAdded: (n) => `新しいインシデントが${n}件追加されました。`, toNew: '最初の新着インシデントへ移動', foldEnd: (v) => `${v} のまとめを閉じる`, foldOpened: (v, n, wp) => `${v} のまとめを開きました（${wp ? 'プラグイン' : '勧告'} ${n}件）。`, theme: 'ダークテーマ',
@@ -578,7 +578,12 @@ let othersAsked = false;
 function ensureOthers() {
   if (othersAsked) return;
   othersAsked = true;
-  getJson('board/others.json').then((doc) => { productCounts = doc; refreshProducts(); holdPlace(render); }, () => { productCounts = {}; });
+  getJson('board/others.json').then((doc) => {
+    productCounts = doc;
+    refreshProducts();
+    if (document.activeElement === $('search')) suggest(); // the open list gains its counts and their order
+    holdPlace(render);
+  }, () => { productCounts = {}; });
 }
 
 // The notice at the top of the window: how many highlighted rows sit above it. It leaves once they are reached.
@@ -932,10 +937,15 @@ function staleNote() {
   const note = $('stale');
   const stale = isStale();
   const text = stale ? TEXT[lang].stale : ''; // the age is in the status line just above (critique 12)
-  if (note.textContent === text) return; // unchanged: screen readers hear it once (role=status)
+  if ((note.dataset.text || '') === text) return; // unchanged: screen readers hear it once (role=status)
+  note.dataset.text = text;
   note.hidden = !stale;
   note.innerHTML = stale ? WARN : '';
-  if (stale) note.append(el('span', '', text));
+  // Astryx Banner: the first sentence is its title, the rest its description under it.
+  const [, title = text, rest = ''] = /^(.+?[.。])\s*(.*)$/su.exec(text) || [];
+  const words = el('span', 'b-text');
+  words.append(el('strong', '', title), ...(rest ? [el('span', '', rest)] : []));
+  if (stale) note.append(words);
 }
 let shownList = [];
 // The status line; on phones a stale Board says so on this line in two words (critique 13: the notice box pushed the
@@ -1019,7 +1029,7 @@ function guide() {
   $('guide-btn').setAttribute('aria-expanded', guideOpen && !box.dataset.leaving);
   box.hidden = !guideOpen;
   if (!guideOpen) return box.replaceChildren();
-  const close = Object.assign(el('button', 'btn', g.close), { type: 'button' });
+  const close = closeX(g.close);
   close.addEventListener('click', closeGuide);
   const head = el('div', 'g-head');
   head.append(Object.assign(el('h2', '', g.title), { id: 'guide-title' }), close);
@@ -1269,7 +1279,6 @@ function render() {
   barEnd(list);
   // A picked Product also shows Incidents filed under a variant of its name (board.mjs, critique 14); say how many.
   $('picks').replaceChildren(...(variants && list.length ? [el('p', 'pick-note', TEXT[lang].variants(variants))] : []));
-  $('conds').replaceChildren(...conditionChips());
   // Not a live region: #announce already says the count; with nothing found the empty state answers instead. While the
   // data loads it stands empty, keeping its line (index.html), so the rows do not move when the answer arrives.
   $('answer').hidden = !answering || (updated && !list.length) || Boolean(loadError);
@@ -1456,7 +1465,12 @@ function emptyState() {
   const lines = sinceStillTrue(document.documentElement.dataset.collectedSince, Date.now()) ? [...t.noticeSince, t.noticeKeep] : [t.noticeKeep];
   const facts = Object.assign(el('p', 'scope'), { lang });
   lines.forEach((line, n) => { const box = el('span', 'sentence'); box.append(...keepIds(line)); facts.append(...(n ? [' ', box] : [box])); });
-  return [para('', message), scope, ...(query ? [facts] : []), ...actions];
+  // Astryx EmptyState: an icon that says what happened (a search that came back empty), the sentence as its title,
+  // what the Board holds as its description, the ways back under them, all centred.
+  const icon = el('span', 'e-mark');
+  icon.setAttribute('aria-hidden', 'true');
+  icon.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15.5 15.5 5 5M8 10.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  return [icon, para('', message), scope, ...(query ? [facts] : []), ...actions];
 }
 
 function allClear() {
@@ -1508,13 +1522,23 @@ function unpick(e) {
   update({ picks: filter.picks.filter((p) => !e.ids.includes(p)) });
   $('search').focus({ preventScroll: true }); // the token is gone; keep keyboard users in the bar
 }
-function token(e) {
+// Every token in the bar, in order: picked Products, then the filter panel's conditions (Astryx PowerSearch: each
+// filter is a token). [text nodes, name, remove]
+function barTokens() {
+  const products = pickedEntries().map((e) => [[label(e)], label(e), () => unpick(e)]);
+  const conditions = conditionList().map(([value, change, field]) => [field ? [el('span', 'f', `${field} `), el('b', '', value)] : [value],
+    field ? `${field} ${value}` : value, () => { update(change); $('search').focus({ preventScroll: true }); }]);
+  return [...products, ...conditions];
+}
+function token([text, name, remove]) {
   const item = el('span');
   item.setAttribute('role', 'listitem');
   const button = Object.assign(el('button', 'token'), { type: 'button' });
-  button.append(el('span', 't', label(e)), el('span', 'x'));
-  button.setAttribute('aria-label', TEXT[lang].remove(label(e)));
-  button.addEventListener('click', () => unpick(e));
+  const words = el('span', 't');
+  words.append(...text);
+  button.append(words, el('span', 'x'));
+  button.setAttribute('aria-label', TEXT[lang].remove(name));
+  button.addEventListener('click', remove);
   item.append(button);
   return item;
 }
@@ -1522,15 +1546,18 @@ function token(e) {
 // for the picks, the search and the panel's conditions (PowerSearch hasClear); every row of tokens stops short of it.
 function barEnd(list) {
   const t = TEXT[lang];
-  const picked = pickedEntries();
-  $('tokens').replaceChildren(...picked.map(token));
-  $('bar').classList.toggle('has-tokens', picked.length > 0);
+  const tokens = barTokens();
+  $('tokens').replaceChildren(...tokens.map(token));
+  $('bar').classList.toggle('has-tokens', tokens.length > 0);
   const narrowed = activeFilters() > 0 || Boolean($('search').value);
   $('result-count').hidden = !narrowed || !updated || Boolean(loadError) || (filter.query && !applied());
   $('result-count').textContent = $('result-count').hidden ? '' : t.resultCount(list.length);
   $('search-clear').hidden = !narrowed;
-  $('bar').style.setProperty('--lane', `${$('bar').querySelector('.bar-end').offsetWidth}px`);
 }
+// Every row of tokens stops short of the end lane (index.html .bar, --lane), whatever it holds at the moment: a render
+// can run while the bar is not laid out, so its width is watched, not read once.
+new ResizeObserver(([entry]) => $('bar').style.setProperty('--lane', `${Math.ceil(entry.target.offsetWidth)}px`))
+  .observe($('bar').querySelector('.bar-end'));
 // Suggestions: ranked Products for the typed text, at most ten (PowerSearch maxSearchResults), ones already picked left out.
 let suggested = [];
 let active = -1; // the suggestion the arrows moved to
@@ -1659,12 +1686,20 @@ function filterPanel() {
   const apply = Object.assign(el('button', 'btn primary', f.apply), { type: 'submit' });
   actions.append(reset, apply);
   // A visible way out, as the reading guide has: the phone sheet covers the Board and Escape is not on a phone keyboard.
-  const close = Object.assign(el('button', 'btn', f.close), { type: 'button' });
+  const close = closeX(f.close);
   close.addEventListener('click', closePanel);
   const head = el('div', 'g-head fp-head');
   head.append(Object.assign(el('h3', 'fp-title', f.title), { id: 'fp-title' }), close);
   form.replaceChildren(head, grid, actions);
   countDraft();
+}
+
+// A panel's close: a ghost X named by its word (Astryx DialogHeader), as the first-visit line's (index.html .p-close).
+function closeX(name) {
+  const button = Object.assign(el('button', 'btn p-close'), { type: 'button', title: name });
+  button.setAttribute('aria-label', name);
+  button.append(el('span', 'x'));
+  return button;
 }
 
 // Reset clears the panel only; Products picked at the top and the search stay.
@@ -1789,26 +1824,17 @@ function conditionList() {
   const t = TEXT[lang];
   const f = t.fp;
   const words = defaultView === 'easy' ? t.easyLevels : t.levels;
+  // [value, change, field]: a token reads "field value" (Astryx PowerSearch token, the value bold); a value that names
+  // itself ("공격 발생만") has no field.
   return [
-    ...filter.risk.map((r) => [words[r], { risk: filter.risk.filter((x) => x !== r) }]),
+    ...filter.risk.map((r) => [words[r], { risk: filter.risk.filter((x) => x !== r) }, f.risk]),
     ...(filter.kev ? [[t.qfKev, { kev: false }]] : []),
     ...filter.has.map((h) => [f.has[h], { has: filter.has.filter((x) => x !== h) }]),
-    ...filter.picks.filter((p) => p.startsWith('os:')).map((p) => [OSES.find((o) => `os:${o.toLowerCase()}` === p) || p, { picks: filter.picks.filter((x) => x !== p) }]),
-    ...(filter.from || filter.to ? [[`${filter.from || '…'} ~ ${filter.to || '…'}`, { from: '', to: '' }]] : []),
-    ...(filter.cvssMin ? [[`CVSS ${filter.cvssMin}.0+`, { cvssMin: 0 }]] : []),
+    ...osPicks().map((p) => [osName(p), { picks: filter.picks.filter((x) => x !== p) }, 'OS']),
+    ...(filter.from || filter.to ? [[`${filter.from || '…'} ~ ${filter.to || '…'}`, { from: '', to: '' }, f.published]] : []),
+    ...(filter.cvssMin ? [[`${filter.cvssMin}.0+`, { cvssMin: 0 }, 'CVSS']] : []),
     ...(filter.cve ? [[filter.cve === 'yes' ? f.cveYes : f.cveNo, { cve: '' }]] : []),
   ];
-}
-
-function conditionChips() {
-  const t = TEXT[lang];
-  return conditionList().map(([label, change]) => {
-    const button = Object.assign(el('button', 'cond'), { type: 'button' });
-    button.append(el('span', '', label), el('span', 'x'));
-    button.setAttribute('aria-label', t.remove(label));
-    button.addEventListener('click', () => { update(change); $('filter-btn').focus(); });
-    return button;
-  });
 }
 
 // The language menu (owner, 11-17: a dropdown now that there are three): a popover like the RSS menu below; where the
@@ -2180,8 +2206,7 @@ $('search').addEventListener('keydown', (event) => {
     event.preventDefault();
     closeSuggest();
   } else if (event.key === 'Backspace' && !input.value && input.selectionStart === 0) {
-    const last = pickedEntries().at(-1);
-    if (last) unpick(last);
+    barTokens().at(-1)?.[2]();
   }
 });
 $('bar').addEventListener('click', (event) => { if (event.target === $('bar')) $('search').focus(); });
