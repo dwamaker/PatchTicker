@@ -91,7 +91,6 @@
       --mid-ink: light-dark(#4b3900, #eec448);
       --note-wash: light-dark(#dae2ea, #323940);
       --note-ink: light-dark(#434f5a, #bdc5ce);
-      --mid-vivid: #ffce2f; /* Astryx --color-warning: the CVSS ring's gold arc only (1.2:1 by day, the number carries it) */
       --focus: light-dark(#1a5fb4, #7cc4ff);
       --ok: light-dark(#1f6f1f, #68c8a8); /* done / nothing found: a state, never a risk and never a badge fill; 0.13+ from every line (critique 13) */
       --shadow: light-dark(rgb(20 25 30 / 0.07), rgb(0 0 0 / 0.32));
@@ -589,9 +588,11 @@
     .fp-chip.risk-highest input:checked + span { background: var(--high-wash); border-color: var(--high-wash); color: var(--high-ink); }
     .fp-chip.risk-high input:checked + span { background: var(--mid-wash); border-color: var(--mid-wash); color: var(--mid-ink); }
     .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: var(--note-wash); border-color: var(--note-wash); color: var(--note-ink); }
-    /* CVSS ring: never filled (owner, 11-19: "누가 내부 채우래?"); the gold arc is Astryx's vivid warning colour, below 3:1
-       by day, the number inside carrying the value. */
-    .gauge.sev-high { color: var(--mid-vivid); }
+    /* CVSS ring (owner, 11-19): never filled; bright arcs by day, deep arcs by night, as Astryx's status tones run
+       (red #ff705d / #c9303a, gold #ffce2f / #c29900, slate #9aa3ad / #5a6570). The number inside carries the value. */
+    .gauge.sev-critical { color: light-dark(#ff705d, #c9303a); }
+    .gauge.sev-high { color: light-dark(#ffce2f, #c29900); }
+    .gauge:is(.sev-medium, .sev-low) { color: light-dark(#9aa3ad, #5a6570); }
     .nw { white-space: nowrap; } /* a CVE ID kept whole */
     .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
     .kev { color: var(--high); font-weight: 700; } /* also 공격 코드 공개됨 in the panel: red text, no sign (critique 14) */
