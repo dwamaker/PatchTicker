@@ -670,7 +670,8 @@ def page_keys(page, page_url):
     """CVE IDs and outside link keys in a story's linked page (raw HTML or text). Links back to the page's
     own site are its navigation, not citations. Also the page's title and the cited CVEs named more than once in its
     text and its links to other sites (many: SecurityWeek's N-central story names the Axis CVE once and links its NVD
-    page; fortirix's Optimjack post names Java4Shell once), for cited_by."""
+    page; fortirix's Optimjack post names Java4Shell once), for cited_by, and the cited GHSA ids it names outside a link,
+    for cite_advisory."""
     own = url_key(page_url).split("/", 1)[0]
     urls = {url_key(u) for u in urls_in(page)}
     cves = page_cves(page, page_url)
@@ -680,9 +681,11 @@ def page_keys(page, page_url):
     outside = [h for h, _ in parser.links if h.lower().startswith(("http://", "https://")) and url_key(h).split("/", 1)[0] != own]
     text = " ".join(parser.text + outside) if "<" in page[:2000] else page
     cited = sorted(u for u in urls if u.split("/", 1)[0] != own)[:MAX_CITED_LINKS]
-    ids = cves + [m[1] for m in map(CITED_ADVISORY.fullmatch, cited) if m]  # a GHSA id for cite_advisory
-    return {"cves": cves, "urls": cited,
-            "title": " ".join(parser.title.split())[:300], "many": [c for c in ids if len(re.findall(re.escape(c), text, re.I)) > 1]}
+    # A cited GHSA id the page names outside its links (a link's own text or address is no more than the link).
+    prose = " ".join(parser.prose) if "<" in page[:2000] else URL_RE.sub(" ", page)
+    named = [m[1] for m in map(CITED_ADVISORY.fullmatch, cited) if m and re.search(re.escape(m[1]), prose, re.I)]
+    return {"cves": cves, "urls": cited, "title": " ".join(parser.title.split())[:300],
+            "many": [c for c in cves if len(re.findall(re.escape(c), text, re.I)) > 1] + named}
 
 
 class _Links(html.parser.HTMLParser):
@@ -690,6 +693,7 @@ class _Links(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
         self.text, self.links, self.skip, self.open, self.title, self.in_title = [], [], 0, False, "", False
+        self.prose = []  # text outside links
 
     def handle_starttag(self, tag, attrs):
         if tag in ("script", "style", "template"):
@@ -713,6 +717,8 @@ class _Links(html.parser.HTMLParser):
             self.text.append(data)
             if self.open:
                 self.links[-1][1] += data
+            else:
+                self.prose.append(data)
             if self.in_title and not self.title:
                 self.title = data
 
@@ -795,9 +801,8 @@ def rejoin(incidents, since):
             fold(incidents, hits[0], story)
             changed |= {month_of(story["first_seen"]), month_of(hits[0]["first_seen"])}
         # After the fold check: the advisory's address on the story first would make cited_by count its page twice.
-        target = hits[0] if hits else story
-        if cite_advisory(target, story["cites"]):
-            changed.add(month_of(target["first_seen"]))
+        if not hits and cite_advisory(story, story["cites"]):
+            changed.add(month_of(story["first_seen"]))
         if old:
             del story["cites"]
             changed.add(month_of(story["first_seen"]))
@@ -813,7 +818,7 @@ def cite_advisory(incident, cites):
     """Make the one official advisory a story's page cites a Mention of the Incident (11-19, Ruby2Shell: the write-up's
     narrower wording reached the Summary while the GHSA it linked was never read), so the Summary reads it, the Board
     lists it and it may become the Lead. Only when the page cites exactly one (a round-up linking several says nothing
-    about which is this one's) and is about it: its title names the GHSA id, or its text names it besides the link
+    about which is this one's) and is about it: its title names the GHSA id, or its text outside links does
     (cites["many"]; 11-19: a blog on AI security linked an old OpenClaw GHSA once, Ruby2Shell's page named its own ten
     times). Another Incident may hold it too (Ruby2Shell's GHSA was among CVE-2026-132825's record links, the same flaw);
     the shared address then lets that record's next update fold the story in (link, matches). True when added."""

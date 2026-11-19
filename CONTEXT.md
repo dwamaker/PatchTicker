@@ -28,7 +28,9 @@ or repo page), the story is folded into it, whichever arrived first. A CVE ID ou
 IDs are held by one Incident, the story joins it whatever its links point at; held by several, it stands alone
 (owner, 2026-11-18). Links decide only when no CVE ID does. A page counts only when no other Incident
 links it, and an advisory only when it names one notice: a vendor's list of notices says nothing about which
-Incident a story is about (owner, 2026-11-15).
+Incident a story is about (owner, 2026-11-15). A story that stands alone and whose page cites exactly one GitHub
+security advisory, naming its GHSA id in its title or outside its links, gets that advisory as a Mention of kind
+advisory, so its Summary reads it (`cite_advisory`, 2026-11-19, Ruby2Shell).
 
 **Citation** (인용):
 A curator newsletter's Mention plus the CVE IDs and URLs it cites, or a KISA 보호나라 notice (kind "notice") plus the CVE IDs

@@ -379,10 +379,11 @@ class StoryPageTest(unittest.TestCase):
         self.assertEqual(story["brief"]["lead"], self.GHSA)
         # A blog on AI security linked an old OpenClaw GHSA once (11-19): a passing link, not its subject.
         once = self.ruby2shell(f'<a href="{self.GHSA}">an example</a>', 1)
+        own_text = self.ruby2shell(f'<a href="{self.GHSA}">GHSA-34m4-m9fh-gqp5</a>', 3)  # the link's own text: still one link
         two = self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 GHSA-aaaa-bbbb-cccc <a href="{self.GHSA}">a</a>'
                                ' <a href="https://github.com/advisories/GHSA-aaaa-bbbb-cccc">b</a>', 2)
         self.rejoin()
-        for s in (once, two):
+        for s in (once, own_text, two):
             self.assertEqual([m["kind"] for m in s["mentions"]], ["discussion", "writeup"])
 
     def test_a_cited_advisory_is_read_for_the_summary_and_trusted(self):
@@ -396,14 +397,18 @@ class StoryPageTest(unittest.TestCase):
         self.assertLess(text.index(f"Text of {self.GHSA}"), text.index("Text of https://verialabs.com/ruby2shell/"))
         self.assertIn("case conversion", trusted(text)[0])
 
-    def test_a_record_naming_the_cited_advisory_later_folds_the_story_in(self):
-        # CVE-2026-132825's record linked Ruby2Shell's GHSA: the same flaw.
-        story = self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 <a href="{self.GHSA}">advisory</a>')
+    def test_a_record_naming_the_cited_advisory_folds_the_story_in_on_its_next_update(self):
+        # 11-19: CVE-2026-132825's row held Ruby2Shell's GHSA among its record's links only (no Mention), the same flaw.
+        record = {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-132825"}],
+                  "cves": ["CVE-2026-132825"], "urls": [self.GHSA], "text": "x"}
+        self.link(self.incidents, record, "2026-11-19T00:00:02Z")
+        self.ruby2shell(f'GHSA-34m4-m9fh-gqp5 <a href="{self.GHSA}">advisory</a>')
         self.rejoin()
-        self.link(self.incidents, {"mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-132825"}],
-                                   "cves": ["CVE-2026-132825"], "urls": [self.GHSA], "text": "x"}, "2026-11-19T06:00:00Z")
-        self.assertEqual(story["cves"], ["CVE-2026-132825"])
-        self.assertEqual(len(self.incidents), 3)
+        self.assertEqual(len(self.incidents), 4)  # cited_by reads Mentions only: the story stands alone
+        self.link(self.incidents, record, "2026-11-19T06:00:00Z")
+        row = self.incidents[2]
+        self.assertEqual((len(self.incidents), row["cves"], row["brief"]["lead"]), (3, ["CVE-2026-132825"], self.GHSA))
+        self.assertIn("https://verialabs.com/ruby2shell/", [m["url"] for m in row["mentions"]])
 
     def test_tagged_references_in_cna_and_adp_become_mentions(self):
         from collector import cvelist
