@@ -595,8 +595,9 @@
     .loud.risk-high .word { background: var(--mid-wash); color: var(--mid-ink); }
     /* 참고 is the common level (53% of rows, 11-19): plain text in the sign's box, no wash, so the filled 긴급 and 위험 stand out
        (Astryx Badge: "If the same value appears in most rows … use plain text for common states"). A sign with no score yet
-       keeps its dashed edge, inside the same box (the border comes out of the padding), so every sign is one size. */
-    .loud.risk-notice .word { background: none; }
+       keeps its dashed edge, inside the same box (the border comes out of the padding), so every sign is one size.
+       Unboxed, 참고 drops its sides too: its first letter sits on the edge the badges, the title and the reason start from. */
+    .loud.risk-notice .word { background: none; padding-inline: 0; }
     .loud.unrated .word { border: 1.5px dashed var(--note); padding: 0 calc(0.5rem - 1.5px); }
     .sk.sk-pill { border-radius: var(--r-marker); }
     .fp-chip:is(.risk-highest, .risk-high, .risk-notice, .risk-pending) span { border-radius: var(--r-marker); }
