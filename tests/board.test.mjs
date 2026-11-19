@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, listboxStep } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -1805,4 +1805,20 @@ test('answerCounts counts the filtered list by Risk level and attacks, as the ro
   ];
   assert.deepEqual(answerCounts(list), { total: 5, highest: 2, high: 1, notice: 2, exploited: 1 });
   assert.deepEqual(answerCounts([]), { total: 0, highest: 0, high: 0, notice: 0, exploited: 0 });
+});
+
+test('listboxStep: arrows stop at the ends, Home/End jump, typed letters find a label and cycle (정렬 menu, 11-19)', () => {
+  const labels = ['Newest', 'Highest risk', 'Highest CVSS'];
+  assert.equal(listboxStep('ArrowDown', 0, labels), 1);
+  assert.equal(listboxStep('ArrowDown', 2, labels), 2);
+  assert.equal(listboxStep('ArrowUp', 0, labels), 0);
+  assert.equal(listboxStep('Home', 2, labels), 0);
+  assert.equal(listboxStep('End', 0, labels), 2);
+  assert.equal(listboxStep('x', 0, labels), -1); // no typed text: a key the listbox leaves alone
+  assert.equal(listboxStep('h', 0, labels, 'h'), 1);
+  assert.equal(listboxStep('h', 1, labels, 'h'), 2); // the same letter again: the next match
+  assert.equal(listboxStep('h', 2, labels, 'h'), 1); // and round
+  assert.equal(listboxStep('c', 1, labels, 'highest c'), 2); // a burst matches a longer start
+  assert.equal(listboxStep('z', 0, labels, 'z'), -1);
+  assert.equal(listboxStep('c', 0, ['최신순', '위험도순', 'CVSS 높은순'], 'c'), 2);
 });
