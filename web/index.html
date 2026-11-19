@@ -120,6 +120,7 @@
     :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
     button, input { font: inherit; color: inherit; }
     a { color: var(--focus); text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--focus) 50%, transparent); }
+    @media (hover: hover) { a:hover { text-decoration-color: currentColor; } } /* src/Link/Link.tsx:73-77 underline on ':hover' under (hover: hover); ours already underlines, so the line darkens as on 읽는 법 */
     .wrap { max-width: 75rem; margin: 0 auto; padding: 0 1rem; }
     @media (min-width: 768px) { .wrap { padding: 0 1.5rem; } }
 
@@ -184,10 +185,11 @@
     .feed code { color: var(--ink-3); font: calc(0.75rem * var(--ts))/1.4 var(--mono); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
     #feed-none > b, #feed-none > .note { grid-column: 1; }
     #feed-none > .btn { grid-row: 1 / span 2; grid-column: 2; }
+    /* the language menu enters as the RSS menu does (DESIGN.md: "a popover like the RSS menu"; src/Layer/layerAnimations.stylex.ts:53-58 enterBelow) */
     @media (prefers-reduced-motion: no-preference) {
-      .feeds { opacity: 0; translate: 0 -0.25rem; transition: opacity, translate, display, overlay; transition-duration: 0.15s; transition-behavior: allow-discrete; }
-      .feeds:popover-open { opacity: 1; translate: 0 0; transition-duration: 0.1s; }
-      @starting-style { .feeds:popover-open { opacity: 0; translate: 0 -0.25rem; } }
+      .feeds, .langs { opacity: 0; translate: 0 -0.25rem; transition: opacity, translate, display, overlay; transition-duration: 0.15s; transition-behavior: allow-discrete; }
+      .feeds:popover-open, .langs:popover-open { opacity: 1; translate: 0 0; transition-duration: 0.1s; }
+      @starting-style { .feeds:popover-open, .langs:popover-open { opacity: 0; translate: 0 -0.25rem; } }
     }
     h1 { margin: 0; display: flex; align-items: center; gap: 0.625rem; font: 700 calc(1.25rem * var(--ts))/1 var(--sans); letter-spacing: -0.02em; }
     h1 a { display: flex; align-items: center; gap: inherit; color: inherit; text-decoration: none; border-radius: var(--r-ctl); } /* the logo: back to the top of the Board, conditions and search cleared (app.mjs #home) */
@@ -354,7 +356,8 @@
     .list-head #fold-toggle { margin-left: auto; } /* wrapped under a long heading on a phone (English, 150% text) it still keeps the right edge */
     .list-head:has(#all-head[hidden]) { display: none; }
     .sort { display: inline-flex; align-items: center; gap: 0.5rem; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
-    .sort select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-weight: 500; }
+    .sort select { min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
+    @media (hover: hover) { .sort select:hover { background: var(--panel-2); } } /* beside 필터 it takes the buttons' hover: src/Selector/Selector.doc.mjs:441-443 "Use variant=\"secondary\" when a selector sits … beside secondary buttons … so it shares their treatment" */
     #filter-btn { gap: 0.5rem; padding: 0 1rem; }
     .cond { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--rule-2); border-radius: var(--r-pill); background: var(--panel-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; }
     .cond .x { position: relative; width: 10px; height: 10px; }
@@ -393,6 +396,7 @@
     .fp-chip.risk-highest input:checked + span { background: color-mix(in srgb, var(--high) 12%, var(--panel)); border: 1.5px solid var(--high); color: var(--high); }
     .fp-chip.risk-high input:checked + span { background: color-mix(in srgb, var(--mid-mark) 12%, var(--panel)); border: 1.5px solid var(--mid-mark); color: var(--mid); }
     .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
+    @media (hover: hover) { .fp-chip:hover input:not(:checked) + span { background: var(--panel-2); } .chip:hover .ln { text-decoration: underline; text-underline-offset: 2px; } } /* a chip under the pointer says so, as the tag buttons do (src/Token/Token.tsx:442 interactionOverlayStyles.backgroundImage) */
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
     .fp-chip.zero span { border-style: dashed; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
     .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
@@ -588,7 +592,7 @@
        text does: the risk sign with 공격 발생 and its evidence, the time and the chevron, over the title, ring and badges. */
     .stack { border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); overflow: hidden; }
     .alert + .alert { border-top: 1px solid var(--rule-2); }
-    .alert .row { --rx: 0.75rem; grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 26rem); grid-template-areas: "strip strip strip" "t score tags"; row-gap: 0.5rem; min-height: 0; padding: 0 var(--rx) 0.625rem; }
+    .alert .row { --rx: calc(0.75rem - 1px); /* the band's 1px border takes from the inset: src/Card/Card.tsx:86-93 withBorder padding calc(… - border-width) */ grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)) minmax(0, 26rem); grid-template-areas: "strip strip strip" "t score tags"; row-gap: 0.5rem; min-height: 0; padding: 0 var(--rx) 0.625rem; }
     /* the strip spans the row edge to edge; its chevron sits where a list row's does (centre 1.125rem in) */
     .strip { grid-area: strip; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; min-height: 2.5rem; margin: 0 calc(-1 * var(--rx)); padding: 0.25rem 0.875rem 0.25rem var(--rx); border-bottom: 1px solid var(--rule); background: var(--panel-2); }
     .strip .c-risk { flex-direction: row; }
@@ -601,7 +605,7 @@
     .alert.fresh-out .strip { animation: fresh-out-strip 520ms cubic-bezier(0.4, 0, 0.2, 1); }
     @keyframes fresh-out-strip { from { box-shadow: inset 0 2px 0 var(--focus), inset 2px 0 0 var(--focus), inset -2px 0 0 var(--focus); } }
     .c-ev { min-width: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-    .alert .details { padding-left: 0.75rem; } /* starts under the title, which starts at the band's edge */
+    .alert .details { padding-left: calc(0.75rem - 1px); } /* starts under the title, which starts at the band's edge */
     .alert .row:focus-visible { outline-offset: -3px; } /* the band clips (overflow: hidden): draw the ring inside */
     @media (max-width: 1023px) { .alert .row { grid-template-columns: minmax(0, 1fr) calc(2.75rem * var(--ts)); grid-template-areas: "strip strip" "t score" "tags tags"; } .alert .c-tags:empty { display: none; } }
     /* a Highlight in the list says so in words under its sign: no edge, so a row never wears two (critique P2) */
@@ -793,7 +797,8 @@
     .models ul.lines strong { color: var(--ink); }
     .models summary { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--focus); font-weight: 600; cursor: pointer; list-style: none; }
     .models summary::-webkit-details-marker { display: none; }
-    .models summary::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; margin: 0 0.625rem 0 0.125rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 160ms ease-out; }
+    /* every chevron turns in the row's 180ms (DESIGN.md; src/Collapsible/Collapsible.tsx:144-146 one transitionDuration) */
+    .models summary::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; margin: 0 0.625rem 0 0.125rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 180ms var(--ease-out); }
     .models[open] summary::before { transform: rotate(45deg); }
     .models ul { margin: 0; padding-left: 1.25rem; columns: 2 12rem; column-gap: 1.5rem; font-size: calc(var(--fs-small) * var(--ts)); color: var(--ink-2); }
     .mentions { list-style: none; padding: 0.75rem 0 0; margin: 0.75rem 0 0; border-top: 1px solid var(--rule); font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); max-width: 46rem; }
@@ -830,7 +835,7 @@
       .row > .c-tags { order: 6; flex: 1 1 100%; }
       .c-score { gap: 0.375rem; }
       .c-score .sev { display: none; }
-      .alert .row { --rx: 0.5rem; display: grid; }
+      .alert .row { --rx: calc(0.5rem - 1px); display: grid; }
       .details { padding: 0 0.75rem 1rem; }
       .fold-end { padding-left: 0.75rem; }
       .c-date { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; column-gap: 0.375rem; }
@@ -842,8 +847,9 @@
       .why { font-size: calc(var(--fs-meta) * var(--ts)); }
     }
     /* micro-feedback: presses and toggles answer within 100-250ms; under reduced motion only colours change */
-    .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
-    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active { transform: scale(0.96); }
+    /* + the search ×, the language rows and 정렬 tint like every control (src/Field/InputClearButton.tsx:129-131 a ghost Button; src/DropdownMenu/DropdownMenuItem.tsx:68-72 ':focus' paint; src/Selector/Selector.tsx:296-300 transitionProperty) */
+    .btn, .sizes button, #views button, .cond, .chip, #guide-btn, .fp-chip span, .row, .field .clear, .langs button, .sort select { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out, transform 100ms ease-out; }
+    .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span, .sort select:active { transform: scale(0.96); } /* the filter chips and 정렬 press in too (DESIGN.md: chips press to 96%; src/Selector/Selector.tsx:296-300 ':active' scale) */
     #views { position: relative; isolation: isolate; }
     #views.slid::before { content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: var(--pill-x); width: var(--pill-w); border-radius: var(--r-pill); background: var(--ink); }
     #views.ready::before { transition: left 240ms var(--ease-out), width 240ms var(--ease-out); }
@@ -880,7 +886,7 @@
     @keyframes fresh-in { from { opacity: 0; transform: translateY(-14px); } }
     @keyframes fade-out { to { opacity: 0; } }
     @keyframes words-in { from { opacity: 0; transform: translateY(-5px); } }
-    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active { transform: none; } #views.ready::before { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .chev, .row .chev::before, .models summary::before, .foot-fold summary::before { transition: none; } .btn:active:where(:not([aria-disabled="true"])), .sizes button:active:not([aria-disabled="true"]), #views button:active, .cond:active, .chip:active, .fp-chip:active span, .sort select:active { transform: none; } #views.ready::before { transition: none; } }
     /* the Board's one authored moment: on first arrival each ring fills from the top to its score */
     @keyframes ring-fill { from { stroke-dasharray: 0 1; } }
     /* loading: placeholders in the rows' own cells; one scan band runs down the whole Board (fixed background, so it
@@ -923,7 +929,7 @@
        stay; sources and licences open under a summary in the footer's own text, with the folded model list's chevron */
     .foot-fold summary { display: inline-flex; align-items: center; min-height: 2rem; margin-top: 0.25rem; cursor: pointer; list-style: none; }
     .foot-fold summary::-webkit-details-marker { display: none; }
-    .foot-fold summary::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; margin: 0 0.625rem 0 0.125rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 160ms ease-out; }
+    .foot-fold summary::before { content: ""; flex: none; width: 0.4375rem; height: 0.4375rem; margin: 0 0.625rem 0 0.125rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 180ms var(--ease-out); }
     .foot-fold[open] summary::before { transform: rotate(45deg); }
     @media (hover: hover) { .foot-fold summary:hover { color: var(--ink); } }
     @media (max-width: 599px) { .foot-fold summary { min-height: var(--tap); } }
