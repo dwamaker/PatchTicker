@@ -743,6 +743,18 @@ export const titleOf = (i, lang) => i.summary?.[lang]?.title || i.quick_title?.[
 
 // Mentions are listed by kind in this order (the Lead order), on the Board and the Incident page alike.
 export const MENTION_ORDER = ['advisory', 'writeup', 'cve_record', 'discussion', 'curator', 'notice', 'repo'];
+// The Mentions a source list shows, by kind in that order (kinds not in it after, as met), each with its sites in order
+// of appearance (www. dropped). Owner, 11-19: a kind with more than MENTIONS_SHOWN links folds into one line ("분석 글
+// 15건: aikido.dev, hadrian.io 외"), whatever its sites; the Lead has its own line above the list and never folds.
+export const MENTIONS_SHOWN = 2;
+const siteOf = (url) => (URL.canParse(url) ? new URL(url).host.replace(/^www\./, '') : url);
+export function mentionGroups(mentions) {
+  const kinds = [...new Set([...MENTION_ORDER, ...mentions.map((m) => m.kind)])];
+  return kinds.map((kind) => {
+    const list = mentions.filter((m) => m.kind === kind);
+    return { kind, list, sites: [...new Set(list.map((m) => siteOf(m.url)))], fold: list.length > MENTIONS_SHOWN };
+  }).filter((g) => g.list.length);
+}
 
 // The site's languages, in the order the language menu lists them. Korean lives at the root, the others under /<lang>/.
 // Japanese (owner, 11-17) is the interface only: the collector writes Summaries in Korean and English, so a Japanese page
@@ -780,6 +792,7 @@ export const WORDS = {
     scoreOf: (cve) => `${cve}의 점수`, kevSource: 'CISA KEV',
     none: '고친 버전은 아직 확인하지 못했습니다. 아래 원문 링크를 살펴보세요.',
     mentionKinds: { advisory: '보안 공지', writeup: '분석 글', cve_record: 'CVE 기록', discussion: '토론', curator: '뉴스레터', notice: '보호나라 공지', repo: '저장소' },
+    mentionsMany: (label, sites, n) => `${label} ${n}건: ${sites.slice(0, 2).join(', ')}${sites.length > 2 ? ' 외' : ''}`,
     newTab: ' (새 탭에서 열림)', report: '틀린 내용 알리기', tagsMore: (n) => `외 ${n}개`, tagsRest: (n) => `나머지 ${n}개 보기`,
     refNote: '이 현황판은 참고용입니다. 조치하기 전에 각 사건의 원문 공지를 확인하세요. 사건은 최근 90일 것만 보관합니다.',
     nvd: '이 서비스는 NVD API 데이터를 사용하지만 NVD의 보증이나 인증을 받지 않았습니다.',
@@ -802,6 +815,7 @@ export const WORDS = {
     scoreOf: (cve) => `Score of ${cve}`, kevSource: 'CISA KEV',
     none: 'We have not confirmed a fixed version yet. Check the source links below.',
     mentionKinds: { advisory: 'Advisory', writeup: 'Write-up', cve_record: 'CVE record', discussion: 'Discussion', curator: 'Newsletter', notice: 'KISA notice', repo: 'Repository' },
+    mentionsMany: (label, sites, n) => `${label} (${n}): ${sites.slice(0, 2).join(', ')}${sites.length > 2 ? ' and more' : ''}`,
     newTab: ' (opens in a new tab)', report: 'Report a mistake', tagsMore: (n) => `+${n} more`, tagsRest: (n) => `Show ${n} more`,
     refNote: "This Board is for reference only. Check each Incident's source advisory before you act. Only Incidents of the last 90 days are kept.",
     nvd: '',
@@ -824,6 +838,7 @@ export const WORDS = {
     scoreOf: (cve) => `${cve} のスコア`, kevSource: 'CISA KEV',
     none: '修正バージョンはまだ確認できていません。下の原文リンクを確認してください。',
     mentionKinds: { advisory: 'セキュリティ勧告', writeup: '解説記事', cve_record: 'CVE レコード', discussion: '議論', curator: 'ニュースレター', notice: 'KISA 告知', repo: 'リポジトリ' },
+    mentionsMany: (label, sites, n) => `${label} ${n}件: ${sites.slice(0, 2).join('、')}${sites.length > 2 ? ' ほか' : ''}`,
     newTab: '（新しいタブで開きます）', report: '誤りを報告', tagsMore: (n) => `ほか${n}件`, tagsRest: (n) => `残り${n}件を表示`,
     refNote: 'このボードは参考情報です。対応する前に各インシデントの原文を確認してください。保存するのは過去90日のインシデントのみです。',
     nvd: 'このサービスは NVD API のデータを使用していますが、NVD による保証や認証は受けていません。',

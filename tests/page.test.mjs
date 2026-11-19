@@ -86,8 +86,20 @@ test('three or more untitled links of one kind are named by the last part of the
   assert.match(sources, />typo3-core-sa-2026-025<span/);
   assert.match(sources, />TYPO3-CORE-SA-2026-027<span/);
   assert.doesNotMatch(sources, />news\.typo3\.com</);
+  assert.match(sources, /<details class="more"><summary>보안 공지 3건: news\.typo3\.com<\/summary><ul class="sources">/); // folded past two (owner, 11-19)
   const two = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
   assert.match(two, />news\.typo3\.com</); // two are told apart well enough by their site
+});
+
+test('the Lead never folds: when its kind folds it keeps a line of its own ahead of the rest (owner, 11-19)', async () => {
+  const lead = 'https://www.openssh.com/txt/release-9.9p2';
+  const mentions = [lead, 'https://a.example/1', 'https://b.example/2', 'https://c.example/3'].map((url) => ({ kind: 'advisory', url }));
+  const sources = (await (await page({ ...SSHOLE, mentions })).text()).split('id="s-mentions"')[1];
+  assert.match(sources, /<ul class="sources"><li>보안 공지: <a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"/);
+  assert.match(sources, /<summary>보안 공지 3건: a\.example, b\.example 외<\/summary>/);
+  assert.equal(sources.split('release-9.9p2').length, 2); // once, outside the fold
+  const few = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
+  assert.match(few, /보안 공지: <a href="https:\/\/www\.openssh\.com[^·]*· <a href="https:\/\/a\.example/); // unfolded: one line as before
 });
 
 test('a one-CVE Incident whose only Mention is its CVE record still shows Sources', async () => {

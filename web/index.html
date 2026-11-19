@@ -874,8 +874,7 @@
     .details .share .btn { gap: 0.5rem; }
     .details .share svg { width: 16px; height: 16px; flex: none; }
     /* 이 제품의 사건만 보기: an opened row's tags as buttons that filter the Board; the badge keeps its look */
-    .details .tag-line { margin: 1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
-    .tag-label { margin-right: 0.25rem; color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); }
+    .details .tag-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
     .tag-btn { max-width: 100%; min-width: 0; padding: 0; border: 0; border-radius: var(--r-pill); background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 100ms ease-out; }
     .tag-btn[aria-pressed="true"] .ln { outline: 2px solid var(--ink); outline-offset: 1px; } /* picked: an ink ring, the line colour stays */
     .tag-btn:focus-visible { outline-offset: 4px; } /* clear of the picked ring */
@@ -987,6 +986,8 @@
     .mentions { list-style: none; padding: 0.75rem 0 0; margin: 0.75rem 0 0; border-top: 1px solid var(--rule); font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); max-width: 46rem; }
     .mentions li { overflow-wrap: anywhere; padding: 0.125rem 0; }
     .mentions:empty { display: none; } /* a group's links all sit on its CVE lines */
+    .mentions .models { margin-top: 0; } /* a folded kind is one line among the others (owner, 11-19) */
+    @media (pointer: fine) { .mentions .models summary { min-height: 1.5rem; } } /* the plain lines' pitch; touch keeps its 44px */
     @media (pointer: coarse) { .mentions li a, .details .lead a, .details .why-line a, .details .others a { display: inline-flex; align-items: center; min-height: var(--tap); } } /* finger-sized links on touch screens, 44px tall; no side padding, so the text stays put */
     /* a command as Astryx's CodeBlock (critique 11-19 vis): one framed block on Recessed Panel, the code padded 0.75rem 1rem
        (src/CodeBlock/CodeBlock.tsx code: spacing-3 spacing-4) in its own column, Copy a ghost button in the end column
