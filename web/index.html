@@ -227,7 +227,7 @@
        sizes hold and forced colours still draw it. */
     .btn { min-height: var(--ctl-h); min-width: var(--ctl-h); gap: 0.5rem; padding: 0 0.75rem; border: 1px solid transparent; border-radius: var(--r-ctl); background: var(--ctl-fill); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     @media (hover: hover) { .btn:hover:where(:not([aria-disabled="true"])) { background: var(--ctl-hover); color: var(--ink); } }
-    .btn[aria-expanded="true"] { background: var(--ctl-on); color: var(--ink); } /* its menu or panel is open: the pressed step */
+    .btn:is([commandfor], #filter-btn, #prefs-btn)[aria-expanded="true"] { background: var(--ctl-on); color: var(--ink); } /* its menu or panel is open: the pressed step (not 주요 사건 접기, which only expands the list) */
     /* ghost (Astryx IconButton, Best Practices: "Use ghost in toolbars + dense areas to reduce visual clutter"): the header's
        controls and the icon-only closes; the fill comes on hover and while open */
     :where(#repo, #feeds-btn, #feeds-btn-phone, #prefs-btn, #theme, #lang, .p-close, .fp-close):not([aria-expanded="true"]) { background: none; } /* as weak as .btn, so .btn:hover still fills it */
@@ -396,7 +396,7 @@
     .sort select { min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid transparent; border-radius: var(--r-ctl); background: var(--ctl-fill); color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
     @media (hover: hover) { .sort select:hover { background: var(--ctl-hover); } } /* beside 필터 it takes the buttons' hover: src/Selector/Selector.doc.mjs:441-443 "Use variant=\"secondary\" when a selector sits … beside secondary buttons … so it shares their treatment" */
     #filter-btn { gap: 0.5rem; padding: 0 1rem; }
-    .cond { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--tap); padding: 0 0.75rem; border: 1px solid var(--rule-2); border-radius: var(--r-pill); background: var(--panel-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; }
+    .cond { display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid transparent; border-radius: var(--r-ctl); background: var(--ctl-fill); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; }
     .cond .x { position: relative; width: 10px; height: 10px; }
     .cond .x::before, .cond .x::after { content: ""; position: absolute; left: 4px; top: -1px; width: 1.5px; height: 12px; background: currentColor; transform: rotate(45deg); }
     .cond .x::after { transform: rotate(-45deg); }
@@ -420,8 +420,7 @@
     .fp-dates { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; }
     .fp-note { flex-basis: 100%; margin: 0; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); }
     .fp-label { padding: 0; font-size: calc(var(--fs-meta) * var(--ts)); font-weight: 600; color: var(--ink-2); }
-    .fp-field input, .fp-field select { min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); }
-    .fp-field select { align-self: flex-start; max-width: 16rem; } /* as wide as its words, not the column (critique 13: 356px) */
+    .fp-dates input { min-height: var(--ctl-h); padding: 0 0.75rem; border: 1px solid var(--edge); border-radius: var(--r-ctl); background: var(--bg); } /* the dates are the panel's only fields: they keep a field's edge (Astryx TextInput) */
     .fp-grid > .fp-zero-note { grid-column: 1 / -1; margin-top: -0.5rem; } /* right under the chips it explains */
     .fp-checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .fp-checks legend { flex-basis: 100%; margin-bottom: 0.375rem; }
@@ -432,11 +431,23 @@
     .fp-chip.risk-highest input:checked + span { background: color-mix(in srgb, var(--high) 12%, var(--panel)); border: 1.5px solid var(--high); color: var(--high); }
     .fp-chip.risk-high input:checked + span { background: color-mix(in srgb, var(--mid-mark) 12%, var(--panel)); border: 1.5px solid var(--mid-mark); color: var(--mid); }
     .fp-chip:is(.risk-notice, .risk-pending) input:checked + span { background: color-mix(in srgb, var(--note) 12%, var(--panel)); border: 1.5px solid var(--note); color: var(--ink); }
-    @media (hover: hover) { .fp-chip:hover input:not(:checked) + span { background: var(--ctl-hover); } .chip:hover .ln { text-decoration: underline; text-underline-offset: 2px; } } /* a chip under the pointer says so, as the tag buttons do (src/Token/Token.tsx:442 interactionOverlayStyles.backgroundImage) */
+    @media (hover: hover) { .cond:hover { background: var(--ctl-hover); } .fp-chip:hover input:not(:checked) + span { background: var(--ctl-hover); } .chip:hover .ln { text-decoration: underline; text-underline-offset: 2px; } } /* a chip under the pointer says so, as the tag buttons do (src/Token/Token.tsx:442 interactionOverlayStyles.backgroundImage) */
     .fp-chip input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
     .fp-chip.zero span { border-style: dashed; border-color: var(--edge); background: none; color: color-mix(in srgb, var(--ink-3) 90%, var(--panel)); } /* adding it would leave nothing; dimmer ink too, 4.5:1+ (critique 13) */
+    /* a chosen chip carries a tick as well as its fill (Astryx ToggleButton, Best Practices: "Filled/colored icon for pressed
+       state so users see current state at a glance"), so the state never rests on colour alone */
+    .fp-chip input:checked + span::before { content: ""; flex: none; width: 0.3125rem; height: 0.5625rem; margin: -0.125rem 0.5rem 0 0.0625rem; border: solid currentColor; border-width: 0 2px 2px 0; rotate: 45deg; }
+    /* 최소 CVSS and CVE 번호 as segmented controls, drawn as the 기본|쉬운 설명 switch (app.mjs segments) */
+    .fp-seg-track { display: inline-flex; align-self: flex-start; max-width: 100%; padding: 2px; border-radius: var(--r-ctl); background: var(--ctl-fill); }
+    .fp-seg label { position: relative; display: flex; min-width: 0; }
+    .fp-seg input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+    .fp-seg span { display: flex; align-items: center; justify-content: center; min-height: calc(var(--ctl-h) - 4px); padding: 0 0.75rem; border-radius: var(--r-code); color: var(--ink-2); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 500; text-align: center; transition: background-color 120ms ease-out, color 120ms ease-out; }
+    @media (pointer: coarse) { .fp-seg span { min-height: var(--tap); } }
+    .fp-seg input:checked + span { background: var(--seg-on); color: var(--ink); font-weight: 600; box-shadow: var(--lift-low); }
+    @media (hover: hover) { .fp-seg label:hover input:not(:checked) + span { background: var(--ctl-hover); color: var(--ink); } }
+    .fp-seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
     .fp-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
-    /* Astryx Button, primary: the accent fill (our Wayfinding Blue), the one per view (필터 적용); white on it 6.4:1 by day, Ink Black 9:1+ by night */
+    /* Astryx Button, primary: the accent fill (our Wayfinding Blue), the one per view (필터 적용); the page ground on it 5.76:1 by day, 9.84:1 by night */
     .btn.primary { background: var(--focus); border-color: var(--focus); color: var(--bg); font-weight: 700; }
     @media (hover: hover) { .btn.primary:hover:where(:not([aria-disabled="true"])) { background: color-mix(in srgb, var(--focus) 85%, var(--ink)); color: var(--bg); } }
     /* phones: the panel is a bottom sheet with 필터 적용 always in reach */
@@ -502,7 +513,7 @@
     .p-key .gauge { width: calc(2.25rem * var(--ts)); height: calc(2.25rem * var(--ts)); }
     .p-pair { display: flex; align-items: center; gap: 0.375rem; }
     .primer > .btn { flex: none; }
-    .p-close { width: var(--tap); padding: 0; justify-content: center; }
+    .p-close { width: var(--ctl-h); padding: 0; justify-content: center; }
     .fp-close { width: var(--ctl-h); padding: 0; color: var(--ink-2); } /* the filter panel's close: an icon-only ghost button, as Astryx Dialog's header has */
     :is(.p-close, .fp-close) .x { position: relative; width: 12px; height: 12px; }
     :is(.p-close, .fp-close) .x::before, :is(.p-close, .fp-close) .x::after { content: ""; position: absolute; left: 5px; top: -1px; width: 1.5px; height: 14px; background: currentColor; transform: rotate(45deg); }

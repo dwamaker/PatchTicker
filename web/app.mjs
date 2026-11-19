@@ -1550,11 +1550,6 @@ function filterPanel() {
     return wrap;
   };
   const input = (type, name, value) => Object.assign(document.createElement('input'), { type, name, value });
-  const select = (name, options, value) => {
-    const s = Object.assign(document.createElement('select'), { name });
-    s.append(...options.map(([v, text]) => Object.assign(new Option(text, v), { selected: String(v) === String(value) })));
-    return s;
-  };
   const checks = (legend, name, items, isOn) => {
     const set = el('fieldset', 'fp-field wide fp-checks');
     set.append(el('legend', 'fp-label', legend));
@@ -1564,6 +1559,21 @@ function filterPanel() {
       chip.append(box, el('span', '', text));
       set.append(chip);
     }
+    return set;
+  };
+  // A choice of three or four (최소 CVSS, CVE 번호) is a segmented control, every option in sight, not a select (Astryx
+  // Selector, Best Practices: "Don't: Use when there are only two options; use a SegmentedControl or radio buttons";
+  // SegmentedControl: "Use for switching between 2-5 mutually exclusive views or modes where all options should be visible").
+  const segments = (legend, name, items, value) => {
+    const set = el('fieldset', 'fp-field fp-seg');
+    const track = el('div', 'fp-seg-track');
+    for (const [v, text] of items) {
+      const box = Object.assign(input('radio', name, v), { checked: String(v) === String(value) });
+      const option = el('label', '');
+      option.append(box, el('span', '', text));
+      track.append(option);
+    }
+    set.append(el('legend', 'fp-label', legend), track);
     return set;
   };
   const words = defaultView === 'easy' ? t.easyLevels : t.levels;
@@ -1581,8 +1591,8 @@ function filterPanel() {
     (() => { const set = checks('OS', 'os', OSES.map((os) => [`os:${os.toLowerCase()}`, os]), (v) => filter.picks.includes(v)); set.append(Object.assign(el('p', 'fp-note', f.osNote), { id: 'fp-os-note' })); set.setAttribute('aria-describedby', 'fp-os-note'); return set; })(),
     // What a dashed chip means: one full-width line right under the chips, and each dashed chip points to it (critique 13).
     Object.assign(el('p', 'fp-note fp-zero-note', f.zeroNote), { id: 'fp-zero-note' }),
-    field(f.cvss, select('cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin)),
-    field(f.cve, select('cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve)),
+    segments(f.cvss, 'cvssMin', [[0, f.any], [4, '4.0+'], [7, '7.0+'], [9, '9.0+']], filter.cvssMin),
+    segments(f.cve, 'cve', [['', f.any], ['yes', f.cveYes], ['no', f.cveNo]], filter.cve),
     dates,
   );
   const actions = el('div', 'fp-actions');
