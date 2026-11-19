@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, MENTION_ORDER, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, onBoard, nameLine, productOthers, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -274,14 +274,13 @@ function distroFold(i, lang, t) {
 function mentions(i, lang, t) {
   const glosses = Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : [];
   const named = (m) => (lang === 'ko' && glosses.find((g) => g?.url === m.url && typeof g.title === 'string')?.title) || m.title || host(m.url);
-  const kinds = [...new Set([...MENTION_ORDER, ...i.mentions.map((m) => m.kind)])];
   // A group's CVE section links these already (IBM API Connect had 204 twice); with one or two, as on the Board, Sources keeps them.
   const listed = new Set(i.cves.length > 2 ? i.cves.map(cveUrl) : []);
   const shown = (m) => http(m.url) && !(m.kind === 'cve_record' && listed.has(m.url));
   // With every link hidden the Lead mention, the first CVE record by the Lead order, keeps Sources (H1, owner 11-15).
   if (!i.mentions.some(shown)) listed.delete(i.mentions.find((m) => http(m.url))?.url);
-  // Three or more links of one kind with no title of their own are named by the last part of their address (GHSA-…,
-  // a bulletin's file name), as the Board's folded sources are: ten "news.typo3.com" in a row told them apart by nothing.
+  // In a folded kind, a link with no title of its own whose site repeats there is named by the last part of its address
+  // (GHSA-…, a bulletin's file name), as on the Board: ten "news.typo3.com" in a row told them apart by nothing.
   const lastPart = (url) => {
     try {
       const u = new URL(url);
@@ -290,13 +289,16 @@ function mentions(i, lang, t) {
       return '';
     }
   };
-  return ul(kinds.flatMap((kind) => {
-    const list = i.mentions.filter((m) => m.kind === kind && shown(m));
+  // Owner, 11-19: a kind with more links than MENTIONS_SHOWN folds into one line, as on the Board (mentionGroups).
+  return ul(mentionGroups(i.mentions.filter(shown)).map(({ kind, list, sites, fold }) => {
+    const label = t.mentionKinds[kind] || kind;
     const links = list.map((m) => {
       const name = named(m);
-      return link(m.url, list.length > 2 && name === host(m.url) ? lastPart(m.url) || name : name, t);
+      const repeats = list.filter((x) => host(x.url) === host(m.url)).length > 1;
+      return link(m.url, fold && repeats && name === host(m.url) ? lastPart(m.url) || name : name, t);
     });
-    return links.length ? [`${esc(t.mentionKinds[kind] || kind)}: ${links.join(' · ')}`] : [];
+    return fold ? `<details class="more"><summary>${esc(t.mentionsMany(label, sites, list.length))}</summary>${ul(links, 'sources')}</details>`
+      : `${esc(label)}: ${links.join(' · ')}`;
   }), 'sources');
 }
 

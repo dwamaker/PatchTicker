@@ -86,6 +86,7 @@ test('three or more untitled links of one kind are named by the last part of the
   assert.match(sources, />typo3-core-sa-2026-025<span/);
   assert.match(sources, />TYPO3-CORE-SA-2026-027<span/);
   assert.doesNotMatch(sources, />news\.typo3\.com</);
+  assert.match(sources, /<details class="more"><summary>보안 공지 3건: news\.typo3\.com<\/summary><ul class="sources">/); // folded past two (owner, 11-19)
   const two = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
   assert.match(two, />news\.typo3\.com</); // two are told apart well enough by their site
 });

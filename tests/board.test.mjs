@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, wellKnown, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, vendorKey, pinKey, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts } from '../web/board.mjs';
+import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, mentionGroups, MENTIONS_SHOWN } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -1805,4 +1805,21 @@ test('answerCounts counts the filtered list by Risk level and attacks, as the ro
   ];
   assert.deepEqual(answerCounts(list), { total: 5, highest: 2, high: 1, notice: 2, exploited: 1 });
   assert.deepEqual(answerCounts([]), { total: 0, highest: 0, high: 0, notice: 0, exploited: 0 });
+});
+
+// Owner, 11-19: source lists fold a kind past MENTIONS_SHOWN links, whatever its sites; the summary names its first sites.
+test('mentionGroups: by kind in the Lead order, folding past two links', () => {
+  const m = (kind, url) => ({ kind, url });
+  const groups = mentionGroups([
+    m('repo', 'https://github.com/a'), m('writeup', 'https://www.aikido.dev/x'), m('writeup', 'https://hadrian.io/y'),
+    m('writeup', 'https://openjdk.org/z'), m('discussion', 'https://news.ycombinator.com/item?id=1'),
+    m('discussion', 'https://seclists.org/2'), m('odd', 'https://e.example/'), m('writeup', 'https://hadrian.io/w'),
+  ]);
+  assert.deepEqual(groups.map((g) => [g.kind, g.list.length, g.fold]), [['writeup', 4, true], ['discussion', 2, false], ['repo', 1, false], ['odd', 1, false]]);
+  assert.deepEqual(groups[0].sites, ['aikido.dev', 'hadrian.io', 'openjdk.org']); // distinct, www. dropped, first met first
+  assert.equal(MENTIONS_SHOWN, 2);
+  assert.deepEqual(mentionGroups([]), []);
+  assert.equal(WORDS.ko.mentionsMany('분석 글', groups[0].sites, 4), '분석 글 4건: aikido.dev, hadrian.io 외');
+  assert.equal(WORDS.en.mentionsMany('Write-up', ['a.io'], 3), 'Write-up (3): a.io');
+  assert.equal(WORDS.ja.mentionsMany('解説記事', ['a.io', 'b.io'], 3), '解説記事 3件: a.io、b.io');
 });

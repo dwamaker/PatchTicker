@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey } from './board.mjs';
 
 
@@ -59,7 +59,7 @@ const TEXT = {
     searched: (cve) => `검색한 ${cve}`, notExploited: '공격 보고 없음',
     answer: (who, when, n) => `${who}: ${when ? `${when} ` : ''}${n}건`, answerWeek: '최근 7일', answerHeld: '최근 90일',
     preparing: '요약 준비 중', unavailable: '요약을 만들지 못했습니다. 아래 원문 링크를 확인하세요.',
-    mitigation: '대처법', mentionsMany: (label, site, n) => `${label} ${n}건: ${site}`, cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
+    mitigation: '대처법', cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
     aboutHead: '요약', scoreHead: '점수', cveHead: 'CVE', // the opened row's section and fact labels (Astryx inspector)
     copy: '복사', copied: '복사됨', copyFailed: '복사하지 못했습니다. 선택된 명령을 직접 복사하세요.', share: '이 사건 링크 복사',
@@ -67,7 +67,7 @@ const TEXT = {
     feedAll: '현황판 전체', feedAllNote: '참고까지 모든 사건', feedMine: '내 제품', feedPick: '제품 고르기',
     feedNone: '위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.',
     feedMore: (n) => ` 외 ${n}개`, feedLeft: (n) => `주소 하나에는 제품 30개까지 담깁니다. 나머지 ${n}개는 빠졌습니다.`,
-    tagsOnly: '이 제품의 사건만 보기', tagOnly: (name) => `${name} 사건만 보기`,
+    tagsHead: '제품', tagOnly: (name) => `${name} 사건만 보기`,
     paused: 'AI 요약이 잠시 멈췄습니다. 새 사건은 요약 없이 원문 제목과 링크만 보입니다.',
     versionHelp: (cve) => (cve ? `내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 ${cve} 번호로 물어보세요.` : '내 버전은 보통 그 프로그램의 설정이나 ‘정보’ 화면에 나와요.'),
     libraryHelp: '앱에 들어 있는 부품이라 직접 확인이 어려워요. 쓰는 프로그램을 업데이트하거나, 서버 관리자·호스팅 업체에 물어보세요.',
@@ -114,7 +114,7 @@ const TEXT = {
     searched: (cve) => `You searched ${cve}`, notExploited: 'No attacks reported',
     answer: (who, when, n) => `${who}: ${n} Incident${n === 1 ? '' : 's'}${when ? ` ${when}` : ''}`, answerWeek: 'in the last 7 days', answerHeld: 'in the last 90 days',
     preparing: 'Summary in preparation', unavailable: 'No Summary is available. See the source link below.',
-    mitigation: 'Mitigation', mentionsMany: (label, site, n) => `${label} (${n}): ${site}`, cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
+    mitigation: 'Mitigation', cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
     aboutHead: 'Summary', scoreHead: 'Score', cveHead: 'CVE',
     copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. The command is selected: copy it yourself.', share: 'Copy link to this Incident',
@@ -122,7 +122,7 @@ const TEXT = {
     feedAll: 'The whole Board', feedAllNote: 'Every Incident, Notice too', feedMine: 'My products', feedPick: 'Pick products',
     feedNone: 'Pick products in “Products you run” above, and an address with only their Incidents appears here.',
     feedMore: (n) => ` and ${n} more`, feedLeft: (n) => `One address holds up to 30 products; the other ${n} are left out.`,
-    tagsOnly: 'Show only Incidents of', tagOnly: (name) => `Show only ${name} Incidents`,
+    tagsHead: 'Products', tagOnly: (name) => `Show only ${name} Incidents`,
     paused: 'Summaries are paused for now; new Incidents show only the source title and link.',
     versionHelp: (cve) => (cve ? `Your version is usually shown in the program's settings or About screen. If not, ask an AI chatbot about ${cve}.` : "Your version is usually shown in the program's settings or About screen."),
     libraryHelp: "It is a part built into other apps, so it is hard to check yourself. Update the programs you use, or ask your server admin or hosting company.",
@@ -169,7 +169,7 @@ const TEXT = {
     searched: (cve) => `検索した ${cve}`, notExploited: '攻撃の報告なし',
     answer: (who, when, n) => `${who}: ${when ? `${when} ` : ''}${n}件`, answerWeek: '直近7日', answerHeld: '直近90日',
     preparing: '要約を準備中', unavailable: '要約を作成できませんでした。下の原文リンクを確認してください。',
-    mitigation: '対処法', mentionsMany: (label, site, n) => `${label} ${n}件: ${site}`, cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
+    mitigation: '対処法', cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
     normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
     aboutHead: '要約', scoreHead: 'スコア', cveHead: 'CVE',
     copy: 'コピー', copied: 'コピーしました', copyFailed: 'コピーできませんでした。選択されたコマンドを手動でコピーしてください。', share: 'このインシデントのリンクをコピー',
@@ -177,7 +177,7 @@ const TEXT = {
     feedAll: 'ボード全体', feedAllNote: '参考を含むすべてのインシデント', feedMine: '自分の製品', feedPick: '製品を選ぶ',
     feedNone: '上の「使っている製品」で製品を選ぶと、その製品のインシデントだけが届くアドレスがここに表示されます。',
     feedMore: (n) => ` ほか${n}件`, feedLeft: (n) => `1つのアドレスに入る製品は30件までです。残りの${n}件は含まれていません。`,
-    tagsOnly: 'この製品のインシデントだけを表示', tagOnly: (name) => `${name} のインシデントだけを表示`,
+    tagsHead: '製品', tagOnly: (name) => `${name} のインシデントだけを表示`,
     paused: 'AI 要約を一時停止しています。新しいインシデントは要約なしで、原文のタイトルとリンクだけが表示されます。',
     versionHelp: (cve) => (cve ? `お使いのバージョンは、たいていそのプログラムの設定や「バージョン情報」画面に表示されます。わからなければ AI チャットボットに ${cve} について聞いてみてください。` : 'お使いのバージョンは、たいていそのプログラムの設定や「バージョン情報」画面に表示されます。'),
     libraryHelp: 'アプリに組み込まれた部品なので、自分で確認するのは難しいです。使っているプログラムを更新するか、サーバー管理者やホスティング会社に問い合わせてください。',
@@ -2835,9 +2835,10 @@ function details(incident, onStrip = false) {
   if (incident.cves.length) facts.push([t.cveHead, [...idLine(incident.cves).childNodes]]);
   // The group's score with the CVE it belongs to (step 4), in both views. A score a page raised shows both standards'
   // scores there instead (owner 11-18), one-CVE Incidents too: "CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…".
+  // Owner 11-19: every scored row shows its score here, one-CVE rows too.
   const top = scoreCve(incident);
   const pair = scorePair(incident);
-  if (top || pair) facts.push([t.scoreHead, keepIds([pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · '))]);
+  if (pair || Number.isFinite(incident.cvss)) facts.push([t.scoreHead, keepIds([pair || `CVSS ${incident.cvss.toFixed(1)}`, top].filter(Boolean).join(' · '))]);
   // M4 (owner, 11-15): the Lead CVE's Public date, when it is not the day of the Published time.
   if (publicDay(incident)) facts.push([t.publicDate, [publicDay(incident)]]);
   // A Brief has no plain sentence to lead with, so its identifiers stay on top in both views (critique 14).
@@ -2857,7 +2858,11 @@ function details(incident, onStrip = false) {
     if (!idsAtFoot) facts.push([reason.kind === 'kev' ? t.kevReason : t.attackSource.replace(/[:：]\s*$/, ''), [...why.childNodes]]);
   }
   const ids = facts.length ? [factList(facts)] : [];
-  if (!idsAtFoot) head.push(...ids);
+  // Owner 11-19: the row's tags as working filters with the facts, so no one scrolls past a long panel to pick one. In the
+  // Easy view the identifiers sit at the foot, so the tags get their own one-line list on top there.
+  const tags = tagLine(incident);
+  if (!idsAtFoot) head.push(...(tags.length ? [factList([...facts, [t.tagsHead, tags]])] : ids));
+  else if (tags.length) head.push(factList([[t.tagsHead, tags]]));
   if (easy && isExploited(incident)) head.push(para('kev', t.kevEasy));
   if (why && idsAtFoot) head.push(why);
   // Public exploit code without reported attacks: no sign, a red line (owner, 2026-11-09); in the Easy view over the
@@ -2899,7 +2904,6 @@ function details(incident, onStrip = false) {
     if (foot.childElementCount) parts.push(foot);
   } else parts.push(...cveFold);
   const mentions = el('ul', 'mentions');
-  const rank = (m) => (MENTION_ORDER.includes(m.kind) ? MENTION_ORDER.indexOf(m.kind) : MENTION_ORDER.length);
   const lastPart = (url) => {
     try {
       const u = new URL(url);
@@ -2915,21 +2919,16 @@ function details(incident, onStrip = false) {
     if (gloss) link.title = m.title;
     return link;
   };
-  // A release group brings dozens of advisories from one site ("보안 공지: github.com" 29 times): three or more of one
-  // kind on one site fold into one line, each link named by the last part of its address (GHSA-xxxx).
-  const groups = new Map();
   const linkedAbove = incident.cves.length > 2; // a group links each CVE record from its CVE list
   // Step 4 (owner, 11-15: 347 group links were shown nowhere): an advisory or write-up is left out only when a drawn CVE
   // line links it; the Easy view draws none.
   const onLines = new Set(easy ? [] : cveLines(incident, lang).flatMap((l) => (incident.cve_links?.[l.cve] || []).map((x) => x.url)));
-  for (const m of incident.mentions.toSorted((a, b) => rank(a) - rank(b))) {
-    if ((linkedAbove && m.kind === 'cve_record') || (['advisory', 'writeup'].includes(m.kind) && onLines.has(m.url))) continue; // on each CVE's line
-    const key = `${m.kind} ${host(m.url)}`;
-    groups.set(key, [...(groups.get(key) || []), m]);
-  }
-  for (const list of groups.values()) {
-    const label = t.mentionKinds[list[0].kind] ?? list[0].kind;
-    if (list.length < 3) {
+  const listed = incident.mentions.filter((m) => !((linkedAbove && m.kind === 'cve_record') || (['advisory', 'writeup'].includes(m.kind) && onLines.has(m.url))));
+  // A kind with more links than MENTIONS_SHOWN folds into one line (mentionGroups). Inside, an untitled link is named by the
+  // last part of its address (GHSA-xxxx) when its site repeats there, else by its site.
+  for (const { kind, list, sites, fold } of mentionGroups(listed)) {
+    const label = t.mentionKinds[kind] ?? kind;
+    if (!fold) {
       for (const m of list) {
         const item = el('li', '');
         item.append(`${label}: `, linkOf(m, host(m.url)));
@@ -2937,22 +2936,23 @@ function details(incident, onStrip = false) {
       }
       continue;
     }
-    const fold = el('details', 'models');
     const inner = el('ul', '');
     for (const m of list) {
       const li = el('li', '');
-      li.append(linkOf(m, lastPart(m.url) || host(m.url)));
+      const repeats = list.filter((x) => host(x.url) === host(m.url)).length > 1;
+      li.append(linkOf(m, (repeats && lastPart(m.url)) || host(m.url)));
       inner.append(li);
     }
     const item = el('li', '');
-    item.append(foldable(fold, el('summary', '', t.mentionsMany(label, host(list[0].url), list.length)), inner));
+    item.append(foldable(el('details', 'models'), el('summary', '', t.mentionsMany(label, sites, list.length)), inner));
     mentions.append(item);
   }
-  return [...parts, leadLine(incident), ...list, mentions, ...tagLine(incident), shareLine(incident)];
+  return [...parts, leadLine(incident), ...list, mentions, shareLine(incident)];
 }
 
-// 이 제품의 사건만 보기 (owner, 11-10): each tag of an opened row as a button that adds its Product or OS to the picks (or
-// takes it out again), or searches a device name; only here, since the closed row is one button already.
+// The opened row's 제품 fact (owner, 11-10; on top since 11-19): each tag as a button that adds its Product or OS to the
+// picks (or takes it out again), or searches a device name; only here, since the closed row is one button already.
+// A release group's 함께 공개 leads it as on the row, as a mark, not a button.
 // Past five tags the line shows four and a 나머지 N개 보기 toggle that opens the rest in place (foldTags); a pressed tag
 // always shows with the first ones, so a filter in force is never folded away. Opened lines stay open through a redraw.
 const openTagLines = new Set();
@@ -2961,7 +2961,7 @@ function tagLine(incident) {
   const tags = tagFilters(incident, lang);
   if (!tags.length) return [];
   const line = el('div', 'tag-line');
-  line.append(el('span', 'tag-label', t.tagsOnly));
+  if (isGroup(incident)) line.append(patchTag());
   const isPicked = (tag) => Boolean(tag.pick) && filter.picks.includes(tag.pick);
   const folded = new Set(tags.slice(foldTags(tags).shown.length).filter((tag) => !isPicked(tag)));
   const rest = [];
