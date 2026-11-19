@@ -1392,11 +1392,13 @@ function easyPanel(incident) {
   // H4 (owner, 11-16): no CVE id here; a condition of some CVEs only says so in words after its text.
   const when = (s[lang].easy_conditions?.length ? s[lang].easy_conditions : s[lang].conditions || []).filter((c) => typeof c === 'string' && c)
     .map((c) => { const { ids, text } = conditionIds(c, incident.cves); return ids.length ? `${text} (${TEXT[lang].someFlaws})` : c; });
-  if (when.length === 1) parts.push(para('when', `${TEXT[lang].easyWhen} ${when[0]}`));
+  // Under a heading, as the Normal view's 해당 조건: one condition as a line, several as a list.
+  if (when.length) parts.push(secHead(TEXT[lang].easyWhen.replace(/[:：]\s*$/, '')));
+  if (when.length === 1) parts.push(para('conditions', when[0]));
   if (when.length > 1) {
     const list = el('ul', 'cond-list');
     list.append(...when.map((c) => el('li', '', c)));
-    parts.push(secHead(TEXT[lang].easyWhen.replace(/[:：]\s*$/, '')), list); // a heading, as the Normal view's 해당 조건
+    parts.push(list);
   }
   return parts;
 }
