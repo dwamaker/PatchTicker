@@ -1,0 +1,240 @@
+{
+ "note": "Extract of web/data/board/products.json (2026-11-19) for pickerEntries: the .NET platform family and names that must stay apart.",
+ "products": [
+  {
+   "id": "adobe:adobe_photoshop",
+   "ko": "Adobe Photoshop",
+   "en": "Adobe Photoshop"
+  },
+  {
+   "id": "adobe:photoshop",
+   "ko": "Adobe Photoshop",
+   "en": "Adobe Photoshop"
+  },
+  {
+   "id": "automattic:mongoose",
+   "ko": "mongoose",
+   "en": "mongoose"
+  },
+  {
+   "id": "cesanta:mongoose",
+   "ko": "mongoose",
+   "en": "mongoose"
+  },
+  {
+   "id": "google:chrome",
+   "ko": "Google Chrome",
+   "en": "Google Chrome"
+  },
+  {
+   "id": "hitachi:hitachi_dynamic_link_manager_ex_for_aix",
+   "ko": "Hitachi Dynamic Link Manager EX for AIX",
+   "en": "Hitachi Dynamic Link Manager EX for AIX"
+  },
+  {
+   "id": "hitachi:hitachi_dynamic_link_manager_for_aix",
+   "ko": "Hitachi Dynamic Link Manager for AIX",
+   "en": "Hitachi Dynamic Link Manager for AIX"
+  },
+  {
+   "id": "hitachi:hitachi_dynamic_link_manager_for_linux",
+   "ko": "Hitachi Dynamic Link Manager for Linux",
+   "en": "Hitachi Dynamic Link Manager for Linux"
+  },
+  {
+   "id": "hitachi:hitachi_dynamic_link_manager_for_vmware",
+   "ko": "Hitachi Dynamic Link Manager for VMware",
+   "en": "Hitachi Dynamic Link Manager for VMware"
+  },
+  {
+   "id": "hitachi:hitachi_dynamic_link_manager_for_windows",
+   "ko": "Hitachi Dynamic Link Manager for Windows",
+   "en": "Hitachi Dynamic Link Manager for Windows"
+  },
+  {
+   "id": "microsoft:.net_10.0_installed_on_linux",
+   "ko": ".NET 10.0 installed on Linux",
+   "en": ".NET 10.0 installed on Linux"
+  },
+  {
+   "id": "microsoft:.net_10.0_installed_on_mac_os",
+   "ko": ".NET 10.0 installed on Mac OS",
+   "en": ".NET 10.0 installed on Mac OS"
+  },
+  {
+   "id": "microsoft:.net_10.0_installed_on_windows",
+   "ko": ".NET 10.0 installed on Windows",
+   "en": ".NET 10.0 installed on Windows"
+  },
+  {
+   "id": "microsoft:.net_11.0_installed_on_linux",
+   "ko": ".NET 11.0 installed on Linux",
+   "en": ".NET 11.0 installed on Linux"
+  },
+  {
+   "id": "microsoft:.net_11.0_installed_on_mac_os",
+   "ko": ".NET 11.0 installed on Mac OS",
+   "en": ".NET 11.0 installed on Mac OS"
+  },
+  {
+   "id": "microsoft:.net_11.0_installed_on_windows",
+   "ko": ".NET 11.0 installed on Windows",
+   "en": ".NET 11.0 installed on Windows"
+  },
+  {
+   "id": "microsoft:.net_8.0_installed_on_linux",
+   "ko": ".NET 8.0 installed on Linux",
+   "en": ".NET 8.0 installed on Linux"
+  },
+  {
+   "id": "microsoft:.net_8.0_installed_on_mac_os",
+   "ko": ".NET 8.0 installed on Mac OS",
+   "en": ".NET 8.0 installed on Mac OS"
+  },
+  {
+   "id": "microsoft:.net_8.0_installed_on_windows",
+   "ko": ".NET 8.0 installed on Windows",
+   "en": ".NET 8.0 installed on Windows"
+  },
+  {
+   "id": "microsoft:.net_9.0_installed_on_linux",
+   "ko": ".NET 9.0 installed on Linux",
+   "en": ".NET 9.0 installed on Linux"
+  },
+  {
+   "id": "microsoft:.net_9.0_installed_on_mac_os",
+   "ko": ".NET 9.0 installed on Mac OS",
+   "en": ".NET 9.0 installed on Mac OS"
+  },
+  {
+   "id": "microsoft:.net_9.0_installed_on_windows",
+   "ko": ".NET 9.0 installed on Windows",
+   "en": ".NET 9.0 installed on Windows"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2017_(gdr)",
+   "ko": "Microsoft SQL Server 2017 (GDR)",
+   "en": "Microsoft SQL Server 2017 (GDR)"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2017_for_x64-based_systems_(cu31)",
+   "ko": "Microsoft SQL Server 2017 for x64-based Systems (CU31)",
+   "en": "Microsoft SQL Server 2017 for x64-based Systems (CU31)"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2019_(gdr)",
+   "ko": "Microsoft SQL Server 2019 (GDR)",
+   "en": "Microsoft SQL Server 2019 (GDR)"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2019_for_x64-based_systems_(cu32)",
+   "ko": "Microsoft SQL Server 2019 for x64-based Systems (CU32)",
+   "en": "Microsoft SQL Server 2019 for x64-based Systems (CU32)"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2025_cu10",
+   "ko": "Microsoft SQL Server 2025 CU10",
+   "en": "Microsoft SQL Server 2025 CU10"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2025_for_x64-based_systems_(cu9)",
+   "ko": "Microsoft SQL Server 2025 for x64-based Systems (CU9)",
+   "en": "Microsoft SQL Server 2025 for x64-based Systems (CU9)"
+  },
+  {
+   "id": "microsoft:microsoft_sql_server_2025_for_x64-based_systems_(gdr)",
+   "ko": "Microsoft SQL Server 2025 for x64-based Systems (GDR)",
+   "en": "Microsoft SQL Server 2025 for x64-based Systems (GDR)"
+  },
+  {
+   "id": "mozilla:firefox",
+   "ko": "Firefox",
+   "en": "Firefox"
+  },
+  {
+   "id": "mozilla:firefox_for_ios",
+   "ko": "Firefox for iOS",
+   "en": "Firefox for iOS"
+  },
+  {
+   "id": "name:photoshop",
+   "ko": "Adobe Photoshop",
+   "en": "Adobe Photoshop"
+  },
+  {
+   "id": "openbsd:openssh",
+   "ko": "OpenSSH",
+   "en": "OpenSSH"
+  },
+  {
+   "id": "progress_software:telerik_ui_for_.net_maui",
+   "ko": "Telerik UI for .NET MAUI",
+   "en": "Telerik UI for .NET MAUI"
+  },
+  {
+   "id": "progress_software:telerik_ui_for_asp.net_core",
+   "ko": "Progress Telerik UI for ASP.NET Core",
+   "en": "Progress Telerik UI for ASP.NET Core"
+  },
+  {
+   "id": "progress_software:telerik_ui_for_asp.net_mvc",
+   "ko": "Progress Telerik UI for ASP.NET MVC",
+   "en": "Progress Telerik UI for ASP.NET MVC"
+  },
+  {
+   "id": "progress_software:telerik_ui_for_blazor",
+   "ko": "Telerik UI for Blazor",
+   "en": "Telerik UI for Blazor"
+  },
+  {
+   "id": "progress_software:telerik_ui_for_winforms",
+   "ko": "Telerik UI for WinForms",
+   "en": "Telerik UI for WinForms"
+  },
+  {
+   "id": "progress_software:telerik_ui_for_wpf",
+   "ko": "Telerik UI for WPF",
+   "en": "Telerik UI for WPF"
+  },
+  {
+   "id": "red_hat:red_hat_jboss_enterprise_application_platform_8.1",
+   "ko": "Red Hat JBoss Enterprise Application Platform 8.1",
+   "en": "Red Hat JBoss Enterprise Application Platform 8.1"
+  },
+  {
+   "id": "red_hat:red_hat_jboss_enterprise_application_platform_8.1_for_rhel_10",
+   "ko": "Red Hat JBoss Enterprise Application Platform 8.1 for RHEL 10",
+   "en": "Red Hat JBoss Enterprise Application Platform 8.1 for RHEL 10"
+  },
+  {
+   "id": "red_hat:red_hat_jboss_enterprise_application_platform_8.1_for_rhel_8",
+   "ko": "Red Hat JBoss Enterprise Application Platform 8.1 for RHEL 8",
+   "en": "Red Hat JBoss Enterprise Application Platform 8.1 for RHEL 8"
+  },
+  {
+   "id": "red_hat:red_hat_jboss_enterprise_application_platform_8.1_for_rhel_9",
+   "ko": "Red Hat JBoss Enterprise Application Platform 8.1 for RHEL 9",
+   "en": "Red Hat JBoss Enterprise Application Platform 8.1 for RHEL 9"
+  },
+  {
+   "id": "snowflake:snowflake_connector_for_.net",
+   "ko": "Snowflake Connector for .NET",
+   "en": "Snowflake Connector for .NET"
+  },
+  {
+   "id": "snowflake:snowflake_connector_for_python",
+   "ko": "Snowflake Connector for Python",
+   "en": "Snowflake Connector for Python"
+  },
+  {
+   "id": "snowflake:snowflake_connector_for_python_(universal_core)",
+   "ko": "Snowflake Connector for Python (Universal Core)",
+   "en": "Snowflake Connector for Python (Universal Core)"
+  },
+  {
+   "id": "zoom_communications:zoom_workplace",
+   "ko": "Zoom Workplace",
+   "en": "Zoom Workplace"
+  }
+ ]
+}

@@ -262,8 +262,9 @@
       #views button { min-width: var(--tap); padding: 0 0.5rem; } /* 기본 was 42px wide */
     }
 
-    /* product picker and search on one line */
-    #filter { display: grid; grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); gap: 0.75rem; margin-top: 0.625rem; }
+    /* the search bar, 필터 and 정렬 on one line (owner, 11-19: one Astryx PowerSearch bar replaced the product field and the
+       search field side by side) */
+    #filter { margin-top: 0.625rem; }
     /* frozen at the top while the Board scrolls (owner, 11-09); a hairline and a soft shadow once it has lifted off */
     html { scroll-padding-top: calc(var(--stick, 0px) + 0.5rem); }
     @media (min-width: 768px) { #filter { position: sticky; top: 0; z-index: 12; padding-block: 0.625rem; background: var(--bg); } }
@@ -287,6 +288,8 @@
       .search-tools .sort:has(select:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
     }
     @media (max-width: 599px) { .search-tools select { max-width: 6.5rem; } .search-tools .btn { padding: 0 0.625rem; } } /* the search words keep their room at 375px */
+    /* phones: the bar takes the whole line, 필터 and 정렬 under it at the end, so picked tokens and the typed words have room */
+    @media (max-width: 599px) { .search-row { flex-wrap: wrap; row-gap: 0.5rem; } .search-row > .bar { flex-basis: 100%; } .search-tools { flex: 1 1 100%; padding-left: 0; } }
     /* phones: 맨 위로 / 맨 아래로 show while the page moves and fade 2 s after it stops, so they do not sit on the text
        being read (owner, critique 12); a keyboard focus keeps them */
     @media (max-width: 767px) { .jump-idle .jump button:not(.off):not(:focus-visible) { opacity: 0; visibility: hidden; transition-duration: 400ms; } }
@@ -299,9 +302,44 @@
     .scrolled #filter, .scrolled .search-row { box-shadow: 0 1px 0 var(--rule), 0 8px 14px -12px var(--shadow); }
     .field { display: flex; align-items: center; gap: 0.75rem; min-height: 48px; padding: 0 0.875rem; background: var(--panel); border: 1px solid var(--edge); border-radius: var(--r-frame); }
     .field:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
-    .field label { flex: none; font-weight: 700; font-size: calc(var(--fs-small) * var(--ts)); padding-right: 0.75rem; border-right: 1px solid var(--rule-2); }
     .field input { flex: 1; min-width: 0; min-height: 46px; border: 0; background: none; outline: 0; }
     .field input::placeholder { color: var(--ink-3); }
+    /* the bar (Astryx Tokenizer wrapperWithTokens): picked Products flow as tokens before the typed text and wrap inside the
+       field, inset 5px all round so a 4px token corner sits concentric with the 10px field (10 - 5 - 1), rows 5px apart;
+       the end lane (count, clear-all, '/') holds the first row's end and every row stops short of it (--lane, app.mjs) */
+    .bar { position: relative; flex-wrap: wrap; gap: 5px; padding-inline-end: calc(0.875rem + var(--lane, 0px)); cursor: text; }
+    .bar > svg { margin-right: 0.375rem; }
+    .bar input { flex: 1 1 8rem; }
+    .bar.has-tokens { padding-block: 5px; padding-inline-end: calc(5px + var(--lane, 0px)); }
+    .bar.has-tokens input { min-height: 36px; padding-left: 0.25rem; }
+    .bar.has-tokens input::placeholder { color: transparent; } /* Tokenizer: the placeholder only while nothing is picked */
+    #tokens { display: contents; }
+    /* a token (Astryx Token: neutral, 4px corners, label at label size, medium weight, its remove mark at the end); the
+       whole token is the remove button, so a phone gets a 36px-tall target and not a 16px mark */
+    .token { display: inline-flex; align-items: center; gap: 0.375rem; max-width: 100%; min-width: 0; height: 36px; padding: 0 0.5rem 0 0.625rem; border: 0; border-radius: var(--r-marker); background: var(--panel-2); color: var(--ink); font-size: calc(var(--fs-small) * var(--ts)); font-weight: 600; cursor: pointer; }
+    .token .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .token .x { position: relative; flex: none; width: 16px; height: 16px; border-radius: 50%; color: var(--ink-2); }
+    .token .x::before, .token .x::after { content: ""; position: absolute; left: 7.25px; top: 3px; width: 1.5px; height: 10px; background: currentColor; transform: rotate(45deg); }
+    .token .x::after { transform: rotate(-45deg); }
+    @media (hover: hover) { .token:hover { background: color-mix(in srgb, var(--ink) 14%, var(--panel)); } .token:hover .x { color: var(--ink); } }
+    .token:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+    .bar-end { position: absolute; top: 0; right: 0.375rem; height: 46px; display: flex; align-items: center; gap: 0.25rem; }
+    #result-count { padding: 0 0.25rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #result-count[hidden] { display: none; }
+    .bar-end .clear { width: 36px; height: 36px; margin: 0; }
+    .bar.has-tokens .key, #result-count:not([hidden]) ~ .key { display: none; }
+    /* the suggestions (Astryx BaseTypeahead dropdown): under the bar at its width, 300px tall at most, 4px inside; a group
+       heading at supporting size, then one row per Product, its Incident count under the name (TypeaheadItem description) */
+    .suggest { position: absolute; top: calc(100% + 0.25rem); left: -1px; right: -1px; z-index: 30; max-height: min(300px, 55dvh); overflow-y: auto; padding: 0.25rem; border: 1px solid var(--rule-2); border-radius: var(--r-frame); background: var(--panel); color: var(--ink); box-shadow: var(--lift-menu); cursor: default; }
+    .suggest[hidden] { display: none; }
+    .sg-head { margin: 0; padding: 0.5rem 0.5rem 0.25rem; font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); user-select: none; }
+    .sg-item { display: flex; flex-direction: column; justify-content: center; min-height: 40px; padding: 0.375rem 0.5rem; border-radius: var(--r-code); cursor: pointer; }
+    .sg-item .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--fs-small) * var(--ts)); }
+    .sg-item .d { font-size: calc(var(--fs-meta) * var(--ts)); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+    .sg-item[aria-selected="true"] { background: var(--panel-2); }
+    @media (hover: hover) { .sg-item:hover { background: var(--panel-2); } }
+    @media (pointer: coarse) { .sg-item { min-height: var(--tap); } }
+    @media (forced-colors: active) { .sg-item[aria-selected="true"] { outline: 1px solid Highlight; } }
     /* what the Board holds (owner, 11-17): the first of the footer's notes since critique 11-17 (it was a bar under the
        header, the first text a visitor read), in the visitor's language; past the store's 90 days it is not drawn */
     .cn-off .collect-note { display: none; }
@@ -326,7 +364,7 @@
     .key { flex: none; min-width: 1.5rem; padding: 0 0.375rem; border: 1px solid var(--rule-2); border-bottom-width: 2px; border-radius: var(--r-marker); font: 600 calc(0.75rem * var(--ts))/1.5 var(--mono); color: var(--ink-2); text-align: center; }
     /* hidden while typing and whenever there is text: otherwise focusing the box on a click hid it and slid the
        clear button out from under the pointer, so the first click on it missed */
-    .field:focus-within .key, #search:not(:placeholder-shown) ~ .key { display: none; }
+    .field:focus-within .key, #search:not(:placeholder-shown) ~ .bar-end .key { display: none; }
     @media (hover: none), (pointer: coarse) { .key { display: none; } }
     /* skip link: out of sight until a keyboard user reaches it */
     .skip { position: absolute; left: -9999px; }
@@ -344,12 +382,10 @@
       .bar-head { flex: 1 1 auto; justify-content: space-between; }
       #filter { padding-top: 0.875rem; }
     }
-    /* up to 1023px 필터 is its icon (the word stays for screen readers), and from 768px the search line takes the larger
-       share beside the product field, so the search words keep their room beside 필터 and 정렬 (at 768px it had none) */
+    /* up to 1023px 필터 is its icon (the word stays for screen readers), so the search words keep their room beside 필터 and 정렬 */
     @media (max-width: 1023px) {
       #filter-btn > [data-t] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
       .search-tools #filter-btn { padding: 0 0.625rem; }
-      #filter { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
     }
     /* a filtered Board's answer (app.mjs answerLine): the heaviest line over its list, as heavy as a row's title */
     .answer { margin: 1.25rem 0 0; font-size: calc(1.0625rem * var(--ts)); font-weight: 700; line-height: 1.45; color: var(--ink); font-variant-numeric: tabular-nums; text-wrap: pretty; }
@@ -439,9 +475,8 @@
     .chip .x::before, .chip .x::after { content: ""; position: absolute; left: 4px; top: -1px; width: 1.5px; height: 12px; background: currentColor; transform: rotate(45deg); }
     .chip .x::after { transform: rotate(-45deg); }
     @media (max-width: 767px) {
-      /* phones: only the search line freezes; the product field scrolls away above it */
+      /* phones: the search line freezes; the notes under it scroll away */
       #filter { display: contents; }
-      #filter > .field { margin-top: 0.75rem; }
       .search-row { position: sticky; top: 0; z-index: 12; margin: 0 -1rem; padding: 0.5rem 1rem; background: var(--bg); }
       #pick-hint, #alias-hint, #picks { margin-top: 0.375rem; }
     }
@@ -993,13 +1028,13 @@
   </div></header>
   <main class="wrap">
     <div id="filter">
-      <!-- Astryx TextInput, Best Practices: "Tell a touch keyboard what the field holds: ... enterKeyHint for what Return does" -->
-      <div class="field"><label for="product-pick" data-t="products"><span lang="ko">사용하는 제품</span><span lang="en">Products you run</span><span lang="ja">使っている製品</span></label><input id="product-pick" enterkeyhint="done" list="product-options" spellcheck="false" data-t-placeholder="productsHint" autocomplete="off"></div>
-      <datalist id="product-options"></datalist>
-      <div class="search-row"><div class="field"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" spellcheck="false" data-t-placeholder="searchHint" autocomplete="off" aria-keyshortcuts="/"><button id="search-clear" class="clear" type="button" data-t-aria="clearSearch" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><kbd class="key" aria-hidden="true">/</kbd></div><div class="search-tools"><button id="filter-btn" class="btn" type="button" aria-controls="filters" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span data-t="filterBtn"><span lang="ko">필터</span><span lang="en">Filters</span><span lang="ja">フィルター</span></span><span id="filter-count" class="count" hidden></span></button><label class="sort"><span class="sr-only" data-t="sortLabel"><span lang="ko">정렬</span><span lang="en">Sort</span><span lang="ja">並び順</span></span><svg class="sort-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v11M2.5 11 5 13.5 7.5 11M11 13.5v-11M8.5 5 11 2.5 13.5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><select id="sort"></select></label></div></div>
+      <!-- one search bar (owner, 11-19, after Astryx PowerSearch / Tokenizer / Typeahead): picked Products are tokens inside
+           the field, the typed text is the keyword search and suggests Products (ranked, at most 10), the end lane holds the
+           result count and the clear-all button (Tokenizer endSection, PowerSearch resultCount, hasClear) -->
+      <div class="search-row"><div class="field bar" id="bar"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span id="tokens" role="list" data-t-aria="picked"></span><label for="search" class="sr-only" data-t="search"></label><input id="search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest" enterkeyhint="search" spellcheck="false" data-t-placeholder="searchHint" autocomplete="off" aria-keyshortcuts="/"><span class="bar-end"><span id="result-count" hidden></span><button id="search-clear" class="clear" type="button" data-t-aria="clearAll" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button><kbd class="key" aria-hidden="true">/</kbd></span><div id="suggest" class="suggest" role="listbox" data-t-aria="products" hidden></div></div><div class="search-tools"><button id="filter-btn" class="btn" type="button" aria-controls="filters" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12l-4.5 5.5V13l-3 1.5V8.5Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span data-t="filterBtn"><span lang="ko">필터</span><span lang="en">Filters</span><span lang="ja">フィルター</span></span><span id="filter-count" class="count" hidden></span></button><label class="sort"><span class="sr-only" data-t="sortLabel"><span lang="ko">정렬</span><span lang="en">Sort</span><span lang="ja">並び順</span></span><svg class="sort-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v11M2.5 11 5 13.5 7.5 11M11 13.5v-11M8.5 5 11 2.5 13.5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><select id="sort"></select></label></div></div>
       <p id="pick-hint" class="pick-note" role="status"></p>
       <p id="alias-hint" class="pick-note" role="status"></p>
-      <div id="picks" data-t-aria="picked"></div>
+      <div id="picks"></div>
     </div>
     <div class="statusline">
       <p id="status"><span lang="ko">불러오는 중…</span><span lang="en">Loading…</span><span lang="ja">読み込み中…</span></p>

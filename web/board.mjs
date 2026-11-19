@@ -105,6 +105,56 @@ export function matchProducts(products, text, label = (p) => p.name) {
   return whole.length ? whole : products.filter((p) => low(p).some((n) => n.includes(want)));
 }
 
+// The picker's entries (owner, 11-19: ".NET 10.0 installed on Linux / on Mac OS / on Windows" stood as three suggestions,
+// each repeated for 8.0, 9.0 and 11.0): one per Product as a person names it. A CVE record's platform tail ("installed on
+// …", "for Windows", "for RHEL 9", "for x64-based Systems (CU9)") drops out of the name, from a closed list of platforms
+// only, so "Telerik UI for Blazor", "Snowflake Connector for .NET" and "Firefox for iOS" stay Products of their own.
+// Entries of one vendor whose names then agree (productKey) are one entry holding every id; a Summary-named id (name:)
+// joins the one vendor entry of its name, if there is exactly one. Ids stay as stored, so links, Incident pages and the
+// filter do not change: picking an entry picks all its ids. counts: board/others.json counts, summed per entry.
+const PLATFORM = /\s+(?:installed\s+on\s+.+|for\s+(?:(?:microsoft\s+)?windows|linux|mac\s?os(?:\s?x)?|os\s?x|rhel\s*\d+|aix|solaris|hp-ux|(?:x64|x86|arm64|32-bit|64-bit)[-\s]based\s+systems)(?=\s|$|\().*)$/iu;
+// A servicing branch is the same Product too ("SQL Server 2019 (GDR)", "… 2025 CU10"), and "Windows 10 Version 1607" is
+// "Windows 10 1607".
+const SERVICING = /\s+(?:\((?:gdr|cu\s?\d+)\)|cu\s?\d+)$/iu;
+export const familyName = (name) => name.replace(PLATFORM, '').replace(SERVICING, '').trim() || name;
+const familyKey = (name) => productKey(name.replace(/\bversion\s+(?=\d)/giu, ''));
+export function pickerEntries(products, counts = {}) {
+  const groups = new Map();
+  const add = (key, p, name) => {
+    const entry = groups.get(key) || groups.set(key, { key, name, ids: [], n: 0, os: p.id.startsWith('os:') }).get(key);
+    entry.ids.push(p.id);
+    entry.n += counts[p.id] || 0;
+    if (name.length > entry.name.length) entry.name = name; // "Adobe Photoshop" over "Photoshop"
+  };
+  const named = [];
+  for (const p of products) {
+    const name = familyName(p.name);
+    if (p.id.startsWith('os:')) add(p.id, p, p.name);
+    else if (p.id.startsWith('name:')) named.push([p, name]);
+    else add(`${p.id.split(':')[0]}|${familyKey(name)}`, p, name);
+  }
+  for (const [p, name] of named) {
+    const own = familyKey(name);
+    const vendors = [...groups.keys()].filter((k) => k.slice(k.indexOf('|') + 1) === own && !k.startsWith('os:'));
+    add(vendors.length === 1 ? vendors[0] : `name|${own}`, p, name);
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key));
+}
+
+// The suggestions for what was typed, ranked as Astryx PowerSearch ranks its field search (maxSearchResults, 10): a whole
+// name first, then names that start with it, then a word inside that starts with it, then any other place; more Incidents
+// first among equals. A Korean word the search knows as English names (크롬: Chrome) suggests those names too.
+export function rankEntries(entries, text, label = (e) => e.name, limit = 10) {
+  const want = text.trim().toLocaleLowerCase();
+  if (!want) return [];
+  const forms = [want, ...(SEARCH_ALIASES[want] || []).map((n) => n.toLocaleLowerCase())];
+  const rank = (name) => Math.min(...forms.map((f) => (name === f ? 0 : name.startsWith(f) ? 1
+    : hasWordStart(name, f) ? 2 : name.includes(f) ? 3 : 9)));
+  return entries.map((e) => [e, rank(label(e).toLocaleLowerCase())]).filter(([, r]) => r < 9)
+    .sort(([a, x], [b, y]) => x - y || b.n - a.n || label(a).localeCompare(label(b))).slice(0, limit).map(([e]) => e);
+}
+const hasWordStart = (name, f) => name.split(/[^\p{L}\p{N}.]+/u).some((w) => w.startsWith(f));
+
 // A refresh while the page is open: the fresh week replaces what it holds (a Summary or exploited flag may have
 // arrived), Incidents the page already had beyond it (older months) stay, and only ids it lacked are new.
 // A row view (rows.json, marked rows) replaces a held full Incident only when what its row shows changed (owner, 11-10): a

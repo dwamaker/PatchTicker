@@ -327,8 +327,8 @@ three-part grid: name left, the 기본|쉬운 설명 switch centred, theme and l
 the buttons right; where that does not fit (larger text) it breaks into two lines rather than run the name under the
 switch, as the grid did at 600 px (owner, 11-17);
 under 600 px the name, the switch and a settings button share one line (GitHub and RSS leave the line; RSS moves into
-the settings panel). The product picker and search sit on one
-line (picker up to 24rem), stacking under 768 px. The footer holds the data notices and, in its top right corner, the Support badge (see
+the settings panel). One search bar (Products as tokens, the keyword search, the count and clear-all) runs the line
+with 필터 and 정렬 at its end; under 600 px the bar takes the whole line and 필터 and 정렬 sit under it at the end. The footer holds the data notices and, in its top right corner, the Support badge (see
 Components) (owner, 2026-11-18: 후원 left the header, and the footer's GitHub · RSS line was dropped). Two
 notices stay visible: the reference line and the NVD API sentence, which the API's terms require shown, so it is never
 folded. The rest (the Korean NVD line, the Attacked sign's sources, the CVE terms and MITRE's licence) sit in a native
@@ -430,7 +430,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **내 제품:** built from the Products picked in 사용하는 제품 (not the OS buttons), names comma-separated as the products
   feed reads them, at most 30 (the rest are named as left out); the note lists the first three and counts the rest. It
   follows the picker as it changes. With nothing picked it is no link: the note says to pick products above, beside a
-  제품 고르기 button that closes the menu and puts the caret in the product field.
+  제품 고르기 button that closes the menu and puts the caret in the search bar.
 - **Behaviour:** the browser opens and closes the menu from its button (Enter, Space, click), closes it on Escape or a
   click elsewhere and returns focus to the button; Tab walks link, 복사, link, 복사…, and tabbing out closes it. On a
   phone, Escape closes the menu alone and the settings panel stays. 복사 is the copy stamp (check and 복사됨, 2 s);
@@ -445,8 +445,8 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Keys (Astryx pass, owner 11-19):** Left or Right on either option picks the other one and takes the focus.
 
 ### Filter button and panel
-- **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the filter row, beside search
-  (on phones, under the product field next to search); the panel opens right under that row.
+- **Place:** a 필터 button (funnel icon, count badge in Wayfinding Blue) at the end of the search line, beside the bar
+  (on phones, under the bar at the end); the panel opens right under that row.
 - **Order and expand:** a 정렬 select (최신순 · 위험도순 · CVSS 높은순) and 모두 펼치기 / 모두 접기 sit on the 주요 사건 line (모두 펼치기 at the list head when there are no Highlights); the order
   serves the list, and the list heading names it. 주요 사건 is chosen and shown in its own order whatever the list's: tier
   of reach first (1, 2, then exploited rows on tier 3 or no list, then 3, then the rest; owner, 2026-11-17), exploited
@@ -465,9 +465,24 @@ Restrained outlined buttons for theme, language and copying a command.
   stay the same size (the first version scaled the root size, which zoomed the whole page).
 
 ### Inputs / Fields
-- **Style:** Kiosk Panel fill, 1px Control Edge border, 10px radius, 48 px high. The product field
-  carries an inline bold label divided by a Rail line; the search field carries a drawn magnifier in
-  Hint Ink.
+- **Style:** Kiosk Panel fill, 1px Control Edge border, 10px radius, 48 px high. The search bar carries a drawn
+  magnifier in Hint Ink.
+- **Search bar (owner, 11-19, after Astryx PowerSearch / Tokenizer / Typeahead; it replaced the product field with its
+  bold label, the chips under it and the separate 필터 모두 지우기 button):** one field. Picked Products are tokens
+  inside it, before the typed text: Panel 2 fill, 4px corners, 14px/600 Ink, a 16px remove mark in Muted Ink at the
+  end, 36px tall, the whole token removes it. With tokens the field is inset 5px all round (a 4px corner concentric
+  with the 10px field) and rows wrap 5px apart, growing the field. The placeholder ("제품, 키워드, CVE 번호") shows
+  only while nothing is picked. The typed text is the keyword search and also suggests Products. The end lane holds
+  the first row's end and every row stops short of it: while anything narrows the Board, the result count ("3건",
+  12px Muted Ink, tabular) and a clear-all X that empties the picks, the search and the panel's conditions; else the
+  '/' key. One suggestion per Product as a person names it (a record's platform tail, "installed on Mac OS",
+  "for RHEL 9", a servicing branch "(GDR)", drops out, so ".NET 10.0" is one entry for its three records; picking
+  it picks every id). Suggestions drop under the field at its width: Panel fill, 1px Rail border, 10px radius, the
+  menu shadow, 4px inside, 300px tall at most; a "제품" heading at 12px Muted Ink, then at most ten rows ranked whole
+  name, start, word start, inside, more Incidents first; a row is the name at 14px over "최근 90일 N건" at 12px
+  Muted Ink, 6px corners, Panel 2 when moved to or hovered, 40px tall (44px on touch). Keys: arrows move, Enter
+  picks the row moved to (with none the words stay the search), Escape closes, Backspace in an empty field takes
+  the last token back; none of them while a Korean syllable is being composed.
 - **Focus:** the whole field takes the 2px Wayfinding Blue ring at 1px offset.
 
 ### Product line badge (signature)
@@ -645,7 +660,7 @@ Restrained outlined buttons for theme, language and copying a command.
   per refresh ("새 사건 N건이 추가되었습니다"); focus never moves. Changes to rows already shown (a Summary, an
   exploited flag) apply in place, opened rows stay open.
 - **Applied filter chips (11-09):** conditions from the filter panel sit right under the bar that holds 필터; picked
-  Products stay under the picker.
+  Products are tokens in the search bar (11-19).
 - **Bar (11-09):** 주요 사건 heading with 모두 펼치기 on the left, 필터 and 정렬 on the right; the filter panel opens under it.
   With no Highlights, 모두 펼치기 moves to the list head beside 최신순 (critique 14).
 - **Reload keeps the place:** scroll position, 더 보기 counts, opened rows and folds, and loaded older months come back
@@ -675,9 +690,8 @@ Restrained outlined buttons for theme, language and copying a command.
   chevron share it while they fit, and the date drops to its own line at the right when they do not (320px, 가+,
   a sign with 공격 발생); nothing overlaps at any step. The CVSS ring and its number grow with 가+ (`--ts`). Under 600px
   the bar is two lines: 주요 사건 with 모두 펼치기, then 필터 and 정렬.
-- **Hardening (critique 9, 11-09):** the Product picker matches what is typed regardless of case: a whole name wins,
-  one partial match is picked, several keep the text and say "맞는 제품이 N개입니다" under the fields, none searches as
-  before. 이전 사건 불러오기 leaves a visible result line that takes the focus when no button is left. The load error
+- **Hardening (critique 9, 11-09):** the Product picker matched what is typed regardless of case (since 11-19 the
+  search bar's ranked suggestions do; what is typed is always the search, so nothing needs saying under the field). 이전 사건 불러오기 leaves a visible result line that takes the focus when no button is left. The load error
   keeps its plain sentence and shows the technical cause on a quieter line below. While the phone filter sheet is
   open, the rest of the page is inert.
 - **Information over tidiness (owner, 11-09, after critique 10):** heuristic 8 is not chased toward minimalism; what a
@@ -707,7 +721,7 @@ Restrained outlined buttons for theme, language and copying a command.
 - **Easy action louder, one guide entry:** the Easy panel's action line is 17px/800 in Ink (the loud Easy voice);
   while the first-visit line shows, the status line's 읽는 법 link hides (the line has 읽는 법 자세히).
 - **Frozen search (owner, 11-09):** like frozen panes, the search stays at the top while the Board scrolls: on 768px
-  and wider the whole field row (product + search, with applied product chips), on phones only the search line. Its
+  and wider the whole field row (the search bar with its tokens, 필터, 정렬), on phones the search line. Its
   height is `--stick`; `scroll-padding-top`, the new-Incidents pill and focus moves clear it. A hairline and a soft
   shadow appear once the page has scrolled.
 - **Jump buttons (owner, 11-09):** 맨 위로 and 맨 아래로 sit at the bottom right (44px circles, Panel on Edge), each shown
@@ -877,13 +891,11 @@ Restrained outlined buttons for theme, language and copying a command.
     when the rows arrive (a two-line answer on a phone still moves the list by one line).
   - 필터 and 정렬 live at the end of the search line at every width (one control each, no copy, no rise motion); mid-list
     (the Board's head under the frozen row) 필터 opens the floating panel and a new order scrolls back to the head. Up to
-    1023px 필터 is its icon, and from 768px the search line takes the larger share (1 : 1.25) beside the product field;
-    the search hint is measured: the long one, else the short one, else "검색".
+    1023px 필터 is its icon; the search hint is measured: the long one, else the short one, else "검색".
   - The collection notice left the top: it is the first of the footer's notes (no close button) and a note of the guide.
   - The first-visit line shows once: drawing it with the Board marks the guide as seen.
 - **Astryx pass 2 (owner, 11-19: "the whole thing"):** the polite announcer also says a failed first load, a row whose
-  full data failed, and a blocked copy (복사하지 못했습니다 …); a name the picker turned into a search is said before the
-  count; "맞는 제품이 N개" is said once, by its own status line. Per-CVE links keep their words as their name, with the CVE
+  full data failed, and a blocked copy (복사하지 못했습니다 …). Per-CVE links keep their words as their name, with the CVE
   said before them for screen readers (no aria-label). The filter panel's risk and OS notes describe their chip groups;
   필터 초기화 keeps the focus. Under reduced motion the "↑ 새 사건" pill only fades (200ms) and a new Highlight's strip
   lets go in 200ms.

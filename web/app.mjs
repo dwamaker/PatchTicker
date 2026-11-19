@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, matchProducts, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, MENTION_ORDER, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey } from './board.mjs';
 
 
@@ -41,13 +41,12 @@ const TEXT = {
   ko: {
     ...WORDS.ko,
     brand: 'Patch Ticker', loading: '불러오는 중…',
-    notListed: (text) => `제품 목록에 없는 이름이라 검색어로 찾았습니다: ${text}`,
-    variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`, manyProducts: (n) => `맞는 제품이 ${n}개입니다. 목록에서 하나를 고르세요.`,
+    variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => (n ? `이전 사건을 모두 불러왔습니다 (${n}건 추가).` : '이전 사건은 이미 모두 목록에 있습니다.'),
     loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, reportedBy: (h) => `${h} 보도`, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated) => `마지막 업데이트 ${updated}`, counts: (today, week) => ` · 오늘 ${today}건 · 7일 ${week}건`, countAll: (n) => ` · 전체 ${n}건`, shownOf: (shown, all) => ` · ${all}건 중 ${shown}건`,
-    products: '사용하는 제품', productsHint: '제품 이름을 입력해 찾기', productsHintShort: '제품 이름', picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
-    repo: 'GitHub 저장소', search: '검색', clearSearch: '검색어 지우기', noticeClose: '알림 닫기', noticeSince: ['Patch Ticker는 2026년 11월 9일부터 수집을 시작했습니다.', '그 전에 공개된 취약점은 목록에 없을 수 있습니다.'], noticeKeep: '패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.', searchHint: '키워드, CVE 번호, 버전', searchHintShort: '키워드, CVE 번호', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 공개', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', stepUp: '한 화면 위로', stepDown: '한 화면 아래로', stepGroup: '한 화면씩 이동', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
+    products: '사용하는 제품', sgHead: '제품', sgCount: (n) => `최근 90일 ${n}건`, resultCount: (n) => `${n.toLocaleString('ko')}건`, picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
+    repo: 'GitHub 저장소', search: '검색', clearSearch: '검색어 지우기', noticeClose: '알림 닫기', noticeSince: ['Patch Ticker는 2026년 11월 9일부터 수집을 시작했습니다.', '그 전에 공개된 취약점은 목록에 없을 수 있습니다.'], noticeKeep: '패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.', searchHint: '제품, 키워드, CVE 번호', searchHintShort: '제품, 키워드', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 공개', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', stepUp: '한 화면 위로', stepDown: '한 화면 아래로', stepGroup: '한 화면씩 이동', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
     pin: '주요 사건', pinOne: '주요 사건', noCve: 'CVE 번호 아직 없음', moreCves: (n) => ` 외 ${n}건`, firstSeen: '게시 시각을 모르는 사건이라 이 현황판이 처음 확인한 시각입니다', firstSeenAt: (t) => `처음 확인 ${t}`, easyWhen: '이럴 때만 해당돼요:', someFlaws: '일부 취약점만', foldClosed: (v) => `${v} 묶음을 접었습니다.`, kevEasy: '지금 실제 공격에 쓰이고 있어요!', pocEasy: '공격 코드가 공개됐어요!', originalEn: '원문(영어)',
     caution: '설정을 잘못 바꾸면 서비스가 멈추거나 접속이 막힐 수 있어요. 바꾸기 전에 아래 원문 링크를 확인하세요.',
     noneForPicks: (names) => `고른 제품(${names})에 해당하는 사건이 지금 현황판에 없습니다.`, noneForQuery: (q) => `‘${q}’에 맞는 사건이 없습니다.`, noneForBoth: (names, q) => `고른 제품(${names}) 가운데 ‘${q}’에 맞는 사건이 없습니다.`, restore: (label, n) => `${label} · ${n}건 보기`, stale: '업데이트가 멈춰 있습니다. 수집이 끊겨 최근 사건이 빠졌을 수 있습니다.', staleShort: '업데이트 멈춤', scopeWeek: '이 현황판에 최근 7일 동안 올라온 사건에서 찾았습니다.', scopeMonths: '불러온 이전 사건까지 포함해 현황판 전체에서 찾았습니다.', searchOlder: '이전 사건에서도 찾기',
@@ -96,12 +95,12 @@ const TEXT = {
   en: {
     ...WORDS.en,
     brand: 'Patch Ticker', loading: 'Loading…',
-    notListed: (text) => `Not in the product list, so it was searched for instead: ${text}`, variants: (n) => `Also showing ${n} under a similar name.`, manyProducts: (n) => `${n} products match. Pick one from the list.`,
+    variants: (n) => `Also showing ${n} under a similar name.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => (n ? `Earlier Incidents are loaded (${n} more).` : 'There are no earlier Incidents: they are already all in the list.'),
     loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, reportedBy: (h) => `reported by ${h}`, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated) => `Last updated ${updated}`, counts: (today, week) => ` · today ${today} · 7 days ${week}`, countAll: (n) => ` · all ${n}`, shownOf: (shown, all) => ` · ${shown} of ${all}`,
-    products: 'Products you run', productsHint: 'Type to find a Product', productsHintShort: 'Product name', picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
-    repo: 'GitHub repository', search: 'Search', clearSearch: 'Clear search', noticeClose: 'Dismiss notice', noticeSince: ['Patch Ticker has collected since 9 November 2026.', 'Vulnerabilities published before then may be missing.'], noticeKeep: 'An Incident is not removed when a patch ships; it stays for 90 days.', searchHint: 'Keyword, CVE ID, version', searchHintShort: 'Keyword or CVE ID', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'Disclosed together', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', stepUp: 'Up one screen', stepDown: 'Down one screen', stepGroup: 'Move one screen', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
+    products: 'Products you run', sgHead: 'Products', sgCount: (n) => `${n} in 90 days`, resultCount: (n) => `${n.toLocaleString('en')} ${n === 1 ? 'result' : 'results'}`, picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
+    repo: 'GitHub repository', search: 'Search', clearSearch: 'Clear search', noticeClose: 'Dismiss notice', noticeSince: ['Patch Ticker has collected since 9 November 2026.', 'Vulnerabilities published before then may be missing.'], noticeKeep: 'An Incident is not removed when a patch ships; it stays for 90 days.', searchHint: 'Product, keyword, CVE ID', searchHintShort: 'Product or keyword', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'Disclosed together', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', stepUp: 'Up one screen', stepDown: 'Down one screen', stepGroup: 'Move one screen', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
     pin: 'Highlights', pinOne: 'Highlight', noCve: 'No CVE yet', moreCves: (n) => ` and ${n} more`, firstSeen: 'No source gave a time, so this is when the Board first saw it', firstSeenAt: (t) => `first seen ${t}`, kevReasonEasy: 'Under attack', easyWhen: 'Only affects you if:', someFlaws: 'some of the flaws only', foldClosed: (v) => `Folded the ${v} group.`, kevEasy: 'Attackers are using this right now!', pocEasy: 'Exploit code is public!', originalEn: 'Source text',
     caution: 'A wrong setting can stop the service or lock you out. Check the source link below first.',
     noneForPicks: (names) => `No Incident on the Board touches the Products you picked (${names}).`, noneForQuery: (q) => `No Incident matches “${q}”.`, noneForBoth: (names, q) => `No Incident from your picked Products (${names}) matches “${q}”.`, restore: (label, n) => `${label} · show ${n}`, stale: 'Updates have stopped. Collection may be down, so recent Incidents may be missing.', staleShort: 'Updates stopped', scopeWeek: 'Searched Incidents added to the Board in the last 7 days.', scopeMonths: 'Searched Incidents added to the Board, loaded earlier Incidents included.', searchOlder: 'Search older Incidents too',
@@ -150,12 +149,12 @@ const TEXT = {
   ja: {
     ...WORDS.ja,
     brand: 'Patch Ticker', loading: '読み込み中…',
-    notListed: (text) => `製品リストにない名前なので、キーワードとして検索しました: ${text}`, variants: (n) => `似た名前の${n}件もあわせて表示しています。`, manyProducts: (n) => `該当する製品が${n}件あります。リストから1つ選んでください。`,
+    variants: (n) => `似た名前の${n}件もあわせて表示しています。`,
     loadDetail: (msg) => `詳細: ${msg}`, olderDone: (n) => (n ? `以前のインシデントをすべて読み込みました（${n}件追加）。` : '以前のインシデントはこれ以上ありません。すでにすべて一覧にあります。'),
     loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, reportedBy: (h) => `${h} の報告`, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
     status: (updated) => `最終更新 ${updated}`, counts: (today, week) => ` · 今日 ${today}件 · 7日間 ${week}件`, countAll: (n) => ` · 全${n}件`, shownOf: (shown, all) => ` · ${all}件中${shown}件`,
-    products: '使っている製品', productsHint: '製品名を入力して検索', productsHintShort: '製品名', picked: '選んだ製品', fpApplied: '適用中のフィルター', remove: (name) => `${name}を外す`,
-    repo: 'GitHub リポジトリ', search: '検索', clearSearch: '検索をクリア', noticeClose: 'お知らせを閉じる', noticeSince: ['Patch Ticker は2026年11月9日から収集しています。', 'それ以前に公開された脆弱性は一覧にない場合があります。'], noticeKeep: 'パッチが出てもインシデントは消えず、90日間残ります。', searchHint: 'キーワード、CVE 番号、バージョン', searchHintShort: 'キーワード、CVE 番号', all: '新しい順', sortLabel: '並び順', expandAll: 'すべて開く', collapseAll: 'すべて閉じる', unfold: 'まとめを解除', refold: 'まとめて表示', groupTag: 'まとめ', patchTag: '同時公開', prefs: '表示設定', toTop: '先頭へ', toBottom: '末尾へ', stepUp: '1画面上へ', stepDown: '1画面下へ', stepGroup: '1画面ずつ移動', newAbove: (n) => `新着 ${n}件`, newAdded: (n) => `新しいインシデントが${n}件追加されました。`, toNew: '最初の新着インシデントへ移動', foldEnd: (v) => `${v} のまとめを閉じる`, foldOpened: (v, n, wp) => `${v} のまとめを開きました（${wp ? 'プラグイン' : '勧告'} ${n}件）。`, theme: 'ダークテーマ',
+    products: '使っている製品', sgHead: '製品', sgCount: (n) => `直近90日 ${n}件`, resultCount: (n) => `${n.toLocaleString('ja')}件`, picked: '選んだ製品', fpApplied: '適用中のフィルター', remove: (name) => `${name}を外す`,
+    repo: 'GitHub リポジトリ', search: '検索', clearSearch: '検索をクリア', noticeClose: 'お知らせを閉じる', noticeSince: ['Patch Ticker は2026年11月9日から収集しています。', 'それ以前に公開された脆弱性は一覧にない場合があります。'], noticeKeep: 'パッチが出てもインシデントは消えず、90日間残ります。', searchHint: '製品、キーワード、CVE 番号', searchHintShort: '製品、キーワード', all: '新しい順', sortLabel: '並び順', expandAll: 'すべて開く', collapseAll: 'すべて閉じる', unfold: 'まとめを解除', refold: 'まとめて表示', groupTag: 'まとめ', patchTag: '同時公開', prefs: '表示設定', toTop: '先頭へ', toBottom: '末尾へ', stepUp: '1画面上へ', stepDown: '1画面下へ', stepGroup: '1画面ずつ移動', newAbove: (n) => `新着 ${n}件`, newAdded: (n) => `新しいインシデントが${n}件追加されました。`, toNew: '最初の新着インシデントへ移動', foldEnd: (v) => `${v} のまとめを閉じる`, foldOpened: (v, n, wp) => `${v} のまとめを開きました（${wp ? 'プラグイン' : '勧告'} ${n}件）。`, theme: 'ダークテーマ',
     pin: '注目のインシデント', pinOne: '注目のインシデント', noCve: 'CVE 番号なし', moreCves: (n) => ` ほか${n}件`, firstSeen: '公開時刻が不明なため、このボードが最初に確認した時刻です', firstSeenAt: (t) => `初確認 ${t}`, kevReasonEasy: '攻撃されています', easyWhen: '次の場合にだけ該当します:', someFlaws: '一部の脆弱性のみ', foldClosed: (v) => `${v} のまとめを閉じました。`, kevEasy: '今まさに実際の攻撃に使われています！', pocEasy: '攻撃コードが公開されました！', originalEn: '原文（英語）',
     caution: '設定を誤るとサービスが止まったり、接続できなくなったりすることがあります。変更する前に下の原文リンクを確認してください。',
     noneForPicks: (names) => `選んだ製品（${names}）に該当するインシデントは、今ボードにありません。`, noneForQuery: (q) => `「${q}」に一致するインシデントはありません。`, noneForBoth: (names, q) => `選んだ製品（${names}）のうち「${q}」に一致するインシデントはありません。`, restore: (label, n) => `${label} · ${n}件を表示`, stale: '更新が止まっています。収集が止まり、最近のインシデントが抜けている可能性があります。', staleShort: '更新停止中', scopeWeek: 'このボードに過去7日間に載ったインシデントから検索しました。', scopeMonths: '読み込んだ以前のインシデントも含めて検索しました。', searchOlder: '以前のインシデントからも検索',
@@ -327,7 +326,8 @@ const $ = (id) => document.getElementById(id);
 let incidents = [];
 let products = [];
 let seenProducts = []; // board/products.json: every Product of 90 days, so one with no loaded Incident can be picked
-let pickNote = ''; // a name typed in the picker that is not a listed Product, now searched for instead
+let entries = []; // the bar's Products (pickerEntries): one per Product as a person names it, holding every id
+let entryOf = new Map(); // id -> its entry
 let visibleIds = []; // the rows drawn now, for 모두 펼치기 / 모두 접기
 const allOpen = () => visibleIds.length > 0 && visibleIds.every((id) => open.has(id));
 let updated = '';
@@ -379,7 +379,6 @@ function saveFilter(push = false) {
 // Back / Forward: the filter of that step comes back, with the Board's motion.
 addEventListener('popstate', () => {
   filter = filterFromQuery(location.hash.slice(1));
-  pickNote = '';
   shown = PAGE;
   $('search').value = filter.query;
   store(SAVED, filterToQuery({ ...filter, query: '' }));
@@ -579,7 +578,7 @@ let othersAsked = false;
 function ensureOthers() {
   if (othersAsked) return;
   othersAsked = true;
-  getJson('board/others.json').then((doc) => { productCounts = doc; holdPlace(render); }, () => { productCounts = {}; });
+  getJson('board/others.json').then((doc) => { productCounts = doc; refreshProducts(); holdPlace(render); }, () => { productCounts = {}; });
 }
 
 // The notice at the top of the window: how many highlighted rows sit above it. It leaves once they are reached.
@@ -855,16 +854,15 @@ const host = (url) => URL.canParse(url) ? new URL(url).host.replace(/^www\./, ''
 // The picker in the page's language, rebuilt when the data or the language changes.
 function refreshProducts() {
   products = productList(incidents, Date.now(), lang, seenProducts);
-  $('product-options').replaceChildren(...products.map((p) => new Option(label(p), label(p))));
+  entries = pickerEntries(products, productCounts?.counts);
+  entryOf = new Map(entries.flatMap((e) => e.ids.map((id) => [id, e])));
+  const names = new Map();
+  for (const e of entries) names.set(e.name, (names.get(e.name) || 0) + 1);
+  for (const e of entries) e.twin = names.get(e.name) > 1;
 }
 
-const label = (p) => {
-  const kind = p.id.split(':')[0];
-  if (kind === 'os') return `${p.name} (OS)`;
-  // The vendor in brackets only to tell apart two Products of the same name.
-  const twin = products.some((o) => o !== p && o.name === p.name);
-  return kind === 'name' || !twin ? p.name : `${p.name} (${kind})`;
-};
+// The vendor in brackets only to tell apart two Products of the same name.
+const label = (e) => (e.os ? `${e.name} (OS)` : e.twin && !e.key.startsWith('name|') ? `${e.name} (${e.key.split('|')[0]})` : e.name);
 
 // The page's own text: index.html marks each element with the TEXT key it shows.
 function pageText() {
@@ -1224,7 +1222,7 @@ function answerLine(list) {
   const t = TEXT[lang];
   const c = answerCounts(list);
   const n = (x) => x.toLocaleString(lang);
-  const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || OSES.find((o) => `os:${o.toLowerCase()}` === id) || id);
+  const names = pickNames();
   // Two names, then a count: a saved filter of many Products keeps the sentence to a line or two (the chips list them all).
   const shown = names.length > 3 ? [names.slice(0, 2).join(', '), t.moreProducts(names.length - 2)].join(' ') : names.join(', ');
   const who = [shown, ...(applied() ? [`‘${applied()}’`] : [])].filter(Boolean).join(', ');
@@ -1241,7 +1239,6 @@ function render() {
   if (filter.query && !fullFailed) ensureFull().catch(() => {}); // typed, restored, from a link or Back; after a failure the visitor asks
   const { list, variants, inText, extra, highlights, pinned, rest, folded, items, answering } = boardLists();
   shownList = list;
-  $('search-clear').hidden = !$('search').value; // the field is also filled from the address and Back
   showStatus();
   guide();
   // A Korean word searched as English names too says so under the field (critique 13), so a hit on "macOS" for 맥 is not a puzzle.
@@ -1269,15 +1266,10 @@ function render() {
   $('board').replaceChildren(...items.slice(0, shown).flatMap(itemRows));
   // Nothing found: the empty state below carries 이전 사건에서도 찾기 itself, so the buttons under the list stay away.
   $('more').replaceChildren(...(loadError || !updated || !list.length ? [] : moreButtons(items.length - shown)));
-  // OS picks show as pressed buttons in the quick bar, so only Products become chips here.
-  const chips = filter.picks.filter((p) => !p.startsWith('os:'));
-  const conds = conditionChips();
-  const clearAll = activeFilters() > 1 && list.length ? [clearButton(TEXT[lang].clearAll, NO_FILTER)] : []; // with no result the empty state has its own
-  $('picks').replaceChildren(...chips.map(chip), ...(conds.length ? [] : clearAll),
-    ...(pickNote ? [el('p', 'pick-note', TEXT[lang].notListed(pickNote))] : []),
-    // A picked Product also shows Incidents filed under a variant of its name (board.mjs, critique 14); say how many.
-    ...(variants && list.length ? [el('p', 'pick-note', TEXT[lang].variants(variants))] : []));
-  $('conds').replaceChildren(...conds, ...(conds.length ? clearAll : []));
+  barEnd(list);
+  // A picked Product also shows Incidents filed under a variant of its name (board.mjs, critique 14); say how many.
+  $('picks').replaceChildren(...(variants && list.length ? [el('p', 'pick-note', TEXT[lang].variants(variants))] : []));
+  $('conds').replaceChildren(...conditionChips());
   // Not a live region: #announce already says the count; with nothing found the empty state answers instead. While the
   // data loads it stands empty, keeping its line (index.html), so the rows do not move when the answer arrives.
   $('answer').hidden = !answering || (updated && !list.length) || Boolean(loadError);
@@ -1424,15 +1416,13 @@ function announce(count, key) {
   if (first) return;
   // Nothing found: the empty state's own sentence, not its buttons (critique 13: #empty was a live region holding them).
   announcing = setTimeout(() => {
-    // Astryx useAnnounce, Best Practices: "Do: Announce the outcome, not the interaction": a typed name that is no Product became a search, and says so first
-    const note = pickNote ? `${TEXT[lang].notListed(pickNote)} ` : '';
-    $('announce').textContent = note + (count ? TEXT[lang].found(count) : $('empty').querySelector('p, strong')?.textContent || '');
+    $('announce').textContent = count ? TEXT[lang].found(count) : $('empty').querySelector('p, strong')?.textContent || '';
   }, 700);
 }
 
 function emptyState() {
   const t = TEXT[lang];
-  const names = filter.picks.map((id) => products.find((p) => p.id === id)?.name || id).join(', ');
+  const names = pickNames().join(', ');
   // Only Products picked: name them ("not affected"); any quick filter in play: speak of conditions instead.
   const quick = panelCount() > 0;
   const query = applied(); // a search still waiting for the full week has found nothing yet
@@ -1476,7 +1466,7 @@ function allClear() {
   mark.setAttribute('aria-hidden', 'true');
   mark.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m7.5 12.3 3 3 6-6.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const tags = el('span', 'c-tags');
-  tags.append(...filter.picks.map((id) => lineBadge(products.find((p) => p.id === id)?.name || id.replace(/^os:/, ''), id)));
+  tags.append(...pickedEntries().map((e) => lineBadge(e.name, e.ids[0])), ...osPicks().map((id) => lineBadge(osName(id), id)));
   const lines = el('span', 'lines');
   lines.append(tags, el('strong', '', olderMonths.length ? t.clearWeek : t.clearMonths), el('span', 'note', t.clearNote));
   sign.append(mark, lines);
@@ -1494,24 +1484,100 @@ function clearButton(text, change, counted = false) {
     // The field only when that field is what changed (a phone would raise its keyboard over the rows otherwise);
     // else the first row that came back, or the top of the Board (critique 11).
     if ('query' in change && Object.keys(change).length === 1) return $('search').focus({ preventScroll: true });
-    if (change.picks && Object.keys(change).length === 1) return $('product-pick').focus({ preventScroll: true });
     drawn.then(() => ($('highlights').querySelector('button.row') || $('board').querySelector('button.row') || $('board-start')).focus({ preventScroll: true }));
   });
   return button;
 }
 
-function chip(id) {
-  const name = products.find((p) => p.id === id)?.name || id;
-  const button = Object.assign(el('button', 'chip'), { type: 'button' });
-  const badge = lineBadge(name, id);
-  badge.append(el('span', 'x'));
-  button.append(badge);
-  button.setAttribute('aria-label', TEXT[lang].remove(name));
-  button.addEventListener('click', () => {
-    update({ picks: filter.picks.filter((p) => p !== id) });
-    $('product-pick').focus(); // the chip is gone; keep keyboard users in the filter
-  });
-  return button;
+// The bar (index.html #bar; owner, 11-19, after Astryx PowerSearch / Tokenizer / Typeahead). Picked Products are tokens
+// before the typed text, one per entry however many of its ids are picked; the typed text is the keyword search and
+// suggests Products. OS picks stay the filter panel's (they show among its conditions under the bar).
+const productPicks = () => filter.picks.filter((p) => !p.startsWith('os:'));
+function pickedEntries() {
+  const seen = new Map();
+  for (const id of productPicks()) {
+    const e = entryOf.get(id) || { key: id, name: products.find((p) => p.id === id)?.name || id, ids: [id] };
+    if (!seen.has(e.key)) seen.set(e.key, e);
+  }
+  return [...seen.values()];
+}
+// What the picks are called in a sentence: one name per token, then the OS picks.
+const osName = (id) => OSES.find((o) => `os:${o.toLowerCase()}` === id) || id.slice(3);
+const pickNames = () => [...pickedEntries().map((e) => e.name), ...osPicks().map(osName)];
+function unpick(e) {
+  update({ picks: filter.picks.filter((p) => !e.ids.includes(p)) });
+  $('search').focus({ preventScroll: true }); // the token is gone; keep keyboard users in the bar
+}
+function token(e) {
+  const item = el('span');
+  item.setAttribute('role', 'listitem');
+  const button = Object.assign(el('button', 'token'), { type: 'button' });
+  button.append(el('span', 't', label(e)), el('span', 'x'));
+  button.setAttribute('aria-label', TEXT[lang].remove(label(e)));
+  button.addEventListener('click', () => unpick(e));
+  item.append(button);
+  return item;
+}
+// The end lane: how many the Board shows while anything narrows it (PowerSearch resultCount), and one clear-all button
+// for the picks, the search and the panel's conditions (PowerSearch hasClear); every row of tokens stops short of it.
+function barEnd(list) {
+  const t = TEXT[lang];
+  const picked = pickedEntries();
+  $('tokens').replaceChildren(...picked.map(token));
+  $('bar').classList.toggle('has-tokens', picked.length > 0);
+  const narrowed = activeFilters() > 0 || Boolean($('search').value);
+  $('result-count').hidden = !narrowed || !updated || Boolean(loadError) || (filter.query && !applied());
+  $('result-count').textContent = $('result-count').hidden ? '' : t.resultCount(list.length);
+  $('search-clear').hidden = !narrowed;
+  $('bar').style.setProperty('--lane', `${$('bar').querySelector('.bar-end').offsetWidth}px`);
+}
+// Suggestions: ranked Products for the typed text, at most ten (PowerSearch maxSearchResults), ones already picked left out.
+let suggested = [];
+let active = -1; // the suggestion the arrows moved to
+function suggest() {
+  const t = TEXT[lang];
+  const input = $('search');
+  const picked = new Set(productPicks());
+  suggested = document.activeElement === input ? rankEntries(entries.filter((e) => !e.ids.every((id) => picked.has(id))), input.value, label) : [];
+  active = -1;
+  const box = $('suggest');
+  box.hidden = !suggested.length;
+  input.setAttribute('aria-expanded', String(!box.hidden));
+  input.removeAttribute('aria-activedescendant');
+  if (box.hidden) return box.replaceChildren();
+  const head = el('p', 'sg-head', t.sgHead);
+  head.setAttribute('aria-hidden', 'true');
+  box.replaceChildren(head, ...suggested.map((e, n) => {
+    const option = Object.assign(el('div', 'sg-item'), { id: `sg-${n}` });
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', 'false');
+    option.append(el('span', 't', label(e)), ...(e.n ? [el('span', 'd', t.sgCount(e.n))] : []));
+    option.addEventListener('pointerdown', (event) => event.preventDefault()); // the input keeps the focus
+    option.addEventListener('click', () => pickEntry(e));
+    return option;
+  }));
+}
+function closeSuggest() {
+  suggested = [];
+  active = -1;
+  $('suggest').hidden = true;
+  $('suggest').replaceChildren();
+  $('search').setAttribute('aria-expanded', 'false');
+  $('search').removeAttribute('aria-activedescendant');
+}
+function moveActive(step) {
+  if (!suggested.length) return;
+  active = active < 0 ? (step > 0 ? 0 : suggested.length - 1) : (active + step + suggested.length) % suggested.length;
+  $('suggest').querySelectorAll('.sg-item').forEach((o, n) => o.setAttribute('aria-selected', String(n === active)));
+  const option = $(`sg-${active}`);
+  $('search').setAttribute('aria-activedescendant', option.id);
+  option.scrollIntoView({ block: 'nearest' });
+}
+function pickEntry(e) {
+  clearTimeout(typing);
+  $('search').value = '';
+  update({ picks: [...new Set([...filter.picks, ...e.ids])], query: '' });
+  suggest();
 }
 
 const PANEL_EMPTY = { risk: [], kev: false, from: '', to: '', cvssMin: 0, cve: '', has: [] }; // sort is not a filter: it has its own control
@@ -1654,7 +1720,6 @@ function applyPanel(event) {
 }
 
 function update(change, animate = true) {
-  pickNote = ''; // the note answers one typed name; any later change makes it stale
   // A search word rewrites its own step; starting a search (from none) is a new step, so Back first clears the search.
   const onlyQuery = Object.keys(change).length === 1 && 'query' in change;
   const push = !onlyQuery || (!filter.query && Boolean(change.query));
@@ -1746,29 +1811,6 @@ function conditionChips() {
   });
 }
 
-$('product-pick').addEventListener('change', (event) => {
-  const text = event.target.value.trim();
-  const found = matchProducts(products, text, label);
-  // Several Products contain it ("ssh"): keep the text so the list narrows to them, and say so.
-  if (found.length > 1) {
-    pickNote = '';
-    // Astryx useAnnounce, Best Practices: "Don't: Announce content that is already visible and correctly labeled in the DOM; that doubles up for screen reader users." (#pick-hint is a status region)
-    $('pick-hint').textContent = TEXT[lang].manyProducts(found.length);
-    return;
-  }
-  event.target.value = '';
-  $('pick-hint').textContent = '';
-  const [picked] = found;
-  if (picked && !filter.picks.includes(picked.id)) update({ picks: [...filter.picks, picked.id] });
-  // Not a listed Product ("공유기"): search for it instead of dropping it silently.
-  if (!picked && text) {
-    $('search').value = text;
-    update({ query: text });
-    pickNote = text;
-    render();
-  }
-});
-$('product-pick').addEventListener('input', () => { $('pick-hint').textContent = ''; });
 // The language menu (owner, 11-17: a dropdown now that there are three): a popover like the RSS menu below; where the
 // browser has no popovers the button steps to the next language instead.
 const langsOpen = () => canPop && $('langs').matches(':popover-open');
@@ -1975,7 +2017,7 @@ if (canPop) {
   $('feed-pick').addEventListener('click', () => {
     menu.hidePopover();
     setPrefs(false);
-    $('product-pick').focus();
+    $('search').focus();
   });
 }
 
@@ -2100,23 +2142,49 @@ $('skip').addEventListener('click', (event) => {
 darkQuery.addEventListener('change', pageText);
 // Typing waits a beat before the Board redraws, so a word is one redraw, not one per letter.
 let typing;
-$('search').addEventListener('focus', () => ensureFull().catch(() => {})); // under way before the first letter
-// The clear button (owner, 11-17; index.html #search-clear): shown while the field holds text (render() and every
-// keystroke), it empties the field, redraws the whole list and gives the field the focus back. Firefox draws no X of its own.
-const syncClear = () => { $('search-clear').hidden = !$('search').value; };
-$('search').addEventListener('input', syncClear);
+$('search').addEventListener('focus', () => {
+  ensureFull().catch(() => {}); // under way before the first letter
+  ensureOthers(); // the Incident counts rank the suggestions
+  suggest();
+});
+$('search').addEventListener('blur', closeSuggest);
+// Clear all (owner, 11-19: it replaced the separate 필터 모두 지우기 button; Astryx PowerSearch hasClear): shown while
+// anything narrows the Board, it empties the bar and the panel's conditions and gives the field the focus back.
 $('search-clear').addEventListener('click', () => {
   $('search').value = '';
-  syncClear();
   clearTimeout(typing);
-  update({ query: '' }, false);
+  update(NO_FILTER, false);
   $('search').focus();
 });
 $('search').addEventListener('input', (event) => {
   ensureFull().catch(() => {}); // typing asks again after a failure
+  suggest();
+  $('search-clear').hidden = !event.target.value && activeFilters() === 0;
   clearTimeout(typing);
   typing = setTimeout(() => update({ query: event.target.value }, false), 150); // no transition under the caret
 });
+// The keys of Astryx Typeahead: arrows move through the suggestions, Enter picks the one moved to (with none, the typed
+// words stay the search), Escape closes the list, Backspace in an empty field takes the last token back. Never while
+// an input method is still composing (Korean): its Enter and Backspace belong to the syllable.
+$('search').addEventListener('keydown', (event) => {
+  if (event.isComposing || event.keyCode === 229) return;
+  const input = event.target;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (!suggested.length) return;
+    event.preventDefault();
+    moveActive(event.key === 'ArrowDown' ? 1 : -1);
+  } else if (event.key === 'Enter' && active >= 0) {
+    event.preventDefault();
+    pickEntry(suggested[active]);
+  } else if (event.key === 'Escape' && suggested.length) {
+    event.preventDefault();
+    closeSuggest();
+  } else if (event.key === 'Backspace' && !input.value && input.selectionStart === 0) {
+    const last = pickedEntries().at(-1);
+    if (last) unpick(last);
+  }
+});
+$('bar').addEventListener('click', (event) => { if (event.target === $('bar')) $('search').focus(); });
 window.addEventListener('resize', placePill);
 document.fonts?.ready.then(placePill);
 window.addEventListener('hashchange', () => {
