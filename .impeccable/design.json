@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-19T10:53:45+00:00",
+  "generatedAt": "2026-11-19T10:58:30+00:00",
   "title": "Design System: vuln-radar",
   "extensions": {
     "colorMeta": {
@@ -1185,24 +1185,24 @@
       }
     ],
     "dos": [
-      "**Do** open every source link in a new tab (`target=_blank`, `noopener noreferrer`, a hidden \"새 탭에서 열림\" for screen readers), so the Board, its filters and opened rows stay put.",
-      "**Do** let a long line badge name wrap inside its pill wherever every name is listed (the opened row, the suggestions); only a closed row's badge keeps one line and ends in \"…\", its tooltip giving the whole name (11-19).",
-      "**Do** list several 해당 조건 one per line; never join them with \" · \" (a condition may hold its own dot, \"팩스·SMS\").",
-      "**Do** draw the focus ring inside a 주요 사건 row (`outline-offset: -3px`): the band clips anything outside it.",
-      "**Do** use the `:root` tokens (`--tap`, `--ctl-h`, `--ctl-fill`, `--ctl-hover`, `--ctl-on`, `--seg-on`, `--r-marker`, `--r-code`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`, `--fs-small`, `--skel`, `--warn-wash`, the lifts `--lift-low`, `--lift-menu` and `--lift-float`, the curves `--ease-out` and `--ease-exit`), the shared `.btn` for any new button (`.primary` only for the one main action in view) and the shared `.menu` / `.mi` for any new dropdown. A few colours stay literal on purpose: the CVSS ring's day and night tones and the new-Incidents pill's inverted blue (`web/index.html`), and the Support badge's yellow.",
-      "**Do** say \"새 탭에서 열림\" to screen readers on every link that opens a new tab, the Board's own buttons included (GitHub, 틀린 내용 알리기, Buy Me a Coffee).",
-      "**Do** keep every interactive target at least 44 px under a finger. Under a mouse controls are drawn 36 px (`--ctl-h`, Astryx, 11-19) and a folded source line 24px; layout heights keep `--tap`.",
-      "**Do** theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link underline offset (3px).",
-      "**Do** keep Normal view calm and let the Easy view carry the louder voice (levels 긴급! / 경계 / 주의, \"!\" only at 긴급, a plain headline, one plain sentence that may end in \"!\", one action line at 17px/800).",
-      "**Do** check both themes for WCAG 2.2 AA contrast after any colour change.",
-      "**Do** write a device or Product badge with its vendor in front."
+      "Do open every source link in a new tab (`target=_blank`, `noopener noreferrer`, a hidden \"새 탭에서 열림\" for screen readers), so the Board, its filters and opened rows stay put.",
+      "Do let a long line badge name wrap inside its pill wherever every name is listed (the opened row, the suggestions); only a closed row's badge keeps one line and ends in \"…\", its tooltip giving the whole name (11-19).",
+      "Do list several 해당 조건 one per line; never join them with \" · \" (a condition may hold its own dot, \"팩스·SMS\").",
+      "Do draw the focus ring inside a 주요 사건 row (`outline-offset: -3px`): the band clips anything outside it.",
+      "Do use the `:root` tokens (`--tap`, `--ctl-h`, `--ctl-fill`, `--ctl-hover`, `--ctl-on`, `--seg-on`, `--r-marker`, `--r-code`, `--r-ctl`, `--r-frame`, `--r-pill`, `--fs-meta`, `--fs-small`, `--skel`, `--warn-wash`, the lifts `--lift-low`, `--lift-menu` and `--lift-float`, the curves `--ease-out` and `--ease-exit`), the shared `.btn` for any new button (`.primary` only for the one main action in view) and the shared `.menu` / `.mi` for any new dropdown. A few colours stay literal on purpose: the CVSS ring's day and night tones and the new-Incidents pill's inverted blue (`web/index.html`), and the Support badge's yellow.",
+      "Do say \"새 탭에서 열림\" to screen readers on every link that opens a new tab, the Board's own buttons included (GitHub, 틀린 내용 알리기, Buy Me a Coffee).",
+      "Do keep every interactive target at least 44 px under a finger. Under a mouse controls are drawn 36 px (`--ctl-h`, Astryx, 11-19) and a folded source line 24px; layout heights keep `--tap`.",
+      "Do theme browser surfaces from the palette: selection, caret, scrollbar, focus ring, link underline offset (3px).",
+      "Do keep Normal view calm and let the Easy view carry the louder voice (levels 긴급! / 경계 / 주의, \"!\" only at 긴급, a plain headline, one plain sentence that may end in \"!\", one action line at 17px/800).",
+      "Do check both themes for WCAG 2.2 AA contrast after any colour change.",
+      "Do write a device or Product badge with its vendor in front."
     ],
     "donts": [
-      "**Don't** add a column header row to the Board.",
-      "**Don't** give a Product line a red, amber or grey hue, or use a line colour for risk.",
-      "**Don't** put shadows on rows, the Highlights band, fields or buttons (a segmented control's raised segment aside).",
-      "**Don't** give any row a coloured side edge; risk is said by the sign, a group by its tag (and an open fold's rail).",
-      "**Don't** set a column of numbers without tabular numerals."
+      "Don't add a column header row to the Board.",
+      "Don't give a Product line a red, amber or grey hue, or use a line colour for risk.",
+      "Don't put shadows on rows, the Highlights band, fields or buttons (a segmented control's raised segment aside).",
+      "Don't give any row a coloured side edge; risk is said by the sign, a group by its tag (and an open fold's rail).",
+      "Don't set a column of numbers without tabular numerals."
     ]
   }
 }

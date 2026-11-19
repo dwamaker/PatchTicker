@@ -192,7 +192,6 @@ components:
     padding: "0 8px"
     height: "24px"
   group-tag:
-    backgroundColor: "{colors.patch-edge}"
     textColor: "{colors.patch-ink}"
     typography: "{typography.badge}"
     rounded: "{rounded.marker}"
@@ -397,7 +396,7 @@ jumps, like signage lettering.
   rating word, footer.
 - **Badge** (500, 0.75rem, 1.2): Product line badge, group tag (600) and 원문 text (Astryx Badge size).
 - The steps between neighbours are small (1.13 to 1.18); the 11-19 audit's detector reads that as a flat hierarchy
-  (audit-b F5), left open.
+  (F5), left open.
 
 ### Named Rules
 **The Station Name Rule.** In the normal view the Incident title in the page language is the bold name and the
@@ -528,7 +527,7 @@ ring stays inside the row and a group's frame at 320px too.
   Secondary Ink (Ink on hover and while its menu is open, which also gives it Control On); name, GitHub and RSS sit at one
   even spacing (owner, 11-19). From 600 to 1023 px it shows
   its icon alone, the word kept as its name for screen readers. Under 600 px the header line
-  is full, so the button sits in the settings panel after the language button, a secondary button like its neighbours, and opens
+  is full, so the button sits in the settings panel after the language button, a ghost button like its neighbours, and opens
   the same menu. Where the browser has no popovers neither button is drawn; the footer's RSS link,
   once the fallback there, was dropped at the owner's word (2026-11-18): such browsers have no RSS link on the page,
   and feed readers still find the feeds through the `<link rel="alternate">` tags in the head.
@@ -546,7 +545,7 @@ ring stays inside the row and a group's frame at 320px too.
 - **Board:** the language button (a 16px globe, then the page's language in itself; the short code under 600 px) opens the
   shared menu, anchored under it at its end: one row per language, each in its own language, the current one semibold
   with a Wayfinding Blue tick at the row's end. Tab reaches the rows; unlike 정렬 it does not answer arrow keys yet
-  (audit-b F7). Where the browser has no popovers the button steps to the next language.
+  (audit, 11-19, F7). Where the browser has no popovers the button steps to the next language.
 - **Incident and product pages:** the same button as a details whose list links this page in every language
   (/i/, /en/i/, /ja/i/), without script.
 - **내 제품:** built from the Products picked in the search bar (not the OS chips), names comma-separated as the products
@@ -697,9 +696,8 @@ ring stays inside the row and a group's frame at 320px too.
 - **Place:** a link-coloured "읽는 법" disclosure at the right of the status line (wraps under it on
   phones), 44px tall, chevron turning up when open. The guide opens below it in a Kiosk Panel with a
   1px Rail border and 10px radius, like the filter panel, with a 닫기 button.
-- **First visit:** opens by itself once on screens 600px and wider (on phones it would fill about a screen
-  before the first row, so there it waits for the button); closing it stores `vr-guide` and it stays shut after that.
-  With storage blocked it waits for the button.
+- **First visit:** the guide never opens by itself (critique 9); a first visit gets the first-visit line instead (see
+  Motion), and drawing that line stores `vr-guide`.
 - **Content:** each mark drawn with the row's own parts beside one plain line: the three risk levels
   (words follow the current view) with their rules, the CVSS ring, line badges, the published date,
   then 주요 사건, an opened row, the Easy switch and the search bar's picks and filters; hairlines split the
@@ -837,11 +835,11 @@ ring stays inside the row and a group's frame at 320px too.
   pseudo-vendor since critique 14) on one publish day show as one ordinary row
   (gravest member's risk sign, highest CVSS ring, "IBM 보안 공지 25건 묶음" over the first product names, the vendor as
   its badge, the newest date) that opens its members in place; never with a search or a picked Product. A "묶음 풀기 /
-  묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). Its look is the group frame
-  below (owner, 11-16; it had none of its own since 11-09).
-  Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item and one frame,
-  members in their own labelled list, indented as a nested list (2rem with a Rail guide line; 0.75rem on a phone) so
-  they cannot be taken for rows of the main list, their columns aligned with each other; opening announces the
+  묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). Its look is the group ground
+  and tag below.
+  Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item on the group
+  ground, members in their own labelled list, indented as a nested list on the Fold Violet rail (2rem in; 1.5rem on a
+  phone) so they cannot be taken for rows of the main list, their columns aligned with each other; opening announces the
   count, closing from the bottom brings the fold row back into view. Its members run gravest first, ranked as the
   위험도순 sort ranks, members of one level keeping the visitor's order, so the sign and ring the fold row promises lead
   its list (owner, 11-16); the fold keeps its place and its newest date. Its "one publish day" is the visitor's own
@@ -942,7 +940,7 @@ ring stays inside the row and a group's frame at 320px too.
   shows whenever the page scrolls. On a phone the group rests 5 s after a step press instead of 2 s (owner, 11-19:
   "five seconds"), so the next press finds it under the finger; once rested, a small scroll brings it back (a tap
   cannot, as the buttons are hidden). While shown on a phone the column can still cover a row's line end and chevron
-  (audit-b F10, open). Page Up/Down, Space, Home and End stay the browser's.
+  (audit, 11-19, F10, open). Page Up/Down, Space, Home and End stay the browser's.
 - **Phone header (critique 10, a.1):** one line with the name, 기본|쉬운 설명 and a settings button; 가−/가+, theme and
   language open under it (Escape or a tap elsewhere closes), and since 11-17 the RSS button (RSS menu). At 375px the first Highlight moved from 490px to 430px.
 - **쉬운 설명 beckons (owner, 11-09):** as the Board arrives in 기본, until the visitor has tried that view once
@@ -974,7 +972,7 @@ ring stays inside the row and a group's frame at 320px too.
   which copies its Incident page (`/i/<slug>`, `/en/i/<slug>` in the visitor's language) when it has one, else
   `…#i=<id>` (incident-pages 03); opening an `#i=` link shows the Board with that row open, in view, focused and wearing the
   blue arrival edge (a vendor fold is ungrouped, older months load if needed); a link to an Incident no longer on
-  the Board says so under the fields.
+  the Board says so under the search bar.
 - **Version help and CVE list in the Easy panel (owner, 11-09):** the help line no longer sends readers to a "maker's
   site" (plugins and libraries have none) or to an "AI 도우미" (reads as a product name): "내 버전은 보통 그 프로그램의
   설정이나 ‘정보’ 화면에 나와요. 모르겠으면 AI 챗봇에 CVE-… 번호로 물어보세요." A group's "CVE N건" opens to every ID,
@@ -1030,7 +1028,7 @@ ring stays inside the row and a group's frame at 320px too.
     the Scrim (modal like the sheet; a tap on the Board closes it).
   - Under 360px 정렬 is its icon; the stuck phone search says "검색" when the longer hints do not fit.
   - Korean search words match their English names only in Product names, ids, devices and OS tags, as whole words; the
-    typed word still matches any text. A line under the fields says it: "‘맥’으로 검색해 macOS도 함께 찾았습니다."
+    typed word still matches any text. A line under the search bar says it: "‘맥’으로 검색해 macOS도 함께 찾았습니다."
   - Easy update lines name the product: "OpenEMR 8.3.0 이상으로 업데이트하세요." The collector sends back a Summary whose
     Easy action names a version the mitigation lacks, or sends the reader to update while the mitigation says no fix
     exists; on the last try it keeps the Summary without that Easy action, so Easy shows the mitigation.
@@ -1038,7 +1036,8 @@ ring stays inside the row and a group's frame at 320px too.
     record gets a known vendor in front ("IBM Storage Scale") and keeps its Product id's line.
   - Dashed filter chips point to their note (aria-describedby), which sits in the panel's footer (since 11-19). On
     1024px+ the columns are 0.8 : 1 : 1.25 so the OS chips fit one line. Panel notes are 합니다체.
-  - Phones: the first-visit line is one line whose keys run sideways inside it; the stale notice joins the status line.
+  - Phones: the first-visit line is one line whose keys run sideways inside it, its cut end fading (11-19) so a key
+    never stops mid-word with no sign of more; the stale notice joins the status line.
   - 기본 is 44px wide at 320px; the name is 19px there (a 1.25 step over the 15px body).
   - #empty is no live region; its sentence is said through the polite announcer. 이전 사건 불러오기 says the sentence the
     screen shows. "↑ 새 사건 N건" is named "새 사건 N건, 첫 새 사건으로 이동". Folds: "IBM 묶음을 펼쳤습니다 (공지 25건)." /
@@ -1066,7 +1065,7 @@ ring stays inside the row and a group's frame at 320px too.
     `productKey` (letter case, brackets, company words, a "WordPress plugin" / "플러그인" / "theme" suffix and a
     vendors.json vendor in front drop out), so "GemBooking" and "GemBooking WordPress plugin" are `name:gembooking`.
     Old ids in a saved link or products.json read back as the new id. A pick also shows Incidents filed under a CPE id
-    of the same name ("gemcode:gembooking"; two vendors' "Firmware" never match), and says so under the chips in the
+    of the same name ("gemcode:gembooking"; two vendors' "Firmware" never match), and says so under the search bar in the
     pick-note style: "비슷한 이름 N건도 함께 보여 줍니다." / "Also showing N under a similar name." The Summary prompt
     never translates a product name (only names the vendor ships in Korean, such as "Windows 그림판").
   - The count is said again for a new filter or search with the same number (0 → 0); a new sort still says only 정렬.
@@ -1104,7 +1103,7 @@ ring stays inside the row and a group's frame at 320px too.
   full data failed, and a blocked copy (복사하지 못했습니다 …). Per-CVE links keep their words as their name, with the CVE
   said before them for screen readers (no aria-label). The filter panel's risk and OS notes describe their chip groups;
   필터 초기화 keeps the focus. The inline filter panel does not take the focus yet, so the next Tab reaches 정렬 first
-  (audit-b F8, open). Under reduced motion the "↑ 새 사건" pill only fades (200ms) and a new Highlight's strip
+  (audit, 11-19, F8, open). Under reduced motion the "↑ 새 사건" pill only fades (200ms) and a new Highlight's strip
   lets go in 200ms.
 - **Never:** pulsing alerts, scroll reveals, or loops outside loading; the Board is read, not watched.
 
