@@ -2537,8 +2537,12 @@ function details(incident) {
     if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
     head.push(why);
   }
-  // Public exploit code without reported attacks: no sign, a red line over the answer (owner, 2026-11-09).
-  if (incident.summary?.poc_public === true && !isExploited(incident)) head.push(para('kev', easy ? t.pocEasy : t.poc));
+  // Public exploit code without reported attacks: no sign, a red line (owner, 2026-11-09); in the Easy view over the
+  // action with the other red line, in the Normal view after the summary sentence, as before, so 대처법 still leads.
+  if (incident.summary?.poc_public === true && !isExploited(incident)) {
+    if (easy) head.push(para('kev', t.pocEasy));
+    else body.splice(body.findIndex((n) => n.classList.contains('summary')) + 1, 0, para('kev', t.poc));
+  }
   const parts = [...head, ...body];
   // M1 (owner, 11-15): under the answer, the Board filtered to the row's first Product when it had other Incidents
   // in the last 30 days; same tab, as the address is this page's own filter.
