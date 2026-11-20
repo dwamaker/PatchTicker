@@ -5,7 +5,7 @@ import sys
 from anthropic.types.messages.batch_create_params import Request
 
 from collector.model import CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_RETRY, MODEL, reply_json
-from collector.numbers import ko_numbers, number_words, numbers
+from collector.numbers import en_numbers, ko_numbers, number_words, numbers
 from collector.incidents import cve_order
 
 # Owner, 2026-11-10: the CVEs past summary_input.CVE_LINES_MAX go out LINES_PER_REQUEST to a batch request, for at most
@@ -108,7 +108,7 @@ def save_lines(incident, reply, cves):
         text = texts.get(cve, "")
         unknown = (ko | en) - numbers(text) - number_words(text)
         # Only a Korean digit the English line spells matches ("8바이트" / "eight-byte"); never the other way round.
-        differ = {t for t in ko ^ en if "." not in t} - (ko & number_words(item["en"]))
+        differ = {t for t in ko ^ en_numbers(item["en"]) if "." not in t} - (ko & number_words(item["en"]))
         reason = ("not asked" if cve not in cves else "already has one" if cve in have
                   else "CVE ID inside" if CVE_ID.search(item["ko"] + item["en"])
                   else f"numbers not in its description {sorted(unknown)}" if unknown

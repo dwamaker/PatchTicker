@@ -90,6 +90,18 @@ def ko_numbers(text):
     return numbers(KO_DIGIT_WORD_RE.sub(" ", text))
 
 
+# Owner, 2026-11-20: the English side of the same comparison. CVE-2026-133611 (vulnerability-lookup) was given up on
+# "Korean and English numbers differ: ['2']": the Korean wrote "2단계 인증" (no number), the English "2FA" (a 2). Whole
+# words only, any case, so "2 users" and "version 2" stay numbers. Only for the Korean/English comparison, never for
+# "numbers not in the input".
+EN_DIGIT_WORD_RE = re.compile(r"\b2(?:FA|-factor|-step)\b", re.I)
+
+
+def en_numbers(text):
+    """numbers() of English text, without the digits of EN_DIGIT_WORD_RE ("2FA" has none)."""
+    return numbers(EN_DIGIT_WORD_RE.sub(" ", text))
+
+
 # Owner, 2026-11-10: a per-CVE line may write as a digit a number its CVE's description spells ("division by zero",
 # "eight-byte" -> "0", "8"); the check stays exact otherwise. Owner, 2026-11-11: the Summary's check (parse) and the
 # quick titles' (title_now) allow it too, from their own input (CVE-2026-58805: "zero arbitrary secure memory" -> "0").

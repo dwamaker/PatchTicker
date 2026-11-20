@@ -22,7 +22,7 @@ from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_lab
                                  stamp_ago, url_key)
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
-from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
+from collector.numbers import LINE_AFTER, NUMBER_RE, en_numbers, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
 from collector.summary_input import (CVE_LINES_ONLY, SOURCE_RE, advisory_scores, advisory_severity, is_hn, mention_kinds,
                                      summary_input, trusted)
@@ -1768,8 +1768,8 @@ def parse(reply, input_text, urls, finders=()):
     # A distribution's package names no line of the product.
     fixed = numbers("\n".join(v for v in [summary["fixed"], *(f["version"] for f in summary["fixes"])] if not DISTRO_PACKAGE.search(v)))
     known = numbers(input_text)
-    ko, en = (ko_numbers(without_line_names(lang_text(summary["ko"]), fixed, known)),
-              numbers(without_line_names(lang_text(summary["en"]), fixed, known)))
+    en_text = without_line_names(lang_text(summary["en"]), fixed, known)
+    ko, en = ko_numbers(without_line_names(lang_text(summary["ko"]), fixed, known)), numbers(en_text)
     # A line's name ("Vault Enterprise 1.19", "Kibana 8.x") may name its own version's line; any other number in it must
     # be in the input (11-15: "Vault Enterprise 1.22" over 1.19.25 reached the page unchecked).
     # Also a line the input names by its versions whose entry moves it to a higher version ("After Effects 25.x" beside
@@ -1791,7 +1791,7 @@ def parse(reply, input_text, urls, finders=()):
         raise Rejected(f"numbers not in the input: {sorted(unknown)}", [around(said, t) for t in sorted(unknown)])
     # Dotted versions ("10.6p2") may sit in one language only; whole numbers (the 256/257 kind) must match.
     # A Korean digit the English text spells as a word ("0으로" / "zero") is the same number, as in cve_lines.
-    differ = {t for t in ko ^ en if "." not in t} - (ko & number_words(lang_text(summary["en"])))
+    differ = {t for t in ko ^ en_numbers(en_text) if "." not in t} - (ko & number_words(lang_text(summary["en"])))
     if differ:
         raise Rejected(f"Korean and English numbers differ: {sorted(differ)}")
     # A group's per-CVE lines name only CVEs of this Incident (the input lists them).

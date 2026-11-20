@@ -58,6 +58,31 @@ class KoreanDigitWordTest(unittest.TestCase):
         self.assertEqual(cves, [MANY[MAX]])
         self.assertNotIn("dropped", log)
 
+    def test_two_factor_in_english_is_not_a_number(self):
+        # 11-20: CVE-2026-133611 (vulnerability-lookup) was given up on '2': Korean "2단계 인증", English "2FA".
+        for text in ("2FA", "2fa", "two-factor", "2-factor authentication", "2-Step verification", "Disables 2FA."):
+            with self.subTest(text):
+                self.assertEqual(numbers.en_numbers(text), set())
+        self.assertEqual(numbers.en_numbers("2 users"), {"2"})
+        self.assertEqual(numbers.en_numbers("version 2 drops 2FA"), {"2"})
+        self.assertEqual(numbers.en_numbers("toggle_2fa"), {"2"})  # not a whole word
+        self.assertEqual(numbers.numbers("2FA"), {"2"})  # numbers() itself is untouched
+
+    def test_two_factor_passes_the_summary_check(self):
+        item = incident([{"kind": "writeup", "url": POSTER}])
+        page = "An unauthenticated GET to /user/toggle_2fa disables 2FA for any user."
+        reply = spam_reply("인증 없는 GET 요청으로 2단계 인증을 끌 수 있습니다.", "An unauthenticated GET disables 2FA.")
+        self.assertIn("2단계 인증", checked(item, {POSTER: page}, reply)["ko"]["summary"])
+        reply = spam_reply("사용자 2명의 인증을 끌 수 있습니다.", "Disables authentication for users.")
+        with self.assertRaisesRegex(summaries.Rejected, r"Korean and English numbers differ: \['2'\]"):
+            checked(item, {POSTER: page}, reply)
+
+    def test_a_per_cve_line_with_two_factor_is_kept(self):
+        page = "An unauthenticated GET to /user/toggle_2fa disables 2FA."
+        cves, log = saved(lines_row(page), line(MANY[MAX], "2단계 인증을 끌 수 있습니다.", "Disables 2FA."))
+        self.assertEqual(cves, [MANY[MAX]])
+        self.assertNotIn("dropped", log)
+
     def test_a_cve_id_before_man_only_is_not_an_amount(self):
         # 11-16, Rails CVE-2026-126067: "CVE-2026-126067만" (만: "only") was read as 1260670000, not in the input.
         self.assertEqual(numbers.ko_numbers("CVE-2026-126067만 해당합니다"), {"2026", "126067"})
