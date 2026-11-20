@@ -232,7 +232,7 @@
     "OPNsense": {"ids": ["opnsense:core", "opnsense:opnsense"], "tier": 3},
     "MikroTik RouterOS": {"ids": ["mikrotik:routeros*"], "names": ["RouterOS"], "tier": 3},
     "UniFi": {"ids": ["ubiquiti*:unifi*", "ui:unifi", "ui:unifi_network_application", "uni:unifi_os", "ui:unifi_os"], "names": ["Ubiquiti UniFi", "UniFi Network Application", "UniFi OS"], "tier": 3},
-    "Synology DSM": {"ids": ["synology:diskstation_manager*", "synology:dsm*"], "names": ["DiskStation Manager", "DSM"], "tier": 2},
+    "Synology DSM": {"ids": ["synology:diskstation_manager*", "synology:dsm*"], "names": ["DiskStation Manager", "DSM", "Synology DiskStation Manager"], "tier": 2},
     "Synology SRM": {"ids": ["synology:synology_router_manager*", "synology:srm*", "synology:router_manager"], "names": ["Synology Router Manager"], "tier": 3},
     "QNAP QTS": {"ids": ["qnap*:qts*", "qnap*:quts*"], "names": ["QTS", "QuTS hero"], "tier": 2},
     "TrueNAS": {"ids": ["ixsystems:truenas*"], "names": ["TrueNAS SCALE", "TrueNAS CORE"], "tier": 3},

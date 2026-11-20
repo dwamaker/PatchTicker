@@ -210,10 +210,11 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 // Highlights (owner, 11-19: "점수, 많이사용, 긴급, 날짜순으로 되어야지 자리를 따로 주는게 아니라 자연스럽게"): one score
 // over every 위험-or-above candidate of the week (highlightScore), no reserved places. It replaced every exploited row
 // first (11-10), the lifted well-known row per label (11-11, 11-16) and the tier order (11-17): the week's exploited
-// rows took the first places whatever their score (two CVSS 6.1 flaws above every 9.8, 11-19). HIGHLIGHTS of them, four pinned at first so the newest list starts on the first screens of a
+// rows took the first places whatever their score (two CVSS 6.1 flaws above every 9.8, 11-19). HIGHLIGHTS (twenty) of them, four pinned at first so the newest list starts on the first screens of a
 // phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순. Also
 // collector/cycle.py (highlights), kept in step by tests/fixtures/board/highlights-case.json.
-export const HIGHLIGHTS = 12;
+// Owner, 11-20: twenty is the number (the twelve of 11-19 was never his).
+export const HIGHLIGHTS = 20;
 export const PINNED = 4;
 // A labelled row's tier of reach (owner, 11-17; collector/well_known.json): 1 on most computers or phones, 2 the standard
 // of its field, 3 known inside it. A label on no list (a Summary's widely_used), or a row written before the collector

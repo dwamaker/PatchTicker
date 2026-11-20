@@ -3,7 +3,9 @@ a version the input states in full (Netpbm "10.86.51" written "10.86"). A retry 
 rejected, a reply cut off at the token cap gets more room, and one given up after MAX_TRIES stays given up."""
 
 import copy
+import io
 import unittest
+from contextlib import redirect_stderr
 
 from test_cycle import at, recorded
 from test_summaries import HN_STORY, PAGES, SSHOLE_SUMMARY, FakeClaude, board
@@ -74,14 +76,22 @@ class RetryFeedbackTest(unittest.TestCase):
 
     def test_a_summary_given_up_over_a_number_is_not_tried_again(self):
         claude = FakeClaude(*[SHORTENED] * (summaries.MAX_TRIES + 1))
-        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
-        for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
-            self.run_at(when, claude)
+        log = io.StringIO()
+        with redirect_stderr(log):
+            self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+            for when in ("2026-11-07T12:45:00", "2026-11-07T13:00:00", "2026-11-07T13:15:00", "2026-11-07T13:30:00"):
+                self.run_at(when, claude)
 
         self.assertEqual(len(claude.sent), summaries.MAX_TRIES)
         error = board(self.store)[HN_STORY]["summary_error"]
         self.assertTrue(error["reason"].startswith("numbers not in the input"))
         self.assertTrue(error["final"])
+        # Owner, 11-20: each failed try is a log line, the last one "given up", with the reply's words around the number.
+        lines = [line for line in log.getvalue().splitlines() if line.startswith(f"summaries: {HN_STORY} ")]
+        self.assertEqual(len(lines), summaries.MAX_TRIES)
+        self.assertIn("given up: numbers not in the input: ['10.86'] | ", lines[-1])
+        self.assertIn("10.86 계열이 해당합니다", lines[-1])
+        self.assertNotIn("where", error)  # the month file is public: the refused words go to the log only
         # Still listed for a person or an agent to fix by hand, so the owner is told once (owner, 11-10).
         [failure] = self.store.read("summary_failures.json")
         self.assertEqual((failure["id"], failure["tries"], failure["shows"]), (HN_STORY, summaries.MAX_TRIES, "brief"))

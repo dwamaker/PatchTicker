@@ -946,7 +946,12 @@ def stray_script(incident, summary, text=""):
 
 
 class Rejected(ValueError):
-    """The model's reply failed the schema or the code check; the Brief stays."""
+    """The model's reply failed the schema or the code check; the Brief stays. where: the reply's words around what
+    failed, for the log only, never the public store (owner, 11-20: a given-up Summary left nothing to read but its reason)."""
+
+    def __init__(self, reason, where=()):
+        super().__init__(reason)
+        self.where = list(where)
 
 
 def is_candidate(incident, now):
@@ -1199,7 +1204,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     try:
         summary = parse(reply, text, [m["url"] for m in incident["mentions"]], finders)
     except Rejected as err:
-        failed(incident, str(err))
+        failed(incident, str(err), err.where)
         return
     name_titles(summary, trusted_names(incident, text))
     stored = incident.get("summary") or {}
@@ -1512,9 +1517,14 @@ RETRY_SENTENCES = [
 ]
 
 
-def failed(incident, reason):
+def failed(incident, reason, where=()):
     before = incident.get("summary_error", {})
     tries = before.get("tries", 0) + 1
+    # Every failed try is one log line, the last one saying so, with the reply's words around a refused number (owner,
+    # 11-20: "요약포기 ... 로그에도 기록하게"; CVE-2026-129935 was given up on a "1" nobody could find again).
+    end = (f"try {tries} failed" if tries < MAX_TRIES else "kept its earlier draft after" if before.get("draft")
+           else "given up")
+    print(f"summaries: {incident['id']} {end}: {reason}" + "".join(f" | {w}" for w in where)[:600], file=sys.stderr)
     # reason: the next try carries it (retry()). final: no more tries, so the page stops saying a Summary is coming
     # (spec story 24). cut: a reply of this Incident was once cut off, so every later try keeps the larger budget whatever
     # the later failure (11-16: Zephyr was cut, rejected for a number, then cut again at the small budget).
@@ -1674,6 +1684,15 @@ def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):
     }
 
 
+def around(text, token, room=50):
+    """The words around token's first standing as a number in text (no digit or dot right before, no digit after), on
+    one line, for a refusal's log line; "(token)" alone when it stands nowhere so (a number word, a Korean count)."""
+    m = re.search(rf"(?<![\d.]){re.escape(token)}(?!\d)", text)
+    if not m:
+        return f"({token})"
+    return " ".join(text[max(0, m.start() - room):m.end() + room].split())
+
+
 def lang_text(fields):
     return "\n".join([fields["title"], fields["summary"], *fields["conditions"], *fields.get("easy_conditions", []), fields["mitigation"], fields["easy"], fields["easy_title"],
                       fields["easy_action"], fields["command_for"], fields["stopgap_then"], *(line["text"] for line in fields["cve_lines"])])
@@ -1754,7 +1773,9 @@ def parse(reply, input_text, urls, finders=()):
                                                      *(x for f in summary["fixes"] for x in (f["version"], *f["devices"]))]))) \
         - known - number_words(input_text)
     if unknown:
-        raise Rejected(f"numbers not in the input: {sorted(unknown)}")
+        said = "\n".join([lang_text(summary["ko"]), lang_text(summary["en"]), summary["fixed"], *summary["devices"],
+                          *(x for f in summary["fixes"] for x in (f["for"], f["version"], *f["devices"]))])
+        raise Rejected(f"numbers not in the input: {sorted(unknown)}", [around(said, t) for t in sorted(unknown)])
     # Dotted versions ("10.6p2") may sit in one language only; whole numbers (the 256/257 kind) must match.
     # A Korean digit the English text spells as a word ("0으로" / "zero") is the same number, as in cve_lines.
     differ = {t for t in ko ^ en if "." not in t} - (ko & number_words(lang_text(summary["en"])))

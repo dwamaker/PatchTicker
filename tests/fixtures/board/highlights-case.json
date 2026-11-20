@@ -1,5 +1,5 @@
 {
-  "note": "filterBoard (web/board.mjs) and highlights (collector/cycle.py) must pick these Highlights in this order (owner, 11-19): one score over every 위험-or-above candidate (highlightScore: CVSS, wide use by known_tier, urgency, recency, small tie-breakers), no reserved places, the best each time after a penalty per chosen row of the same vendor and category, twelve in all. expected_without_known is the pick once every known is removed.",
+  "note": "filterBoard (web/board.mjs) and highlights (collector/cycle.py) must pick these Highlights in this order (owner, 11-19): one score over every 위험-or-above candidate (highlightScore: CVSS, wide use by known_tier, urgency, recency, small tie-breakers), no reserved places, the best each time after a penalty per chosen row of the same vendor and category, twenty in all (owner, 11-20; twelve on 11-19). expected_without_known is the pick once every known is removed.",
   "now": "2026-11-11T00:00:00Z",
   "incidents": [
     {"id": "CVE-2026-1", "cves": ["CVE-2026-1"], "first_seen": "2026-11-10T01:00:00Z", "cvss": 7.8, "kev": true, "known": "Windows", "known_tier": 1,
@@ -38,9 +38,9 @@
       {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"},
       {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "advisory"}, {"kind": "curator"}]}
   ],
-  "expected": ["CVE-2026-1", "CVE-2026-5", "CVE-2026-4", "CVE-2026-3", "CVE-2026-2", "CVE-2026-6", "CVE-2026-11", "CVE-2026-12", "CVE-2026-13", "CVE-2026-14", "CVE-2026-15", "CVE-2026-16"],
-  "expected_without_known": ["CVE-2026-2", "CVE-2026-11", "CVE-2026-12", "CVE-2026-13", "CVE-2026-14", "CVE-2026-15", "CVE-2026-16", "CVE-2026-4", "CVE-2026-17", "CVE-2026-3", "CVE-2026-1", "CVE-2026-5"],
-  "capped_note": "Eighteen exploited rows and four well-known labels (owner, 11-19: no reserved places): twelve in all by one score, so the four 9.x well-known rows (tiers 1 and 2) and the unlisted Acme Widget (9.9) go first, then the exploited 5.x rows by score; exploited no longer means chosen.",
+  "expected": ["CVE-2026-1", "CVE-2026-5", "CVE-2026-4", "CVE-2026-3", "CVE-2026-2", "CVE-2026-6", "CVE-2026-11", "CVE-2026-12", "CVE-2026-13", "CVE-2026-14", "CVE-2026-15", "CVE-2026-16", "CVE-2026-17"],
+  "expected_without_known": ["CVE-2026-2", "CVE-2026-11", "CVE-2026-12", "CVE-2026-13", "CVE-2026-14", "CVE-2026-15", "CVE-2026-16", "CVE-2026-4", "CVE-2026-17", "CVE-2026-3", "CVE-2026-1", "CVE-2026-5", "CVE-2026-6"],
+  "capped_note": "Eighteen exploited rows and four well-known labels (owner, 11-19: no reserved places): twenty in all by one score (twelve before 11-20), so the four 9.x well-known rows (tiers 1 and 2) and the unlisted Acme Widget (9.9) go first, then the exploited 5.x rows by score; exploited no longer means chosen.",
   "capped": {
     "incidents": [
       {"id": "CVE-2026-101", "cves": ["CVE-2026-101"], "first_seen": "2026-11-09T00:00:00Z", "cvss": 7.0, "kev": true, "mentions": [{"kind": "cve_record"}]},
@@ -67,7 +67,7 @@
       {"id": "CVE-2026-204", "cves": ["CVE-2026-204"], "first_seen": "2026-11-10T04:00:00Z", "cvss": 9.8, "known": "Zoom", "mentions": [{"kind": "cve_record"}], "known_tier": 2},
       {"id": "CVE-2026-205", "cves": ["CVE-2026-205"], "first_seen": "2026-11-10T05:00:00Z", "cvss": 9.0, "known": "Chrome", "mentions": [{"kind": "cve_record"}], "known_tier": 1}
     ],
-    "expected": ["CVE-2026-201", "CVE-2026-205", "CVE-2026-204", "CVE-2026-203", "CVE-2026-202", "CVE-2026-118", "CVE-2026-117", "CVE-2026-116", "CVE-2026-115", "CVE-2026-114", "CVE-2026-113", "CVE-2026-112"]
+    "expected": ["CVE-2026-201", "CVE-2026-205", "CVE-2026-204", "CVE-2026-203", "CVE-2026-202", "CVE-2026-118", "CVE-2026-117", "CVE-2026-116", "CVE-2026-115", "CVE-2026-114", "CVE-2026-113", "CVE-2026-112", "CVE-2026-111", "CVE-2026-110", "CVE-2026-109", "CVE-2026-108", "CVE-2026-107", "CVE-2026-106", "CVE-2026-105", "CVE-2026-104"]
   },
   "kev_week_note": "Owner, 11-17: only an Incident published in the last seven days can be a Highlight; a KEV listing this week no longer brings an older one in, so 801, 802 and 803 (first seen 11-01, listed 11-09 and 11-05) stay out. The second Chrome row (806) pays the same-vendor penalty and still comes in, as the list has room. Same now and window as above.",
   "kev_week": {

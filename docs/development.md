@@ -129,7 +129,7 @@ Highlights (of the last seven days, at 위험 or above; `pickHighlights`, owner 
 as 9.0, a provisional level as 9.0 or 7.0), wide use by the label's tier (14, 10, 5), urgency (exploited 12, any other 긴급
 3), recency (25 when published now, to 0 at seven days), and HN points, one curator and Mentions as tie-breakers of 2 at
 most. The best is taken each time after 10 off per chosen row of the same vendor and well_known category (`sameKey`);
-twelve in all; ties go to the newer, then the lower id. No kind has a reserved place (until 11-19 every exploited one came
+twenty in all (owner, 11-20); ties go to the newer, then the lower id. No kind has a reserved place (until 11-19 every exploited one came
 first, then the best-scored well-known one of each product).
 Well known: a row the collector stamped `known` on both its row and board
 views, worked out at each write and never stored (`known_label` in `collector/incidents.py`): the label of its first

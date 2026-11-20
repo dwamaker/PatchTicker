@@ -524,8 +524,8 @@ test('the sshole replay Incident is a Highlight, after ten CVSS 9.8 Incidents (o
 });
 
 // Owner, 11-10: the week had eleven exploited Incidents and the eleventh was cut off at ten.
-// Owner, 11-19: twelve, whatever the number of exploited rows (before, every exploited row came first).
-test('Highlights are twelve at most, and exploited rows come in by their score, not by a place', () => {
+// Owner, 11-19 and 11-20: twenty, whatever the number of exploited rows (before, every exploited row came first).
+test('Highlights are HIGHLIGHTS at most, and exploited rows come in by their score, not by a place', () => {
   const week = (exploited, plain) => [
     ...Array.from({ length: exploited }, (_, n) => ({ ...incident(`CVE-2026-7${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), kev: true })),
     ...Array.from({ length: plain }, (_, n) => ({ ...incident(`CVE-2026-8${String(n).padStart(3, '0')}`, daysAgo(1 + n / 10)), cvss: 9.8 })),
@@ -533,7 +533,9 @@ test('Highlights are twelve at most, and exploited rows come in by their score, 
   const chosen = (list) => filterBoard(list, [], '', NOW).highlights;
   assert.equal(chosen(week(3, 20)).length, HIGHLIGHTS);
   assert.equal(chosen(week(25, 5)).length, HIGHLIGHTS);
-  assert.ok(chosen(week(25, 5)).every(isExploited)); // unscored exploited counts 9.0 + 12, over a plain 9.8's 49 + 3
+  // Unscored exploited counts 9.0 + 12, over a plain 9.8's 49 + 3 of the same age; recency lets the plain ones in after
+  // the exploited rows older than about 2.4 days (the 15th on).
+  assert.ok(chosen(week(25, 5)).slice(0, 14).every(isExploited));
   assert.equal(chosen(week(2, 4)).length, 6);
 });
 
@@ -1665,7 +1667,7 @@ test('an exploited 7.5 on no list has no place of its own beside twenty critical
 // Equal score and publish time: the lower id, whatever order the rows come in or the visitor's sort (the collector too).
 test('of twin rows the lower id is the Highlight, whatever the input order and sort', () => {
   const twin = (id) => tierRow(id, `v-${id}`, { cvss: 9.8 });
-  const rows = [...Array.from({ length: 11 }, (_, n) => tierRow(`K${n}`, `v${n}`, { cvss: 10 })), twin('T2'), twin('T1')];
+  const rows = [...Array.from({ length: HIGHLIGHTS - 1 }, (_, n) => tierRow(`K${n}`, `v${n}`, { cvss: 10 })), twin('T2'), twin('T1')];
   for (const sort of ['new', 'cvss', 'risk']) {
     for (const list of [rows, [...rows].reverse()]) {
       const picked = filterBoard(list, [], '', HL_NOW, { sort }).highlights.map((i) => i.id);
@@ -1676,12 +1678,12 @@ test('of twin rows the lower id is the Highlight, whatever the input order and s
 
 // Owner, 11-16 and 11-19: one vendor and category does not fill the list; each row of it already chosen costs the next 10.
 test('a second row of the same vendor and category comes in only by beating the rest by the penalty', () => {
-  const others = (cvss, tier) => Array.from({ length: 11 }, (_, n) => tierRow(`K${n}`, `v${n}`, tier ? { known: `Label ${n}`, known_tier: tier, cvss } : { cvss }));
+  const others = (cvss, tier) => Array.from({ length: HIGHLIGHTS - 1 }, (_, n) => tierRow(`K${n}`, `v${n}`, tier ? { known: `Label ${n}`, known_tier: tier, cvss } : { cvss }));
   const first = tierRow('A1', 'acme', { known: 'Acme', known_tier: 2, cvss: 9.6 }); // 48 + 10 + 3
   const second = tierRow('A2', 'acme', { known: 'Acme', known_tier: 2, cvss: 9.5 }); // 47.5 + 10 + 3, less 10
   const picked = (rest) => filterBoard([first, second, ...rest], [], '', HL_NOW).highlights.map((i) => i.id);
-  assert.ok(!picked(others(9.0, 2)).includes('A2')); // 50.5 against eleven at 58
-  assert.ok(picked(others(9.0)).includes('A2')); // 50.5 against eleven at 48
+  assert.ok(!picked(others(9.0, 2)).includes('A2')); // 50.5 against the rest at 58
+  assert.ok(picked(others(9.0)).includes('A2')); // 50.5 against the rest at 48
 });
 
 test('a row with known and no known_tier behaves as tier 3', () => {

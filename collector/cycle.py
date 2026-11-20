@@ -33,7 +33,7 @@ DISTRO_FIRST_DAYS, DISTRO_FOLLOW_DAYS, DISTRO_BACKFILL_DAYS = 7, 37, 30
 # board/rows.json keeps these whole, the rows most likely opened first (owner, 11-10): the newest, and the week's
 # Highlights as filterBoard picks them (HIGHLIGHTS, SAME_PENALTY and pickHighlights in web/board.mjs).
 WHOLE_NEWEST = 100
-HIGHLIGHTS = 12
+HIGHLIGHTS = 20  # owner, 11-20: twenty is the number
 SAME_PENALTY = 10
 # The RSS feeds' newest search-worthy Incidents (board/feed.json; spec: Incident pages and the RSS feed). Owner, 11-17: 50
 # were 14 hours, so a reader that looks once a day missed items; 200 were about 3.5 days (feed.json ~0.9 MB, ~3 ms to render).

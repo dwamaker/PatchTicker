@@ -178,10 +178,10 @@ class CycleTest(unittest.TestCase):
         self.assertNotIn("rows", by_id["CVE-2026-7002"])
         self.assertTrue(by_id["CVE-2026-7001"]["rows"])
 
-    def test_the_twelve_best_scored_highlights_stay_whole_and_exploited_is_no_free_place(self):
+    def test_the_best_scored_highlights_stay_whole_and_exploited_is_no_free_place(self):
         # Owner, 11-19: one score, no reserved places (every exploited row came first before). An exploited 5.0
-        # scores 25 + 12; a critical 9.8 scores 49 + 3, so twelve of those leave it the thirteenth.
-        critical = [incident(f"CVE-2026-71{n:02d}", "x", f"2026-11-06T{n:02d}:00:00Z") | {"cvss": 9.8} for n in range(12)]
+        # scores 25 + 12; a critical 9.8 scores 49 + 3, so HIGHLIGHTS of those leave it out.
+        critical = [incident(f"CVE-2026-71{n:02d}", "x", f"2026-11-06T{n:02d}:00:00Z") | {"cvss": 9.8} for n in range(cycle.HIGHLIGHTS)]
         exploited = incident("CVE-2026-7200", "x", "2026-11-06T12:00:00Z") | {"cvss": 5.0, "kev": True}
         self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [*critical, exploited]})
         self.store.write("index.json", {"months": ["2026-11"]})
@@ -199,7 +199,7 @@ class CycleTest(unittest.TestCase):
             "cvss": 9.6, "products": [{"id": "zoom_communications:zoom_workplace", "name": "Zoom Workplace"}]}
         # Owner, 11-19: wide use is part of the one score (tier 2: +10 over a 9.8's extra 1 and busy Mentions' 0.5).
         busy = [incident(f"CVE-2026-74{n:02d}", "x", f"2026-11-06T{n:02d}:00:00Z") | {
-            "cvss": 9.8, "mentions": [{"kind": "advisory", "url": f"https://a/{n}/{k}"} for k in range(10)]} for n in range(12)]
+            "cvss": 9.8, "mentions": [{"kind": "advisory", "url": f"https://a/{n}/{k}"} for k in range(10)]} for n in range(cycle.HIGHLIGHTS)]
         self.store.write("months/2026-11.json", {"month": "2026-11", "incidents": [zoom, *busy]})
         self.store.write("index.json", {"months": ["2026-11"]})
         with patch.object(cycle, "WHOLE_NEWEST", 0):
@@ -208,7 +208,7 @@ class CycleTest(unittest.TestCase):
         by_id = {i["id"]: i for i in self.store.read("board/rows.json")["incidents"]}
         self.assertEqual(by_id["CVE-2026-7300"]["known"], "Zoom")
         self.assertNotIn("rows", by_id["CVE-2026-7300"])
-        self.assertTrue(by_id["CVE-2026-7400"]["rows"])  # the oldest of twelve busy 9.8 rows: the thirteenth
+        self.assertTrue(by_id["CVE-2026-7400"]["rows"])  # the oldest of the busy 9.8 rows: one past HIGHLIGHTS
 
     def test_a_second_row_of_the_same_vendor_and_category_pays_the_penalty(self):
         # The same rows as tests/board.test.mjs ("a second row of the same vendor and category ..."), owner 11-16 and 11-19.
@@ -216,13 +216,13 @@ class CycleTest(unittest.TestCase):
             return {"id": id_, "cves": [id_], "first_seen": "2026-11-15T00:00:00Z", "published": "2026-11-15T00:00:00Z",
                     "mentions": [{"kind": "cve_record"}], "brief": {"text": id_}, "products": [{"id": f"{vendor}:{id_.lower()}"}], **fields}
         pair = [row("A1", "acme", known="Acme", known_tier=2, cvss=9.6), row("A2", "acme", known="Acme", known_tier=2, cvss=9.5)]
-        strong = [row(f"K{n}", f"v{n}", known=f"Label {n}", known_tier=2, cvss=9.0) for n in range(11)]
-        weak = [row(f"K{n}", f"v{n}", cvss=9.0) for n in range(11)]
+        strong = [row(f"K{n}", f"v{n}", known=f"Label {n}", known_tier=2, cvss=9.0) for n in range(cycle.HIGHLIGHTS - 1)]
+        weak = [row(f"K{n}", f"v{n}", cvss=9.0) for n in range(cycle.HIGHLIGHTS - 1)]
         picked = lambda rest: [v["id"] for v in cycle.highlights(pair + rest, "2026-11-09T12:00:00Z", "2026-11-16T12:00:00Z")]
         self.assertNotIn("A2", picked(strong))
         self.assertIn("A2", picked(weak))
         twins = [row("T2", "t2", cvss=9.8), row("T1", "t1", cvss=9.8)]  # equal: the lower id, in either order
-        ten = [row(f"K{n}", f"v{n}", cvss=10) for n in range(11)]
+        ten = [row(f"K{n}", f"v{n}", cvss=10) for n in range(cycle.HIGHLIGHTS - 1)]
         for rows in (ten + twins, list(reversed(ten + twins))):
             ids = [v["id"] for v in cycle.highlights(rows, "2026-11-09T12:00:00Z", "2026-11-16T12:00:00Z")]
             self.assertIn("T1", ids)
