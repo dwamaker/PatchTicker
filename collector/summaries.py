@@ -11,19 +11,21 @@ import html
 import json
 import re
 import sys
+from urllib.parse import urlsplit
 
 import anthropic
 from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
-from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_label, published_at, risk_level, stamp_ago,
-                                 url_key)
+from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_label, merge_score, published_at, risk_level,
+                                 stamp_ago, url_key)
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
-from collector.summary_input import CVE_LINES_ONLY, SOURCE_RE, advisory_severity, is_hn, mention_kinds, summary_input, trusted
+from collector.summary_input import (CVE_LINES_ONLY, SOURCE_RE, advisory_scores, advisory_severity, is_hn, mention_kinds,
+                                     summary_input, trusted)
 
 MAX_TRIES = 3  # failed replies per Incident before it is left flagged with its Brief
 MAX_SUMMARIES = 3  # the first Summary plus at most two re-summaries (spec: Summary routing)
@@ -1201,6 +1203,7 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
     # a reply nothing asked for (a hand re-make after a prompt change) replaces the text but is not counted
     # (critique 14: n reached 16 in a day, mostly from re-makes).
     due = "summary" not in incident or needs_summary(incident)
+    take_advisory_scores(incident, text)
     try:
         summary = parse(reply, text, [m["url"] for m in incident["mentions"]], finders)
     except Rejected as err:
@@ -1515,6 +1518,16 @@ RETRY_SENTENCES = [
     (CUT_OFF, " Keep every field as short as the rules say, so the reply ends within its budget."),
     (CARRY_LEFT, " Carry every item of the list above, in the summary or the mitigation, in both languages."),
 ]
+
+
+def take_advisory_scores(incident, text):
+    """Raise a CVE's score (and the Incident's) to the one its official advisory page states (summary_input.advisory_scores;
+    owner, 11-20: Synology-SA-26:21's "CVSS3 Base Score: 9.8" before any CVE record), by the higher-wins rule of page
+    scores (merge_score, with the advisory's host as "by"). Before the reply is read, so a refused reply keeps it too."""
+    for cve, s in advisory_scores(text, incident.get("cves") or []).items():  # .get: tests save bare replies
+        if merge_score(incident.setdefault("cve_scores", {}), cve, s["cvss"], "", by=urlsplit(s["source"]).hostname or "",
+                       version=s["version"]):
+            incident["cvss"] = max(incident.get("cvss") or 0, s["cvss"])
 
 
 def failed(incident, reason, where=()):

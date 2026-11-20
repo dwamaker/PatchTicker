@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 from collector import cvelist
 from collector.incidents import cve_order, is_news, top_cve
+from collector.model import CVE_ID
 
 PAGE_CHARS = 8000  # a longer page keeps its opening and the sentences about the Incident (focused) up to this
 # Owner's trial, 11-18 (variant C): 4 pages, chosen by readable() and cut by focused(), raised ground-truth facts in the
@@ -442,6 +443,98 @@ def advisory_severity(input_text):
         if block[1] and kinds.get(block[1]) == "advisory" and (word := severity_word(block[3])):
             return {"severity": word, "severity_source": block[1]}
     return {}
+
+
+# Owner, 11-20: an official advisory's own CVSS score, read by code (Synology-SA-26:21 wrote "CVSS3 Base Score: 9.8" while
+# the CVE record was not yet published, and the row stood with no score). The label must say CVSS and score ("CVSS3 Base
+# Score: 9.8", "CVSS v3.1 Base Score 7.5", "CVSSv3 Score: 8.8", "CVSS Score: 5.3"); a version may stand in the label or
+# in a vector right after it ("CVSS:3.1/AV:..."). A vector's own "3.1" is never a score (the "/" after it).
+ADVISORY_SCORE_RE = re.compile(r"\bCVSS\s*(?:v\s*)?(?P<ver>[234](?:\.[01])?)?\s*(?:\(\s*v?(?P<ver2>[234]\.[01])\s*\))?\s*"
+                               r"(?:base\s+)?score\s*[:：=]?\s*(?P<n>10(?:\.0)?|\d\.\d)(?![\d.]|\s*/)", re.I)
+VECTOR_VERSION_RE = re.compile(r"CVSS:(\d\.\d)/AV:")
+VECTOR_3_RE = re.compile(r"CVSS:3\.[01]/((?:[A-Z]{1,2}:[A-Z]/?){8,})")
+# CVSS 3.x base metric weights (FIRST, CVSS v3.1 specification section 7.4); PR's two values: scope unchanged, changed.
+CVSS3 = {"AV": {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.2}, "AC": {"L": 0.77, "H": 0.44},
+         "PR": {"N": (0.85, 0.85), "L": (0.62, 0.68), "H": (0.27, 0.5)}, "UI": {"N": 0.85, "R": 0.62},
+         "CIA": {"H": 0.56, "L": 0.22, "N": 0.0}}
+
+
+def roundup(value):
+    """CVSS 3.1's Roundup (specification Appendix A): the smallest one-decimal number not below value."""
+    whole = round(value * 100000)
+    return whole / 100000.0 if whole % 10000 == 0 else (whole // 10000 + 1) / 10.0
+
+
+def cvss3_score(vector):
+    """The base score of a CVSS 3.x vector's metrics ("AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"), or None when one is missing
+    or unknown. Owner, 11-20: Adobe's APSB26-101 stated 7.8 for CVE-2026-110087 beside a vector that gives 6.7."""
+    m = dict(part.split(":", 1) for part in vector.strip("/").split("/") if ":" in part)
+    try:
+        changed = {"U": False, "C": True}[m["S"]]
+        cia = [CVSS3["CIA"][m[k]] for k in ("C", "I", "A")]
+        reach = 8.22 * CVSS3["AV"][m["AV"]] * CVSS3["AC"][m["AC"]] * CVSS3["PR"][m["PR"]][changed] * CVSS3["UI"][m["UI"]]
+    except KeyError:
+        return None
+    iss = 1 - (1 - cia[0]) * (1 - cia[1]) * (1 - cia[2])
+    impact = 7.52 * (iss - 0.029) - 3.25 * (iss - 0.02) ** 15 if changed else 6.42 * iss
+    if impact <= 0:
+        return 0.0
+    return roundup(min((1.08 if changed else 1) * (impact + reach), 10))
+SCORE_REACH = 400  # characters from a CVE ID to its score on a page naming several
+
+
+def advisory_scores(input_text, cves):
+    """{CVE ID: {"cvss", "version", "source"}} from the input's official advisory pages (mention_kinds), for the
+    Incident's own CVEs only (page_scores); the first advisory that gives a CVE one wins. Read by code, never the model."""
+    kinds, found = mention_kinds(input_text), {}
+    for block in SOURCE_RE.finditer(input_text):
+        if block[1] and kinds.get(block[1]) == "advisory":
+            for cve, entry in page_scores(block[3], cves).items():
+                found.setdefault(cve, entry | {"source": block[1]})
+    return found
+
+
+def page_scores(text, cves):
+    """{CVE ID: {"cvss", "version"}} one advisory page's text gives its CVEs. A page naming one CVE ID gives it every score
+    on the page; a page naming several gives a score to the one CVE ID named between it and the score before it (at most
+    SCORE_REACH characters back), and to none when no ID or more than one stands there. A score whose own CVSS 3.x
+    vector (right after it) gives another score is skipped (cvss3_score). Two different scores for one CVE stand only
+    when their versions are stated and differ (the higher wins, as merge_score's rule); otherwise that CVE gets none.
+    Only cves (the Incident's) are returned."""
+    wanted = {c.upper() for c in cves}
+    ids = [(m.start(), m[0].upper()) for m in CVE_ID.finditer(text)]
+    seen, bad, last = {}, set(), 0
+    found = list(ADVISORY_SCORE_RE.finditer(text))
+    for n, m in enumerate(found):
+        start, last = max(last, m.start() - SCORE_REACH), m.end()
+        # What follows a score up to the next one (300 characters at most) is its own: its vector, its version.
+        tail = text[m.end():min(m.end() + 300, found[n + 1].start() if n + 1 < len(found) else len(text))]
+        if len({c for _, c in ids}) == 1:
+            cve = ids[0][1]
+        else:
+            near = {c for p, c in ids if start <= p < m.start()}
+            if len(near) != 1:  # none near, or a list ("CVE-A and CVE-B ... CVSS 9.8"): whose it is is unsaid
+                continue
+            cve = near.pop()
+        version = m["ver2"] or (m["ver"] if m["ver"] and "." in m["ver"] else "")
+        if not version and (vec := VECTOR_VERSION_RE.search(tail)):
+            version = vec[1]
+        if not version and m["ver"] == "4":
+            version = "4.0"
+        # A score its own CVSS 3.x vector contradicts is a typo on the page: neither is taken (the record's stays).
+        vector = VECTOR_3_RE.search(tail) if not version.startswith("4") else None
+        if vector and cvss3_score(vector[1]) not in (None, float(m["n"])):
+            continue
+        entry = {"cvss": float(m["n"]), "version": version}
+        old = seen.get(cve)
+        if old and old["cvss"] != entry["cvss"]:
+            if not (old["version"] and version and old["version"] != version):
+                bad.add(cve)
+            elif entry["cvss"] > old["cvss"]:
+                seen[cve] = entry
+        elif not old:
+            seen[cve] = entry
+    return {c: e for c, e in seen.items() if c in wanted and c not in bad}
 
 
 def severity_word(text):
