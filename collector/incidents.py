@@ -530,6 +530,21 @@ def with_vendor(product):
     return f"{vendor} {product['name']}" if vendor and vendor.lower() not in product["name"].lower() else product["name"]
 
 
+def exact_os(product):
+    """exactOs in web/board.mjs: the OSES name a record Product is exactly (its id's product part or English name)."""
+    tail = str((product or {}).get("id")).split(":", 1)[-1]
+    return next((o for o in OSES if (product or {}).get("name") == o or tail == o.lower()), None)
+
+
+def row_platforms(incident):
+    """rowPlatforms in web/board.mjs: the Summary's platforms; before any Summary, the record Products that are an OS."""
+    s = incident.get("summary") or {}
+    if s.get("platforms") or s.get("products"):
+        return s.get("platforms") or []
+    found = [o for o in map(exact_os, incident.get("products") or []) if o]
+    return [o for k, o in enumerate(found) if o.lower() not in {x.lower() for x in found[:k]}]
+
+
 def row_tags(incident, lang):
     """A port of rowTags in web/board.mjs (tests/fixtures/board/row-tags-case.json keeps the two in step): a row's tags,
     operating systems first in OSES order, then its Products (one that is also an OS only as the OS), then up to
@@ -537,12 +552,15 @@ def row_tags(incident, lang):
     s = incident.get("summary") or {}
     products = s.get("products") or []
     names = [shown_name(s, lang, k) for k in range(len(products))] if products else [with_vendor(p) for p in incident.get("products") or []]
-    systems = {p.lower() for p in s.get("platforms") or []}
-    own = [n for k, n in enumerate(names) if not (k < len(products) and str(products[k] if products[k] is not None else "").lower() in systems)]
+    platforms = row_platforms(incident)
+    systems = {p.lower() for p in platforms}
+    record = incident.get("products") or []
+    of = lambda k: (products[k] if k < len(products) else None) if products else (exact_os(record[k]) if k < len(record) else None)
+    own = [n for k, n in enumerate(names) if str(of(k) if of(k) is not None else "").lower() not in systems]
     devices = s.get("devices") or []
     rank = lambda p: OSES.index(p) if p in OSES else len(OSES)
     seen, tags = set(), []
-    for name in [*sorted(s.get("platforms") or [], key=rank), *own, *([] if len(devices) > MANY_DEVICES else devices)]:
+    for name in [*sorted(platforms, key=rank), *own, *([] if len(devices) > MANY_DEVICES else devices)]:
         if name.lower() not in seen:
             seen.add(name.lower())
             tags.append(name)

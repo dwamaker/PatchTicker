@@ -198,6 +198,57 @@
   },
   {
    "incident": {
+    "id": "CVE-2026-99802",
+    "products": [
+     {
+      "id": "linux:linux",
+      "name": "Linux"
+     }
+    ]
+   },
+   "ko": [
+    "Linux"
+   ],
+   "en": [
+    "Linux"
+   ]
+  },
+  {
+   "incident": {
+    "id": "no-summary-android",
+    "products": [
+     {
+      "id": "google:android",
+      "name": "Android"
+     }
+    ]
+   },
+   "ko": [
+    "Android"
+   ],
+   "en": [
+    "Android"
+   ]
+  },
+  {
+   "incident": {
+    "id": "no-summary-not-exactly-an-os",
+    "products": [
+     {
+      "id": "microsoft:windows_server_2022",
+      "name": "Windows Server 2022"
+     }
+    ]
+   },
+   "ko": [
+    "Microsoft Windows Server 2022"
+   ],
+   "en": [
+    "Microsoft Windows Server 2022"
+   ]
+  },
+  {
+   "incident": {
     "id": "nothing"
    },
    "ko": [],

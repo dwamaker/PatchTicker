@@ -719,16 +719,29 @@ export const cveHead = (cves = []) => (cves.length ? { id: cves[0], more: cves.l
 // Past this many device models a row shows the product alone; the Easy to-do list folds the models away
 // (SNWLID-2026-0014 names 38 SonicWall models).
 export const MANY_DEVICES = 4;
+// A record Product that is exactly an operating system: its id's product part or its English name is one of OSES
+// (linux:linux, "Linux"; never "Windows Server 2022").
+const exactOs = (p) => OSES.find((o) => p?.name === o || String(p?.id).slice(String(p?.id).indexOf(':') + 1) === o.toLowerCase());
+// A row's operating systems: its Summary's platforms; before any Summary (no products, no platforms yet) its record
+// Products that are exactly one (owner, 11-20: the Linux kernel is an OS, outlined whether summarized or not). Display
+// and tag picks only: productsOf, the picker and the pages keep the Product. collector/incidents.py row_platforms.
+export function rowPlatforms(i) {
+  const s = i.summary;
+  if (s?.platforms?.length || s?.products?.length) return s.platforms || [];
+  return uniqueNames((i.products || []).map(exactOs).filter(Boolean));
+}
 export const rowTags = (i, lang = 'en') => {
   const s = i.summary;
-  const names = s?.products?.length ? s.products.map((_, k) => shownName(s, lang, k)) : (i.products || []).map(withVendor);
+  const named = s?.products?.length;
+  const names = named ? s.products.map((_, k) => shownName(s, lang, k)) : (i.products || []).map(withVendor);
   // A Product that is also one of the operating systems ("Android", shown in Korean as "안드로이드") is the OS badge only.
-  const os = new Set((s?.platforms || []).map((p) => p.toLowerCase()));
-  const own = names.filter((_, k) => !os.has(String(s?.products?.[k] ?? '').toLowerCase()));
+  const systems = rowPlatforms(i);
+  const os = new Set(systems.map((p) => p.toLowerCase()));
+  const own = names.filter((_, k) => !os.has(String((named ? s.products[k] : exactOs(i.products[k])) ?? '').toLowerCase()));
   const devices = (s?.devices || []).length > MANY_DEVICES ? [] : s?.devices || [];
   // Known systems in one fixed order on every row (Windows, macOS, Linux, Android, iOS; critique 12), others after.
   const rank = (p) => { const k = OSES.indexOf(p); return k < 0 ? OSES.length : k; };
-  const platforms = (s?.platforms || []).toSorted((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
+  const platforms = systems.toSorted((a, b) => rank(a) - rank(b)); // stable: unknown ones keep their order
   return uniqueNames([...platforms, ...own, ...devices]); // operating systems first (user, 11-08)
 };
 // A row, its opened tag line and the Incident page show at most ROW_TAGS tags (owner, 11-11: CVE-2024-36309 drew 51 AMD
@@ -738,7 +751,7 @@ export const foldTags = (tags, max = ROW_TAGS) => (tags.length > max ? { shown: 
 // What pressing each of rowTags' names filters the Board by (owner, 11-10): an operating system or a Product adds a pick
 // (exact, stacks, in the address), a name with no Product id (a device model) becomes the search.
 export function tagFilters(i, lang = 'en') {
-  const os = new Set(Array.isArray(i.summary?.platforms) ? i.summary.platforms : []);
+  const os = new Set(rowPlatforms(i));
   const keys = lineKeys(i, lang);
   return rowTags(i, lang).map((name) => {
     if (os.has(name)) return { name, kind: 'os', pick: `os:${name.toLowerCase()}` };

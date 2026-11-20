@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, rowPlatforms, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
 
 
@@ -1062,7 +1062,7 @@ function guide() {
   item(g.ring, scoreCell({ cvss: 9.8 }));
   // The example badge is the top Highlight's Product, so the guide shows a line the reader will see first on the Board.
   const top = filterBoard(incidents, [], '', Date.now()).highlights[0];
-  const example = top && rowTags(top, lang).find((n) => !(top.summary?.platforms || []).includes(n));
+  const example = top && rowTags(top, lang).find((n) => !rowPlatforms(top).includes(n));
   item(g.tags, example ? lineBadge(example, lineKeys(top, lang).get(example)) : lineBadge('OpenSSH'), osBadge('Windows'));
   const when = el('span', 'c-date');
   when.append(el('span', '', '2026-11-08'), el('span', '', '09:30'));
@@ -1921,11 +1921,12 @@ function openPanel(opener) {
     form.setAttribute('aria-labelledby', 'fp-title');
     sheetInert(true);
     reveal(form, floating ? '0 -6px' : '0 100%', floating ? 200 : 300);
-    form.querySelector('.fp-head .btn').focus({ preventScroll: true });
   } else {
     for (const name of ['role', 'aria-modal', 'aria-labelledby']) form.removeAttribute(name);
     slidePanel(form, true);
   }
+  // inline too (audit F8): else the next Tab went to 정렬, past the panel just opened
+  form.querySelector('.fp-head .btn').focus({ preventScroll: true });
 }
 
 // The inline panel grows open and shrinks shut, so the Board below slides down and back up instead of jumping
@@ -2016,7 +2017,13 @@ function closePanel(applied = false) {
   });
   document.addEventListener('focusin', (event) => {
     hide();
-    if (event.target.matches?.('[data-tip]:focus-visible')) show(event.target);
+    const node = event.target;
+    if (!node.matches?.('[data-tip]:focus-visible')) return;
+    // A panel still sliding open (the phone sheet rises 300ms, audit F6) would leave the bubble where the button was:
+    // it shows once the panel has landed, if the button still has the focus.
+    const moving = node.closest('#filters')?.getAnimations() ?? [];
+    if (!moving.length) return show(node);
+    Promise.all(moving.map((a) => a.finished)).then(() => node.matches(':focus-visible') && show(node), () => {});
   });
   document.addEventListener('focusout', hide);
   document.addEventListener('pointerdown', hide);
@@ -2204,8 +2211,10 @@ function feedRows() {
   $('feed-left').hidden = !feed.left;
   $('feed-left').textContent = feed.left ? t.feedLeft(feed.left) : '';
 }
-// A header menu's popover (the RSS menu, the language menu) and the buttons that open it.
-function popMenu(menu, buttons) {
+// A header menu's popover (the RSS menu, the language menu) and the buttons that open it. Given its entries (`items`,
+// read at key time: the RSS menu hides some), it is keyed as 정렬's list is (audit F7): open, the focus starts on the
+// current entry or the first, and the arrows, Home and End move it; Enter, Tab and Escape stay the browser's.
+function popMenu(menu, buttons, items) {
   const isOpen = () => menu.matches(':popover-open');
   // Invoker commands are newer than popovers: without them the buttons toggle the menu here.
   if (!('commandForElement' in HTMLButtonElement.prototype)) {
@@ -2232,8 +2241,19 @@ function popMenu(menu, buttons) {
   document.addEventListener('focusin', (event) => {
     if (isOpen() && !menu.contains(event.target) && !buttons.includes(event.target)) menu.hidePopover();
   });
+  if (!items) return;
+  menu.addEventListener('toggle', (event) => {
+    if (event.newState === 'open') (items().find((i) => i.getAttribute('aria-current') === 'true') || items()[0])?.focus();
+  });
+  menu.addEventListener('keydown', (event) => {
+    const list = items();
+    const next = listboxStep(event.key, list.indexOf(document.activeElement), list); // no typed text: only the length is read
+    if (next < 0) return;
+    event.preventDefault();
+    list[next].focus();
+  });
 }
-if (canPop) popMenu($('langs'), [$('lang')]);
+if (canPop) popMenu($('langs'), [$('lang')], () => [...$('langs').querySelectorAll('[data-lang]')]);
 else $('lang').addEventListener('click', () => setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]));
 // 정렬 (owner, 11-19: its native list was the browser's own): a button opening a listbox menu like the language menu's,
 // keyed as a listbox; without popovers the button steps to the next order, as 언어 does.
@@ -2281,7 +2301,7 @@ if (canPop) {
 if (new URLSearchParams(location.search).get('menu') === 'solid') document.documentElement.classList.add('menu-solid');
 if (canPop) {
   const menu = $('feeds');
-  popMenu(menu, feedButtons);
+  popMenu(menu, feedButtons, () => [...menu.querySelectorAll('a, button')].filter((x) => x.getClientRects().length));
   menu.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-copy]');
     if (!button) return;
@@ -2945,7 +2965,7 @@ const patchTag = () => el('span', 'grp grp-patch', TEXT[lang].patchTag);
 function tagsCell(incident) {
   const cell = el('span', 'c-tags');
   if (isGroup(incident)) cell.append(patchTag(), ' ');
-  const os = new Set(Array.isArray(incident.summary?.platforms) ? incident.summary.platforms : []);
+  const os = new Set(rowPlatforms(incident));
   const keys = lineKeys(incident, lang);
   // Past five tags the row shows four and says how many more (foldTags); opened, the panel's top takes them over (p-side).
   const { shown: names, more } = foldTags(rowTags(incident, lang));

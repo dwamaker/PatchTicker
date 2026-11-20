@@ -1774,6 +1774,19 @@ test('rowTags is what tests/fixtures/board/row-tags-case.json says, which collec
   for (const c of kase.cases) for (const lang of ['ko', 'en']) assert.deepEqual(rowTags(c.incident, lang), c[lang], `${c.incident.id} ${lang}`);
 });
 
+// Owner, 11-20: the Linux kernel is an operating system. A row with no Summary yet (CVE-2026-99802) draws it outlined,
+// picking os:linux, as a summarized one (CVE-2026-99795, platforms ["Linux"]) does; a real Product on Linux is unchanged.
+test('a record Product that is exactly an OS is the OS on a row with no Summary yet, as on a summarized row', () => {
+  const kernel = [{ id: 'linux:linux', name: 'Linux' }];
+  const os = [{ name: 'Linux', kind: 'os', pick: 'os:linux' }];
+  assert.deepEqual(tagFilters({ id: 'CVE-2026-99802', products: kernel }), os);
+  assert.deepEqual(tagFilters({ id: 'CVE-2026-99795', products: kernel, summary: { products: ['Linux'], platforms: ['Linux'] } }), os);
+  assert.deepEqual(tagFilters({ id: 'app', products: [{ id: 'openbsd:openssh', name: 'Openssh' }], summary: { products: ['OpenSSH'], platforms: ['Linux'] } }),
+    [...os, { name: 'OpenSSH', kind: 'product', pick: 'openbsd:openssh' }]);
+  assert.deepEqual(tagFilters({ id: 'srv', products: [{ id: 'microsoft:windows_server_2022', name: 'Windows Server 2022' }] }).map((t) => t.kind), ['product']);
+  assert.deepEqual(productsOf({ id: 'CVE-2026-99802', products: kernel }).map((p) => p.id), ['linux:linux']); // the picker keeps the Product
+});
+
 // The header's RSS menu (owner, 11-17): each feed in the page's language, and the picked Products' feed in the form the
 // products feed reads (edge/check.mjs readQuery), so what the menu links is what the feed answers.
 test('the feed addresses follow the page language', () => {
@@ -1883,4 +1896,15 @@ test('listboxStep: arrows stop at the ends, Home/End jump, typed letters find a 
   assert.equal(listboxStep('c', 1, labels, 'highest c'), 2); // a burst matches a longer start
   assert.equal(listboxStep('z', 0, labels, 'z'), -1);
   assert.equal(listboxStep('c', 0, ['최신순', '위험도순', 'CVSS 높은순'], 'c'), 2);
+});
+
+test('listboxStep keys the language and RSS menus too: from no entry focused (-1), the arrows land on the first (audit F7)', () => {
+  const entries = ['a', 'button', 'a', 'button']; // RSS: each feed's link and its 복사 button; only the count is read
+  assert.equal(listboxStep('ArrowDown', -1, entries), 0);
+  assert.equal(listboxStep('ArrowUp', -1, entries), 0);
+  assert.equal(listboxStep('End', -1, entries), 3);
+  assert.equal(listboxStep('Home', 3, entries), 0);
+  assert.equal(listboxStep('Enter', 1, entries), -1); // Enter, Tab and Escape stay the browser's
+  assert.equal(listboxStep('Tab', 1, entries), -1);
+  assert.equal(listboxStep('Escape', 1, entries), -1);
 });
