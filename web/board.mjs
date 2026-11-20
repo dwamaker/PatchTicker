@@ -401,10 +401,11 @@ export function riskLevel(i) {
 
 // The advisory's word as the vendor writes it ("Critical", "High"), for a provisional level; '' otherwise.
 export const severityWord = (i) => (provisionalLevel(i) ? `${i.summary.severity[0].toUpperCase()}${i.summary.severity.slice(1)}` : '');
-// The one reason under a pending row's dashed sign (owner, 11-19: one short line where 공격 발생 sits): the vendor's word
-// for a provisional level ("제조사 Critical"; the dashed edge already says there is no score), else Score pending. The
-// sentence with the advisory's link is in the opened panel (vendorRating). t: WORDS[lang], or TEXT[lang] built on it.
-export const pendingWhy = (i, t) => (provisionalLevel(i) ? `${t.vendorWhy} ${severityWord(i)}` : t.unratedWhy);
+// The one reason under a pending row's dashed sign (owner, 11-19: one short line where 공격 발생 sits): "제조사 등급" for a
+// provisional level (owner, 11-20: "제조사 Critical" stood out, the only Latin word under a sign; the badge already says
+// 긴급 or 위험, and the opened panel's sentence, vendorRating, names the word and links the advisory), else Score
+// pending. t: WORDS[lang], or TEXT[lang] built on it.
+export const pendingWhy = (i, t) => (provisionalLevel(i) ? t.vendorRating : t.unratedWhy);
 
 // The risk filter's choice an Incident falls under: its level, or Score pending when it has no score and no attacks. The
 // row keeps its level's sign (riskLevel), drawn dashed. A provisional level (provisionalLevel) counts under that level,
@@ -844,7 +845,7 @@ export const WORDS = {
     fixesTitle: '제품별 수정 버전', fixesMore: (n) => `${n}줄 더 보기`, fixesFold: (n) => `제품별 수정 버전 보기 (${n}개)`, foldLess: '접기',
     setting: '설정 파일에 이 줄을 넣으세요:', settingIn: (f) => `설정 파일 ${f}에 이 줄을 넣으세요:`,
     levels: { highest: '긴급', high: '위험', pending: '점수 대기', notice: '참고' }, kevReason: '공격 발생', kevListed: 'CISA KEV 등재', attackSource: '공격 보고:', poc: '공격 코드 공개됨',
-    unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', vendorWhy: '제조사', vendorRating: '제조사 등급', conditions: '해당 조건', published: '처음 게시',
+    unrated: 'CVSS 점수 대기', unratedWhy: '점수 대기', vendorRating: '제조사 등급', conditions: '해당 조건', published: '처음 게시',
     publicDate: '공개일', productOthers: (n) => `최근 30일 동안 이 제품의 다른 사건 ${n}건`,
     distroTable: (n) => `배포판별 패키지 (${n})`, distroSources: '출처:',
     distroStates: { fixed: (v) => `${v}에서 수정됨`, not_affected: '영향 없음', not_fixed: '아직 수정 안 됨', wont_fix: '수정 계획 없음' },
@@ -867,7 +868,7 @@ export const WORDS = {
     fixesTitle: 'Fixed version by product', fixesMore: (n) => `${n} more`, fixesFold: (n) => `Fixed version by product (${n})`, foldLess: 'Show less',
     setting: 'Add this line to the config file:', settingIn: (f) => `Add this line to ${f}:`,
     levels: { highest: 'Urgent', high: 'Elevated', pending: 'Score pending', notice: 'Notice' }, kevReason: 'Attacked', kevListed: 'Listed in CISA KEV', attackSource: 'Attacks reported:', poc: 'Exploit code is public',
-    unrated: 'CVSS score pending', unratedWhy: 'Score pending', vendorWhy: 'Vendor:', vendorRating: 'Vendor rating', conditions: 'Affected when', published: 'First published',
+    unrated: 'CVSS score pending', unratedWhy: 'Score pending', vendorRating: 'Vendor rating', conditions: 'Affected when', published: 'First published',
     publicDate: 'Public date', productOthers: (n) => `${n} other Incident${n === 1 ? '' : 's'} of this product in the last 30 days`,
     distroTable: (n) => `Distribution packages (${n})`, distroSources: 'Sources:',
     distroStates: { fixed: (v) => `fixed in ${v}`, not_affected: 'not affected', not_fixed: 'not fixed yet', wont_fix: 'will not be fixed' },
@@ -890,7 +891,7 @@ export const WORDS = {
     fixesTitle: '製品別の修正バージョン', fixesMore: (n) => `あと${n}行を表示`, fixesFold: (n) => `製品別の修正バージョンを表示 (${n})`, foldLess: '閉じる',
     setting: '設定ファイルにこの行を追加してください:', settingIn: (f) => `設定ファイル ${f} にこの行を追加してください:`,
     levels: { highest: '緊急', high: '警戒', pending: 'スコア待ち', notice: '参考' }, kevReason: '攻撃発生', kevListed: 'CISA KEV 掲載', attackSource: '攻撃の報告:', poc: '攻撃コード公開済み',
-    unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', vendorWhy: 'ベンダー評価', vendorRating: 'ベンダー評価', conditions: '該当する条件', published: '初出',
+    unrated: 'CVSS スコア待ち', unratedWhy: 'スコア待ち', vendorRating: 'ベンダー評価', conditions: '該当する条件', published: '初出',
     publicDate: '公開日', productOthers: (n) => `この製品の過去30日間のほかのインシデント ${n}件`,
     distroTable: (n) => `ディストリビューション別パッケージ (${n})`, distroSources: '出典:',
     distroStates: { fixed: (v) => `${v} で修正済み`, not_affected: '影響なし', not_fixed: '未修正', wont_fix: '修正予定なし' },

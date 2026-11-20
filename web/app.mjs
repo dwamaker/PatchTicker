@@ -77,7 +77,7 @@ const TEXT = {
       title: '이 현황판 읽는 법', close: '닫기',
       primer: { highest: '실제 공격·9점 이상', high: '7점 이상', notice: '7점 미만', unrated: '점수 대기', ring: 'CVSS 점수 (10점 만점)', more: '읽는 법 자세히', dismiss: '안내 닫기' },
       risk: { highest: '실제 공격에 쓰이고 있거나("공격 발생"), CVSS 점수가 10점 중 9점 이상', high: 'CVSS 점수 10점 중 7점 이상', notice: 'CVSS 점수 10점 중 7점 미만.' },
-      unrated: '점수 대기: CVSS 점수가 아직 없는 사건입니다. 실제 공격이 없으면 참고 표시를 점선으로 그립니다. 제조사가 공지에서 Critical이나 High로 매겼으면 그 등급(긴급, 위험)을 점선으로 그리고 아래에 "제조사 Critical"처럼 적으며, 필터에서도 그 등급에 넣습니다. 나머지 점수 대기 사건은 위험 단계 필터에서 따로 고르고, 위험도순과 CVSS 높은순에서는 점수가 있는 참고 사건보다 위에 둡니다.',
+      unrated: '점수 대기: CVSS 점수가 아직 없는 사건입니다. 실제 공격이 없으면 참고 표시를 점선으로 그립니다. 제조사가 공지에서 Critical이나 High로 매겼으면 그 등급(긴급, 위험)을 점선으로 그리고 아래에 "제조사 등급"이라고 적으며, 필터에서도 그 등급에 넣습니다. 나머지 점수 대기 사건은 위험 단계 필터에서 따로 고르고, 위험도순과 CVSS 높은순에서는 점수가 있는 참고 사건보다 위에 둡니다.',
       ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 점선 링 안에 —로 보입니다.',
       tags: '색 배지는 영향받는 제품과 기기이고, 같은 제품은 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
       date: '처음 게시된 날짜와 시각입니다. 본인 시간대로 보여 줍니다. 원문에 시각이 없으면 이 현황판이 처음 본 시각을 "처음 확인"과 함께 보여 줍니다.',
@@ -3027,7 +3027,7 @@ function details(incident, onStrip = false) {
     if (hit.length) why.append(' · ', ...hit.flatMap((cve, n) => [...(n ? [', '] : []), el('span', 'nw', cve)]));
     if (!idsAtFoot) facts.push([reason.kind === 'kev' ? t.kevReason : t.attackSource.replace(/[:：]\s*$/, ''), [...why.childNodes]]);
   }
-  // A provisional level (owner, 11-19): the sign says "제조사 Critical"; here the sentence with the advisory's link, as the
+  // A provisional level (owner, 11-19): the sign says "제조사 등급" (11-20); here the sentence with the advisory's link, as the
   // attack source is shown ("제조사 등급: Critical · <host>").
   const rated = provisionalLevel(incident) ? incident.summary.severity_source : '';
   let vendorLine = null;

@@ -125,7 +125,7 @@ test('the banner of an Incident its advisory rates Critical shows a dashed 긴�
     severity: 'critical', severity_source: 'https://www.openssh.com/txt/release-9.9p2' } };
   const banner = (await (await page(rated)).text()).match(/<div class="banner[^"]*">[\s\S]*?<\/div>/)[0];
   assert.match(banner, /class="banner risk-highest unrated"/);
-  assert.match(banner, /<small class="why unrated">제조사 Critical<\/small>/); // one reason under the sign
+  assert.match(banner, /<small class="why unrated">제조사 등급<\/small>/); // one reason under the sign
   assert.match(banner, /<p class="reason">제조사 등급: Critical · <a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"/); // the sentence with its link
 });
 

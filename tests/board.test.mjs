@@ -568,10 +568,13 @@ test('an advisory rated Critical or High sets a provisional level, shown dashed 
   assert.deepEqual([adv('critical'), adv('high'), adv('medium')].map(riskChoice), ['highest', 'high', 'pending']);
   assert.equal(riskLevel(adv('critical', { cvss: 5.0 })), 'notice'); // the score wins
   assert.equal(riskLevel({ ...adv('critical'), summary: { severity: 'critical', severity_source: '' } }), 'notice'); // no source
-  // Owner, 11-19: one short reason under the dashed sign, the vendor's word; no 점수 대기 (the dashed edge says it).
-  assert.equal(pendingWhy(adv('critical'), WORDS.ko), '제조사 Critical');
-  assert.equal(pendingWhy(adv('high'), WORDS.en), 'Vendor: High');
-  assert.equal(pendingWhy(adv('critical'), WORDS.ja), 'ベンダー評価 Critical');
+  // Owner, 11-19: one short reason under the dashed sign; no 점수 대기 (the dashed edge says it). 11-20: "제조사 등급",
+  // the opened panel's word, for Critical and High alike (the badge tells them apart; "제조사 Critical" stood out).
+  assert.equal(pendingWhy(adv('critical'), WORDS.ko), '제조사 등급');
+  assert.equal(pendingWhy(adv('high'), WORDS.ko), '제조사 등급');
+  assert.equal(pendingWhy(adv('high'), WORDS.en), 'Vendor rating');
+  assert.equal(pendingWhy(adv('critical'), WORDS.ja), 'ベンダー評価');
+  assert.equal(pendingWhy(adv('medium'), WORDS.ko), '점수 대기');
   assert.equal(pendingWhy(adv('medium'), WORDS.ja), 'スコア待ち'); // no provisional level: Score pending as before
   // the score floor: Critical as 9.0, High as 7.0
   assert.equal(highlightScore(adv('critical'), NOW), highlightScore({ ...adv(''), cvss: 9 }, NOW));

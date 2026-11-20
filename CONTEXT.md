@@ -168,7 +168,7 @@ An Incident with no CVSS score yet and no report of attacks. Its own choice in t
 levels, not part of the lowest one; ordered above the lowest level when the Board is sorted by risk (owner,
 2026-11-15). An exploited Incident without a score is at the top level, never here. One whose Advisory gives a
 provisional level (Risk banner) is drawn with that level's dashed sign and one reason under it, the vendor's word
-("제조사 Critical"; no 점수 대기, the dashed edge says it), the opened row giving the sentence with the advisory's link
+("제조사 등급", owner 2026-11-20; no 점수 대기, the dashed edge says it), the opened row giving the sentence with the advisory's link
 ("제조사 등급: Critical · <host>"), and is filed under that level in the filter (owner, 2026-11-19).
 _Avoid_: unrated, unscored, unknown risk
 

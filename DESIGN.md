@@ -730,8 +730,9 @@ ring stays inside the row and a group's frame at 320px too.
   phones). The first-visit line and the guide show the dashed sign and ring with "점수 대기"; 위험도순 and CVSS 높은순 put
   these rows above scored 참고 rows (critique 13). The rule that sets the level is unchanged. When the product's own
   advisory rates it Critical or High (a provisional level, CONTEXT.md Risk banner; 2026-11-19), the sign is that level's
-  (긴급 / 위험), still dashed, with one short reason in 공격 발생's place, centred on the badge like it: "제조사 Critical"
-  ("Vendor: Critical", "ベンダー評価 Critical"; owner, 2026-11-19: four stacked lines were too many, so no 점수 대기 there).
+  (긴급 / 위험), still dashed, with one short reason in 공격 발생's place, centred on the badge like it: "제조사 등급"
+  ("Vendor rating", "ベンダー評価"; owner, 2026-11-19: four stacked lines were too many, so no 점수 대기 there; 2026-11-20:
+  "제조사 Critical" stood out as the only Latin word under a sign, and the badge already tells Critical from High).
   The opened panel and the Incident page's banner give the sentence with the advisory's link, as the attack source is
   shown: "제조사 등급: Critical · <host>" ("Vendor rating", "ベンダー評価").
 - In both views the risk word is a badge after Astryx's Token (owner, 11-19, replacing the 11-09 unfilled ring: pills
