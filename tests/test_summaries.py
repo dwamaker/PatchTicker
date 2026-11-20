@@ -516,6 +516,24 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertFalse(summaries.is_candidate(old, now))
         self.assertTrue(summaries.is_candidate({k: v for k, v in old.items() if k != "published"}, now))
 
+    def test_a_vendor_advisory_rated_critical_with_no_cvss_is_summarized_at_once(self):
+        # Owner, 11-20: Synology-SA-26:21 and SA-CORE-2026-017 waited in a batch at 참고 with no CVSS yet. The word comes
+        # from the advisory page (vendors.read_severity); a CVSS score, once there, wins.
+        from datetime import datetime
+        now = datetime(2026, 11, 20, 12, 0)
+        url = "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"
+        row = lambda word, **more: {"cves": [], "mentions": [{"kind": "advisory", "url": url, "severity": word}],
+                                    "first_seen": "2026-11-20T08:00:00Z", "published": "2026-11-20T07:47:20Z", **more}
+        self.assertTrue(summaries.is_candidate(row("critical"), now))
+        self.assertTrue(summaries.is_candidate(row("high"), now))
+        self.assertFalse(summaries.is_candidate(row("medium"), now))
+        self.assertFalse(summaries.is_candidate(row("critical", cvss=5.0), now))
+        # Only an advisory Mention's word: the same field on a write-up counts for nothing.
+        self.assertFalse(summaries.is_candidate(row("critical") | {"mentions": [{"kind": "writeup", "url": url, "severity": "critical"}]}, now))
+        # A vendor's Critical goes with the 긴급 rows, ahead of a CVSS 7.5 one.
+        ranked = sorted([row("high", cvss=7.5), row("critical")], key=summaries.priority)
+        self.assertEqual([i.get("cvss") for i in ranked], [None, 7.5])
+
     def test_an_incident_at_the_high_risk_level_or_above_is_summarized_at_once_not_in_a_batch(self):
         # User, 11-09: 위험 (CVSS 7.0+) and up never wait for a Message Batch.
         from datetime import datetime

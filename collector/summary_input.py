@@ -439,10 +439,18 @@ def advisory_severity(input_text):
     model: a write-up's, news page's, discussion's or CVE record's text and every Mention title never count."""
     kinds = mention_kinds(input_text)
     for block in SOURCE_RE.finditer(input_text):
-        if block[1] and kinds.get(block[1]) == "advisory" and (found := SEVERITY_RE.search(block[3])):
-            word = " ".join(found[1].lower().split())
-            return {"severity": SEVERITY_WORDS.get(word, word), "severity_source": block[1]}
+        if block[1] and kinds.get(block[1]) == "advisory" and (word := severity_word(block[3])):
+            return {"severity": word, "severity_source": block[1]}
     return {}
+
+
+def severity_word(text):
+    """The severity word one official advisory page's text states (SEVERITY_RE), as critical|high|medium|low, or None."""
+    found = SEVERITY_RE.search(text)
+    if found:
+        word = " ".join(found[1].lower().split())
+        return SEVERITY_WORDS.get(word, word)
+    return None
 
 
 def trusted(input_text):

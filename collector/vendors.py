@@ -13,7 +13,7 @@ import sys
 import xml.etree.ElementTree as ET  # expat in Python 3.13 limits entity expansion
 from datetime import datetime, timezone
 
-from collector import rss
+from collector import rss, summary_input
 from collector.incidents import STAMP, cves_in, stamp_ago
 
 # Per feed: "own" matches the title of an advisory on the vendor's own product; any other item only joins (when
@@ -78,9 +78,26 @@ def fetch(checkpoints, http_get, feeds, stamp):
                 continue  # not marked seen: the next cycle reads it again
             seen.append(key)
             if group["published"] >= oldest:
+                if not group["join_only"]:
+                    read_severity(group["mentions"][0], http_get)
                 groups.append(group)
         checkpoints[feed] = seen[-MAX_SEEN:]
     return groups, checkpoints
+
+
+def read_severity(mention, http_get):
+    """Store on an own advisory Mention the severity word its official page states (summary_input.severity_word), so a
+    row with no CVSS yet that the vendor rates Critical or High is summarized at once (summaries.is_candidate), not left
+    in a batch at 참고 (owner, 11-20: Synology-SA-26:21, SA-CORE-2026-017). Read here, once per new feed item: the
+    checkpoint never shows the item again, so no cycle fetches it twice; the feed's own text has no such word
+    (Synology's description) or has it only in the title (Drupal's), which never counts. Code reads it, never the model.
+    shortcut: a page that fails to load stores nothing and the row waits for its batch as before; no retry."""
+    url = mention["url"]
+    page = summary_input.fetch_page(http_get, url)
+    text = summary_input.page_text(page, url) if page else None
+    word = summary_input.severity_word(text) if text else None
+    if word:
+        mention["severity"] = word
 
 
 def posted_since(item, stamp):

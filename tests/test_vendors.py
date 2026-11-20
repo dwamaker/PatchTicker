@@ -24,8 +24,17 @@ SA = "https://www.synology.com/en-global/support/security/Synology_SA_26_{}"  # 
 ADVISORY = "https://www.synology.com/en-global/security/advisory/Synology_SA_26_{}"  # what CVE records cite
 
 
+# The advisory pages vendors.read_severity reads, trimmed to the lines that matter (the real pages of 2026-11-20 say
+# "Severity Critical" and "Security risk: Critical 18 ∕ 25"). Any other page reads as an empty one.
+PAGES = {ADVISORY.format(21): b"<html><body><main><h1>Synology-SA-26:21 DSM, BeeStation OS</h1><h3>Severity</h3>"
+                              b"<p>Critical</p><h3>Status</h3><p>Resolved</p></main></body></html>",
+         "https://www.drupal.org/sa-core-2026-017": "<html><body><main><h1>Drupal core - Critical - Remote code execution"
+                                                    " - SA-CORE-2026-017</h1><p>Security risk: Critical 18 ∕ 25"
+                                                    " AC:Complex/A:None</p></main></body></html>".encode()}
+
+
 def get(url, headers=None):
-    return FEEDS[url]
+    return FEEDS.get(url) or PAGES.get(url, b"<html></html>")
 
 
 def all_ids():
@@ -47,7 +56,8 @@ class VendorFeedTest(unittest.TestCase):
     def test_an_own_advisory_is_an_advisory_group_at_the_link_cve_records_cite(self):
         group = fetched(SA.format(21))[ADVISORY.format(21)]
         self.assertEqual(group, {
-            "mentions": [{"kind": "advisory", "url": ADVISORY.format(21), "title": "Synology-SA-26:21 DSM, BeeStation OS"}],
+            "mentions": [{"kind": "advisory", "url": ADVISORY.format(21), "title": "Synology-SA-26:21 DSM, BeeStation OS",
+                          "severity": "critical"}],
             "cves": ["CVE-2026-120382"], "urls": [], "text": "Synology-SA-26:21 DSM, BeeStation OS", "join_only": False,
             "published": "2026-11-19T07:47:20Z"})
 
@@ -55,6 +65,17 @@ class VendorFeedTest(unittest.TestCase):
         group = fetched("3636972 at https://www.drupal.org")["https://www.drupal.org/sa-core-2026-017"]
         self.assertEqual((group["cves"], group["join_only"], group["mentions"][0]["kind"]), (["CVE-2026-132165"], False, "advisory"))
         self.assertEqual(group["published"], "2026-11-18T17:43:11Z")
+
+    def test_the_severity_word_comes_from_the_advisory_page_never_the_feed_title(self):
+        # Owner, 11-20: read once when the item is new, so a no-CVSS Critical row is an instant Summary candidate.
+        self.assertEqual(fetched("3636972 at https://www.drupal.org")["https://www.drupal.org/sa-core-2026-017"]["mentions"][0]["severity"],
+                         "critical")
+        pages = []
+        quiet = lambda url, headers=None: pages.append(url) or FEEDS.get(url) or b"<html><body><p>Fixed.</p></body></html>"
+        groups, _ = vendors.fetch(unseen("3636972 at https://www.drupal.org", SA.format(16)), quiet, vendors.FEEDS, STAMP)
+        self.assertEqual([g["mentions"][0].get("severity") for g in groups], [None, None])  # "Drupal core - Critical - ..."
+        # A post on another project's flaw (SA-26:16, join only) is never fetched; the own advisory's page once.
+        self.assertEqual([u for u in pages if u not in FEEDS], ["https://www.drupal.org/sa-core-2026-017"])
 
     def test_the_first_read_lets_the_last_days_through_and_records_the_rest(self):
         # owner, 11-19: SA-26:21 (posted that day, no CVE record yet) must reach the Board when the feed is first read
@@ -142,6 +163,12 @@ class VendorLinkTest(unittest.TestCase):
         link(incidents, fetched(SA.format(18))[ADVISORY.format(18)], STAMP)
         self.assertEqual(len(incidents), 1)
         self.assertEqual([m["url"] for m in incidents[0]["mentions"]], before)  # the same page, not a second Mention
+
+    def test_the_severity_word_survives_joining_the_page_a_record_cited_first(self):
+        incidents = [incident("CVE-2026-120382", "DSM ...", "2026-11-19T10:00:00Z", published="2026-11-19T10:00:00Z")]
+        incidents[0]["mentions"].append({"kind": "writeup", "url": ADVISORY.format(21)})
+        link(incidents, fetched(SA.format(21))[ADVISORY.format(21)], STAMP)
+        self.assertEqual([m.get("severity") for m in incidents[0]["mentions"] if m["url"] == ADVISORY.format(21)], ["critical"])
 
     def test_an_advisory_with_a_cve_joins_that_incident_and_leads_it(self):
         incidents = [incident("CVE-2026-120382", "DSM ...", "2026-11-19T10:00:00Z", published="2026-11-19T10:00:00Z")]

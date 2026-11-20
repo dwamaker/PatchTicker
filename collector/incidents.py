@@ -915,6 +915,8 @@ def absorb(target, other):
             for t in target["mentions"]:
                 if url_key(t["url"]) == url_key(m["url"]):
                     t["kind"] = "advisory"
+                    if m.get("severity"):  # a vendor feed's read (vendors.read_severity) on the page a record cited first
+                        t["severity"] = m["severity"]
         elif url_key(m["url"]) not in seen:
             seen.add(url_key(m["url"]))
             target["mentions"].append(m)
