@@ -193,12 +193,15 @@ class VendorLinkTest(unittest.TestCase):
         store = MemoryStore()
         store.write("checkpoints.json", {"vendors": unseen(SA.format(21), SA.format(18))})
         answer = recorded(None, unpublished=("CVE-2026-120382",))
-        run_cycle(store, lambda url, headers=None: FEEDS[url] if url in FEEDS else answer(url, headers),
+        run_cycle(store, lambda url, headers=None: FEEDS.get(url) or PAGES.get(url) or answer(url, headers),
                   at("2026-11-19T12:00:00"), "test-box", vendor_feeds=vendors.FEEDS)
         rows = board(store)
         self.assertEqual(sorted(rows), ["CVE-2026-120382", ADVISORY.format(18)])
         self.assertEqual(rows["CVE-2026-120382"]["brief"]["lead"], ADVISORY.format(21))
         self.assertTrue(on_board(rows[ADVISORY.format(18)]))
+        stored = next(i for i in store.read("months/2026-11.json")["incidents"] if i["id"] == "CVE-2026-120382")
+        self.assertIn({"kind": "advisory", "url": ADVISORY.format(21), "title": "Synology-SA-26:21 DSM, BeeStation OS",
+                       "severity": "critical"}, stored["mentions"])  # read once, kept in the store
         self.assertTrue({SA.format(21), SA.format(18)} <= set(store.read("checkpoints.json")["vendors"][SYNOLOGY]))
 
     def test_synology_own_products_start_and_packaged_projects_only_join(self):

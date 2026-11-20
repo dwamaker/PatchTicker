@@ -608,6 +608,31 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertEqual(asked(), [f"Incident: CVE-2026-{10 + n}" for n in range(URGENT_PAST_LIMIT + 1)])
         self.assertEqual(line.counts["summaries_kept_back"], 2 + 2)
 
+    def test_a_vendor_critical_with_no_cvss_is_asked_past_the_budget_like_any_urgent_row(self):
+        # Owner, 11-20: priority() sorts it with the 긴급 rows, so the past-budget check must let it through too.
+        from datetime import datetime
+        from collector.cycle import route_summaries
+        from collector.logfile import CycleLine
+        now, t = datetime(2026, 11, 9, 12, 0), [0]
+        row = lambda n, cvss, mentions=(): {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss,  # noqa: E731
+                                            "mentions": list(mentions), "first_seen": "2026-11-09T11:00:00Z",
+                                            "published": "2026-11-09T10:00:00Z", "products": [],
+                                            "brief": {"text": "A flaw.", "lead": ""}}
+        vendor = row(3, None, [{"kind": "advisory", "url": "https://www.drupal.org/sa-core-2026-017", "severity": "critical"}])
+        claude = FakeClaude(*["{"] * 20)
+        create = claude.messages.create
+
+        def slow(**params):  # each Summary takes 200 s: the budget is spent after the first
+            t[0] += 200 if "Incident:" in params["messages"][0]["content"] else 0
+            return create(**params)
+        claude.messages.create = slow
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([row(1, 7.5), vendor, row(10, 9.2)], [], claude, lambda url, headers=None: b"", now,
+                            "2026-11-09T12:00:00Z", set(), probe=False, clock=lambda: t[0],
+                            line=CycleLine("2026-11-09T12:00:00Z", lambda: t[0]), deadline=400)
+        asked = [p["messages"][0]["content"].split("\n")[0] for p in claude.sent if "Incident:" in p["messages"][0]["content"]]
+        self.assertEqual(asked, ["Incident: CVE-2026-10", "Incident: CVE-2026-3"])  # the 7.5 row waits
+
     def test_past_the_cycle_deadline_only_the_first_summary_titles_request_and_batch_request_go_out(self):
         # 11-18: cycles took 600-612 s, the Summary step 244-295 s of them; past CYCLE_SECONDS nothing new starts.
         from datetime import datetime
