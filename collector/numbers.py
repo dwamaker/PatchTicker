@@ -99,5 +99,16 @@ NUMBER_WORDS = {w: str(n) for n, w in enumerate("zero one two three four five si
 NUMBER_WORD_RE = re.compile(rf"\b(?:{'|'.join(NUMBER_WORDS)}|one(?=[\s-](?:byte|bit|character)s?\b))\b", re.I)
 
 
+# 11-20: a C integer type the input names gives its bit width, so CVE-2026-99448's "truncates that value to an unsigned
+# int" may be written "32비트" (given up 3 of 3). Types with digits (uint32_t, u32, __u8, s64) already give theirs through
+# numbers(). Lowercase whole words only, so "integer", "uint", "INT" and "Int'l" give nothing. Bare "short", "char" and
+# "unsigned" are English words ("short read", "char device", "unsigned firmware"), so they count only as a type pair.
+# No "long", "unsigned long" or "size_t": 32 bits on Windows and 32-bit targets, 64 on 64-bit Linux, so no one width.
+# shortcut: a bare "int" is taken as C's 32 bits; Go's int is 64 on 64-bit targets. Narrow it if a Go advisory leaks a 32.
+C_TYPE_RE = re.compile(r"\b(long\s+long|(?:un)?signed\s+(?:short|char)|short\s+int|(?<!long\s)(?<!short\s)int)\b")
+C_TYPE_WIDTHS = {"long": "64", "short": "16", "char": "8", "int": "32"}
+
+
 def number_words(text):
-    return {NUMBER_WORDS.get(w.lower(), "1") for w in NUMBER_WORD_RE.findall(text)}
+    words = {NUMBER_WORDS.get(w.lower(), "1") for w in NUMBER_WORD_RE.findall(text)}
+    return words | {next(v for k, v in C_TYPE_WIDTHS.items() if k in t) for t in C_TYPE_RE.findall(text)}

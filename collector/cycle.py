@@ -514,7 +514,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     past = 0
     for n, incident in enumerate(instant):
         if n and not (more() and open_()):
-            if past < URGENT_PAST_LIMIT and risk_level(incident) == "highest":  # priority() puts every 긴급 row first
+            # priority() puts every 긴급 row first, a vendor's Critical with no CVSS yet among them (stated_level)
+            if past < URGENT_PAST_LIMIT and "highest" in (risk_level(incident), summaries.stated_level(incident)):
                 past += 1
             else:
                 line.count("summaries_kept_back", len(instant) - n)

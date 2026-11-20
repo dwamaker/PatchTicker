@@ -17,7 +17,8 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
-from collector.incidents import DISTRO_PACKAGE, is_news, known_label, published_at, risk_level, stamp_ago, url_key
+from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_label, published_at, risk_level, stamp_ago,
+                                 url_key)
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, ko_numbers, number_words, numbers, without_line_names
@@ -951,7 +952,8 @@ class Rejected(ValueError):
 def is_candidate(incident, now):
     """Summarized at once, never left for a Message Batch: newly KEV-listed, CVSS 7.0 or higher (the Board's 위험
     level and up; user, 2026-11-09), HN buzz (hn.BUZZ_POINTS) or a curator pick, or an Unassigned incident seen in
-    discussion off HN. A KEV listing no Summary has covered yet counts however
+    discussion off HN, or a vendor advisory rated Critical or High while no CVSS exists (stated_level). A KEV listing no
+    Summary has covered yet counts however
     old the Incident; the rest only within the Highlight window (seven days)."""
     if incident.get("kev") and not incident.get("summary_basis", {}).get("kev"):
         return True
@@ -967,11 +969,22 @@ def is_candidate(incident, now):
     # A security news site ran it (owner, 2026-11-10): its editors' pick counts like a curator's, whatever the HN points.
     news = any(is_news(m["url"]) for m in incident["mentions"])
     return bool(incident.get("kev") or (incident.get("cvss") or 0) >= 7.0 or buzz or "curator" in kinds or news
-                or (not incident["cves"] and talk))
+                or (not incident["cves"] and talk) or stated_level(incident))
 
 
 def hn_points(incident):
     return max((m.get("points") or 0 for m in incident["mentions"] if is_hn(m["url"])), default=0)
+
+
+def stated_level(incident):
+    """"highest" or "high" while the Incident has no CVSS score and an official vendor advisory Mention carries Critical or
+    High (vendors.read_severity, read from its page by code when the feed item was linked), else None. A score always
+    wins. Only for candidacy and order: the Board's level waits for the Summary's own read (provisional_level), which
+    this same cycle's instant Summary brings, so web/board.mjs and rows.json stay as they are."""
+    if incident.get("cvss") is not None:
+        return None
+    return next((PROVISIONAL[m["severity"]] for m in incident["mentions"]
+                 if m["kind"] == "advisory" and m.get("severity") in PROVISIONAL), None)
 
 
 def priority(incident):
@@ -980,9 +993,9 @@ def priority(incident):
     PHP's 9.2 release waited behind a flood of kernel CVEs), KEV inside it, then CVSS 9.0+, then a well-known product
     (collector/well_known.json), then a curator's pick, then CVSS 7.0+, then HN buzz; arrival order within each."""
     curated = any(m["kind"] == "curator" for m in incident["mentions"])
-    score = incident.get("cvss") or 0
-    return (risk_level(incident) != "highest", not incident.get("kev"), score < 9.0, not known_label(incident), not curated,
-            score < 7.0)
+    score, stated = incident.get("cvss") or 0, stated_level(incident)  # stated: a vendor's Critical/High before any Summary
+    return ("highest" not in (risk_level(incident), stated), not incident.get("kev"), score < 9.0, not known_label(incident),
+            not curated, score < 7.0 and not stated)
 
 
 def basis(incident):

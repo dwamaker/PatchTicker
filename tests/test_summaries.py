@@ -516,6 +516,24 @@ class InstantSummaryTest(unittest.TestCase):
         self.assertFalse(summaries.is_candidate(old, now))
         self.assertTrue(summaries.is_candidate({k: v for k, v in old.items() if k != "published"}, now))
 
+    def test_a_vendor_advisory_rated_critical_with_no_cvss_is_summarized_at_once(self):
+        # Owner, 11-20: Synology-SA-26:21 and SA-CORE-2026-017 waited in a batch at 참고 with no CVSS yet. The word comes
+        # from the advisory page (vendors.read_severity); a CVSS score, once there, wins.
+        from datetime import datetime
+        now = datetime(2026, 11, 20, 12, 0)
+        url = "https://www.synology.com/en-global/security/advisory/Synology_SA_26_21"
+        row = lambda word, **more: {"cves": [], "mentions": [{"kind": "advisory", "url": url, "severity": word}],
+                                    "first_seen": "2026-11-20T08:00:00Z", "published": "2026-11-20T07:47:20Z", **more}
+        self.assertTrue(summaries.is_candidate(row("critical"), now))
+        self.assertTrue(summaries.is_candidate(row("high"), now))
+        self.assertFalse(summaries.is_candidate(row("medium"), now))
+        self.assertFalse(summaries.is_candidate(row("critical", cvss=5.0), now))
+        # Only an advisory Mention's word: the same field on a write-up counts for nothing.
+        self.assertFalse(summaries.is_candidate(row("critical") | {"mentions": [{"kind": "writeup", "url": url, "severity": "critical"}]}, now))
+        # A vendor's Critical goes with the 긴급 rows, ahead of a CVSS 7.5 one.
+        ranked = sorted([row("high", cvss=7.5), row("critical")], key=summaries.priority)
+        self.assertEqual([i.get("cvss") for i in ranked], [None, 7.5])
+
     def test_an_incident_at_the_high_risk_level_or_above_is_summarized_at_once_not_in_a_batch(self):
         # User, 11-09: 위험 (CVSS 7.0+) and up never wait for a Message Batch.
         from datetime import datetime
@@ -589,6 +607,31 @@ class InstantSummaryTest(unittest.TestCase):
         # the first as ever, then URGENT_PAST_LIMIT more 긴급 rows past both limits; the 위험 rows wait
         self.assertEqual(asked(), [f"Incident: CVE-2026-{10 + n}" for n in range(URGENT_PAST_LIMIT + 1)])
         self.assertEqual(line.counts["summaries_kept_back"], 2 + 2)
+
+    def test_a_vendor_critical_with_no_cvss_is_asked_past_the_budget_like_any_urgent_row(self):
+        # Owner, 11-20: priority() sorts it with the 긴급 rows, so the past-budget check must let it through too.
+        from datetime import datetime
+        from collector.cycle import route_summaries
+        from collector.logfile import CycleLine
+        now, t = datetime(2026, 11, 9, 12, 0), [0]
+        row = lambda n, cvss, mentions=(): {"id": f"CVE-2026-{n}", "cves": [f"CVE-2026-{n}"], "cvss": cvss,  # noqa: E731
+                                            "mentions": list(mentions), "first_seen": "2026-11-09T11:00:00Z",
+                                            "published": "2026-11-09T10:00:00Z", "products": [],
+                                            "brief": {"text": "A flaw.", "lead": ""}}
+        vendor = row(3, None, [{"kind": "advisory", "url": "https://www.drupal.org/sa-core-2026-017", "severity": "critical"}])
+        claude = FakeClaude(*["{"] * 20)
+        create = claude.messages.create
+
+        def slow(**params):  # each Summary takes 200 s: the budget is spent after the first
+            t[0] += 200 if "Incident:" in params["messages"][0]["content"] else 0
+            return create(**params)
+        claude.messages.create = slow
+        with contextlib.redirect_stderr(io.StringIO()):
+            route_summaries([row(1, 7.5), vendor, row(10, 9.2)], [], claude, lambda url, headers=None: b"", now,
+                            "2026-11-09T12:00:00Z", set(), probe=False, clock=lambda: t[0],
+                            line=CycleLine("2026-11-09T12:00:00Z", lambda: t[0]), deadline=400)
+        asked = [p["messages"][0]["content"].split("\n")[0] for p in claude.sent if "Incident:" in p["messages"][0]["content"]]
+        self.assertEqual(asked, ["Incident: CVE-2026-10", "Incident: CVE-2026-3"])  # the 7.5 row waits
 
     def test_past_the_cycle_deadline_only_the_first_summary_titles_request_and_batch_request_go_out(self):
         # 11-18: cycles took 600-612 s, the Summary step 244-295 s of them; past CYCLE_SECONDS nothing new starts.
@@ -1309,6 +1352,33 @@ class NumberWordTest(unittest.TestCase):
             with self.subTest(en):
                 summary = self.parse("스택 버퍼를 1바이트 넘겨 씁니다.", en, "mod_vhost_alias 1 byte stack buffer overwrite")
                 self.assertEqual(summary["en"]["summary"].rsplit(". ", 1)[-1], en)
+
+    def test_a_c_integer_type_gives_its_bit_width(self):
+        """11-20: CVE-2026-99448 (Linux UFS) was given up 3 of 3 for "32비트": the input says "truncates that value to an
+        unsigned int"."""
+        source = "ufs_last_byte() then truncates that value to an unsigned int before calculating the valid extent."
+        for en in ("It truncates the directory size to 32 bits.", "It truncates the directory size to an unsigned int."):
+            with self.subTest(en):
+                summary = self.parse("디렉터리 크기를 32비트로 잘라 메모리 밖을 읽습니다.", en, source)
+                self.assertEqual(summary["en"]["summary"].rsplit(". ", 1)[-1], en)
+        for ko, en, types in (("16비트입니다.", "It is 16 bits.", "an unsigned short int"),
+                              ("64비트입니다.", "It is 64 bits.", "a long long counter"),
+                              ("8비트입니다.", "It is 8 bits.", "an unsigned char")):
+            with self.subTest(types):
+                self.parse(ko, en, types)
+
+    def test_a_bit_width_the_input_does_not_imply_is_refused(self):
+        cases = {"no type": ("32비트로 잘립니다.", "It is cut to 32 bits.", "the directory size is truncated", "['32']"),
+                 "int inside words": ("32비트입니다.", "It is 32 bits.", "an integer overflow in print() of a uint", "['32']"),
+                 "short as English": ("16비트입니다.", "It is 16 bits.", "a short read of the header", "['16']"),
+                 "char as English": ("8비트입니다.", "It is 8 bits.", "the char device driver", "['8']"),
+                 "long int has no one width": ("32비트입니다.", "It is 32 bits.", "a long int offset", "['32']"),
+                 "unsigned int is not 64": ("64비트입니다.", "It is 64 bits.", "an unsigned int length", "['64']"),
+                 "size_t has no one width": ("64비트입니다.", "It is 64 bits.", "a size_t length", "['64']")}
+        for case, (ko, en, source, unknown) in cases.items():
+            with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
+                self.parse(ko, en, source)
+            self.assertEqual(str(caught.exception), f"numbers not in the input: {unknown}")
 
     def test_other_korean_and_english_numbers_still_differ(self):
         cases = {"2 is not 3": ("2바이트입니다.", "It is 3 bytes.", "2 or 3 bytes", "['2', '3']"),
