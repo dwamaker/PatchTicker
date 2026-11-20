@@ -16,7 +16,8 @@ from collector.incidents import link, on_board
 from collector.store import MemoryStore
 
 FIXTURES = Path(__file__).parent / "fixtures"
-SYNOLOGY, DRUPAL = vendors.FEEDS
+SYNOLOGY, DRUPAL = list(vendors.FEEDS)[:2]
+TWO = {feed: vendors.FEEDS[feed] for feed in (SYNOLOGY, DRUPAL)}  # the six later feeds: test_vendor_feeds.py
 FEEDS = {SYNOLOGY: (FIXTURES / "vendors" / "synology.rss").read_bytes(),
          DRUPAL: (FIXTURES / "vendors" / "drupal.rss").read_bytes()}
 STAMP = "2026-11-19T12:00:00Z"
@@ -38,7 +39,7 @@ def get(url, headers=None):
 
 
 def all_ids():
-    _, checkpoints = vendors.fetch(None, get, vendors.FEEDS, STAMP)
+    _, checkpoints = vendors.fetch(None, get, TWO, STAMP)
     return checkpoints
 
 
@@ -48,7 +49,7 @@ def unseen(*keys):
 
 
 def fetched(*keys):
-    groups, _ = vendors.fetch(unseen(*keys), get, vendors.FEEDS, STAMP)
+    groups, _ = vendors.fetch(unseen(*keys), get, TWO, STAMP)
     return {g["mentions"][0]["url"]: g for g in groups}
 
 
@@ -72,14 +73,14 @@ class VendorFeedTest(unittest.TestCase):
                          "critical")
         pages = []
         quiet = lambda url, headers=None: pages.append(url) or FEEDS.get(url) or b"<html><body><p>Fixed.</p></body></html>"
-        groups, _ = vendors.fetch(unseen("3636972 at https://www.drupal.org", SA.format(16)), quiet, vendors.FEEDS, STAMP)
+        groups, _ = vendors.fetch(unseen("3636972 at https://www.drupal.org", SA.format(16)), quiet, TWO, STAMP)
         self.assertEqual([g["mentions"][0].get("severity") for g in groups], [None, None])  # "Drupal core - Critical - ..."
         # A post on another project's flaw (SA-26:16, join only) is never fetched; the own advisory's page once.
         self.assertEqual([u for u in pages if u not in FEEDS], ["https://www.drupal.org/sa-core-2026-017"])
 
     def test_the_first_read_lets_the_last_days_through_and_records_the_rest(self):
         # owner, 11-19: SA-26:21 (posted that day, no CVE record yet) must reach the Board when the feed is first read
-        groups, checkpoints = vendors.fetch({}, get, vendors.FEEDS, STAMP)
+        groups, checkpoints = vendors.fetch({}, get, TWO, STAMP)
         self.assertEqual([(g["mentions"][0]["url"], g["join_only"]) for g in groups], [
             (ADVISORY.format(21), False), (ADVISORY.format(20), True),
             ("https://www.drupal.org/sa-core-2026-018", False), ("https://www.drupal.org/sa-core-2026-017", False)])
@@ -87,16 +88,16 @@ class VendorFeedTest(unittest.TestCase):
         self.assertEqual(len(checkpoints[SYNOLOGY]), 5)
         self.assertEqual(checkpoints[DRUPAL], ["3623427 at https://www.drupal.org", "3637891 at https://www.drupal.org",
                                                "3636972 at https://www.drupal.org"])  # the old one first, then as read
-        self.assertEqual(vendors.fetch(checkpoints, get, vendors.FEEDS, STAMP), ([], checkpoints))
+        self.assertEqual(vendors.fetch(checkpoints, get, TWO, STAMP), ([], checkpoints))
 
     def test_a_first_read_long_after_the_last_post_starts_nothing(self):
-        groups, checkpoints = vendors.fetch({}, get, vendors.FEEDS, "2026-12-01T00:00:00Z")
+        groups, checkpoints = vendors.fetch({}, get, TWO, "2026-12-01T00:00:00Z")
         self.assertEqual(groups, [])
         self.assertEqual((len(checkpoints[SYNOLOGY]), len(checkpoints[DRUPAL])), (5, 3))
 
     def test_only_unseen_items_are_built_and_then_recorded(self):
         before = unseen(SA.format(21))
-        groups, after = vendors.fetch(before, get, vendors.FEEDS, STAMP)
+        groups, after = vendors.fetch(before, get, TWO, STAMP)
         self.assertEqual([g["mentions"][0]["url"] for g in groups], [ADVISORY.format(21)])
         self.assertEqual(after[SYNOLOGY], before[SYNOLOGY] + [SA.format(21)])
         self.assertEqual(after[DRUPAL], before[DRUPAL])
@@ -115,11 +116,11 @@ class VendorFeedTest(unittest.TestCase):
 
     def test_an_item_older_than_max_age_starts_nothing_but_is_recorded(self):
         old = "3623427 at https://www.drupal.org"  # SA-CORE-2026-013, 2026-09-16
-        groups, after = vendors.fetch(unseen(old), get, vendors.FEEDS, STAMP)
+        groups, after = vendors.fetch(unseen(old), get, TWO, STAMP)
         self.assertEqual(groups, [])
         self.assertIn(old, after[DRUPAL])
-        third_party = vendors.mention_group(next(i for i in vendors.ET.fromstring(FEEDS[DRUPAL]).iter("item")
-                                                 if "2026-013" in i.findtext("title")), vendors.FEEDS[DRUPAL])
+        third_party = vendors.mention_group(next(e for e in vendors.rss_entries(FEEDS[DRUPAL]) if "2026-013" in e["title"]),
+                                            vendors.FEEDS[DRUPAL], STAMP)
         self.assertTrue(third_party["join_only"])
 
     def test_a_dead_or_empty_feed_keeps_its_checkpoint(self):
@@ -128,8 +129,8 @@ class VendorFeedTest(unittest.TestCase):
         empty = lambda url, headers=None: b"<rss><channel></channel></rss>"
         for answer in (dead, empty):
             with self.subTest(answer), redirect_stderr(io.StringIO()):
-                self.assertEqual(vendors.fetch({SYNOLOGY: ["x"]}, answer, vendors.FEEDS, STAMP), ([], {SYNOLOGY: ["x"]}))
-                self.assertEqual(vendors.fetch({}, answer, vendors.FEEDS, STAMP), ([], {}))  # no first read recorded
+                self.assertEqual(vendors.fetch({SYNOLOGY: ["x"]}, answer, TWO, STAMP), ([], {SYNOLOGY: ["x"]}))
+                self.assertEqual(vendors.fetch({}, answer, TWO, STAMP), ([], {}))  # no first read recorded
 
     def test_a_bad_item_is_skipped_and_read_again_next_cycle(self):
         feed = (b"<rss><channel><item><title>Drupal core - Critical - X - SA-CORE-2026-099</title><guid>9</guid>"
@@ -194,7 +195,7 @@ class VendorLinkTest(unittest.TestCase):
         store.write("checkpoints.json", {"vendors": unseen(SA.format(21), SA.format(18))})
         answer = recorded(None, unpublished=("CVE-2026-120382",))
         run_cycle(store, lambda url, headers=None: FEEDS.get(url) or PAGES.get(url) or answer(url, headers),
-                  at("2026-11-19T12:00:00"), "test-box", vendor_feeds=vendors.FEEDS)
+                  at("2026-11-19T12:00:00"), "test-box", vendor_feeds=TWO)
         rows = board(store)
         self.assertEqual(sorted(rows), ["CVE-2026-120382", ADVISORY.format(18)])
         self.assertEqual(rows["CVE-2026-120382"]["brief"]["lead"], ADVISORY.format(21))

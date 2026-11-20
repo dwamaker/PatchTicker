@@ -13,6 +13,7 @@ import urllib.request
 MAX_BYTES = 64 << 20  # NVD's 2,000-result pages are the largest legitimate answer
 DEADLINE = 120  # seconds for one whole fetch, redirects included; the 60 s socket timeout is per read only
 POST_DEADLINE = 10  # a webhook post; a slow Discord must not hold the cycle
+SHORT_DEADLINE = 15  # http_get.short: a read that costs only a detail when it fails (a vendor advisory's own page)
 
 
 def check_public(url):
@@ -98,6 +99,9 @@ def make_http_get(user_agent):
         # cycle while curl from the same server passed with any User-Agent (11-18). A caller's own Accept wins.
         return fetch(opener, url, {"User-Agent": user_agent, "Accept": "*/*", **(headers or {})})
 
+    # 11-20: a Sophos advisory page answered nothing for 30 s and more; a vendor feed's per-item reads use this one.
+    http_get.short = lambda url, headers=None: fetch(opener, url, {"User-Agent": user_agent, "Accept": "*/*", **(headers or {})},
+                                                     deadline=SHORT_DEADLINE)
     return http_get
 
 

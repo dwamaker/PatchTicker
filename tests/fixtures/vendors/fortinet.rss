@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rss xmlns:csaf="https://fortiguard.fortinet.com/rss/ns/csaf" xmlns:cvrf="https://fortiguard.fortinet.com/rss/ns/cvrf" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>FortiGuard Labs | FortiGuard Center - IR Advisories</title><link>https://fortiguard.fortinet.com/rss/ir.xml</link><description>The following is a list of advisories for issues resolved in Fortinet products. The resolution of such issues is coordinated by the Fortinet Product Security Incident Response Team (PSIRT), a dedicated, global team that manages the receipt, investigation, and public reporting of information about security vulnerabilities and issues related to Fortinet products and services.</description><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><lastBuildDate>Fri, 20 Nov 2026 09:30:07 +0000</lastBuildDate><pubDate>Fri, 20 Nov 2026 09:30:07 -0800</pubDate><item><title>Java4Shell Vulnerability - CVE-2026-114938</title><link>https://fortiguard.fortinet.com/psirt/FG-IR-26-278</link><description><![CDATA[<p>
+ <strong>
+  CVSSv3 Score:
+ </strong>
+ 8.1
+</p>
+<p>
+ CVE-2026-114938Vulnerability in the Oracle Java SE, Oracle GraalVM for JDK, Oracle GraalVM Enterprise Edition product of Oracle Java SE (component: Compiler). Supported versions that are affected are Oracle Java SE: 8u511b33-perf, 17.0.21.0.3, 21.0.13.0.3, 25.0.5.0.3, 27.0.1.0.3; Oracle GraalVM for JDK: 17.0.21.0.3 and 21.0.13.0.3; Oracle GraalVM Enterprise Edition: 21.3.20.0.3. Difficult to exploit vulnerability allows unauthenticated attacker with network access via multiple protocols to compromise Oracle Java SE, Oracle GraalVM for JDK, Oracle GraalVM Enterprise Edition. Successful attacks of this vulnerability can result in takeover of Oracle Java SE, Oracle GraalVM for JDK, Oracle GraalVM Enterprise Edition. Note: This vulnerability can only be exploited by supplying data to APIs in the specified Component without using Untrusted Java Web Start applications or Untrusted Java applets, such as through a web service.
+</p>
+<p>
+ <em>
+  Revised on 2026-11-19 00:00:00
+ </em>
+</p>
+]]></description><guid isPermaLink="true">https://fortiguard.fortinet.com/psirt/FG-IR-26-278</guid><pubDate>Wed, 18 Nov 2026 00:00:00 -0800</pubDate><csaf:link>https://filestore.fortinet.com/fortiguard/psirt/csaf_java4shell-vulnerability-cve-2026-114938_fg-ir-26-278.json</csaf:link><cvrf:link>https://fortiguard.fortinet.com/psirt/cvrf/FG-IR-26-278</cvrf:link></item><item><title>Linux kernel RCE CVE-2026-98432</title><link>https://fortiguard.fortinet.com/psirt/FG-IR-26-188</link><description><![CDATA[<p>
+ <strong>
+  CVSSv3 Score:
+ </strong>
+ 9.8
+</p>
+<p>
+ CVE-2026-98432:ipv4: free inet_opt and ireq_opt after an RCU grace period tcp_v4_syn_recv_sock() transfers ownership of ireq-&gt;ireq_opt to the child socket (newinet-&gt;inet_opt) without copying it. Another cpu can concurrently process a retransmitted SYN for the same request socket, and send a SYNACK from tcp_check_req(). tcp_v4_send_synack() and inet_csk_route_req() read ireq-&gt;ireq_opt under rcu_read_lock() only, and ip_build_and_send_pkt() and ip_options_build() then read opt-&gt;optlen twice. Note that the SYNACK timer itself is not an issue: it holds a reference on its request socket, and inet_csk_reqsk_queue_drop() calls timer_delete_sync() before the child can be freed. Since commit 079096f103fa ("tcp/dccp: install syn_recv requests into ehash table"), request sockets are processed without holding the listener lock, so nothing prevents the child socket from being freed while the SYNACK is still being built. TCP child sockets do not have SOCK_RCU_FREE, and inet_sock_destruct() frees inet_opt with a plain kfree(), leading to a use-after-free in ip_options_build(). A similar issue exists with request socket migration (net.ipv4.tcp_migrate_req=1, or a BPF_SK_REUSEPORT_SELECT_OR_MIGRATE program). reqsk_timer_handler() clones the request socket with inet_reqsk_clone(), so that the old request socket and its clone share the same ireq_opt, then reqsk_migrate_reset() clears the pointer in the old one. Another cpu holding a reference on the old request socket can still be using these options (sending a SYNACK, or creating a child in tcp_v4_syn_recv_sock()) when the clone is freed, and tcp_v4_reqsk_destructor() also uses a plain kfree(). Readers already use RCU, and other paths replacing inet_opt (do_ip_setsockopt(), cipso_v4_sock_setattr()...) already use kfree_rcu(). Use kfree_rcu() in inet_sock_destruct() and tcp_v4_reqsk_destructor() as well. IPv6 is not affected by the first issue, because tcp_v6_syn_recv_sock() duplicates the options. tcp_v6_reqsk_destructor() has the same migration issue with ipv6_opt, which is only set by CALIPSO. This will be addressed in a separate patch.
+</p>
+<p>
+ <em>
+  Revised on 2026-11-19 00:00:00
+ </em>
+</p>
+]]></description><guid isPermaLink="true">https://fortiguard.fortinet.com/psirt/FG-IR-26-188</guid><pubDate>Mon, 02 Nov 2026 00:00:00 -0800</pubDate><csaf:link>https://filestore.fortinet.com/fortiguard/psirt/csaf_linux-kernel-rce-cve-2026-98432_fg-ir-26-188.json</csaf:link><cvrf:link>https://fortiguard.fortinet.com/psirt/cvrf/FG-IR-26-188</cvrf:link></item><item><title>Unauthenticated adjacent command execution via HA</title><link>https://fortiguard.fortinet.com/psirt/FG-IR-26-273</link><description><![CDATA[<p>
+ <strong>
+  CVSSv3 Score:
+ </strong>
+ 9.0
+</p>
+<p>
+ A missing authentication for critical function vulnerability [CWE-306] in FortiOS may allow an unauthenticated attacker with HA FGSP + standalone-config-sync, or autoscale to execute command as super admin via crafted HA packets.
+</p>
+<p>
+ <em>
+  Revised on 2026-11-16 00:00:00
+ </em>
+</p>
+]]></description><guid isPermaLink="true">https://fortiguard.fortinet.com/psirt/FG-IR-26-273</guid><pubDate>Tue, 10 Nov 2026 00:00:00 -0800</pubDate><csaf:link>https://filestore.fortinet.com/fortiguard/psirt/csaf_unauthenticated-adjacent-command-execution-via-ha_fg-ir-26-273.json</csaf:link><cvrf:link>https://fortiguard.fortinet.com/psirt/cvrf/FG-IR-26-273</cvrf:link></item><item><title>Numeric truncation error</title><link>https://fortiguard.fortinet.com/psirt/FG-IR-26-268</link><description><![CDATA[<p>
+ <strong>
+  CVSSv3 Score:
+ </strong>
+ 9.6
+</p>
+<p>
+ A Numeric Truncation Error vulnerability [cwe-197] in FortiOS and FortiSASE bgp daemon may allow a configured ibgp neighbor to send malicious/malformed attributes to all connected routers via a specially crafted request
+</p>
+<p>
+ <em>
+  Revised on 2026-11-13 00:00:00
+ </em>
+</p>
+]]></description><guid isPermaLink="true">https://fortiguard.fortinet.com/psirt/FG-IR-26-268</guid><pubDate>Tue, 10 Nov 2026 00:00:00 -0800</pubDate><csaf:link>https://filestore.fortinet.com/fortiguard/psirt/csaf_numeric-truncation-error_fg-ir-26-268.json</csaf:link><cvrf:link>https://fortiguard.fortinet.com/psirt/cvrf/FG-IR-26-268</cvrf:link></item></channel></rss>

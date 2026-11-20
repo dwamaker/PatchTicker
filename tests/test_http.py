@@ -182,6 +182,13 @@ class DeadlineTest(FakeNetwork):
                     self.http_get(f"http://drip.test:{self.port}{path}")
                 self.assertLess(time.monotonic() - start, 3)
 
+    def test_the_short_get_is_cut_off_at_its_own_deadline(self):
+        with mock.patch.object(net, "SHORT_DEADLINE", 1):  # DEADLINE stays 120 s
+            start = time.monotonic()
+            with self.assertRaises(OSError):
+                self.http_get.short(f"http://drip.test:{self.port}/drip-body")
+            self.assertLess(time.monotonic() - start, 3)
+
     def test_sockets_opened_after_the_deadline_are_not_dialled_or_kept(self):
         with mock.patch.object(net, "DEADLINE", 1):
             start = time.monotonic()

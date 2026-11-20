@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0" xml:base="https://www.sophos.com">
+  <channel>
+    <title>Security Advisories</title>
+    <link>https://www.sophos.com/</link>
+    <description></description>
+    <language>en</language>
+    
+    <item>
+      <title>Advisory: OpenJDK Base64 Vulnerability - Java4Shell (CVE-2026-114938)</title>
+      <link>https://www.sophos.com/en-us/security-advisories/sophos-sa-20261118-java4shell</link>
+      <description><![CDATA[<div><strong>Severity:</strong> Informational</div><div><strong>CVE:</strong> CVE-2026-114938</div><div><strong>First Published:</strong> <time datetime="2026-11-18T09:40:00.000Z">Wed, 18 Nov 2026 09:40:00 GMT</time></div><div><strong>Updated:</strong> <time datetime="2026-11-19">Thu, 19 Nov 2026 00:00:00 GMT</time></div><div><strong>Publication ID:</strong> sophos-sa-20261118-java4shell</div><div><strong>Article Version:</strong> 3</div>]]></description>
+      <pubDate>Thu, 19 Nov 2026 00:00:00 GMT</pubDate>
+      <guid isPermaLink="false">sophos-sa-20261118-java4shell</guid>
+    </item><item>
+      <title>Advisory: Linux Kernel TCP Vulnerability (CVE-2026-98432)</title>
+      <link>https://www.sophos.com/en-us/security-advisories/sophos-sa-20261102-linux-kernel-tcp</link>
+      <description><![CDATA[<div><strong>Severity:</strong> High</div><div><strong>CVE:</strong> CVE-2026-98432</div><div><strong>First Published:</strong> <time datetime="2026-11-02T16:00:00.000Z">Mon, 02 Nov 2026 16:00:00 GMT</time></div><div><strong>Updated:</strong> <time datetime="2026-11-12">Thu, 12 Nov 2026 00:00:00 GMT</time></div><div><strong>Publication ID:</strong> sophos-sa-20261102-linux-kernel-tcp</div><div><strong>Article Version:</strong> 5</div>]]></description>
+      <pubDate>Thu, 12 Nov 2026 00:00:00 GMT</pubDate>
+      <guid isPermaLink="false">sophos-sa-20261102-linux-kernel-tcp</guid>
+    </item><item>
+      <title>Resolved Pre-Auth RCE Vulnerability in Sophos UTM (CVE-2026-118633)</title>
+      <link>https://www.sophos.com/en-us/security-advisories/sophos-sa-20261028-utm-rce</link>
+      <description><![CDATA[<div><strong>Severity:</strong> Critical</div><div><strong>CVE:</strong> CVE-2026-118633</div><div><strong>First Published:</strong> <time datetime="2026-10-28T17:00:00.000Z">Wed, 28 Oct 2026 17:00:00 GMT</time></div><div><strong>Updated:</strong> <time datetime="2026-10-28">Wed, 28 Oct 2026 00:00:00 GMT</time></div><div><strong>Publication ID:</strong> sophos-sa-20261028-utm-rce</div><div><strong>Article Version:</strong> 1</div>]]></description>
+      <pubDate>Wed, 28 Oct 2026 00:00:00 GMT</pubDate>
+      <guid isPermaLink="false">sophos-sa-20261028-utm-rce</guid>
+    </item>
+  </channel>
+</rss>
