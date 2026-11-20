@@ -391,8 +391,9 @@ jumps, like signage lettering.
 - **Meta** (400, 0.8125rem, tabular numerals): the published date and time ("처음 확인 12:38" when no source gave a time), status line, CVSS number (700) and
   rating word, footer.
 - **Badge** (500, 0.75rem, 1.2): Product line badge, group tag (600) and 원문 text (Astryx Badge size).
-- The steps between neighbours are small (1.13 to 1.18); the 11-19 audit's detector reads that as a flat hierarchy
-  (F5), left open.
+- The steps between neighbours are small on purpose (h1 20px, h2 17px, h3 and body 15px: 1.13 to 1.18, where the
+  detector wants 1.25): a dense Operate surface on the Astryx scale, ordered by weight rather than size. The 11-19
+  audit's detector `flat-type-hierarchy` (F5) is a deliberate exception.
 
 ### Named Rules
 **The Station Name Rule.** In the normal view the Incident title in the page language is the bold name and the
@@ -455,6 +456,10 @@ template card's, and with four 긴급 in a row they told nothing); it is set apa
 - `--lift-low` (Astryx `--shadow-low`): the raised chosen segment of a segmented control (기본|쉬운 설명, 최소 CVSS,
   CVE 번호), the one shadow inside a control.
 - The frozen search row gains a Hairline and a soft shadow once the page has scrolled under it.
+- A row that arrives by a refresh wears an inset 2px Wayfinding Blue edge (`--focus`) that thins and fades out
+  (`fresh-out`, see Live updates). The detector's `dark-glow` ("Colored box-shadow glow (#1a5fb4) on dark page";
+  #1a5fb4 is `--focus` by day) comes from these keyframes: a deliberate exception, an edge and not a glow (audit,
+  11-19).
 - Nothing else in the Board's flow.
 
 ### Frosted menus (owner, 11-19, an experiment)
