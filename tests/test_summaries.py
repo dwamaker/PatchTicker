@@ -1310,6 +1310,33 @@ class NumberWordTest(unittest.TestCase):
                 summary = self.parse("스택 버퍼를 1바이트 넘겨 씁니다.", en, "mod_vhost_alias 1 byte stack buffer overwrite")
                 self.assertEqual(summary["en"]["summary"].rsplit(". ", 1)[-1], en)
 
+    def test_a_c_integer_type_gives_its_bit_width(self):
+        """11-20: CVE-2026-99448 (Linux UFS) was given up 3 of 3 for "32비트": the input says "truncates that value to an
+        unsigned int"."""
+        source = "ufs_last_byte() then truncates that value to an unsigned int before calculating the valid extent."
+        for en in ("It truncates the directory size to 32 bits.", "It truncates the directory size to an unsigned int."):
+            with self.subTest(en):
+                summary = self.parse("디렉터리 크기를 32비트로 잘라 메모리 밖을 읽습니다.", en, source)
+                self.assertEqual(summary["en"]["summary"].rsplit(". ", 1)[-1], en)
+        for ko, en, types in (("16비트입니다.", "It is 16 bits.", "an unsigned short int"),
+                              ("64비트입니다.", "It is 64 bits.", "a long long counter"),
+                              ("8비트입니다.", "It is 8 bits.", "an unsigned char")):
+            with self.subTest(types):
+                self.parse(ko, en, types)
+
+    def test_a_bit_width_the_input_does_not_imply_is_refused(self):
+        cases = {"no type": ("32비트로 잘립니다.", "It is cut to 32 bits.", "the directory size is truncated", "['32']"),
+                 "int inside words": ("32비트입니다.", "It is 32 bits.", "an integer overflow in print() of a uint", "['32']"),
+                 "short as English": ("16비트입니다.", "It is 16 bits.", "a short read of the header", "['16']"),
+                 "char as English": ("8비트입니다.", "It is 8 bits.", "the char device driver", "['8']"),
+                 "long int has no one width": ("32비트입니다.", "It is 32 bits.", "a long int offset", "['32']"),
+                 "unsigned int is not 64": ("64비트입니다.", "It is 64 bits.", "an unsigned int length", "['64']"),
+                 "size_t has no one width": ("64비트입니다.", "It is 64 bits.", "a size_t length", "['64']")}
+        for case, (ko, en, source, unknown) in cases.items():
+            with self.subTest(case), self.assertRaises(summaries.Rejected) as caught:
+                self.parse(ko, en, source)
+            self.assertEqual(str(caught.exception), f"numbers not in the input: {unknown}")
+
     def test_other_korean_and_english_numbers_still_differ(self):
         cases = {"2 is not 3": ("2바이트입니다.", "It is 3 bytes.", "2 or 3 bytes", "['2', '3']"),
                  "one is not a number word": ("1개입니다.", "It is one flaw.", "1 of the flaws", "['1']"),
