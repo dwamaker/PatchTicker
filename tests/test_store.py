@@ -9,7 +9,7 @@ from contextlib import redirect_stderr
 import brotli
 from botocore.exceptions import ClientError
 
-from collector.__main__ import load_settings, make_store, restore_main, seed_backup_main
+from collector.__main__ import load_settings, make_store, restore_main, seed_backup_main, user_agent
 from collector.store import BackedUpStore, FolderStore, MemoryStore, R2Store, SqliteStore, restore
 import test_cycle  # module import, so discovery doesn't run CycleTest a second time here
 
@@ -305,6 +305,16 @@ class StoreChoiceTest(unittest.TestCase):
         with self.assertRaises(SystemExit) as stop:
             self.settings("VR_R2_BUCKET=b\n")
         self.assertIn("VR_R2_SECRET_ACCESS_KEY", str(stop.exception))
+
+
+class UserAgentTest(unittest.TestCase):
+    def test_contact_url_goes_without_its_scheme(self):
+        for contact in ("https://example.com", "http://example.com", "example.com"):
+            self.assertEqual(user_agent({"VR_CONTACT": contact}), "vuln-radar/0.1 (+example.com)")
+        self.assertEqual(user_agent({"VR_CONTACT": "me@example.com"}), "vuln-radar/0.1 (+me@example.com)")
+
+    def test_missing_contact_names_the_collector(self):
+        self.assertEqual(user_agent({}), "vuln-radar/0.1 (+collector)")
 
 
 if __name__ == "__main__":

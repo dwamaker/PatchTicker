@@ -42,6 +42,12 @@ def load_settings(path):
     return settings
 
 
+def user_agent(settings):
+    # No "://" in the agent: some sites' bot rules stall or 403 any agent holding one (13 of 747 URLs, 11-21).
+    contact = settings.get("VR_CONTACT") or "collector"
+    return f"vuln-radar/0.1 (+{contact.removeprefix('https://').removeprefix('http://')})"
+
+
 def make_store(settings, backup=True):
     """A folder when VR_STORE_DIR is set (laptops, tests), otherwise the R2 bucket; with VR_BACKUP_DB set,
     every write also goes into that SQLite file."""
@@ -100,7 +106,7 @@ def cycle_end_main(code, path):
         if code != "0":  # a killed cycle (124: the timeout) wrote no `cycle` line; this one marks the gap in the log
             print(f"cycle_end exit={code} result={'timed_out' if code == str(alert.TIMED_OUT) else 'failed'}")
         url = settings.get("VR_DISCORD_WEBHOOK")
-        post = make_http_post(f"vuln-radar/0.1 ({settings.get('VR_CONTACT', 'collector')})")
+        post = make_http_post(user_agent(settings))
         # Built only when a line is due: make_notifier logs a line each time it is made.
         notify = (lambda line: (discord.make_notifier(url, post) or (lambda _: None))(line)) if url else None
         alert.cycle_end(alert.state_path(settings), int(code) if code.lstrip("-").isdigit() else 1, notify,
@@ -112,8 +118,7 @@ def cycle_end_main(code, path):
 def alert_test_main(path):
     """One marked line to the webhook, by hand after a deploy; the failure count is not touched. Exit 1 when not sent."""
     settings = lenient_settings(path)
-    agent = f"vuln-radar/0.1 ({settings.get('VR_CONTACT', 'collector')})"
-    notify = discord.make_notifier(settings.get("VR_DISCORD_WEBHOOK"), make_http_post(agent))
+    notify = discord.make_notifier(settings.get("VR_DISCORD_WEBHOOK"), make_http_post(user_agent(settings)))
     if notify is None:
         print("alert-test: VR_DISCORD_WEBHOOK is not set or not a Discord webhook address; nothing was sent")
         return 1
@@ -126,10 +131,9 @@ def cycle_main(path):
     settings = load_settings(path)
     logfile.start(settings)  # VR_LOG_DIR: everything printed from here, and the cycle line, also goes to the day's file
     key = settings.get("ANTHROPIC_API_KEY")
-    agent = f"vuln-radar/0.1 ({settings['VR_CONTACT']})"
     run_cycle(
         make_store(settings),
-        make_http_get(agent),
+        make_http_get(user_agent(settings)),
         datetime.now(timezone.utc),
         settings["VR_COLLECTOR_ID"],
         nvd_api_key=settings.get("VR_NVD_API_KEY", ""),
