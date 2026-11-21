@@ -31,6 +31,14 @@ INPUT_CHARS_MAX = 400_000  # about 100k tokens; past it the descriptions of the 
 
 
 LEAD_MARK = " (the Lead: its numbers win when sources disagree)"
+# Hosts (and their subdomains) whose pages are never fetched: a scan from the collector box never got text, 11-21.
+UNREADABLE_HOSTS = {
+    # Blocked for good: a bot wall by policy, a paywall or a login (VulDB: a Cloudflare challenge to every non-browser client).
+    "vuldb.com", "medium.com", "nytimes.com", "wsj.com", "reuters.com", "ft.com", "reddit.com", "drive.google.com",
+    # Drawn by script: the HTML holds no text.
+    "my.f5.com", "support.hpe.com", "me.n-able.com", "hub.ivanti.com", "support.blackberry.com",
+    "supportportal.thalesgroup.com", "support.citrix.com", "code.videolan.org",
+}
 
 
 def summary_input(incident, http_get, sheets=()):
@@ -97,6 +105,11 @@ def host(url):
         return url
 
 
+def unreadable(url):
+    h = host(url)
+    return any(h == x or h.endswith("." + x) for x in UNREADABLE_HOSTS)
+
+
 def page_mentions(incident):
     """The Mentions whose pages the input reads, in order: the Lead; vendor advisories and national CERT notices (KISA's
     held the Java group's only Java 8 and 11 fixed versions, 11-18); write-ups that are not news; news; curator
@@ -145,6 +158,9 @@ SONICWALL_FIELDS = (("title", "Title"), ("affected_products", "Affected products
 
 def fetch_page(http_get, url):
     """A page or record for the input, or None: a dead link must not stop the Summary."""
+    # Never gives text (bot wall by policy, paywall, login, or script-drawn), 11-21; selection and the sheet gate count it as before.
+    if unreadable(url):
+        return None
     advisory = SONICWALL_ADVISORY.match(url)
     if advisory:
         return sonicwall_advisory(http_get, advisory.group(1))

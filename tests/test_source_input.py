@@ -424,6 +424,20 @@ class PageChoiceAndCutTest(unittest.TestCase):
         self.assertEqual([m["url"] for m in summary_input.page_mentions(incident)],
                          ["https://www.oracle.com/a", "https://calif.io/c", "https://openjdk.org/d", "https://oracle.com/b"])
 
+    def test_pages_on_unreadable_hosts_and_their_subdomains_are_never_requested(self):  # no text from the collector box, 11-21
+        def refuse(url):
+            self.fail(f"requested {url}")
+        for url in ("https://vuldb.com/?id.1", "https://www.vuldb.com/?id.2", "https://inclinq.medium.com/x",
+                    "https://my.f5.com/manage/s/article/K1"):
+            self.assertIsNone(summary_input.fetch_page(refuse, url))
+        asked = []
+        self.assertEqual(summary_input.fetch_page(lambda url: asked.append(url) or b"<p>text</p>", "https://notmedium.com/y"),
+                         "<p>text</p>")
+        self.assertEqual(asked, ["https://notmedium.com/y"])
+        # Still chosen as before: selection and the sheet gate count them.
+        incident = self.mentions(("advisory", "https://vuldb.com/?id.1"), ("writeup", "https://calif.io/c"))
+        self.assertEqual([m["url"] for m in summary_input.page_mentions(incident)], ["https://vuldb.com/?id.1", "https://calif.io/c"])
+
     def test_a_short_page_is_kept_whole_without_navigation_header_footer_or_forms(self):
         page = ("<html><body><nav>Products Support Sign in</nav><header>Oracle Blogs</header><main><h1>Alert</h1>"
                 "<p>A flaw in the <code>Base64</code> decoder. Nothing else.</p></main><form>Search <button>Go</button>"
