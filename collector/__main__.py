@@ -131,9 +131,10 @@ def cycle_main(path):
     settings = load_settings(path)
     logfile.start(settings)  # VR_LOG_DIR: everything printed from here, and the cycle line, also goes to the day's file
     key = settings.get("ANTHROPIC_API_KEY")
+    agent = user_agent(settings)
     run_cycle(
         make_store(settings),
-        make_http_get(user_agent(settings)),
+        make_http_get(agent),
         datetime.now(timezone.utc),
         settings["VR_COLLECTOR_ID"],
         nvd_api_key=settings.get("VR_NVD_API_KEY", ""),
