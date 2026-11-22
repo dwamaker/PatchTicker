@@ -134,14 +134,19 @@ class CycleLine:
         self.skipped.append(source)
 
     def counting(self, http_get):
-        """http_get that counts the requests answered 401, 403 or 429, by host."""
-        def get(url, headers=None):
-            try:
-                return http_get(url) if headers is None else http_get(url, headers)
-            except urllib.error.HTTPError as err:
-                if err.code in REFUSED:
-                    self.refused[urlsplit(url).hostname or "?"] += 1
-                raise
+        """http_get that counts the requests answered 401, 403 or 429, by host; its .short (net.make_http_get's) too."""
+        def wrap(fetch):
+            def get(url, headers=None):
+                try:
+                    return fetch(url) if headers is None else fetch(url, headers)
+                except urllib.error.HTTPError as err:
+                    if err.code in REFUSED:
+                        self.refused[urlsplit(url).hostname or "?"] += 1
+                    raise
+            return get
+        get = wrap(http_get)
+        if hasattr(http_get, "short"):  # vendors.fetch reads it; without it every per-item read gets the 120 s DEADLINE
+            get.short = wrap(http_get.short)
         return get
 
     def text(self, error=None):

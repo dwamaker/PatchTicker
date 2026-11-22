@@ -5,13 +5,14 @@ real pages of that day cut to the lines that matter."""
 import copy
 import io
 import unittest
+import urllib.error
 from contextlib import redirect_stderr
 from unittest import mock
 from pathlib import Path
 
 from test_cycle import incident
 
-from collector import vendors
+from collector import logfile, vendors
 from collector.incidents import group_releases, link, url_key
 
 FIXTURES = Path(__file__).parent / "fixtures" / "vendors"
@@ -115,6 +116,26 @@ class SixFeedsTest(unittest.TestCase):
         self.assertEqual(sorted(short), sorted([CSAF, FG.format(273), "https://security.paloaltonetworks.com/CVE-2026-0331"]))
         self.assertTrue(set(plain) <= set(FEEDS))
         self.assertEqual([(g["join_only"], g["mentions"][0].get("severity")) for g in groups.values()], [(False, None), (False, None)])
+
+    def test_the_cycle_counting_get_keeps_the_short_get_and_counts_its_refusals(self):
+        # run_cycle hands vendors.fetch line.counting(http_get), not net.make_http_get's own function.
+        used, page = [], "https://security.paloaltonetworks.com/CVE-2026-0331"
+
+        def plain(url, headers=None):
+            used.append(("plain", url))
+            return get(url)
+
+        def short(url, headers=None):
+            used.append(("short", url))
+            raise urllib.error.HTTPError(url, 403, "Forbidden", {}, None)
+
+        plain.short = short
+        line = logfile.CycleLine("2026-11-20T09:00:00Z", lambda: 0)
+        groups = fetched(page, answer=line.counting(plain))
+        self.assertEqual([u for kind, u in used if u not in FEEDS], [page])
+        self.assertIn(("short", page), used)
+        self.assertEqual(line.refused, {"security.paloaltonetworks.com": 1})
+        self.assertEqual([g["mentions"][0].get("severity") for g in groups.values()], [None])
 
     def test_a_patch_day_is_read_a_few_advisories_per_cycle_and_none_is_lost(self):
         pages = []
