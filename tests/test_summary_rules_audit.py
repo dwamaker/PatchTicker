@@ -230,7 +230,7 @@ class PromptRuleKeywordsTest(unittest.TestCase):
         "EA-no-path": ("I", "Never a path, a setting name, a command or a version range"),
         "EA-version": ("I", "It may name the fixed version to update to"),
         "EA-vendor-fixed": ("I", "이미 고쳐져서 따로 할 일은 없습니다."),
-        "EA-no-fix": ("I", "When mitigation says there is no fix, never say to update"),
+        "EA-no-fix": ("I", "When mitigation says there is no fix at all, never say to update"),
         "EA-empty": ("I", "Empty string when mitigation is empty"),
         "P-products": ("I", "the affected product names without versions"),
         "L-lead": ("I", "copied exactly from the Mentions list. Prefer the product's official advisory"),
