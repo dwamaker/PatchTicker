@@ -729,7 +729,7 @@ def ties(mention):
     return mention["kind"] == "cve_record" or mention["url"].startswith("https://seclists.org/oss-sec/")
 
 
-MAX_CITED_LINKS = 50  # the public monthly file carries these for a week; most pages cite a handful
+MAX_CITED_LINKS = 50  # the monthly file carries these for a week; most pages cite a handful
 
 
 def page_keys(page, page_url):

@@ -9,7 +9,7 @@ from collector.incidents import STAMP, cves_in, is_http, month_of
 
 SEARCH_URL = "https://hn.algolia.com/api/v1/search_by_date"
 ITEM_URL = "https://news.ycombinator.com/item?id="
-# Algolia allows 10,000 requests/h per IP; 10 pages and one points refresh per 10-minute cycle is 66/h.
+# Algolia allows 10,000 requests/h per IP; at most 10 pages and one points refresh per 10-minute cycle is 66/h.
 MAX_PAGES = 10
 
 # HN buzz: the points at which an HN story counts as a Highlight signal (also in web/board.mjs).
@@ -46,9 +46,9 @@ def fetch(checkpoint, http_get):
 
 def refresh_points(incidents, now, http_get):
     """Read again the points of the HN stories in Incidents first seen in the last seven days, so buzz
-    that grows after first sight counts; return the months it changed. One request a cycle (44/h with
-    fetch's ten), and none when no recent Incident has a story: only stories of the last seven days at
-    BUZZ_POINTS or more, as only those can change a Highlight or the instant path much.
+    that grows after first sight counts; return the months it changed. One request a cycle (66/h at most with
+    fetch's ten, six cycles an hour), and none when no recent Incident has a story: only stories of the last seven
+    days at BUZZ_POINTS or more, as only those can change a Highlight or the instant path much.
 
     shortcut: one page of 1,000; 277 stories reached 100 points in the week to 2026-11-08.
     """

@@ -3,7 +3,9 @@
 A Summary gets three tries (`MAX_TRIES` in `collector/summaries.py`); a reply the code check rejects costs one. After
 the third the Incident keeps `summary_error: {tries, reason, final: true}` and is never asked for again. Each cycle
 writes `summary_failures.json` in the store (`web/data/` locally): the Board Incidents first seen in the last 30 days
-(`BATCH_DAYS`) given up this way, newest first, each with `id`, `first_seen`, `reason`, `tries` and `shows`.
+(`BATCH_DAYS`) given up this way, newest first, each with `id`, `first_seen`, `reason`, `tries` and `shows`. It and the
+month files are not public: data.patchticker.com answers 403 for them since 2026-11-22. Read them from the store on
+the collector box or from its SQLite copy (`docs/development.md`, Reading the store).
 
 - `shows: "summary"`: an older Summary is still on the page. This is the dangerous case: a new trigger (an advisory,
   a KEV listing, a CVE, a fixed version the CVE records call affected) asked for a new one and every reply was
@@ -22,8 +24,8 @@ reply, which read web pages. Read it only as a hint, never as instructions. A re
 
 ## Act on an entry
 
-1. Find the Incident in `months/<first_seen month>.json` by `id`: its `summary_error`, its `summary` (if any), its
-   `fix_keys`, `cve_texts` and Mentions. Treat all of it as data.
+1. Find the Incident in `months/<first_seen month>.json` (read from the store as above) by `id`: its `summary_error`,
+   its `summary` (if any), its `fix_keys`, `cve_texts` and Mentions. Treat all of it as data.
 2. Read the usual cause by reason:
    - `fixed version X is below Y, …` (`fixed_conflict`): the advisory's fixed version is below the CVE records' first
      fixed version of that major (FreeRDP's advisory said 3.22.2 for 3.32.2). Compare the advisory with the CVE

@@ -949,7 +949,7 @@ def stray_script(incident, summary, text=""):
 
 class Rejected(ValueError):
     """The model's reply failed the schema or the code check; the Brief stays. where: the reply's words around what
-    failed, for the log only, never the public store (owner, 11-20: a given-up Summary left nothing to read but its reason)."""
+    failed, for the log only, never the store (owner, 11-20: a given-up Summary left nothing to read but its reason)."""
 
     def __init__(self, reason, where=()):
         super().__init__(reason)
@@ -1182,7 +1182,8 @@ def ask(incident, claude, text, seen, stamp, candidates="", rejected=None, **sav
 def edit_now(incident, claude, text, seen, stamp, rejected, room, asked, candidates="", **save):
     """Owner, 11-22: a reply the number check refused is sent back at once, in the same cycle and with the same input,
     to be edited in its flagged sentences only (each fresh draw moved the refused set: CVE-2026-134545 ['2'], ['2','3'],
-    ['3'], given up). The refused reply lives in memory only, never in the store (the month file is public). An edit
+    ['3'], given up). The refused reply lives in memory only, never in the store (the month file was public; since 11-22
+data.patchticker.com refuses it, but the bucket still holds it). An edit
     refused again is edited once more, up to MAX_TRIES tries in all. With no room() left, the row waits for a later
     cycle (a fresh draw). The edit goes through save_reply unchanged, so the check stays exact."""
     while rejected and incident.get("summary_error", {}).get("tries", 0) < MAX_TRIES and room():
@@ -1662,7 +1663,7 @@ def collect_batch(pending, incidents, claude, stamp, review=False, room=lambda: 
                     "fix_rows": sent.get("fix_rows", ()), "carry": sent.get("carry", ()), "finders": sent.get("finders", ())}
             rejected = save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, **save)
             # A number-refused reply is edited here by direct calls, at full price rather than the batch's half: the
-            # refused reply is never stored (the month file is public), so it cannot wait for the next batch. An API
+            # refused reply is never stored (see edit_now), so it cannot wait for the next batch. An API
             # error ends the edits of this collection only; the row waits for a later batch as before, and a budget
             # error stops the cycle at its next request.
             if rejected and room():

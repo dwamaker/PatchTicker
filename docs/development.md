@@ -39,7 +39,8 @@ story (an HN story, a news site, a fresh oss-security post): cvelistV5 reads upd
 and NVD, CISA KEV, curators, KISA, GitHub repos and oss-security replies only join Incidents.
 
 Vendor spellings put in front of bare Product names ("IBM Storage Scale") live in `web/vendors.json`; each cycle
-lists the missing ones in `unknown_vendors.json` in the store. How to add one: `docs/agents/vendors.md`.
+lists the missing ones in `unknown_vendors.json` in the store (not public; see Reading the store). How to add one:
+`docs/agents/vendors.md`.
 Summaries given up after three tries (last 30 days, on the Board) are listed in `summary_failures.json` each cycle; how
 to act on one: `docs/agents/summary-failures.md`.
 With `VR_DISCORD_WEBHOOK` set (a `https://discord.com/api/webhooks/...` address only; anything else is refused at
@@ -58,6 +59,26 @@ and the first success after them posts "복구". The count lives in `cycle_alert
 so it survives a failing R2. The posted text never carries an environment value or a query string. The step always
 exits 0 and never changes a cycle's outcome. After a deploy, send one marked test line by hand, without touching the
 count: `docker compose exec collector python -m collector --alert-test` (exit 1 when nothing was sent).
+
+### Reading the store
+
+Since 2026-11-22 a Cloudflare rule on data.patchticker.com answers 403 for every path but `/index.json`,
+`/status.json`, `/sitemap.json`, `/board/*`, `/pages/*` and `/check/*`. The bucket still holds the collector's own
+documents (`months/<m>.json`, `checkpoints.json`, `batches.json`, `merge_log.json`, `summary_failures.json`,
+`unknown_vendors.json`, `sheets/`, `distros/`, `page_hashes.json`, `check_hashes.json`, `moves.json`), but the public
+address refuses them: read them from the store on the collector box, never over the public address.
+
+```sh
+docker compose exec -T collector python - <<'EOF'
+import json
+from collector.__main__ import load_settings, make_store
+print(json.dumps(make_store(load_settings("/nonexistent")).read("summary_failures.json"), ensure_ascii=False, indent=1))
+EOF
+```
+
+The settings come from the container's environment (the file name is a dummy). The SQLite copy holds the same
+documents (`SqliteStore("/backup/store.sqlite").read(name)` from `collector.store`, in the container); locally they are
+files under `web/data/`.
 
 ### The lasting log
 
@@ -148,13 +169,17 @@ Curator feeds default to tl;dr sec and the Risky Business News newsletter (`news
 Security news sites (BleepingComputer and SecurityWeek, `collector/news.py`) start Incidents like HN stories: a story,
 or an HN story linking to one of `incidents.NEWS_HOSTS`, is summarized at once whatever its points, and a CVE-less one
 shows only once its Summary calls it an Incident (company breaches, arrests and scams stay off). KISA 보호나라 notices
-(`collector/kisa.py`) join the Incidents of the CVE IDs on their pages as "notice" Mentions: never the Lead, never read
-for a Summary.
+(`collector/kisa.py`) join the Incidents of the CVE IDs on their pages as "notice" Mentions: never the Lead; since
+11-18 a Summary's input reads them beside the advisories (`page_mentions` in `collector/summary_input.py`).
 
-With `ANTHROPIC_API_KEY` set, Highlight candidates (KEV, HN or curator Mention, CVSS 9.0+, or an
-Unassigned incident seen in discussion, first seen in the last seven days) get a Summary from Claude
-Haiku 5.5 in the same cycle (`collector/summaries.py`). The input is the Incident (at most `MENTIONS_MAX` Mention
-lines, the rest counted by kind), the text of up to two advisory or write-up pages, the CVE records of its first
+With `ANTHROPIC_API_KEY` set, instant candidates (`is_candidate`) get a Summary from Claude Haiku 5.5 in the same
+cycle (`collector/summaries.py`): a KEV listing no Summary has covered yet, whatever the Incident's age; else, published
+in the last seven days (by Published time, else first seen), a KEV listing, CVSS 7.0 or higher, an HN story at
+`hn.BUZZ_POINTS` or more, a curator Mention, a security news site's story, a CVE-less Incident seen in a discussion
+off HN, or a vendor advisory rated Critical or High while no CVSS exists (`stated_level`). The input is the Incident
+(at most `MENTIONS_MAX` Mention lines, the rest counted by kind), the text of up to four pages (`MAX_PAGES`: the Lead,
+then advisories and notices, write-ups, news, curator issues, discussions, one per host before a second; never HN, a
+repo or cve.org), the CVE records of its first
 `CVE_LINES_MAX` CVEs and each later CVE's own description, cut from the end past `INPUT_CHARS_MAX`
 (`collector/summary_input.py`); a reply whose numbers, versions or Lead link are not
 in that input, or whose Korean and English numbers differ, is rejected and retried (three tries). A digit whose
@@ -166,8 +191,9 @@ still not allowed); a reply cut off at the token cap gets more room. A reply ref
 or Korean and English differ) is sent back at once in the same cycle, with the same input, to be edited in the
 sentences that hold the refused number only (`edit_now`; a refused edit is edited again, up to the three tries); each
 edit is a request within `INSTANT_SECONDS` and the cycle deadline (a collected batch reply's within `BULK_SECONDS`,
-as a direct full-price call), else the row waits for a fresh draw in a later cycle. The refused reply is never stored:
-the month file is public. After the third rejected try the Summary is given
+as a direct full-price call), else the row waits for a fresh draw in a later cycle. The refused reply is never stored
+(decided while the month file was public; since 2026-11-22 the public address refuses it, but the bucket still holds
+it). After the third rejected try the Summary is given
 up and never asked for again; an older Summary stays on the page.
 A fixed version below the CVE records' first fixed version of the same major (the Incident's `product<version`
 fix keys, one product only) is rejected on every try, the last included (`fixed_conflict`; FreeRDP's advisory said
