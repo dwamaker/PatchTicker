@@ -25,7 +25,8 @@ COORDINATORS = {"jpcert": "jvn"}
 VENDOR_CNAS = {"hpe": {"Hewlett Packard Enterprise (HPE)"}, "absolute": {"Absolute Software", "Absolute Security"},
                "unisoc": {"Unisoc (Shanghai) Technologies Co., Ltd."}, "intel": {"n/a"}, "postgresql": {"n/a"},
                "sap": {"SAP_SE"}, "netscaler": {"Citrix", "Citrix NetScaler"}, "axis": {"Axis Communications AB"},
-               "octopus": {"Octopus Deploy"}, "zoom": {"Zoom Communications"}}
+               "octopus": {"Octopus Deploy"}, "zoom": {"Zoom Communications"},
+               "cisco": {"Splunk"}}  # 11-22: Cisco files Splunk's records; advisory.splunk.com is Splunk's own
 # Second-level labels under a country code that are not the site's own ("example.co.jp").
 SECOND_LEVEL = {"co", "com", "ne", "or", "ac", "go", "gov", "net", "org", "edu"}
 # A tracker, code review or forum page (Bugzilla, Jira, Phabricator, Gerrit, issues, pull requests, Discourse): outsiders

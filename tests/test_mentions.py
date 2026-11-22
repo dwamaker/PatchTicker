@@ -469,6 +469,11 @@ class StoryPageTest(unittest.TestCase):
         self.assertEqual(self.record_mentions("CVE-2026-13672"),  # Synology tags nothing
                          [("advisory", "https://www.synology.com/en-global/security/advisory/Synology_SA_26_18")])
 
+    def test_splunks_own_advisory_counts_though_cisco_filed_the_record(self):
+        # 11-22: Cisco's CNA files Splunk's records untagged; without the pair the 38-CVE Splunk row had no advisory and,
+        # uncorroborated, lost its wide use in the Highlight score.
+        self.assertEqual(self.record_mentions("CVE-2026-76532"), [("advisory", "https://advisory.splunk.com/advisories/SVD-2026-1103")])
+
     def test_zdis_research_advisory_tag_makes_a_writeup(self):
         self.assertEqual(self.record_mentions("CVE-2026-118631"), [("writeup", "https://www.zerodayinitiative.com/advisories/ZDI-26-890/")])
 
