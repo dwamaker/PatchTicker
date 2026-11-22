@@ -82,21 +82,22 @@ exploited Incidents took the first places whatever their score, two CVSS 6.1 fla
 as 9, one with a provisional level as its level's lowest score, 9 or 7); how widely the product is used, by its tier
 of reach on the hand-kept list (1 on most computers or phones, 2 the standard of its field, 3 known inside it; a
 product on no list that the Summary calls widely used counts as 3); urgency (exploited counts most, any other 최고
-row a little); then how new it is, falling evenly to nothing at seven days old (owner, 2026-11-19: "최신 소식이 위에", raised the same
-day when no Incident of the day reached the list: one day weighs about 0.7 of a CVSS point, so a fresh 7.0 passes a
-9.8 five days old, and a fresh 9.8 passes an exploited 9.8 three days old). Discussion, curators and Mentions only break
-ties. Each Incident already chosen that is the same (the same vendor and category of the hand-kept list, the same
+row a little); then how new it is, losing half its weight every two days (owner, 2026-11-19: "최신 소식이 위에"; since
+2026-11-22 it halves rather than falls evenly, and weighs less, so a fresh 9.0 passes a 9.8 five days old but a fresh 7.0
+does not, and a fresh 9.8 still passes an exploited 9.8 three days old); and how much attention it has drawn, by the kinds
+of source that told it (a national notice, a curator's issue, Hacker News points, many proof-of-concept repositories),
+never by how many Mentions it has. An Incident told only by its CVE record, write-ups and repositories, and not
+exploited, gets nothing for how widely its product is used: one record for an old router or a routine fix does not
+borrow its vendor's reach (2026-11-22). Each Incident already chosen that is the same (the same vendor and category of the hand-kept list, the same
 label, or the same first product name in its Summary; 2026-11-22) costs the next one of them two CVSS points, so one
-release, or one event told twice, does not fill the list. Twelve in all. This replaced every exploited one first
+release, or one event told twice, does not fill the list. Twenty in all (owner, 2026-11-20). This replaced every exploited one first
 (2026-11-10), the lifted best-scored well-known row per product (2026-11-11, 2026-11-16) and the tier order
 (2026-11-17). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
-owner, 2026-11-11). Four are pinned at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08), each of a different vendor
-while four remain (owner, 2026-11-16: "고정 네 자리는 서로 다른 회사로"); the same vendor in another category of the
-hand-kept list counts apart (owner, 2026-11-17: Android and Chrome, both Google, take a pin each; Office and Outlook
-share one). The pins and 더 보기 run in that one order whatever the visitor's sort
-(owner, 2026-11-19; from 2026-11-17 to then by tier groups). The pins are the first four of that order of different vendor-and-category pairs; 더 보기 appends
-the others below them in the same order; the four keep their place (2026-11-09); the rest stay in the list below. The list is the whole Board in the visitor's
+owner, 2026-11-11). Four are shown at first (the pinned frames ran past 1,900px on a phone at ten, 2026-11-08): simply
+the first four of that one order, whatever their vendor (owner, 2026-11-22: "그냥 1~4위"; from 2026-11-16 to then each
+was of a different vendor). The four and 더 보기 run in that one order whatever the visitor's sort (owner, 2026-11-19;
+from 2026-11-17 to then by tier groups); 더 보기 appends the others below them in the same order; the four keep their place (2026-11-09); the rest stay in the list below. The list is the whole Board in the visitor's
 order: every Highlight, pinned or not, also stands at its own place there, edged in its Risk colour like its pinned frame
 (owner, 2026-11-16), never inside a vendor fold: the fold holds and counts the rest, or unfolds below its minimum (owner,
 2026-11-17). An old event is no Highlight, though it stays on the Board with its level and flag: a CVE Incident whose CVEs

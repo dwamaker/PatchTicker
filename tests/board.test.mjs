@@ -1595,8 +1595,8 @@ test('a fold made only of Highlights stands in the list, gravest first, as any f
   assert.deepEqual([fold.incidents.length, fold.incidents[0].id], [5, 'p98']);
 });
 
-// Owner, 11-16 (.scratch/checks/highlights-analysis-2026-11-16.md): the four pins go to four vendors; the pins and the
-// rest are shown by importance whatever the sort. (A KEV listing as news was taken back on 11-17.)
+// Owner, 11-16 (.scratch/checks/highlights-analysis-2026-11-16.md): the pins and the rest are shown by importance whatever
+// the sort (four different vendors until 11-22, ranks 1 to 4 since). (A KEV listing as news was taken back on 11-17.)
 // With its vendor's advisory beside the record, as labelled rows come: corroborated, so a label's wide use counts (11-22).
 const hlRow = (id, extra = {}) => ({ id, cves: [id], first_seen: '2026-11-16T00:00:00Z', published: '2026-11-15T00:00:00Z', cvss: 9.8,
   mentions: [{ kind: 'cve_record' }, { kind: 'advisory' }], brief: { text: id }, ...extra });

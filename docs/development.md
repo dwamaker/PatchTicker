@@ -127,12 +127,15 @@ week's Highlights stay whole (ports kept in step by `tests/fixtures/board/rows-c
 
 Highlights (of the last seven days, at 위험 or above; `pickHighlights`, owner 11-19) are ranked by one score in the page
 (`highlightScore` in `web/board.mjs`, ported as `highlight_score`): 5 x CVSS (an exploited Incident with no score counts
-as 9.0, a provisional level as 9.0 or 7.0), wide use by the label's tier (14, 10, 5), urgency (exploited 12, any other 긴급
-3), recency (25 when published now, to 0 at seven days), and HN points, one curator and Mentions as tie-breakers of 2 at
-most. The best is taken each time after 10 off per chosen row that shares a key with it (`sameKeys`: the vendor and
+as 9.0, a provisional level as 9.0 or 7.0), wide use by the label's tier (14, 10, 5; none unless `corroborated`:
+exploited, or with an advisory, notice, curator or discussion Mention), urgency (exploited 12, any other 긴급 3), recency
+(15 x 0.5^(age / 2 days), rounded to a millionth so the ports agree), and `attention` up to 8 (a notice 3, a curator 2,
+HN points / 100 up to 3, five or more repos 1; 11-22, `.scratch/checks/highlights-score-2026-11-22/report.md`, Option
+3). The best is taken each time after 10 off per chosen row that shares a key with it (`sameKeys`: the vendor and
 well_known category, the label, the Summary's first product name; 11-22);
 twenty in all (owner, 11-20); ties go to the newer, then the lower id. No kind has a reserved place (until 11-19 every exploited one came
-first, then the best-scored well-known one of each product).
+first, then the best-scored well-known one of each product). The four shown first are ranks 1 to 4 (`pinOrder`; owner,
+11-22; from 11-16 to then four different vendors).
 Well known: a row the collector stamped `known` on both its row and board
 views, worked out at each write and never stored (`known_label` in `collector/incidents.py`): the label of its first
 Product on `collector/well_known.json`, else, when its Summary says `widely_used` (none since 11-11: the schema cannot carry it), that Product's English name; and
