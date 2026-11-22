@@ -828,6 +828,14 @@ ring stays inside the row and a group's frame at 320px too.
   up (never diagonally) while the real copies are held invisible; the rings hand over on landing, the tags cross-fade
   from 60% of the way. A click mid-way starts from where the ghosts are. The first open of a row still loading its full
   Incident, 모두 펼치기 and redraws stay instant. Reduced motion: a 200ms cross-fade in place.
+- **Open and hold (owner, 11-20; folds and "fits" 11-22):** a row or a vendor fold opened by a click glides up to just
+  under the frozen bar with its unfold (300ms) and is held there through redraws; closing it glides back to where it
+  stood (240ms), unless the visitor scrolled meanwhile (it then closes where it is, a fold bringing its row into view).
+  An item whose header and whole panel already fit in the window under the bar does not move, nor on closing; a panel
+  that grows past the window's edge later (a row's full Incident arriving) rises then. Opening a row inside a held fold
+  takes the hold over. Reduced motion: the same places, reached at once. `holdRow()` in app.mjs is the source.
+- **주요 사건 접기 goes back (owner, 11-22):** 접기 puts the new 더 보기 button where the visitor pressed 더 보기 in the window,
+  even after a scroll; after a reload that restored the longer list, it only brings the button into view.
 - **Opening:** the reading guide opens and closes like a row's details (the same fold, both ways; its top margin moves
   with it so nothing below jumps; reduced motion: a 200ms fade; owner, 11-19: it had no motion). The inline filter panel
   grows open over 260ms and shrinks shut in 160ms on `--ease-exit` (X, 필터, Escape), so the Board below slides down
@@ -851,7 +859,8 @@ ring stays inside the row and a group's frame at 320px too.
   Opened (critique 9), the fold row, its members and a closing line "IBM 묶음 접기" share one list item on the group
   ground, members in their own labelled list, indented as a nested list on the Fold Violet rail (2rem in; 1.5rem on a
   phone) so they cannot be taken for rows of the main list, their columns aligned with each other; opening announces the
-  count, closing from the bottom brings the fold row back into view. Its members run gravest first, ranked as the
+  count; it opens and closes in place like a row (Motion, Open and hold), and closing from the bottom after a scroll brings
+  the fold row back into view. Its members run gravest first, ranked as the
   위험도순 sort ranks, members of one level keeping the visitor's order, so the sign and ring the fold row promises lead
   its list (owner, 11-16); the fold keeps its place and its newest date. Its "one publish day" is the visitor's own
   calendar day, the date the rows show, not the UTC day (owner, 11-16: in Korea the UTC day broke folds at 09:00).
@@ -1014,7 +1023,8 @@ ring stays inside the row and a group's frame at 320px too.
 - **The whole list stays light (owner, 11-17: 789 rows, each 더 보기 slower, a theme flip 106 ms):** a list row from the
   eleventh on is skipped by the browser while it is off the screen (`content-visibility: auto`), holding its last
   measured height and until then a closed row's usual one (84px, phones 170px); the first ten never are, so the first
-  paint waits for nothing, and a focused row never is, so its ring outside the row is not cut. 더 보기 adds the next
+  paint waits for nothing, and a focused row never is, so its ring outside the row is not cut; nor a held one (Open and
+  hold), whose height is read the moment a redraw draws it. 더 보기 adds the next
   rows under the drawn ones (Board continuity); the whole list is drawn again only when the Board changed since. Plain scrolling shows
   every row; the long 맨 위로 / 맨 아래로 flight can pass rows not yet drawn (their frames, empty) for a frame or two.
 - **Motion for views, folds and arrivals (11-09, owner):** switching 기본 / 쉬운 설명 runs through the Board's View
