@@ -988,6 +988,7 @@ def absorb(target, other):
 # Incident (a release note's worth), so one vendor's batch of fixes takes one row and one Highlight slot.
 GROUP_MIN_CVES = 3
 GROUP_HOURS = 48
+SCOPE_HOURS = 6  # one npm scope's packages (group_releases, second pass); 1 and 6 hours tied the same live rows, 48 too many
 # A Red Hat (also its Hardened Images), Fedora, Amazon, openEuler, Debian, Ubuntu or Alpine package version
 # ("1.16.1-8.el8_10", "1.16.2-7.1.hum1", "1.22.0-2+deb12u3", "10.3_p1-r2"). A digit before "-r": "KobiPBX-FOP3-SEC-r1" is a build.
 DISTRO_PACKAGE = re.compile(r"-\d+(?:\.\d+)*\.(?:el|fc|amzn|oe|hum)\d|[+~-]\d*(?:deb|ubuntu)\d|\d-r\d+\b")
@@ -1018,14 +1019,22 @@ def release_keys(incident):
     return incident.get("fix_keys") or [k for k in [summary_key(incident)] if k]
 
 
-def release_clusters(members):
+def npm_scopes(incident):
+    """The npm scopes its fix keys name ("@fastify" of "@fastify/middie:@fastify/middie<9.3.8" or
+    "tenseijs:@tensei/media<=0.11.5"): a segment of the key's name that starts "@scope/". A CNA's vendor "@libp2p" alone
+    ("@libp2p:gossipsub<17.0.0") is a vendor, not a package name: no scope (owner, 11-22: never a same-vendor tie)."""
+    names = (segment for k in incident.get("fix_keys", []) for segment in k.split("<", 1)[0].split(":"))
+    return {m[1] for s in names for m in [re.match(r"(@[a-z0-9][\w.-]*)/", s)] if m}
+
+
+def release_clusters(members, hours=GROUP_HOURS):
     """The holders of one fix key (sorted by publish time) cut into bursts: a burst starts at a member and takes those
-    published within GROUP_HOURS of it; the next starts at the first one past that (owner, 11-16: one Airflow holder
+    published within `hours` of it; the next starts at the first one past that (owner, 11-16: one Airflow holder
     from August kept 11 Incidents published within three hours on 11-09 apart)."""
     clusters = []
     for i in members:
         when = datetime.strptime(published_at(i), STAMP)
-        if clusters and (when - clusters[-1][0]).total_seconds() <= GROUP_HOURS * 3600:
+        if clusters and (when - clusters[-1][0]).total_seconds() <= hours * 3600:
             clusters[-1][1].append(i)
         else:
             clusters.append((when, [i]))
@@ -1033,8 +1042,8 @@ def release_clusters(members):
 
 
 def group_releases(incidents):
-    """Merge the Incidents of one release (same fix key, one burst of release_clusters) once they hold GROUP_MIN_CVES
-    CVEs or more; the earliest seen keeps its id. A group whose burst has passed takes no late joiner: that one starts a
+    """Merge the Incidents of one release (same fix key, one burst of release_clusters; then, in a second pass, fix keys
+    of one npm scope within SCOPE_HOURS) once they hold GROUP_MIN_CVES CVEs or more; the earliest seen keeps its id. A group whose burst has passed takes no late joiner: that one starts a
     burst of its own. Each CVE's own description stays in "cve_texts" for the page. Returns the months changed."""
     changed = set()
     keys = {i["id"]: release_keys(i) for i in incidents}  # read once: a fold below changes the target's own
@@ -1044,6 +1053,13 @@ def group_releases(incidents):
         holders = (i for i in incidents if key in i.get("fix_keys", []) or key in keys.get(i["id"], ()))
         for members in release_clusters(sorted(holders, key=published_at)):
             changed |= fold_release(incidents, members)  # bursts share no member, so one's fold leaves the next whole
+    # Owner, 11-22: one npm scope's packages fixed in one burst are one project's release (four @fastify plugins within
+    # 13 minutes on 11-21), though each is its own product. SCOPE_HOURS, not GROUP_HOURS: at 48 hours a dry run over the
+    # live store tied 7 @fastify rows of two days. Read live, so a row the key pass just grew is held by every scope it has.
+    for scope in sorted({s for i in incidents for s in npm_scopes(i)}):
+        holders = (i for i in incidents if scope in npm_scopes(i))
+        for members in release_clusters(sorted(holders, key=published_at), SCOPE_HOURS):
+            changed |= fold_release(incidents, members)
     return changed
 
 

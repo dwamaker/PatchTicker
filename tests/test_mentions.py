@@ -1040,6 +1040,72 @@ class ReleaseGroupTest(unittest.TestCase):
         self.assertEqual(len(incidents), 1)
         self.assertIn("CVE-2026-6", incidents[0]["cve_texts"])
 
+    def fastify_1121(self):
+        """The four @fastify rows of 11-21, keys as record_fix_keys reads their records; express's holds 5 CVEs."""
+        rows = [self.row(cve, published, key=f"@fastify/{name}:@fastify/{name}<{fix}") for cve, published, name, fix in (
+            ("CVE-2026-133250", "2026-11-21T16:46:44Z", "middie", "9.3.8"),
+            ("CVE-2026-133273", "2026-11-21T16:50:48Z", "swagger-ui", "6.1.5"),
+            ("CVE-2026-133312", "2026-11-21T16:54:52Z", "rate-limit", "11.3.0"),
+            ("CVE-2026-133867", "2026-11-21T16:59:29Z", "express", "4.0.10"))]
+        rows[-1]["cves"] += [f"CVE-2026-13386{n}" for n in (1, 2, 3, 4)]
+        return rows
+
+    def test_one_npm_scopes_packages_fixed_in_one_burst_are_one_incident(self):
+        # Owner, 11-22: four @fastify plugins published within 13 minutes stood as four rows.
+        from collector.incidents import group_releases
+        incidents = self.fastify_1121()
+        self.assertEqual(group_releases(incidents), {"2026-11"})
+        self.assertEqual(len(incidents), 1)
+        group = incidents[0]
+        self.assertEqual(group["id"], "CVE-2026-133250")
+        self.assertEqual(len(group["cves"]), 8)
+        self.assertEqual(group["fix_keys"], ["@fastify/express:@fastify/express<4.0.10", "@fastify/middie:@fastify/middie<9.3.8",
+                                             "@fastify/rate-limit:@fastify/rate-limit<11.3.0", "@fastify/swagger-ui:@fastify/swagger-ui<6.1.5"])
+        self.assertEqual(sorted(group["cve_texts"]), sorted(group["cves"]))
+
+    def test_a_scoped_package_and_an_unscoped_one_never_tie(self):
+        from collector.incidents import group_releases
+        incidents = self.fastify_1121()[2:]  # rate-limit and express: 6 CVEs
+        incidents[0]["fix_keys"] = ["fastify:fastify<5.6.2"]  # the core package, no scope
+        self.assertEqual((group_releases(incidents), len(incidents)), (set(), 2))
+
+    def test_two_scopes_never_tie(self):
+        from collector.incidents import group_releases
+        incidents = self.fastify_1121()[2:]
+        incidents[0]["fix_keys"] = ["@hapi/hapi:@hapi/hapi<21.4.1"]
+        self.assertEqual((group_releases(incidents), len(incidents)), (set(), 2))
+
+    def test_one_scopes_rows_seven_hours_apart_do_not_tie(self):
+        from collector.incidents import group_releases
+        incidents = self.fastify_1121()[2:]
+        incidents[1]["published"] = "2026-11-21T23:54:53Z"  # 7 hours and 1 second after rate-limit's
+        self.assertEqual((group_releases(incidents), len(incidents)), (set(), 2))
+
+    def test_the_same_key_pass_still_ties_one_scoped_package_across_two_days(self):
+        # SCOPE_HOURS is the scope pass's only: one key keeps GROUP_HOURS.
+        from collector.incidents import group_releases
+        key = "@fastify/express:@fastify/express<4.0.10"
+        incidents = [self.row("CVE-2026-1", "2026-11-20T10:00:00Z", key=key), self.row("CVE-2026-2", "2026-11-21T20:00:00Z", key=key),
+                     self.row("CVE-2026-3", "2026-11-21T21:00:00Z", key=key)]
+        group_releases(incidents)
+        self.assertEqual([i["cves"] for i in incidents], [["CVE-2026-1", "CVE-2026-2", "CVE-2026-3"]])
+
+    def test_the_npm_scope_of_a_key(self):
+        from collector.incidents import npm_scopes
+        scopes = lambda *keys: npm_scopes({"fix_keys": list(keys)})  # noqa: E731
+        self.assertEqual(scopes("tenseijs:@tensei/media<=0.11.5"), {"@tensei"})
+        self.assertEqual(scopes("@libp2p:gossipsub<17.0.0", "libp2p:js-libp2p<3.3.9"), set())  # a vendor, not a package name
+        self.assertEqual(scopes("registry.npmjs.org:@scope/pkg<2.0"), {"@scope"})
+        self.assertEqual(scopes("fastify:fastify<5.6.2", "x@y/z:x<1.0", "acme:widget<@beta/1.0"), set())  # only a segment's start, before "<"
+
+    def test_a_multi_package_group_bounds_no_package_by_anothers_key(self):
+        # One package with "<" beside one that lists only its last affected version: express's 4.0.10 must not judge 4.0.1.
+        from collector import summaries
+        incident = {"fix_keys": ["@fastify/express:@fastify/express<4.0.10", "@fastify/other:@fastify/other<=4.0.0"]}
+        self.assertEqual(summaries.fixed_conflict(incident, {"fixed": "4.0.10", "fixes": [{"version": "4.0.1"}]}), "")
+        incident["fix_keys"].pop()
+        self.assertIn("4.0.1 is below 4.0.10", summaries.fixed_conflict(incident, {"fixed": "4.0.1"}))
+
 
 
 class ScoreByCveTest(unittest.TestCase):

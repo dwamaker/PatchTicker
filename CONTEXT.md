@@ -10,6 +10,9 @@ One real-world vulnerability event, the unit of one row on the board. It may car
 from the first Incident that ever held it, so an old CVE of the same fixed version keeps no later release apart (2026-11-16).
 An Incident whose CVE records give no fixed version (not published yet) is grouped by its Summary's one product and fixed
 version instead, by the same rule (2026-11-16).
+Packages of one npm scope (`@fastify/express`, `@fastify/middie`) fixed within 6 hours of each other are one Incident by the
+same thresholds, though each is its own product: one project's plugin release (2026-11-22). Never two scopes, never a
+scoped package with an unscoped one, and never a vendor's products tied by vendor alone.
 _Avoid_: item, entry, vuln, CVE (as a row)
 
 **Mention** (언급):
