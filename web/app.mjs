@@ -76,7 +76,6 @@ const TEXT = {
     guide: {
       title: '이 현황판 읽는 법', close: '닫기',
       primer: { highest: '실제 공격·9점 이상', high: '7점 이상', notice: '7점 미만', unrated: '점수 대기', ring: 'CVSS 점수 (10점 만점)', more: '읽는 법 자세히', dismiss: '안내 닫기' },
-      attacked: '실제 공격이 보고됐거나(공격 발생) 9점 이상',
       pin: '최근 7일 사건 가운데 가장 중요한 것을 맨 위에 먼저 보여 줍니다.',
       easy: '무엇이 위험하고 지금 무엇을 하면 되는지 쉬운 말로 보여 줍니다.',
       filterWord: '제품 · 필터',
@@ -122,7 +121,6 @@ const TEXT = {
     guide: {
       title: 'How to read this Board', close: 'Close',
       primer: { highest: 'Attacked or 9+', high: '7+', notice: 'Below 7', unrated: 'Score pending', ring: 'CVSS score (out of 10)', more: 'How to read', dismiss: 'Dismiss this note' },
-      attacked: 'Attacks reported (Attacked), or 9+',
       pin: 'The most important Incidents of the last seven days, shown first.',
       easy: 'What is dangerous and what to do now, in plain words.',
       filterWord: 'Products · Filters',
@@ -168,7 +166,6 @@ const TEXT = {
     guide: {
       title: 'このボードの見方', close: '閉じる',
       primer: { highest: '実際の攻撃・9点以上', high: '7点以上', notice: '7点未満', unrated: 'スコア待ち', ring: 'CVSS スコア（10点満点）', more: '見方を詳しく', dismiss: '案内を閉じる' },
-      attacked: '実際の攻撃が報告済み（攻撃発生）、または9点以上',
       pin: '過去7日間で最も重要なインシデントを、いちばん上に先に表示します。',
       easy: '何が危険で、今何をすべきかをやさしい言葉で表示します。',
       filterWord: '製品 · フィルター',
@@ -1068,9 +1065,11 @@ function guide() {
   // Only what a first visit needs to read a row (owner, 11-22: "핵심만 남겨"). The marks reuse the first-visit line's
   // words: that line is gone once seen and never shows beside the guide, so the guide still carries them.
   const p = g.primer;
-  item(g.attacked, riskCell({ kev: true, cvss: 9.8 })); // the sign with 공격 발생 under it, as an attacked row draws it
-  for (const [level, cvss] of [['high', 7.5], ['notice', 4.3]]) item(p[level], riskCell({ cvss }));
-  item(p.unrated, riskCell({}), scoreCell({})); // the dashed sign and ring, as an unscored row draws them (critique 13)
+  // No 공격 발생 under the top sign: "Urgent Attacked" overflows the phone's sample column; the words say it.
+  for (const [level, cvss] of [['highest', 9.8], ['high', 7.5], ['notice', 4.3]]) item(p[level], riskCell({ cvss }));
+  const pending = riskCell({}); // the dashed sign and ring, as an unscored row draws them (critique 13); the words once
+  pending.querySelector('.why')?.remove();
+  item(p.unrated, pending, scoreCell({}));
   item(p.ring, scoreCell({ cvss: 9.8 }));
   rule();
   item(g.pin, el('span', 'g-pin', t.pin));
