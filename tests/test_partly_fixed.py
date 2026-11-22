@@ -28,8 +28,8 @@ class PartlyFixedActionTest(unittest.TestCase):
         self.assertEqual(summaries.easy_action_mismatch(glinet()), [])
 
     def test_install_here_and_update_the_rest_when_out_passes(self):
-        for ko, en in (("고친 버전이 나온 제품은 바로 업데이트하고, 나머지는 나오는 대로 업데이트하세요.",
-                        "Update now where a fix is out, and the rest as soon as theirs is."),
+        for ko, en in (("KVM은 베타를 지금 설치하고, 라우터는 안정 펌웨어가 나오면 바로 업데이트하세요.",
+                        "Install the KVM beta now, and update routers as soon as stable firmware is out."),
                        ("KVM은 바로 업데이트하고, 라우터는 업데이트가 나오면 바로 설치하세요.",
                         "Update the KVM now, and the router once the fix is out.")):
             self.assertEqual(summaries.easy_action_mismatch(glinet(ko, en)), [], en)
@@ -57,9 +57,12 @@ class PartlyFixedActionTest(unittest.TestCase):
         self.assertEqual(summaries.easy_action_mismatch(reply), ["ko", "en"])
 
     def test_the_prompts_own_examples_pass(self):
-        ko = "고친 버전이 나온 제품은 바로 업데이트하고, 나머지는 나오는 대로 업데이트하세요."
-        en = "Update now where a fix is out, and the rest as soon as theirs is."
+        ko = "KVM은 베타를 지금 설치하고, 라우터는 안정 펌웨어가 나오면 바로 업데이트하세요."
+        en = "Install the KVM beta now, and update routers as soon as stable firmware is out."
         self.assertIn(f'("{ko}", "{en}")', summaries.INSTRUCTIONS)
+        # 11-22 check: a generic example was copied word for word on 5 of 30 rows and pushed out their stopgaps.
+        self.assertNotIn("나머지는 나오는 대로", summaries.INSTRUCTIONS)
+        self.assertNotIn("the rest as soon as theirs is", summaries.INSTRUCTIONS)
         ko_m, en_m = "라우터용 수정 펌웨어는 아직 나오지 않았습니다.", "The routers' fixed firmware is not out yet."
         self.assertIn(f'("{ko_m}", "{en_m}")', summaries.INSTRUCTIONS)
         reply = glinet(ko, en, "KVM은 1.10.2 베타 펌웨어를 설치하세요. " + ko_m, "Install the KVM beta firmware 1.10.2. " + en_m)
