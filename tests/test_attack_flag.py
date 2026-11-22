@@ -67,6 +67,13 @@ class VendorNoticeTest(unittest.TestCase):
             with self.subTest(url):
                 self.assertFalse(summaries.vendor_notice(url, names))
         self.assertFalse(summaries.vendor_notice(NOTICE, ["Router firmware"]))  # no vendor name to match
+        # Someone's page on a host of other people's pages is not the host's own notice.
+        for url, names in (("https://someone.wordpress.com/2026/11/plugin-vulnerability/", ["WordPress"]),
+                           ("https://someone.github.io/advisories/x", ["GitHub Enterprise Server"]),
+                           ("https://github.com/someone/notes/blob/main/security-advisory.md", ["GitHub Enterprise Server"]),
+                           ("https://sites.google.com/view/x/security-advisory", ["Google Chrome"])):
+            with self.subTest(url):
+                self.assertFalse(summaries.vendor_notice(url, names))
 
 
 class ParseTest(unittest.TestCase):

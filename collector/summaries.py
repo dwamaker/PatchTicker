@@ -466,7 +466,12 @@ SECOND_LEVEL = {"co", "com", "net", "org", "or", "ne", "ac", "go", "gov", "edu",
 # Not a notice: customers' pages, an uptime status page, an issue tracker whose items reporters write (11-22 audit:
 # status.optimizely.com's "/incidents/", gitlab.eclipse.org's "security/vulnerability-reports" items).
 USER_PAGES = {"forum", "forums", "community", "communities", "discuss", "discussions", "answers", "ideas", "groups", "users",
-              "status", "gitlab", "github", "git", "bugs", "bugzilla", "issues", "jira", "tracker"}
+              "status", "gitlab", "github", "git", "bugs", "bugzilla", "issues", "jira", "tracker", "sites"}
+# Hosts of other people's pages, by subdomain or by path (someone.wordpress.com, someone.github.io, github.com/someone,
+# medium.com/@someone): anyone's page there would pass as WordPress's or GitHub's own notice.
+SHARED_HOSTS = {"wordpress.com", "github.com", "github.io", "gitlab.com", "gitlab.io", "blogspot.com", "medium.com",
+                "substack.com", "netlify.app", "vercel.app", "pages.dev", "herokuapp.com", "notion.site", "tumblr.com",
+                "wixsite.com", "ghost.io", "hashnode.dev", "bitbucket.io", "readthedocs.io"}
 # "security" alone is no notice (11-22 audit: docs.docker.com/ai/sandboxes/security/isolation/, a manual page).
 NOTICE_PATH = re.compile(r"advisor|bulletin|psirt|notice|incident|vulnerab|cve-\d", re.I)
 squash = lambda text: re.sub(r"[^a-z0-9]", "", text.lower())
@@ -480,7 +485,8 @@ def vendor_notice(url, vendors):
         return False
     labels = parts.netloc.lower().split(":")[0].removeprefix("www.").split(".")
     cut = -3 if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in SECOND_LEVEL else -2
-    if len(labels) < -cut or USER_PAGES & set(labels[:cut]) or not NOTICE_PATH.search(parts.path):
+    if (len(labels) < -cut or USER_PAGES & set(labels[:cut]) or ".".join(labels[cut:]) in SHARED_HOSTS
+            or not NOTICE_PATH.search(parts.path)):
         return False
     own = squash(labels[cut])
     names = {squash(" ".join(words[:n])) for name in vendors if isinstance(name, str) for words in [name.split()] for n in (1, 2, 3)}
