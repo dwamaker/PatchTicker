@@ -527,10 +527,10 @@ let held = null;
 // content-visibility stand-in height (index.html) for a moment, and the browser's scroll anchoring kept that shift, so a
 // fold below the list's tenth item jumped by 100-270px on opening (owner 11-22).
 let rising = 0; // the glide's frame (holdRow)
+let calm = 0; // frames in a row the hold had nothing to correct
 function holdRow(frame) {
-  const owed = !frame && rising; // a call between frames (a redraw) takes the next frame's place, so it runs it too
   cancelAnimationFrame(rising);
-  rising = 0;
+  if (!frame) calm = 0; // a click or a redraw: watch the next frames again
   const li = held && document.querySelector(`li[data-vt="${rowName(held.key)}"]`);
   if (!li) {
     if (held?.back) held = null; // a closing row redrawn away: nothing left to go back with
@@ -551,8 +551,11 @@ function holdRow(frame) {
   const at = held.from + (place - held.from) * (1 - (1 - p) ** 3); // FOLD_EASE is an ease-out cubic
   const y = scrollY;
   scrollTo({ top: y + box.top - at, behavior: 'instant' });
-  // a frame more after each correction: skipped rows the glide brought near the window take their real height then
-  if (p < 1 || owed || Math.abs(scrollY - y) >= 1) rising = requestAnimationFrame(holdRow);
+  calm = Math.abs(scrollY - y) >= 1 ? 0 : calm + 1;
+  // On while the panel folds, so a fold's closing redraw (its done()) still finds the hold, and until three frames had
+  // nothing to correct: rows a redraw or the glide brought near the window take their real height a frame or two later
+  // (MuMu, 11-22: a frame that found nothing ended the hold just before that shift).
+  if (p < 1 || body?.folding || calm < 3) rising = requestAnimationFrame(holdRow);
   else if (held.back) held = null;
 }
 const letGo = () => { held = null; };
