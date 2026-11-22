@@ -336,10 +336,55 @@ def before(text, start, n):
 
 
 def attack_reported(text):
-    """Whether one ATTACK_SEEN match stands: no denial in the ten words before it and no hedge in the five before it
-    ("Although no patch exists, the flaw is being exploited" is a report: the comma ends the denial's clause)."""
-    return any(not (DENIED.search(before(text, m.start(), 10)) or HEDGED.search(before(text, m.start(), 5)))
-               for m in ATTACK_SEEN.finditer(text))
+    """Whether one ATTACK_SEEN or ACTIVE_EXPLOIT match stands: no denial in the ten words before it and no hedge in the
+    five before it ("Although no patch exists, the flaw is being exploited" is a report: the comma ends the denial's
+    clause); an ACTIVE_EXPLOIT match also not a researcher's own (active_exploit)."""
+    stands = lambda m: not (DENIED.search(before(text, m.start(), 10)) or HEDGED.search(before(text, m.start(), 5)))
+    return (any(stands(m) for m in ATTACK_SEEN.finditer(text))
+            or any(stands(m) and not active_demo(text, m) for m in ACTIVE_EXPLOIT.finditer(text)))
+
+
+# Owner, 11-22 (GL.iNet's notice: "An unauthorized party exploited the vulnerability to access and install malicious
+# software on some GL.iNet routers"): the active past, someone exploited the flaw. A determiner after the verb, so "the
+# exploited flaw" (an adjective) never counts; never a researcher's own demonstration ("we exploited", "researchers
+# exploited") or a hypothetical ("an attacker who successfully exploited this vulnerability could ..."), nor a sentence
+# about a proof of concept, a demo or a lab.
+ACTIVE_EXPLOIT = re.compile(r"\b(?:exploited|abused)\s+(?:the|a|an|this|that|these|those|its|their|one|two|three|several|multiple"
+                            r"|both|unpatched|known)\s+(?:[\w'’.-]+\s+){0,4}?(?:vulnerabilit(?:y|ies)|flaws?|bugs?"
+                            r"|weakness(?:es)?|zero-days?|0-days?|security holes?)\b", re.I)
+RESEARCHER = re.compile(r"\b(?:we|i|us|our|researchers?|analysts?|pentesters?|testers?|team|who)\b", re.I)
+DEMO = re.compile(r"\b(?:proof[- ]of[- ]concept|poc|demo\w*|lab|ctf|exercise|simulat\w*|test(?:ing)? environment)\b", re.I)
+
+
+def active_demo(text, m):
+    """Whether an ACTIVE_EXPLOIT match is a researcher's own or a hypothetical: one of RESEARCHER in the three words before
+    the verb, or one of DEMO in its sentence."""
+    start = max(text.rfind(c, 0, m.start()) for c in ".!?\n") + 1
+    ends = [i for i in (text.find(c, m.end()) for c in ".!?\n") if i >= 0]
+    return bool(RESEARCHER.search(before(text, m.start(), 3)) or DEMO.search(text[start:min(ends, default=len(text))]))
+
+
+# The Korean counterpart of ACTIVE_EXPLOIT ("취약점을 악용해 일부 라우터에 악성 소프트웨어를 설치했습니다"): the flaw used, then a
+# past act on the targets; or the flaw exploited, in the past. Not in a researcher's sentence ("연구진은 … 악용해 … 실행했습니다")
+# nor in one that denies it after ("악용했다는 증거는 없습니다").
+ACTIVE_KO = re.compile(r"(?:악용해|악용하여|악용해서|악용한 뒤)[^.。!?]{0,60}?(?:설치했|심었|감염시켰|침투했|장악했|탈취했|유포했|접근했|빼냈)"
+                       r"|(?:취약점|결함|버그|제로데이)(?:을|를)\s*(?:이미\s*)?악용했")
+RESEARCHER_KO = re.compile(r"연구진|연구원|연구자|연구팀|우리|개념 증명|PoC|시연|실험")
+DENIED_KO = re.compile(r"없습|없었|없다|않았|않습|아닙|아니")
+
+
+def attack_reported_ko(text):
+    """Whether the Korean text reports attacks that happened: ATTACK_SEEN_KO, or ACTIVE_KO in a sentence with no
+    researcher and no denial after it."""
+    if ATTACK_SEEN_KO.search(text):
+        return True
+    for m in ACTIVE_KO.finditer(text):
+        start = max(text.rfind(c, 0, m.start()) for c in ".。!?\n") + 1
+        ends = [i for i in (text.find(c, m.end()) for c in ".。!?\n") if i >= 0]
+        end = min(ends, default=len(text))
+        if not (RESEARCHER_KO.search(text[start:end]) or DENIED_KO.search(text[m.end():end])):
+            return True
+    return False
 
 
 # Malicious code already delivered to users through the product (11-17, Cursor: a tampered Claude Code extension on its
@@ -375,10 +420,11 @@ def attacks_evidenced(summary, kind):
 KEV_YES = re.compile(r"^Exploited in the wild \(CISA KEV\): yes\b", re.M)
 
 
-def first_hand_reports(input_text, finders=()):
+def first_hand_reports(input_text, finders=(), vendors=()):
     """The first-hand pages whose own words in the input report attacks (attack_reported), in the input's order: an
-    advisory, a CVE record, and the finder's own disclosure of the flaw (finders: sheets.finders, the pages a sheet reads
-    as finder_disclosure; without sheets no write-up counts, as any HN poster's page can be one). Never a news or curator
+    advisory, a CVE record, the finder's own disclosure of the flaw or the vendor's own advisory as a sheet reads them
+    (finders: sheets.finders; without sheets no write-up counts, as any HN poster's page can be one), and a write-up that
+    is the vendor's own security notice (vendor_notice; vendors: the Incident's product names). Never a news or curator
     page's text: their "Related: ... Exploited in Attacks" links match on every page. Rootways, CVE-2026-130583: Sansec's
     own report ("an attacker used it to take over a Magento store") beside a newsletter issue about another story."""
     kinds = mention_kinds(input_text)
@@ -386,13 +432,14 @@ def first_hand_reports(input_text, finders=()):
     got = []
     for b in SOURCE_RE.finditer(input_text):
         url = b[1] or records.get(b[0].split(":", 1)[0].split()[-1])
-        first = not b[1] or kinds.get(url) == "advisory" or url in finders and kinds.get(url) != "curator" and not is_news(url)
+        first = (not b[1] or kinds.get(url) == "advisory" or url in finders and kinds.get(url) != "curator" and not is_news(url)
+                 or kinds.get(url) == "writeup" and vendor_notice(url, vendors))
         if url and first and attack_reported(b[3]):
             got.append(url)
     return list(dict.fromkeys(got))
 
 
-def input_reports_attacks(input_text, source, reporters, finders=()):
+def input_reports_attacks(input_text, source, reporters, finders=(), vendors=()):
     """The page whose own words in the input report the attacks a reply claims: the claim's source when it is a
     first-hand page that says so (first_hand_reports), else the first such page; else the claim's source when it is a
     reporter and the input's CISA KEV line says yes. "" for none. TYPO3, CVE-2026-125160's record "known to be actively
@@ -400,10 +447,39 @@ def input_reports_attacks(input_text, source, reporters, finders=()):
     for what the record says."""
     blocks = list(SOURCE_RE.finditer(input_text))
     head = input_text[:blocks[0].start()] if blocks else input_text  # no page text can forge the KEV line
-    first = first_hand_reports(input_text, finders)
+    first = first_hand_reports(input_text, finders, vendors)
     if first:
         return source if source in first else first[0]
     return source if source in reporters and KEV_YES.search(head) else ""
+
+
+# Owner, 11-22 (GL.iNet's notice of its cloud incident, a write-up on gl-inet.com, the only page that said so): the
+# vendor's own security notice on its own site. The host's registered name (the label before the public suffix, as
+# "gl-inet" in www.gl-inet.com or "toshiba" in toshiba.co.jp) written without its punctuation must equal a vendor name so
+# written: the first one, two or three words of a product name ("GL.iNet routers": "glinet", "glinetrouters"). Equality
+# only, no substring ("gl-inet-support.com", "glinet.example.com" never). Not on a site's user pages (forum.gl-inet.com
+# is customers talking), and only an address that says what it is: a path naming a security notice, advisory, bulletin
+# or incident, so a vendor's product or marketing page never counts. shortcut: the same name under another suffix
+# (gl-inet.co) passes; keep a vendor's own domains if one is ever abused.
+SECOND_LEVEL = {"co", "com", "net", "org", "or", "ne", "ac", "go", "gov", "edu", "gob", "gv"}
+USER_PAGES = {"forum", "forums", "community", "communities", "discuss", "discussions", "answers", "ideas", "groups", "users"}
+NOTICE_PATH = re.compile(r"secur|advisor|bulletin|psirt|notice|incident|vulnerab|cve-\d", re.I)
+squash = lambda text: re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def vendor_notice(url, vendors):
+    """Whether a write-up's address is its vendor's own security notice (see above). vendors: product names."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    labels = parts.netloc.lower().split(":")[0].removeprefix("www.").split(".")
+    cut = -3 if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in SECOND_LEVEL else -2
+    if len(labels) < -cut or USER_PAGES & set(labels[:cut]) or not NOTICE_PATH.search(parts.path):
+        return False
+    own = squash(labels[cut])
+    names = {squash(" ".join(words[:n])) for name in vendors if isinstance(name, str) for words in [name.split()] for n in (1, 2, 3)}
+    return bool(own) and own in names
 
 
 def recheck_exploited(incidents):
@@ -1400,7 +1476,7 @@ def attacks_unflagged(summary):
         return ""
     en = f"{summary['en'].get('title', '')}\n{summary['en'].get('summary', '')}"
     ko = f"{summary['ko'].get('title', '')}\n{summary['ko'].get('summary', '')}"
-    return ATTACKS_UNFLAGGED if attack_reported(en) or ATTACK_SEEN_KO.search(ko) else ""
+    return ATTACKS_UNFLAGGED if attack_reported(en) or attack_reported_ko(ko) else ""
 
 
 def settle_attacks(summary, verdict, stored=None):
@@ -1805,7 +1881,8 @@ def parse(reply, input_text, urls, finders=()):
     in the input, a Lead that is not an input URL, or Korean and English whole numbers that differ (a digit may stand for a number word).
     An Easy command or stopgap that is not one invocation found verbatim in a trusted source (trusted()) is dropped, so the page falls back to
     "update to version X" and never shows a made-up command. A distribution's package version as `fixed` is emptied.
-    finders: the finder's own disclosure pages (sheets.finders), which count among the pages that report attacks."""
+    finders: the finder's own disclosure and the vendor's own advisory pages (sheets.finders), which count among the pages
+    that report attacks."""
     if reply.stop_reason != "end_turn":
         raise Rejected(f"stop_reason {reply.stop_reason}")
     try:
@@ -1910,13 +1987,16 @@ def parse(reply, input_text, urls, finders=()):
     # never the Summary.
     trusted_text, reporters = trusted(input_text)
     kinds = mention_kinds(input_text)
+    # Whose own notice counts (vendor_notice): the record's Products line and the reply's own product names.
+    listed = re.search(r"^Products: (.*)$", input_text, re.M)
+    vendors = [*(listed[1].split(", ") if listed and listed[1] != "unknown" else []), *summary.get("products", [])]
     sourced = summary["exploited"] and summary["exploited_source"] in urls and summary["exploited_source"] in reporters
     if sourced and attacks_evidenced(summary, kinds.get(summary["exploited_source"])):
         # A news or curator source gives way to a first-hand page that reports the attacks itself (Rootways: a newsletter
         # issue titled about Optimizely read on the Board as if it were about Optimizely).
-        if kinds.get(summary["exploited_source"]) not in ("advisory", "cve_record") and (first := first_hand_reports(input_text, finders)):
+        if kinds.get(summary["exploited_source"]) not in ("advisory", "cve_record") and (first := first_hand_reports(input_text, finders, vendors)):
             summary["exploited_source"] = first[0]
-    elif summary["exploited"] and (stated := input_reports_attacks(input_text, summary["exploited_source"], reporters, finders)):
+    elif summary["exploited"] and (stated := input_reports_attacks(input_text, summary["exploited_source"], reporters, finders, vendors)):
         # A reporter in the input says so in plain words: no review draw decides it, and recheck_exploited leaves it.
         summary["exploited_source"], summary["exploited_input"] = stated, True
     elif not sourced:

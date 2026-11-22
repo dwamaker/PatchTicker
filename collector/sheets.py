@@ -512,9 +512,9 @@ def words(text):
 
 
 def finders(sheets):
-    """The pages a sheet reads as the finder's own disclosure of the flaw: summaries.first_hand_reports counts their plain
-    report of attacks."""
-    return [s["url"] for s, f in facts_of(sheets) if f.get("page_role") == "finder_disclosure"]
+    """The pages a sheet reads as the finder's own disclosure of the flaw, or as the vendor's own security advisory (owner,
+    11-22: GL.iNet's notice of its cloud incident): summaries.first_hand_reports counts their plain report of attacks."""
+    return [s["url"] for s, f in facts_of(sheets) if f.get("page_role") in ("finder_disclosure", "vendor_advisory")]
 
 
 def must_carry(sheets):
