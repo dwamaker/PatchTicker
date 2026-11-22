@@ -700,10 +700,12 @@ ring stays inside the row and a group's frame at 320px too.
   1px Rail border and 6px radius, like the filter panel, with a 닫기 button.
 - **First visit:** the guide never opens by itself (critique 9); a first visit gets the first-visit line instead (see
   Motion), and drawing that line stores `vr-guide`.
-- **Content:** each mark drawn with the row's own parts beside one plain line: the three risk levels
-  (words follow the current view) with their rules, the CVSS ring, line badges, the published date,
-  then 주요 사건, an opened row, the Easy switch and the search bar's picks and filters; hairlines split the
-  three groups; a closing note says Summaries are written by AI and to check the source links.
+- **Content (owner, 11-22: "핵심만 남겨"):** only what a first visit needs to read a row, each mark drawn with the row's
+  own parts beside one short line: the three risk levels (the top one with 공격 발생 under it; words follow the current
+  view), score pending and the CVSS ring, in the first-visit line's words (that line is gone once seen and never shows
+  beside the guide); then, under a hairline, 주요 사건, the Easy switch and the picks and filters; a closing note says
+  Summaries are written by AI and to check the source links. Mechanics a visitor finds by trying (badges, dates,
+  groups, opening a row) are left out.
 - **Rule:** the guide never invents a mark; anything it shows comes from the same render functions as
   the rows, so it cannot drift.
 

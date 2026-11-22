@@ -1138,8 +1138,6 @@ export const sinceStillTrue = (since, now) => {
   const start = Date.parse(`${since}T00:00:00Z`);
   return Number.isFinite(start) && now < start + KEEP_DAYS * DAY_MS;
 };
-// What an empty search says about what the Board holds: both sentences while the first is true, then the retention alone.
-export const collectionFacts = (since, now, words) => (sinceStillTrue(since, now) ? `${words.since} ${words.keep}` : words.keep);
 
 // The RSS feeds in the header's menu (owner, 11-17): the main feed, the whole Board, and the visitor's picked Products,
 // each in the page's language. The products feed takes names as /api/check does (edge/check.mjs readQuery: comma-separated,

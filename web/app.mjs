@@ -1,4 +1,4 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, rowPlatforms, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, VENDOR_FOLD_MIN, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, collectionFacts, MENTION_ORDER } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, rowPlatforms, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, MENTION_ORDER } from './board.mjs';
 import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
 
 
@@ -76,21 +76,11 @@ const TEXT = {
     guide: {
       title: '이 현황판 읽는 법', close: '닫기',
       primer: { highest: '실제 공격·9점 이상', high: '7점 이상', notice: '7점 미만', unrated: '점수 대기', ring: 'CVSS 점수 (10점 만점)', more: '읽는 법 자세히', dismiss: '안내 닫기' },
-      risk: { highest: '실제 공격에 쓰이고 있거나("공격 발생"), CVSS 점수가 10점 중 9점 이상', high: 'CVSS 점수 10점 중 7점 이상', notice: 'CVSS 점수 10점 중 7점 미만.' },
-      unrated: '점수 대기: CVSS 점수가 아직 없는 사건입니다. 실제 공격이 없으면 참고 표시를 점선으로 그립니다. 제조사가 공지에서 Critical이나 High로 매겼으면 그 등급(긴급, 위험)을 점선으로 그리고 아래에 "제조사 등급"이라고 적으며, 필터에서도 그 등급에 넣습니다. 나머지 점수 대기 사건은 위험 단계 필터에서 따로 고르고, 위험도순과 CVSS 높은순에서는 점수가 있는 참고 사건보다 위에 둡니다.',
-      ring: 'CVSS 점수: 취약점이 얼마나 심각한지 10점 만점으로 매긴 국제 기준 점수입니다. 링이 점수만큼 차고 색도 점수를 따릅니다. 실제 공격에 쓰이면 점수와 상관없이 맨 위 단계로 올라갑니다. 점수가 아직 없으면 점선 링 안에 —로 보입니다.',
-      tags: '색 배지는 영향받는 제품과 기기이고, 같은 제품은 늘 같은 색입니다. 테두리 배지는 그 제품이 돌아가는 OS입니다.',
-      date: '처음 게시된 날짜와 시각입니다. 본인 시간대로 보여 줍니다. 원문에 시각이 없으면 이 현황판이 처음 본 시각을 "처음 확인"과 함께 보여 줍니다.',
-      pin: '최근 7일 안에 공개된 ‘위험’이나 ‘긴급’ 사건(실제 공격이 있거나 CVSS 점수 7점 이상) 가운데 가장 중요한 4건을 중요한 순서대로 맨 위에 먼저 보여 줍니다. 주요 사건 더 보기를 누르면 나머지가 그 아래에 붙습니다. 주요 사건은 아래 목록의 제자리에도 그대로 있고, 위험도 표시 아래에 ‘주요 사건’이라고 적혀 있습니다.',
-      group: '한 제품의 여러 CVE가 함께 공개된 묶음입니다. 같은 버전에서 고쳐졌거나, 아직 고쳐지지 않았지만 같은 버전까지 영향받는 CVE들입니다. 링은 그중 가장 높은 점수이고, 펼치면 CVE마다 한 줄씩 나옵니다.',
-      brief: '아직 요약 전이라 원문을 그대로 보여 주는 사건입니다. 영어일 수 있습니다.',
-      open: '행을 누르면 요약, 해당 조건, 대처법, 원문 링크가 펼쳐집니다. 키보드로는 ↑ ↓ 키로 행 사이를 옮겨 다닙니다.',
-      fold: (n) => `한 회사가 같은 날 ${n}건 이상 낸 공지와 같은 날의 워드프레스 플러그인 ${n}건 이상은 "묶음" 한 줄로 모읍니다. 누르면 그 자리에서 펼쳐지고, 목록 제목 옆 "묶음 풀기"로 모두 풀 수 있습니다. "함께 공개" 줄은 함께 공개된 한 사건의 CVE들이라 풀리지 않습니다.`,
-      prep: '쉬운 설명은 조금 늦게 만들어집니다. 그동안 쉬운 제목만 먼저 보여 줍니다.',
-      easy: '위쪽에서 바꾸면 무엇이 위험하고 지금 무엇을 하면 되는지 쉬운 말로 보여 줍니다.',
+      pin: '최근 7일 사건 가운데 가장 중요한 것을 맨 위에 먼저 보여 줍니다.',
+      easy: '무엇이 위험하고 지금 무엇을 하면 되는지 쉬운 말로 보여 줍니다.',
       filterWord: '제품 · 필터',
-      filter: '사용하는 제품을 고르거나 필터로 목록을 좁힙니다. 고른 조건은 주소에 남아, 즐겨찾기하면 그대로 다시 열립니다.',
-      note: '요약은 AI가 원문을 읽고 만듭니다. 조치하기 전에 원문 링크를 확인하세요.',
+      filter: '사용하는 제품을 고르거나 필터를 걸면 해당 사건만 남습니다.',
+      note: 'AI가 쓴 요약이므로 조치하기 전에 원문 링크를 확인하세요.',
     },
   },
   en: {
@@ -131,21 +121,11 @@ const TEXT = {
     guide: {
       title: 'How to read this Board', close: 'Close',
       primer: { highest: 'Attacked or 9+', high: '7+', notice: 'Below 7', unrated: 'Score pending', ring: 'CVSS score (out of 10)', more: 'How to read', dismiss: 'Dismiss this note' },
-      risk: { highest: 'Attacked (attacks reported), or a CVSS score of 9 or more out of 10', high: 'A CVSS score of 7 or more out of 10', notice: 'A CVSS score below 7 out of 10.' },
-      unrated: 'Score pending: no CVSS score yet. Unless attacked it shows a dashed Notice sign, or, when the vendor’s own advisory rates it Critical or High, that level dashed with "Vendor: Critical" (or High) under it, filed under that level in the filter. Any other pending row has its own choice in the risk filter, and sorts above scored Notice rows by risk or by CVSS.',
-      ring: 'The CVSS score: how severe a flaw is, out of 10, on an international standard. The ring fills to the score and its colour follows the score. Reported attacks lift an Incident to the top level whatever its score. No score yet shows as — in a dashed ring.',
-      tags: 'Filled badges are the affected Products and devices, each always in the same colour. Outlined badges are the systems they run on.',
-      date: 'When it was first published, in your time zone. With no time in the source, "first seen" shows when the Board first saw it.',
-      pin: 'The four most important Incidents at the Elevated level or above (attacked, or scored 7 or more) made public in the last seven days are shown first, most important first. More Highlights adds the rest below them. Every Highlight also keeps its place in the list below, with “Highlight” written under its risk level.',
-      group: 'CVEs of one product disclosed together, shown as one row: fixed in the same version, or not fixed yet and affecting the same versions. The ring is the highest score among them; open it for a line on each.',
-      brief: '',
-      open: 'Open a row for the summary, who is affected, the fix and the source links. On a keyboard, ↑ and ↓ move between rows.',
-      fold: (n) => `${n} or more notices from one vendor on one day, or ${n} or more WordPress plugins on one day, fold into one "Group" row. Open it in place, or use "Ungroup" beside the list heading to show them all. "Disclosed together" rows are one Incident's CVEs, disclosed together, and stay together.`,
-      prep: 'Plain summaries come a little later; until then the row shows a plain title only.',
-      easy: 'Switch at the top for what is dangerous and what to do now, in plain words.',
+      pin: 'The most important Incidents of the last seven days, shown first.',
+      easy: 'What is dangerous and what to do now, in plain words.',
       filterWord: 'Products · Filters',
-      filter: 'Pick the Products you run or narrow with filters. Your choices stay in the address, so a bookmark brings them back.',
-      note: 'Summaries are written by AI from the sources. Check the source links before you act.',
+      filter: 'Pick the Products you run, or set filters, to keep only their Incidents.',
+      note: 'Summaries are written by AI: check the source links before you act.',
     },
   },  // Japanese (owner, 11-17): the interface only; Summaries come in English (board.mjs withJapanese), so the guide says so.
   ja: {
@@ -186,21 +166,11 @@ const TEXT = {
     guide: {
       title: 'このボードの見方', close: '閉じる',
       primer: { highest: '実際の攻撃・9点以上', high: '7点以上', notice: '7点未満', unrated: 'スコア待ち', ring: 'CVSS スコア（10点満点）', more: '見方を詳しく', dismiss: '案内を閉じる' },
-      risk: { highest: '実際の攻撃に使われている（「攻撃発生」）か、CVSS スコアが10点中9点以上', high: 'CVSS スコアが10点中7点以上', notice: 'CVSS スコアが10点中7点未満。' },
-      unrated: 'スコア待ち: CVSS スコアがまだないインシデントです。実際の攻撃がなければ参考の表示を点線で描き、ベンダーのアドバイザリーが Critical か High とする場合はその段階（緊急、警戒）を点線で描いて「ベンダー評価 Critical」のように添え、フィルターでもその段階に入れます。ほかのスコア待ちは危険度フィルターで別に選べ、危険度順と CVSS の高い順では、スコアのある参考のインシデントより上に置きます。',
-      ring: 'CVSS スコア: 脆弱性の深刻さを10点満点で評価する国際的な基準です。リングはスコアの分だけ満ち、色もスコアに従います。実際の攻撃に使われると、スコアに関係なく最上位になります。スコアがまだなければ、点線のリングに — と表示されます。',
-      tags: '色付きのバッジは影響を受ける製品や機器で、製品ごとに常に同じ色です。枠線のバッジは、その製品が動く OS です。',
-      date: '最初に公開された日時（お使いのタイムゾーン）。原文に時刻がない場合は「初確認」とともに、このボードが最初に確認した時刻を表示します。',
-      pin: '「警戒」や「緊急」のインシデント（実際の攻撃があるか、CVSS スコア7点以上）のうち、過去7日以内に公開された最も重要な4件を、重要な順にいちばん上に表示します。「注目のインシデントをもっと見る」を押すと、残りがその下に続きます。注目のインシデントは下の一覧の本来の位置にもあり、危険度の下に「注目のインシデント」と書かれています。',
-      group: '1つの製品の複数の CVE が同時に公開されたまとめです。同じバージョンで修正されたか、まだ修正されていなくても同じバージョンまで影響を受ける CVE です。リングはそのうち最も高いスコアで、開くと CVE ごとに1行ずつ表示されます。',
-      brief: 'まだ要約前のため、原文をそのまま表示しているインシデントです。英語の場合があります。',
-      open: '行を押すと、要約、該当する条件、対処法、原文リンクが開きます。キーボードでは ↑ ↓ キーで行の間を移動できます。',
-      fold: (n) => `1つの会社が同じ日に出した${n}件以上の勧告と、同じ日の WordPress プラグイン${n}件以上は、「まとめ」1行に集めます。押すとその場で開き、一覧の見出しの横の「まとめを解除」ですべて解除できます。「同時公開」の行は同時に公開された1つのインシデントの CVE なので、解除されません。`,
-      prep: 'やさしい説明は少し遅れて作成されます。それまでは、やさしいタイトルだけを先に表示します。',
-      easy: '上で切り替えると、何が危険で、今何をすべきかをやさしい言葉で表示します。',
+      pin: '過去7日間で最も重要なインシデントを、いちばん上に先に表示します。',
+      easy: '何が危険で、今何をすべきかをやさしい言葉で表示します。',
       filterWord: '製品 · フィルター',
-      filter: '使っている製品を選ぶか、フィルターで絞り込めます。選んだ条件はアドレスに残るので、ブックマークで再び開けます。',
-      note: '要約は AI が原文を読んで作成します。日本語のページでは要約を英語で表示します。対応する前に原文リンクを確認してください。',
+      filter: '使っている製品を選ぶかフィルターをかけると、該当するインシデントだけが残ります。',
+      note: 'AI が英語で書いた要約なので、対応する前に原文リンクを確認してください。',
     },
   },
 };
@@ -1092,36 +1062,22 @@ function guide() {
     next = 'g-item';
   };
   const rule = () => { next = 'g-item group'; }; // the next item starts a new group under a hairline
-  const sample = { highest: 9.8, high: 7.5, notice: 4.3 };
-  for (const level of Object.keys(sample)) item(g.risk[level], riskCell({ cvss: sample[level] }));
-  item(g.unrated, riskCell({}), scoreCell({})); // the dashed sign and ring, as an unscored row draws them (critique 13)
-  rule();
-  item(g.ring, scoreCell({ cvss: 9.8 }));
-  // The example badge is the top Highlight's Product, so the guide shows a line the reader will see first on the Board.
-  const top = filterBoard(incidents, [], '', Date.now()).highlights[0];
-  const example = top && rowTags(top, lang).find((n) => !rowPlatforms(top).includes(n));
-  item(g.tags, example ? lineBadge(example, lineKeys(top, lang).get(example)) : lineBadge('OpenSSH'), osBadge('Windows'));
-  const when = el('span', 'c-date');
-  when.append(el('span', '', '2026-11-08'), el('span', '', '09:30'));
-  item(g.date, when);
-  const group = el('span', 'cve');
-  group.append('CVE-2026-124446', el('span', 'cve-more', t.moreCves(28)));
-  item(g.group, patchTag(), group);
-  if (t.original) item(g.brief, el('span', 'orig', t.original)); // the English page shows sources without a tag
-  item(g.prep, el('small', 'sub', t.easyPrepTag)); // plain hint words, as the row shows them (not a tag)
-  item(g.fold(VENDOR_FOLD_MIN), groupTag(), el('span', 'g-word', t.vendorFold('IBM', 25)));
+  // Only what a first visit needs to read a row (owner, 11-22: "핵심만 남겨"). The marks reuse the first-visit line's
+  // words: that line is gone once seen and never shows beside the guide, so the guide still carries them.
+  const p = g.primer;
+  // No 공격 발생 under the top sign: "Urgent Attacked" overflows the phone's sample column; the words say it.
+  for (const [level, cvss] of [['highest', 9.8], ['high', 7.5], ['notice', 4.3]]) item(p[level], riskCell({ cvss }));
+  const pending = riskCell({}); // the dashed sign and ring, as an unscored row draws them (critique 13); the words once
+  pending.querySelector('.why')?.remove();
+  item(p.unrated, pending, scoreCell({}));
+  item(p.ring, scoreCell({ cvss: 9.8 }));
   rule();
   item(g.pin, el('span', 'g-pin', t.pin));
-  const chev = el('i', 'chev');
-  chev.setAttribute('aria-hidden', 'true');
-  item(g.open, chev);
   const views = el('span', 'g-views');
   views.append(el('span', '', t.normal), el('span', 'on', t.easy));
   item(g.easy, views);
   item(g.filter, el('span', 'g-word', g.filterWord));
-  // What the Board holds (owner's notice, 11-17), here and in the footer since it left the top (critique 11-17).
-  const facts = collectionFacts(document.documentElement.dataset.collectedSince, Date.now(), { since: t.noticeSince.join(' '), keep: t.noticeKeep });
-  box.replaceChildren(head, list, el('p', 'g-note', g.note), el('p', 'g-note', facts));
+  box.replaceChildren(head, list, el('p', 'g-note', g.note));
 }
 
 // The first-visit line: the row's own risk signs and ring, each with a few words, then 읽는 법 자세히 and a close button.

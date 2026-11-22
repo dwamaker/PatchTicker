@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, HIGHLIGHTS, stepDistance, oldEvent, sinceStillTrue, collectionFacts, statusCounts } from '../web/board.mjs';
+import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, HIGHLIGHTS, stepDistance, oldEvent, sinceStillTrue, statusCounts } from '../web/board.mjs';
 import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, mentionGroups, MENTIONS_SHOWN, listboxStep } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
@@ -1731,14 +1731,11 @@ test('an old event leaves the Highlights but stays on the Board', () => {
 });
 
 // Owner, 11-17 ("우리가 공지를 해야할거 같은데"): the Board says since when it collects, and that a patch removes nothing.
-test('the collection sentence holds for the store\'s 90 days from the start; the retention sentence always', () => {
+test('the collection sentence holds for the store\'s 90 days from the start', () => {
   assert.equal(sinceStillTrue('2026-11-09', Date.parse('2026-11-17T00:00:00Z')), true);
   assert.equal(sinceStillTrue('2026-11-09', Date.parse('2027-02-06T23:59:59Z')), true);
   assert.equal(sinceStillTrue('2026-11-09', Date.parse('2027-02-07T00:00:00Z')), false);
   assert.equal(sinceStillTrue('', Date.parse('2026-11-17T00:00:00Z')), false);
-  const words = { since: 'Collected since 9 November 2026.', keep: 'Stays 90 days.' };
-  assert.equal(collectionFacts('2026-11-09', Date.parse('2026-11-17T00:00:00Z'), words), 'Collected since 9 November 2026. Stays 90 days.');
-  assert.equal(collectionFacts('2026-11-09', Date.parse('2027-03-01T00:00:00Z'), words), 'Stays 90 days.');
 });
 
 // 더 보기 (owner, 11-17: drawing all 789 rows again on each press took 262 ms): the next page is added under the drawn
