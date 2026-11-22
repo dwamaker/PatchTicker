@@ -13,6 +13,7 @@ import fnmatch
 import hashlib
 import html.parser
 import json
+import math
 import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -137,7 +138,7 @@ def known_field(incident):
     label = known_label(incident)
     if not label:
         return {}
-    # known_kind: the label's category in that file, which with the vendor keys a pin (pinKey; owner, 11-17).
+    # known_kind: the label's category in that file, which with the vendor is one of a row's same keys (sameKeys).
     return {"known": label} | ({"known_tier": WELL_KNOWN[label]["tier"], "known_kind": LABEL_KIND[label]} if label in WELL_KNOWN else {})
 
 
@@ -233,12 +234,15 @@ def published_at(incident):
 
 
 # The Highlight score: a port of highlightScore in web/board.mjs, where its parts are explained (owner, 11-19: score,
-# wide use, urgency, date, in that order; tests/fixtures/board/rows-case.json keeps the two in step). rows.json keeps the
-# week's likely Highlights whole, so a drift costs one wait when one is opened, nothing more.
-RECENCY = 25  # when published at now, falling in a straight line to 0 at RECENCY_DAYS old; one day ~0.71 CVSS point
-RECENCY_DAYS = 7  # the Highlight window (RECENT_DAYS in collector/cycle.py)
+# wide use, urgency, date, in that order; reworked 11-22: exponential recency, attention, corroboration;
+# tests/fixtures/board/rows-case.json keeps the two in step). rows.json keeps the week's likely Highlights whole, so a
+# drift costs one wait when one is opened, nothing more.
+RECENCY = 15  # when published at now, halving every HALF_LIFE_DAYS
+HALF_LIFE_DAYS = 2
 SEVERITY_FLOOR = {"highest": HIGHEST_CVSS, "high": 7}  # a provisional level counts as its band's floor
-WIDE_USE = {1: 14, 2: 10, 3: 5}  # by tier_of; no label 0
+WIDE_USE = {1: 14, 2: 10, 3: 5}  # by tier_of; no label 0; none for an uncorroborated row
+ATTENTION_MAX = 8
+CORROBORATING = ("advisory", "notice", "curator", "discussion")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
@@ -249,8 +253,24 @@ def epoch_ms(stamp):
 
 
 def recency(incident, now):
-    age = epoch_ms(now) - epoch_ms(published_at(incident))
-    return RECENCY * min(1, max(0, 1 - age / (RECENCY_DAYS * 86_400_000)))
+    """Rounded to a millionth as recency in web/board.mjs: the two ports' powers may differ in the last bit."""
+    age = max(0, epoch_ms(now) - epoch_ms(published_at(incident)))
+    return math.floor(1e6 * RECENCY * 0.5 ** (age / (HALF_LIFE_DAYS * 86_400_000)) + 0.5) / 1e6  # Math.round
+
+
+def attention(view):
+    """A port of attention in web/board.mjs: a notice 3, a curator issue 2, HN points / 100 up to 3, five or more repos 1;
+    ATTENTION_MAX at most."""
+    kinds = {m["kind"] for m in view["mentions"]}
+    points = max([0] + [m.get("points") or 0 for m in view["mentions"]])
+    repos = sum(1 for m in view["mentions"] if m["kind"] == "repo")
+    return min(ATTENTION_MAX, (3 if "notice" in kinds else 0) + (2 if "curator" in kinds else 0) + min(points / 100, 3)
+               + (1 if repos >= 5 else 0))
+
+
+def corroborated(view):
+    """A port of corroborated in web/board.mjs: exploited, or with an advisory, notice, curator or discussion Mention."""
+    return is_exploited(view) or any(m["kind"] in CORROBORATING for m in view["mentions"])
 
 
 def tier_of(view):
@@ -260,15 +280,12 @@ def tier_of(view):
 
 def highlight_score(incident, now):
     """now: an ISO stamp, for the recency part."""
-    mentions = incident["mentions"]
-    points = max([0] + [m.get("points") or 0 for m in mentions])
-    curated = 1 if any(m["kind"] == "curator" for m in mentions) else 0
     exploited = is_exploited(incident)
     cvss = incident.get("cvss")
     cvss = cvss if cvss is not None else HIGHEST_CVSS if exploited else SEVERITY_FLOOR.get(provisional_level(incident), 0)
     urgency = 12 if exploited else 3 if risk_level(incident) == "highest" else 0
-    return (5 * cvss + WIDE_USE.get(tier_of(incident), 0) + urgency + recency(incident, now)
-            + min(points / 500, 1) + 0.5 * curated + 0.05 * min(len(mentions), 10))
+    wide = WIDE_USE.get(tier_of(incident), 0) if corroborated(incident) else 0
+    return 5 * cvss + wide + urgency + recency(incident, now) + attention(incident)
 
 
 # A port of WP_PLUGIN and isWordPressPlugin in web/board.mjs (tests/fixtures/board/rows-case.json keeps the two in step):
@@ -482,7 +499,7 @@ def product_key(name):
 # How to add one: docs/agents/vendors.md.
 _KINDS = json.loads((Path(__file__).parent / "well_known.json").read_text(encoding="utf-8"))
 WELL_KNOWN = {label: entry for kind in _KINDS.values() for label, entry in kind.items()}
-# Label -> its kind ("Browsers"): with the vendor it keys a pin (pinKey in web/board.mjs; owner, 11-17).
+# Label -> its kind ("Browsers"): with the vendor, one of a row's same keys (sameKeys in web/board.mjs).
 LABEL_KIND = {label: kind for kind, labels in _KINDS.items() for label in labels}
 LABELS = list(WELL_KNOWN)
 # One pattern, one group per label in file order, so a Product id is matched once, not once per pattern.

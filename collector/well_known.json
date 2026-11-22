@@ -242,7 +242,7 @@
     "TP-Link Archer": {"ids": ["tp-link*:archer*"], "tier": 2},
     "TP-Link Tapo": {"ids": ["tp-link*:tapo*"], "names": ["Tapo"], "tier": 3},
     "Netgear": {"ids": ["netgear:*"], "tier": 2},
-    "D-Link": {"ids": ["d-link:*", "dlink:*"], "tier": 2},
+    "D-Link": {"ids": ["d-link:*", "dlink:*"], "tier": 3},
     "Zyxel": {"ids": ["zyxel:*"], "tier": 2},
     "DrayTek Vigor": {"ids": ["draytek:*"], "tier": 3},
     "Linksys": {"ids": ["linksys:*"], "tier": 2},
@@ -1008,6 +1008,7 @@
   },
   "Hardware, drivers, chips": {
     "NVIDIA GPU driver": {"ids": ["nvidia:gpu_display_driver*", "nvidia:nvidia_gpu_display_driver*", "nvidia:geforce*", "nvidia:gpu_driver"], "names": ["NVIDIA GPU Display Driver", "GeForce Experience"], "tier": 1},
+    "AMD EPYC 7001 and Embedded 3000": {"ids": ["amd:amd_epyc™_7001*", "amd:amd_epyc™_embedded_3000*", "amd:amd_epyc_7001*", "amd:amd_epyc_embedded_3000*", "amd:epyc_7001*", "amd:epyc_embedded_3000*"], "tier": 3},
     "AMD processors": {"ids": ["amd:amd_ryzen*", "amd:amd_epyc*", "amd:amd_athlon*", "amd:ryzen*", "amd:epyc*"], "tier": 1},
     "Intel processors": {"ids": ["intel:*processor*", "intel:intel_core*", "intel:core_i*", "intel:xeon*"], "tier": 1},
     "Qualcomm Snapdragon": {"ids": ["qualcomm*:snapdragon*"], "names": ["Snapdragon"], "tier": 1},

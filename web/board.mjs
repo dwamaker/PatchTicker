@@ -210,8 +210,8 @@ export function productList(incidents, now, lang = 'en', seen = []) {
 // Highlights (owner, 11-19: "점수, 많이사용, 긴급, 날짜순으로 되어야지 자리를 따로 주는게 아니라 자연스럽게"): one score
 // over every 위험-or-above candidate of the week (highlightScore), no reserved places. It replaced every exploited row
 // first (11-10), the lifted well-known row per label (11-11, 11-16) and the tier order (11-17): the week's exploited
-// rows took the first places whatever their score (two CVSS 6.1 flaws above every 9.8, 11-19). HIGHLIGHTS (twenty) of them, four pinned at first so the newest list starts on the first screens of a
-// phone (ten frames ran past 1,900px); 주요 사건 더 보기 pins the rest. Unpinned ones stay in 최신순. Also
+// rows took the first places whatever their score (two CVSS 6.1 flaws above every 9.8, 11-19). HIGHLIGHTS (twenty) of them, the first four shown at first so the newest list starts on the first
+// screens of a phone (ten frames ran past 1,900px); 주요 사건 더 보기 shows the rest. Unpinned ones stay in 최신순. Also
 // collector/cycle.py (highlights), kept in step by tests/fixtures/board/highlights-case.json.
 // Owner, 11-20: twenty is the number (the twelve of 11-19 was never his).
 export const HIGHLIGHTS = 20;
@@ -221,7 +221,7 @@ export const PINNED = 4;
 // carried known_tier, counts as 3; a row with no label has none (null).
 export const tierOf = (i) => (i.known ? ([1, 2, 3].includes(i.known_tier) ? i.known_tier : 3) : null);
 // What "the same" is for the Highlights: two rows are when they share one of these keys: the first Product id's vendor
-// and the category of collector/well_known.json (as pinKey; else the vendor), the label (known), the Summary's first
+// and the category of collector/well_known.json (else the vendor), the label (known), the Summary's first
 // product name. No one key in an order can do it (11-22): the label must join @fastify/express and @fastify/middie (two
 // vendors, one "Fastify"), the vendor and category must keep joining Jira and Confluence (two labels, one Atlassian), and
 // a story with no Product id joins its CVE row by the name ("MONAI Label"; the record's vendor is "project-monia").
@@ -258,35 +258,18 @@ export function pickHighlights(candidates, now) {
   }
   return chosen;
 }
-// The vendor a pin stands for: the first Product id's vendor, else the first word of the row's product name ("Microsoft
-// Outlook" in a news story's Summary), else the row itself.
-export const vendorKey = (i) => vendorOf(i) || String(firstProduct(i, 'en') || '').toLowerCase().split(/\s+/)[0] || `id:${i.id}`;
 // The one order the candidates, the pins and 주요 사건 더 보기 run in, whatever the visitor's sort: highlightScore, newest
 // among equals, then the id, so the visitor's sort and the collector's week order pick the same twin (owner, 11-19: one
 // score, wide use inside it, no tier groups).
 export const showOrder = (now) => (a, b) => highlightScore(b, now) - highlightScore(a, now) || newest(a, b)
   || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-// Owner, 11-16 ("고정 네 자리는 서로 다른 회사로"): walking the Highlights in showOrder, the PINNED places go to rows of different
-// vendors, and the pins show in that order; one whose vendor already holds a place stays ahead in the rest (주요 사건 더
-// 보기), which runs in the same order. With fewer vendors than places (a search for one product), the free places go to
-// the held rows in that order, so 더 보기 never shows beside a free place.
-// What one pin stands for (owner, 11-17): the vendor and the category of collector/well_known.json together (the
-// collector's known_kind), so Android and Chrome, both Google, take a pin each while two Google browsers share one; a row
-// on no list, or written before the collector carried the category, by its vendor alone.
-export const pinKey = (i) => (typeof i.known_kind === 'string' && i.known_kind ? `${vendorKey(i)}|${i.known_kind}` : vendorKey(i));
-// now: the time filterBoard picked the Highlights at (highlightScore's recency).
+// Owner, 11-22 ("난 고정 없애라 했는데, 그냥 1~4위"): the PINNED shown first are the Highlights ranked 1 to 4 in showOrder,
+// and 주요 사건 더 보기 runs on in the same order. The different-vendor rule of 11-16 is gone; one product filling the top
+// is held off by SAME_PENALTY in pickHighlights. now: the time filterBoard picked the Highlights at (highlightScore's
+// recency).
 export function pinOrder(chosen, now, places = PINNED) {
   const order = chosen.toSorted(showOrder(now));
-  const vendors = new Set();
-  const pins = [];
-  const held = [];
-  for (const i of order) {
-    if (pins.length >= places) break;
-    if (vendors.has(pinKey(i))) held.push(i);
-    else vendors.add(pinKey(i)) && pins.push(i);
-  }
-  while (pins.length < places && held.length) pins.push(held.shift());
-  return { pins: order.filter((i) => pins.includes(i)), rest: order.filter((i) => !pins.includes(i)) };
+  return { pins: order.slice(0, places), rest: order.slice(places) };
 }
 // Why a row is pinned, when the row does not already show it: exploited and CVSS 9+ are on the row itself.
 export function pinReason(i) {
@@ -296,31 +279,45 @@ export function pinReason(i) {
   return null;
 }
 
-// The Highlight score (owner, 11-19, in his order: score, wide use, urgency, date; also collector/incidents.py,
-// highlight_score, kept in step by tests/fixtures/board/rows-case.json):
+// The Highlight score (owner, 11-19, in his order: score, wide use, urgency, date; reworked 11-22 after a study of the
+// week, .scratch/checks/highlights-score-2026-11-22/report.md, Option 3; also collector/incidents.py, highlight_score,
+// kept in step by tests/fixtures/board/rows-case.json):
 // - 5 x CVSS; with none, an exploited row counts 9 (owner, 11-10) and a provisional level its band's floor, 9 or 7.
-// - wide use: tier 1 +14, tier 2 +10, tier 3 or a label on no list +5 (tierOf), no label 0.
+// - wide use: tier 1 +14, tier 2 +10, tier 3 or a label on no list +5 (tierOf), no label 0; none for an uncorroborated
+//   row (corroborated): a single record for an end-of-life router or a routine kernel fix wore its vendor's tier.
 // - urgency: exploited +12, any other 긴급 row (CVSS 9+ or an advisory's Critical) +3; no automatic place.
-// - recency: +25 when published at now, falling in a straight line to 0 at seven days old (owner, 11-19: "최신소식이 위에";
-//   10 at first, raised to 25 the same day when no row of the day reached the twelve);
-//   straight, so the gap between two rows never changes and the collector's pick for rows.json holds minutes later. One
-//   day is worth about 0.71 CVSS point: a fresh 9.0 and a fresh 7.0 both beat a 9.8 five days old, and a fresh
-//   plain 9.8 beats an exploited 9.8 more than about two and a half days old.
-// - tie-breakers, 2 at most: HN points (1 at 500), a curator issue 0.5, Mentions 0.05 each up to ten (owner, 11-10: a
-//   release counts one per CVE, and FFmpeg's 331 took every pin).
-const RECENCY = 25;
-const recency = (i, now) => RECENCY * Math.min(1, Math.max(0, 1 - (now - Date.parse(publishedAt(i))) / (7 * DAY_MS)));
+// - recency: 15 x 0.5^(age / 2 days), an exponential decay with a half-life of two days (Elasticsearch's exp decay; the
+//   shape of Hacker News' gravity): day 1 to 2 costs about one CVSS point, day 6 to 7 almost nothing. 25 in a straight
+//   line (11-19) let a fresh single record beat a named flaw three days old. The gap between two rows of different ages
+//   shrinks with time (0.24% in ten minutes), so the collector's pick for rows.json can differ from the page's on a
+//   near-tie: that row waits once when opened.
+// - attention (attention), up to 8: a national notice 3, a curator issue 2, HN points / 100 up to 3, five or more repos
+//   1. Kinds, not counts: a release counts one Mention per CVE. Advisories and write-ups say nothing here, as about half
+//   of the week's rows carry an advisory and a third a write-up.
+const RECENCY = 15;
+const HALF_LIFE_DAYS = 2;
+// Rounded to a millionth: the two ports' power functions may differ in the last bit, and the fixtures compare exactly.
+const recency = (i, now) => Math.round(1e6 * RECENCY * 0.5 ** (Math.max(0, now - Date.parse(publishedAt(i))) / (HALF_LIFE_DAYS * DAY_MS))) / 1e6;
 const SEVERITY_FLOOR = { __proto__: null, highest: 9, high: 7 }; // 9: HIGHEST_CVSS, declared further down
 const WIDE_USE = { __proto__: null, 1: 14, 2: 10, 3: 5 };
+const ATTENTION_MAX = 8;
+export const attention = (i) => {
+  const has = (kind) => i.mentions.some((m) => m.kind === kind);
+  const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
+  const repos = i.mentions.filter((m) => m.kind === 'repo').length;
+  return Math.min(ATTENTION_MAX, (has('notice') ? 3 : 0) + (has('curator') ? 2 : 0) + Math.min(points / 100, 3) + (repos >= 5 ? 1 : 0));
+};
+// Corroborated: exploited, or told by more than its CVE record, write-ups and repos (an advisory, a national notice, a
+// curator issue or a discussion).
+const CORROBORATING = ['advisory', 'notice', 'curator', 'discussion'];
+export const corroborated = (i) => isExploited(i) || i.mentions.some((m) => CORROBORATING.includes(m.kind));
 // now: milliseconds, as filterBoard's.
 export function highlightScore(i, now) {
-  const points = Math.max(0, ...i.mentions.map((m) => m.points || 0));
-  const curated = i.mentions.some((m) => m.kind === 'curator') ? 1 : 0;
   const exploited = isExploited(i);
   const cvss = i.cvss ?? (exploited ? HIGHEST_CVSS : SEVERITY_FLOOR[provisionalLevel(i)] ?? 0);
   const urgency = exploited ? 12 : riskLevel(i) === 'highest' ? 3 : 0;
-  return 5 * cvss + (WIDE_USE[tierOf(i)] ?? 0) + urgency + recency(i, now)
-    + Math.min(points / 500, 1) + 0.5 * curated + 0.05 * Math.min(i.mentions.length, 10);
+  const wide = corroborated(i) ? WIDE_USE[tierOf(i)] ?? 0 : 0;
+  return 5 * cvss + wide + urgency + recency(i, now) + attention(i);
 }
 
 // HN points from which a story is buzz (pinReason's "HN 화제"). Also in collector/hn.py (BUZZ_POINTS). A quiet HN-only

@@ -195,8 +195,11 @@ class CycleTest(unittest.TestCase):
 
     def test_a_well_known_highlight_stays_whole_over_better_scored_rows(self):
         # Owner, 11-11: a CVSS 9.6 Zoom Workplace flaw with one Mention ranked 265th of the week.
+        # 11-22: with Zoom's own advisory, as such rows come; a bare record would not be corroborated (no wide use).
         zoom = incident("CVE-2026-7300", "x", "2026-11-06T00:00:00Z") | {
-            "cvss": 9.6, "products": [{"id": "zoom_communications:zoom_workplace", "name": "Zoom Workplace"}]}
+            "cvss": 9.6, "products": [{"id": "zoom_communications:zoom_workplace", "name": "Zoom Workplace"}],
+            "mentions": [{"kind": "cve_record", "url": "https://www.cve.org/CVERecord?id=CVE-2026-7300"},
+                         {"kind": "advisory", "url": "https://www.zoom.com/en/trust/security-bulletin/zsb-26001/"}]}
         # Owner, 11-19: wide use is part of the one score (tier 2: +10 over a 9.8's extra 1 and busy Mentions' 0.5).
         busy = [incident(f"CVE-2026-74{n:02d}", "x", f"2026-11-06T{n:02d}:00:00Z") | {
             "cvss": 9.8, "mentions": [{"kind": "advisory", "url": f"https://a/{n}/{k}"} for k in range(10)]} for n in range(cycle.HIGHLIGHTS)]
@@ -214,7 +217,9 @@ class CycleTest(unittest.TestCase):
         # The same rows as tests/board.test.mjs ("a second row of the same vendor and category ..."), owner 11-16 and 11-19.
         def row(id_, vendor, **fields):
             return {"id": id_, "cves": [id_], "first_seen": "2026-11-15T00:00:00Z", "published": "2026-11-15T00:00:00Z",
-                    "mentions": [{"kind": "cve_record"}], "brief": {"text": id_}, "products": [{"id": f"{vendor}:{id_.lower()}"}], **fields}
+                    # an advisory beside the record: corroborated, so a label's wide use counts (11-22)
+                    "mentions": [{"kind": "cve_record"}, {"kind": "advisory"}], "brief": {"text": id_},
+                    "products": [{"id": f"{vendor}:{id_.lower()}"}], **fields}
         pair = [row("A1", "acme", known="Acme", known_tier=2, cvss=9.6), row("A2", "acme", known="Acme", known_tier=2, cvss=9.5)]
         strong = [row(f"K{n}", f"v{n}", known=f"Label {n}", known_tier=2, cvss=9.0) for n in range(cycle.HIGHLIGHTS - 1)]
         weak = [row(f"K{n}", f"v{n}", cvss=9.0) for n in range(cycle.HIGHLIGHTS - 1)]
