@@ -23,6 +23,7 @@ class ActivePastTest(unittest.TestCase):
         self.assertTrue(summaries.attack_reported(NOTICE_TEXT))
         self.assertTrue(summaries.attack_reported("Attackers exploited the zero-day flaw to breach several universities."))
         self.assertTrue(summaries.attack_reported("A China-linked group has exploited this vulnerability since September."))
+        self.assertTrue(summaries.attack_reported("Attackers exploited the Node.js vulnerability in March."))
         self.assertTrue(summaries.attack_reported_ko(KO))
         self.assertTrue(summaries.attack_reported_ko("공격자가 제로데이를 악용했습니다."))
 
@@ -34,7 +35,8 @@ class ActivePastTest(unittest.TestCase):
                      "If an attacker exploited the flaw, they could read any file.",
                      "Attackers could have exploited the flaw before the fix.",
                      "There is no evidence that anyone exploited the vulnerability.",
-                     "The update closes the exploited flaw class."):
+                     "The update closes the exploited flaw class.",
+                     "Files are abused this way. A code injection vulnerability follows."):
             with self.subTest(text):
                 self.assertFalse(summaries.attack_reported(text))
         for text in ("연구진은 취약점을 악용해 원격으로 코드를 실행했습니다.",

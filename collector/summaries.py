@@ -346,11 +346,12 @@ def attack_reported(text):
 
 # Owner, 11-22 (GL.iNet's notice: "An unauthorized party exploited the vulnerability to access and install malicious
 # software on some GL.iNet routers"): the active past, someone exploited the flaw. A determiner after the verb, so "the
-# exploited flaw" (an adjective) never counts; never a researcher's own demonstration ("we exploited", "researchers
-# exploited") or a hypothetical ("an attacker who successfully exploited this vulnerability could ..."), nor a sentence
-# about a proof of concept, a demo or a lab.
+# exploited flaw" (an adjective) never counts; a period only inside a word ("Node.js"), so no match runs into the next
+# sentence ("can be abused this way. A code injection vulnerability", CVE-2026-127109); never a researcher's own
+# demonstration ("we exploited", "researchers exploited") or a hypothetical ("an attacker who successfully exploited this
+# vulnerability could ..."), nor a sentence about a proof of concept, a demo or a lab.
 ACTIVE_EXPLOIT = re.compile(r"\b(?:exploited|abused)\s+(?:the|a|an|this|that|these|those|its|their|one|two|three|several|multiple"
-                            r"|both|unpatched|known)\s+(?:[\w'’.-]+\s+){0,4}?(?:vulnerabilit(?:y|ies)|flaws?|bugs?"
+                            r"|both|unpatched|known)\s+(?:[\w'’-]+(?:\.[\w'’-]+)*\s+){0,4}?(?:vulnerabilit(?:y|ies)|flaws?|bugs?"
                             r"|weakness(?:es)?|zero-days?|0-days?|security holes?)\b", re.I)
 RESEARCHER = re.compile(r"\b(?:we|i|us|our|researchers?|analysts?|pentesters?|testers?|team|who)\b", re.I)
 DEMO = re.compile(r"\b(?:proof[- ]of[- ]concept|poc|demo\w*|lab|ctf|exercise|simulat\w*|test(?:ing)? environment)\b", re.I)
