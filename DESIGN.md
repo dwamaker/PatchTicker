@@ -842,7 +842,8 @@ ring stays inside the row and a group's frame at 320px too.
   Board, the Board redraws without a transition (its named rows would show through the sheet), and a reset under a
   sheet fades the cleared choices in (160ms).
 - **Vendor fold (trial, 11-09; three since late 11-09, owner):** three or more list rows of one vendor (or of WordPress plugins and themes, one
-  pseudo-vendor since critique 14) on one publish day show as one ordinary row
+  pseudo-vendor since critique 14; an npm package keyed by its own name counts under its scope since 11-22, so
+  `@fastify/express` and `@fastify/middie` fold as "Fastify") on one publish day show as one ordinary row
   (gravest member's risk sign, highest CVSS ring, "IBM 보안 공지 25건 묶음" over the first product names, the vendor as
   its badge, the newest date) that opens its members in place; never with a search or a picked Product. A "묶음 풀기 /
   묶어 보기" button beside the list heading turns folds off or on (remembered, `vr-fold`). Its look is the group ground

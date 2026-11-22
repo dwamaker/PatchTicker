@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, HIGHLIGHTS, stepDistance, oldEvent, sinceStillTrue, statusCounts } from '../web/board.mjs';
-import { FEED_NAMES, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, mentionGroups, MENTIONS_SHOWN, listboxStep } from '../web/board.mjs';
+import { FEED_NAMES, vendorOf, sameKeys, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, mentionGroups, MENTIONS_SHOWN, listboxStep } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
 const zoneDay = (timeZone) => (iso) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
@@ -1891,4 +1891,30 @@ test('listboxStep keys the language and RSS menus too: from no entry focused (-1
   assert.equal(listboxStep('Enter', 1, entries), -1); // Enter, Tab and Escape stay the browser's
   assert.equal(listboxStep('Tab', 1, entries), -1);
   assert.equal(listboxStep('Escape', 1, entries), -1);
+});
+
+// Owner, 11-22: four @fastify plugins published within 13 minutes on 11-21 stood as four rows; one npm scope's packages of
+// a day fold like a vendor's push, each still its own Incident (the merge into one Incident was reverted).
+const scoped = (n, id, published) => ({ id: `CVE-2026-13${n}`, cves: [`CVE-2026-13${n}`], first_seen: '2026-11-21T17:00:00Z', published,
+  cvss: 7.5, products: [{ id, name: id.split(':')[1] }], mentions: [], brief: { text: '' } });
+const FASTIFY = [['middie', '16:46'], ['swagger-ui', '16:50'], ['rate-limit', '16:54'], ['express', '16:59']]
+  .map(([p, t], n) => scoped(n, `@fastify/${p}:@fastify/${p}`, `2026-11-21T${t}:00Z`));
+
+test("one npm scope's packages of a day fold as the scope, named without its @", () => {
+  const core = scoped(9, 'fastify:fastify', '2026-11-21T16:48:00Z'); // the unscoped core package: its own vendor
+  const hapi = scoped(8, '@hapi/hapi:@hapi/hapi', '2026-11-21T16:52:00Z');
+  const [fold, ...rest] = foldByVendor([...FASTIFY, core, hapi], 3, utcDay);
+  assert.deepEqual([fold.vendor, fold.fold, fold.incidents.length], ['@fastify', '@fastify 2026-11-21', 4]);
+  assert.deepEqual(rest, [core, hapi]);
+  assert.deepEqual(FASTIFY.map(vendorOf), ['@fastify', '@fastify', '@fastify', '@fastify']);
+  assert.equal(vendorName('@fastify'), 'Fastify');
+  // A vendor that names the scope's package elsewhere keeps its vendor; a bare "@vendor" is as it was.
+  assert.equal(vendorOf(scoped(7, 'tenseijs:@tensei/media', '2026-11-16T11:51:00Z')), 'tenseijs');
+  assert.equal(vendorOf(scoped(6, '@libp2p:gossipsub', '2026-11-17T19:10:00Z')), '@libp2p');
+  assert.equal(vendorOf(scoped(5, 'ibm:qradar', '2026-11-17T19:10:00Z')), 'ibm');
+});
+
+test("one npm scope's packages count as the same for the Highlights (sameKeys, as collector/cycle.py same_keys)", () => {
+  const [express, middie] = [FASTIFY[3], FASTIFY[0]];
+  assert.ok(sameKeys(express).includes('@fastify') && sameKeys(middie).includes('@fastify'));
 });
