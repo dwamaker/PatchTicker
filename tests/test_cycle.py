@@ -233,6 +233,14 @@ class CycleTest(unittest.TestCase):
         # 11-22: a story with no Product id is the same as its CVE row by the Summary's first product name.
         story = {"id": "s", "products": [], "summary": {"products": [" MONAI Label "]}}
         self.assertEqual(cycle.same_keys(story), ["name:monai label"])
+        # The page picks from board/rows.json first: its row views must carry every key (label, product name).
+        from collector.incidents import rows_view
+        stored = story | {"cves": [], "first_seen": "2026-11-21T13:30:02Z", "brief": {"text": "x", "lead": ""}, "mentions": []}
+        self.assertEqual(cycle.same_keys(rows_view(stored)), ["name:monai label"])
+        # Two Fastify packages: two vendors, one label from collector/well_known.json ("@fastify/*"), so one group.
+        express, middie = (rows_view(row(f"F{n}", "@fastify/" + p) | {"products": [{"id": f"@fastify/{p}:@fastify/{p}", "name": p}]})
+                           for n, p in ((1, "express"), (2, "middie")))
+        self.assertIn("known:Fastify", set(cycle.same_keys(express)) & set(cycle.same_keys(middie)))
 
     def test_the_highlights_match_the_page_on_the_shared_case(self):
         # tests/board.test.mjs checks filterBoard on the same case.
