@@ -243,15 +243,16 @@ def missing_stopgap_step(summary):
     return ""
 
 
-# One sentence: a period only inside a version ("7.2", "1.10.2").
-SENTENCE = r"(?:[^.;]|\.(?=\w))"
+# Up to eight words of one clause between a fix word and its verb ("A fixed version for the 6.19 and 7.4 lines is not
+# confirmed"), never a verb or "but" ("The fix is out and exploitation is not confirmed" is no missing fix).
+FIX_GAP = r"(?: (?!(?:is|are|was|were|has|have|had|but|exists?)\b)[\w.,/-]+){0,8}"
 # A fix said to be unconfirmed counts as none, the same in both languages (11-22, GL.iNet: "No router fix is confirmed
 # yet." beside "라우터용 수정 버전은 아직 확인되지 않았습니다." blanked the English Easy action only).
-NO_FIX_RE = re.compile(r"(수정|고친|고쳐진) 버전[은이]? (아직 )?없|패치[가는]? (아직 )?없|\bno (known )?(fix|patch|fixed version)\b"
+NO_FIX_RE = re.compile(r"(수정|고친|고쳐진) 버전[은이]? (아직 )?없|패치[가는]? (아직 )?없|\bno (known |confirmed )?(fix|patch|fixed version)\b"
                        r"|\bnot (yet )?(been )?fixed\b"
-                       rf"|(?:수정|고친|고쳐진|패치|펌웨어){SENTENCE}*?확인되지 않"
-                       rf"|\bno\b{SENTENCE}*?\b(?:fix|fixed version|patch|firmware)(?:es)?\b{SENTENCE}*?\b(?:is|are|has been|have been) (?:yet )?confirmed\b"
-                       rf"|\b(?:fix|fixed version|patch|firmware)(?:es)?\b{SENTENCE}*?\b(?:is|are|has|have)(?: been)? not (?:yet )?(?:been )?confirmed\b", re.I)
+                       r"|(?:수정 버전|고친 버전|수정|패치|펌웨어)[은는이가]? (?:아직 )?확인되지 않"
+                       rf"|\bno{FIX_GAP} (?:fix|fixed version|patch|firmware)(?:es)?\b{FIX_GAP} (?:is|are|has been|have been) (?:yet )?confirmed\b"
+                       rf"|\b(?:fix|fixed version|patch|firmware)(?:es)?\b{FIX_GAP} (?:is|are|has|have)(?: been)? not (?:yet )?(?:been )?confirmed\b", re.I)
 UPDATE_RE = re.compile(r"업데이트|업그레이드|\bupdate|\bupgrade", re.I)
 # The sentences the prompt makes a mitigation begin with when the product has no fix at all.
 NO_FIX_START = ("수정 버전은 아직 없습니다", "There is no fix yet", "더 이상 지원되지 않아 수정 버전이 없습니다",
@@ -266,8 +267,10 @@ WAIT_RE = re.compile(rf"(?:버전|업데이트|패치|커널|드라이버)[이�
                      re.I)
 # A mitigation that itself says the fix is not out: waiting is then right (CVE-2026-104254 "not yet released",
 # CVE-2026-43603 "planned release date").
-NOT_OUT_RE = re.compile(r"출시되지 않|출시 전|출시 예정|예정일|배포 예정|공개되면|아직 나오지 않|\bnot (?:yet )?released\b|\bplanned release\b"
-                        r"|\bonce released\b|\bupcoming release\b|\bscheduled\b|\bnot (?:yet )?out\b", re.I)
+NOT_OUT_RE = re.compile(r"출시되지 않|출시 전|출시 예정|출시될 예정|나올 예정|배포될 예정|예정일|배포 예정|공개되면|아직 나오지 않"
+                        r"|\bnot (?:yet )?released\b|\bplanned release\b|\bonce released\b|\bupcoming release\b"
+                        r"|\bscheduled (?:for|on|in|to be released)\b|\bnot (?:yet )?out\b|\bwill be (?:released|out|available)\b"
+                        r"|\b(?:is|are) due\b", re.I)
 
 
 def easy_action_mismatch(summary):
@@ -278,7 +281,8 @@ def easy_action_mismatch(summary):
     mitigation does not itself say the fix is not out (11-16: "새 버전이 나오면 바로 업데이트하세요" beside a fixed
     1.6.3). A partly fixed Incident (11-22, GL.iNet: KVM fixed, routers not yet) passes both ways: fixed or fixes names
     a version and the mitigation says another's fix is not out, so "install it now" and "update the rest when theirs is
-    out" both agree, and a fixed version it names may be updated to. The languages that disagree."""
+    out" both agree, and the no-fix rule above holds only when nothing is fixed (a line it names, "move off 7.2", is
+    no update to a version no fix exists for; the version rules before it still hold). The languages that disagree."""
     released = bool(summary["fixed"] or summary["fixes"])
     named = numbers("\n".join([summary["fixed"], *(str(f.get("version", "")) for f in summary["fixes"] if isinstance(f, dict))]))
     acted = {lang: {t for t in numbers(summary[lang]["easy_action"]) if "." in t} for lang in ("ko", "en")}
@@ -288,7 +292,7 @@ def easy_action_mismatch(summary):
         action, mitigation = fields["easy_action"], fields["mitigation"]
         wait = WAIT_RE.search(action)
         return bool(versions - numbers(mitigation) - named or versions - acted["en" if lang == "ko" else "ko"]
-                    or versions - named and NO_FIX_RE.search(mitigation) and UPDATE_RE.search(action)
+                    or versions and not released and NO_FIX_RE.search(mitigation) and UPDATE_RE.search(action)
                     or mitigation.startswith(NO_FIX_START) and UPDATE_RE.search(action) and not wait
                     or released and wait and not NO_FIX_RE.search(mitigation) and not NOT_OUT_RE.search(mitigation))
     return [lang for lang in ("ko", "en") if disagrees(lang)]
@@ -1604,8 +1608,9 @@ RETRY_SENTENCES = [
     ("stopgap step missing", " When the mitigation says a restart or reload must follow the stopgap, write that step in"
                              " stopgap_then in both languages."),
     (EASY_MISMATCH, " Make easy_action agree with mitigation: name only a version fixed, fixes or mitigation names, in both"
-                    " languages, never say to update when there is no fix,"
-                    " and when fixed or fixes names a version say to update now, never to wait for a new version."),
+                    " languages, never say to update when there is no fix at all,"
+                    " and when fixed or fixes names a version say to update now, never to wait for a new version, but"
+                    " for the products or lines mitigation says have no fix yet: those update as soon as theirs is out."),
     ("unbalanced brackets or quotes", " Write each title as one whole phrase: close every bracket and quote, or leave"
                                       " them out."),
     (GROUP_SCOPE, " In a group, title, summary, easy and easy_title say nothing of who is not affected: such a limit goes"

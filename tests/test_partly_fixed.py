@@ -43,6 +43,15 @@ class PartlyFixedActionTest(unittest.TestCase):
         reply = glinet("KVM을 1.10.2로 업데이트하세요.", "Update the KVM to 1.10.2.")
         self.assertEqual(summaries.easy_action_mismatch(reply), [])
 
+    def test_an_action_naming_the_line_with_no_fix_passes(self):
+        # 19 stored rows (CVE-2026-99733 and kin) were refused when the line ("7.2") read as a version beside "no fix".
+        reply = SSHOLE_SUMMARY | {"fixed": "7.3.5", "fixes": [],
+                                  "ko": SSHOLE_SUMMARY["ko"] | {"mitigation": "7.3 계열은 7.3.5 이상으로 업데이트하세요. 7.2 계열의 수정 버전은 확인되지 않았습니다.",
+                                                                "easy_action": "7.3 계열은 7.3.5 이상으로 업데이트하고, 7.2 계열은 7.3 계열로 옮기세요."},
+                                  "en": SSHOLE_SUMMARY["en"] | {"mitigation": "Update the 7.3 line to 7.3.5 or later. A fixed version for the 7.2 line is not confirmed.",
+                                                                "easy_action": "Update the 7.3 line to 7.3.5 or later, and move 7.2 systems to the 7.3 line."}}
+        self.assertEqual(summaries.easy_action_mismatch(reply), [])
+
     def test_a_version_nothing_names_as_fixed_is_still_caught(self):
         reply = glinet("라우터를 4.8.1로 업데이트하세요.", "Update the router to 4.8.1.")
         self.assertEqual(summaries.easy_action_mismatch(reply), ["ko", "en"])
@@ -88,19 +97,28 @@ class NoFixWordsTest(unittest.TestCase):
     def test_an_unconfirmed_fix_reads_as_none_in_both_languages(self):
         for text in ("No router fix is confirmed yet.", "A fixed version for the 7.2 line is not confirmed.",
                      "No fixed version for 7.2 has been confirmed.", "라우터용 수정 버전은 아직 확인되지 않았습니다.",
-                     "7.2 계열의 수정 버전은 확인되지 않았습니다.", "라우터용 펌웨어는 아직 확인되지 않았습니다."):
+                     "7.2 계열의 수정 버전은 확인되지 않았습니다.", "라우터용 펌웨어는 아직 확인되지 않았습니다.",
+                     "The 7.0 line has no confirmed fixed version.", "7.0 계열은 수정 버전이 확인되지 않았으니 옮기세요.",
+                     "A fixed version for the 6.19 and 7.4 lines is not confirmed."):
             self.assertTrue(summaries.NO_FIX_RE.search(text), text)
 
     def test_other_unconfirmed_things_are_not_a_missing_fix(self):
         for text in ("No attacks are confirmed yet.", "공격은 아직 확인되지 않았습니다.",
                      "Update to the fixed version 1.2. No attacks are confirmed yet.",
-                     "수정 버전 1.2로 업데이트하세요. 공격은 확인되지 않았습니다.", "The fix in 7.3.2 is confirmed by the vendor."):
+                     "수정 버전 1.2로 업데이트하세요. 공격은 확인되지 않았습니다.", "The fix in 7.3.2 is confirmed by the vendor.",
+                     "패치는 나왔지만 공격은 확인되지 않았습니다.", "No workaround exists, but the fix is confirmed in 1.2.",
+                     "The fix is out and exploitation is not confirmed."):
             self.assertFalse(summaries.NO_FIX_RE.search(text), text)
 
     def test_a_fix_still_to_come_reads_as_not_out_in_both_languages(self):
         for text in ("Install the stable firmware scheduled for November 22.", "The routers' fixed firmware is not out yet.",
-                     "11월 22일 출시 예정인 정식 펌웨어를 설치하세요.", "라우터용 수정 펌웨어는 아직 나오지 않았습니다."):
+                     "11월 22일 출시 예정인 정식 펌웨어를 설치하세요.", "라우터용 수정 펌웨어는 아직 나오지 않았습니다.",
+                     "The router firmware will be released on November 22.", "The router fix is due on November 22.",
+                     "라우터용 펌웨어는 11월 22일 출시될 예정입니다.", "라우터용 펌웨어는 11월 22일 나올 예정입니다."):
             self.assertTrue(summaries.NOT_OUT_RE.search(text), text)
+
+    def test_a_scheduled_task_is_no_release(self):
+        self.assertFalse(summaries.NOT_OUT_RE.search("Until then, disable the scheduled task and update to 1.2."))
 
 
 if __name__ == "__main__":
