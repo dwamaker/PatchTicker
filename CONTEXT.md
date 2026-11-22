@@ -194,3 +194,33 @@ plugin", "플러그인", "theme"), company words and a known vendor in front do 
 "GemBooking WordPress plugin" are one). Product names are never translated. Picked Products show Incidents of any of
 them, picked operating systems likewise; with both picked, an Incident must have one of each (owner, 2026-11-10).
 _Avoid_: package, component, CPE (as a user-facing word)
+
+**Pipeline** (파이프라인):
+Everything that runs on our side to turn what sources publish into what the site shows: the Fetcher, the Processor, the
+Summarizer and the Publisher, each working on its own, so that one can be changed or fail while the others go on (owner,
+2026-11-22). Until the split one program does all of it and is called the collector.
+_Avoid_: collector (for the whole, once split), backend
+
+**Fetcher** (수집기):
+The part of the Pipeline that reads the outside world: source feeds and records, the pages Mentions point to, and vendors'
+advisory pages that offer no feed. It keeps what it read as it was read and judges nothing.
+_Avoid_: crawler, scraper
+
+**Processor** (가공기):
+The part of the Pipeline that turns what the Fetcher kept into what matters: it links Mention groups into Incidents and
+reduces a page to its essential text and its Page sheet.
+_Avoid_: parser, cleaner
+
+**Summarizer** (요약기):
+The part of the Pipeline that writes what a reader reads (the Summary, the Easy view, titles, per-CVE lines) and checks it.
+_Avoid_: writer, LLM step
+
+**Publisher** (게시기):
+The part of the Pipeline that puts the Board, Incident pages and feeds where the site reads them. It alone writes there, so
+the site keeps updating with Briefs while the Summarizer is down.
+_Avoid_: exporter, uploader
+
+**Source** (수집처):
+A place the Fetcher reads on a schedule: the CVE list, NVD, the KEV catalog, a news or vendor feed, a vendor's advisory
+page. What it publishes becomes Mention groups. Not a Mention: readers see Mentions (출처 on the site), never Sources.
+_Avoid_: 출처 (for a Source), feed (for all of them), source (for a Mention)
