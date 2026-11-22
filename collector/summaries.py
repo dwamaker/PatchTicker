@@ -18,8 +18,8 @@ from anthropic.types.messages.batch_create_params import Request
 
 from collector import hn, review, sheets as page_sheets
 from collector.cve_lines import save_lines
-from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_label, merge_score, published_at, risk_level,
-                                 stamp_ago, url_key)
+from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_label, merge_score, npm_scopes, published_at,
+                                 risk_level, stamp_ago, url_key)
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
 from collector.numbers import LINE_AFTER, NUMBER_RE, SENTENCE_END, en_numbers, ko_numbers, number_words, numbers, without_line_names
@@ -814,8 +814,11 @@ def fixed_conflict(incident, summary):
     cannot be told from a backport. The reason, or ""."""
     # A distribution's package build ("red_hat:…:krb5<0:1.21.1-10.el9_9.2", 11-16) groups but bounds nothing: its digits
     # are not the product's versions ("9_9.2" would read as 9.2).
-    strict = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and "<=" not in k and not DISTRO_PACKAGE.search(k)]
-    if len({product for product, _ in strict}) != 1:
+    keyed = [k.split("<", 1) for k in incident.get("fix_keys", []) if "<" in k and not DISTRO_PACKAGE.search(k)]
+    strict = [(product, value) for product, value in keyed if not value.startswith("=")]
+    # 11-22, an npm scope's group: its packages keep their own version lines, so @fastify/express's "<4.0.10" must not judge
+    # a package beside it that only lists its last affected version. FreeRDP's winpr "<=" beside freerdp "<" still does.
+    if len({product for product, _ in strict}) != 1 or npm_scopes(incident) and len({product for product, _ in keyed}) > 1:
         return ""
     bounds = {tuple(map(int, v.split("."))) for _, value in strict for v in VERSION_RE.findall(value)}
     # .get: stored Summaries from before "fixes" (11-08) are read here too (needs_summary).

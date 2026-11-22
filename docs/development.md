@@ -196,7 +196,8 @@ as a direct full-price call), else the row waits for a fresh draw in a later cyc
 it). After the third rejected try the Summary is given
 up and never asked for again; an older Summary stays on the page.
 A fixed version below the CVE records' first fixed version of the same major (the Incident's `product<version`
-fix keys, one product only) is rejected on every try, the last included (`fixed_conflict`; FreeRDP's advisory said
+fix keys, one product only; an npm scope's group of several packages is never checked, each package having its own
+version line) is rejected on every try, the last included (`fixed_conflict`; FreeRDP's advisory said
 3.22.2 for 3.32.2), and a stored Summary that names one is made again within the usual limits.
 The collector refuses to fetch non-public addresses, since Mentions name the pages it reads.
 
