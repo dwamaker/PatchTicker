@@ -4,13 +4,15 @@ rejected, a reply cut off at the token cap gets more room, and one given up afte
 
 import copy
 import io
+import json
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr
 
 from test_cycle import at, recorded
 from test_summaries import HN_STORY, PAGES, SSHOLE_SUMMARY, FakeClaude, board
 
-from collector import model, numbers, summaries
+from collector import cycle, model, numbers, summaries
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 
@@ -33,25 +35,29 @@ class RetryFeedbackTest(unittest.TestCase):
         next(i for i in month["incidents"] if i["id"] == HN_STORY)["summary_error"] = error
         self.store.write("months/2026-11.json", month)
 
-    def test_a_retry_says_why_the_last_reply_was_rejected(self):
+    def test_with_no_room_a_number_refusal_waits_for_a_fresh_draw_that_says_why(self):
         claude = FakeClaude(SHORTENED, SSHOLE_SUMMARY)
-        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
-        self.assertIn("numbers not in the input: ['10.86']", board(self.store)[HN_STORY]["summary_error"]["reason"])
+        with mock.patch.object(cycle, "INSTANT_SECONDS", 0):  # no room for a second request this cycle
+            self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.assertEqual(len(claude.sent), 1)
+        self.assertEqual(board(self.store)[HN_STORY]["summary_error"], {"tries": 1, "reason": "numbers not in the input: ['10.86']"})
         self.assertNotIn("rejected", claude.user_text(0))
 
         self.run_at("2026-11-07T12:45:00", claude)
 
         self.assertIn("Your previous reply for this Incident was rejected: numbers not in the input: ['10.86']", claude.user_text(1))
+        self.assertNotIn(summaries.EDIT_HEAD, claude.user_text(1))  # the refused reply was never kept
         self.assertIn("summary", board(self.store)[HN_STORY])
 
     def test_a_number_named_in_the_note_is_still_not_allowed(self):
-        claude = FakeClaude(SHORTENED, SHORTENED)
-        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
-        self.run_at("2026-11-07T12:45:00", claude)
+        claude = FakeClaude(*[SHORTENED] * summaries.MAX_TRIES)
+        with redirect_stderr(io.StringIO()):
+            self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
 
         incident = board(self.store)[HN_STORY]
         self.assertNotIn("summary", incident)
-        self.assertEqual(incident["summary_error"]["tries"], 2)
+        self.assertEqual(incident["summary_error"]["tries"], summaries.MAX_TRIES)
+        self.assertNotIn("10.86 계열", json.dumps(incident, ensure_ascii=False))  # nothing of the reply is kept
 
     def test_a_reply_cut_off_at_the_token_cap_gets_more_room_next_time(self):
         self.run_at("2026-11-07T12:30:00", None, hn="sshole.json")
@@ -97,6 +103,58 @@ class RetryFeedbackTest(unittest.TestCase):
         self.assertEqual((failure["id"], failure["tries"], failure["shows"]), (HN_STORY, summaries.MAX_TRIES, "brief"))
 
 
+class EditRetryTest(unittest.TestCase):
+    """Owner, 11-22: a reply the number check refused is sent back to be edited in its flagged sentences only, not drawn
+    again (CVE-2026-134545 moved ['2'] -> ['2','3'] -> ['3'] over three fresh draws and was given up)."""
+    setUp, run_at = RetryFeedbackTest.setUp, RetryFeedbackTest.run_at
+
+    def test_a_refused_draw_is_edited_at_once_and_a_passing_edit_is_stored(self):
+        claude = FakeClaude(SHORTENED, SSHOLE_SUMMARY)
+        lines = []
+        with mock.patch.object(cycle, "emit", lines.append):
+            self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+
+        self.assertEqual(len(claude.sent), 2)
+        self.assertIn(" summaries_asked=2 summaries_kept_back=0 summaries_failed=0 ", lines[0])  # the edit is a counted request
+        asked = claude.user_text(1)
+        self.assertTrue(asked.startswith(claude.user_text(0)))  # the same input, then the note and the edit
+        self.assertIn(summaries.EDIT_HEAD, asked)
+        self.assertIn(json.dumps(SHORTENED, ensure_ascii=False), asked)
+        self.assertIn("- ko.summary: 10.86 계열이 해당합니다. (refused: 10.86)", asked)
+        self.assertIn("- en.summary: The 10.86 line is affected.", asked)
+        self.assertLess(asked.index("Your previous reply"), asked.index(summaries.EDIT_HEAD))
+        incident = board(self.store)[HN_STORY]
+        self.assertEqual(incident["summary"]["en"]["title"], SSHOLE_SUMMARY["en"]["title"])
+        self.assertNotIn("summary_error", incident)
+
+    def test_a_refused_edit_is_edited_again_from_the_newer_reply(self):
+        again = copy.deepcopy(SHORTENED)
+        again["en"]["summary"] = again["en"]["summary"].replace("10.86", "10.87")
+        claude = FakeClaude(SHORTENED, again, SSHOLE_SUMMARY)
+        with redirect_stderr(io.StringIO()):
+            self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.assertIn(json.dumps(again, ensure_ascii=False), claude.user_text(2))
+        self.assertNotIn("summary_error", board(self.store)[HN_STORY])
+
+    def test_other_reasons_are_not_edited_in_the_cycle(self):
+        bracket = copy.deepcopy(SSHOLE_SUMMARY)
+        bracket["ko"]["title"] += " 기준)"
+        claude = FakeClaude(bracket, SSHOLE_SUMMARY)
+        self.run_at("2026-11-07T12:30:00", claude, hn="sshole.json")
+        self.assertEqual(len(claude.sent), 1)
+        self.run_at("2026-11-07T12:45:00", claude)
+        self.assertNotIn(summaries.EDIT_HEAD, claude.user_text(1))
+
+    def test_only_the_sentence_the_check_read_the_number_in_is_flagged(self):
+        # Trial 11-22, CVE-2026-134436: read raw, every "16 line" was flagged and the edit dropped all the line names.
+        reply = {"ko": {"mitigation": "16 계열은 16.36.0 이상으로 업데이트하세요.", "easy_conditions": ["16 계열에서 제조 기능을 쓰는 경우"]},
+                 "en": {"mitigation": "Update the 16 line to 16.36.0 or later.", "easy_conditions": ["manufacturing features on version 16 are used"]},
+                 "fixes": [{"for": "Frappe ERPNext 16", "version": "16.36.0", "devices": []}]}
+        note = summaries.edit_note(reply, "Korean and English numbers differ: ['16']", "ERPNext 16.0.0 before 16.36.0")
+        self.assertEqual(note.split("Sentences to change:\n")[1],
+                         "- en.easy_conditions[0]: manufacturing features on version 16 are used (refused: 16)")
+
+
 class ExactNumbersTest(unittest.TestCase):
     """Owner, 2026-11-10 ("그냥 정확하게 하고 싶은데"): the check stays exact; a retry names the input's own numbers that a
     rejected one stood for. IBM API Connect's "10.0.8.0 through 10.0.8.12" came back as "10.0.8" three times."""
@@ -109,6 +167,13 @@ class ExactNumbersTest(unittest.TestCase):
         note = self.note("numbers not in the input: ['10.0.8', '12.1']")
         self.assertIn("10.0.8: the input has 10.0.8.0, 10.0.8.12", note)
         self.assertIn("12.1: the input has 12.1.0.0, 12.1.1.2", note)
+
+    def test_a_version_head_also_gets_the_name_reading(self):
+        # 11-22, CVE-2026-134545: the "3" of "Third-generation" was answered with the input's 3.2 alone.
+        note = summaries.retry({"summary_error": {"reason": "numbers not in the input: ['3']"}},
+                               "Second-level System Third-generation Management Terminal System up to 3.2")["note"]
+        self.assertIn("- 3: the input has 3.2 only as part of a version; if you mean that version, write it exactly", note)
+        self.assertIn("if the number comes from a name or a count, write the name as the input writes it or leave the number out", note)
 
     def test_a_number_with_no_input_version_behind_it_is_said_to_be_absent(self):
         self.assertIn("9.9: not in the input, leave it out", self.note("numbers not in the input: ['9.9']"))

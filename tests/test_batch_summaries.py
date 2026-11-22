@@ -1,10 +1,12 @@
 """Seam 1: batch Summaries for ordinary Incidents, re-summaries and the budget stop, with a fake Claude client."""
 
 import unittest
+from unittest import mock
 
 import anthropic
 import httpx2  # the anthropic SDK's HTTP library, only to build its error objects
 
+from collector import cycle, summaries
 from collector.cycle import run_cycle
 from collector.store import MemoryStore
 from test_cycle import at, recorded
@@ -72,17 +74,37 @@ class BatchSummaryTest(unittest.TestCase):
                 self.run_at("2026-11-07T13:00:00", claude)
                 self.assertEqual(board(self.store)[WPTRAVELLY]["summary"]["at"], "2026-11-07T13:00:00Z")
 
-    def test_a_rejected_batch_reply_counts_a_try_like_the_instant_path(self):
+    def test_a_rejected_batch_reply_counts_a_try_and_is_edited_by_a_direct_call(self):
+        # Owner, 11-22: a number-refused reply is never stored (the month file is public), so its edit cannot wait for
+        # the next batch: one direct call while the collection has room, else the row waits for a later batch.
         claude = FakeClaude()
         self.run_at("2026-11-07T12:30:00", claude, delta_log="deltaLog.json")
         made_up = plain("Keycloak") | {"fixed": "99.1"}
         claude.end_batch({KEYCLOAK: made_up, WPTRAVELLY: plain("WpTravelly")})
+        claude.replies = [plain("Keycloak")]
 
         self.run_at("2026-11-07T12:45:00", claude)
 
+        [edit] = [p for p in claude.sent if "Incident: " + KEYCLOAK in p["messages"][0]["content"]]
+        self.assertIn(summaries.EDIT_HEAD, edit["messages"][0]["content"])
+        self.assertIn('"fixed": "99.1"', edit["messages"][0]["content"])
+        self.assertNotIn("ttl", edit["system"][0]["cache_control"])  # a direct request: the five-minute cache
+        incident = board(self.store)[KEYCLOAK]
+        self.assertEqual(incident["summary"]["en"]["title"], "Keycloak flaw")
+        self.assertNotIn("summary_error", incident)
+
+    def test_with_no_room_a_rejected_batch_reply_waits_for_a_later_batch(self):
+        claude = FakeClaude()
+        self.run_at("2026-11-07T12:30:00", claude, delta_log="deltaLog.json")
+        claude.end_batch({KEYCLOAK: plain("Keycloak") | {"fixed": "99.1"}, WPTRAVELLY: plain("WpTravelly")})
+
+        with mock.patch.object(cycle, "CYCLE_SECONDS", -1):  # past the deadline from the start
+            self.run_at("2026-11-07T12:45:00", claude)
+
+        self.assertEqual(claude.sent, [])
         incident = board(self.store)[KEYCLOAK]
         self.assertNotIn("summary", incident)
-        self.assertEqual(incident["summary_error"]["tries"], 1)
+        self.assertEqual(incident["summary_error"], {"tries": 1, "reason": "numbers not in the input: ['99.1']"})
 
     def test_batch_requests_are_the_summary_request_with_a_one_hour_cache(self):
         claude = FakeClaude()

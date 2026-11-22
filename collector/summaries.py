@@ -22,7 +22,7 @@ from collector.incidents import (DISTRO_PACKAGE, PROVISIONAL, is_news, known_lab
                                  stamp_ago, url_key)
 from collector.model import (CVE_ID, EFFORT, MAX_PER_BATCH, MAX_TOKENS, MAX_TOKENS_GROUP, MAX_TOKENS_RETRY, MODEL,
                              REQUEST_TIMEOUT, reply_json)
-from collector.numbers import LINE_AFTER, NUMBER_RE, en_numbers, ko_numbers, number_words, numbers, without_line_names
+from collector.numbers import LINE_AFTER, NUMBER_RE, SENTENCE_END, en_numbers, ko_numbers, number_words, numbers, without_line_names
 from collector.same_event import same_as_text
 from collector.summary_input import (CVE_LINES_ONLY, SOURCE_RE, advisory_scores, advisory_severity, is_hn, mention_kinds,
                                      summary_input, trusted)
@@ -1147,26 +1147,47 @@ def is_budget_error(err):
     return status == 402 or status == 400 and bool(re.search(r"credit balance|usage limit|spend limit", err.message, re.I))
 
 
-def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False, sheets=()):
+def summarize_now(incident, claude, http_get, stamp, candidates=(), review=False, sheets=(), room=lambda: False,
+                  asked=lambda: None):
     """Ask for this Incident's Summary and store it, or count a failed try. Lets other API errors through.
-    candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill)."""
+    candidates: its same_as_candidates(), listed beside the input. sheets: its page sheets (collector.sheets.fill).
+    room(): whether one more request may start now (edit_now); asked(): called for each such request (the cycle line)."""
     text, seen = summary_input(incident, http_get, sheets), basis(incident)
     rows = page_sheets.fix_rows(sheets, incident, record_texts(text)) if sheets else []
     carry = page_sheets.must_carry(sheets) if sheets else []
     finders = page_sheets.finders(sheets) if sheets else []
-    asked = params(text, candidates=same_as_text(candidates), **retry(incident, text, carry))
+    save = {"listed": [c["id"] for c in candidates], "review_with": claude if review else None, "fix_rows": rows,
+            "carry": carry, "finders": finders}
+    rejected = ask(incident, claude, text, seen, stamp, same_as_text(candidates), **save)
+    edit_now(incident, claude, text, seen, stamp, rejected, room, asked, same_as_text(candidates), **save)
+
+
+def ask(incident, claude, text, seen, stamp, candidates="", rejected=None, **save):
+    """One Summary request, its reply checked and stored (save_reply); returns save_reply's answer. rejected: a reply
+    the number check refused, sent back to be edited (retry())."""
+    sent = params(text, candidates=candidates, **retry(incident, text, save.get("carry", ()), rejected))
     try:
         # Past MAX_TOKENS_RETRY the SDK wants the call's own timeout (model.MAX_TOKENS_GROUP); a batch request has no such check.
-        reply = claude.messages.create(**asked, **({"timeout": REQUEST_TIMEOUT} if asked["max_tokens"] > MAX_TOKENS_RETRY else {}))
+        reply = claude.messages.create(**sent, **({"timeout": REQUEST_TIMEOUT} if sent["max_tokens"] > MAX_TOKENS_RETRY else {}))
     except anthropic.APIStatusError as err:
         # Too long for this request alone: a counted try, or it blocks every later one each cycle. Any other 400 may be
         # the same for every request (a parameter the API stopped accepting), so it stops the cycle and costs no try.
         if not (err.status_code == 413 or err.status_code == 400 and "prompt is too long" in err.message):
             raise
         failed(incident, f"request rejected: {err.status_code} {err.message}")
-        return
-    save_reply(incident, reply, text, seen, stamp, [c["id"] for c in candidates], review_with=claude if review else None,
-               fix_rows=rows, carry=carry, finders=finders)
+        return None
+    return save_reply(incident, reply, text, seen, stamp, **save)
+
+
+def edit_now(incident, claude, text, seen, stamp, rejected, room, asked, candidates="", **save):
+    """Owner, 11-22: a reply the number check refused is sent back at once, in the same cycle and with the same input,
+    to be edited in its flagged sentences only (each fresh draw moved the refused set: CVE-2026-134545 ['2'], ['2','3'],
+    ['3'], given up). The refused reply lives in memory only, never in the store (the month file is public). An edit
+    refused again is edited once more, up to MAX_TRIES tries in all. With no room() left, the row waits for a later
+    cycle (a fresh draw). The edit goes through save_reply unchanged, so the check stays exact."""
+    while rejected and incident.get("summary_error", {}).get("tries", 0) < MAX_TRIES and room():
+        asked()
+        rejected = ask(incident, claude, text, seen, stamp, candidates, rejected, **save)
 
 
 BATCH = "batch"  # save_reply's review_with for a batch reply: its review goes out in the next review batch
@@ -1208,7 +1229,8 @@ def save_reply(incident, reply, text, seen, stamp, listed=(), review_with=None, 
         summary = parse(reply, text, [m["url"] for m in incident["mentions"]], finders)
     except Rejected as err:
         failed(incident, str(err), err.where)
-        return
+        # The refused reply for edit_now(), which sends it back at once; never stored.
+        return reply_json(reply) if str(err).startswith(NUMBER_REASONS) else None
     name_titles(summary, trusted_names(incident, text))
     stored = incident.get("summary") or {}
     # An advisory page that failed to load this time never takes its level down (owner, 11-19): the stored severity stays
@@ -1598,11 +1620,12 @@ def submit_batch(incidents, claude, http_get, limit=MAX_PER_BATCH, candidates=la
     return {"id": batch.id, "requests": requests}
 
 
-def collect_batch(pending, incidents, claude, stamp, review=False):
+def collect_batch(pending, incidents, claude, stamp, review=False, room=lambda: False, asked=lambda: None):
     """Store the results of an ended batch; return the Incidents it touched, or None while it runs.
     A request that errored counts as a failed try; an expired or canceled one is simply sent again. review: a Summary
     reply waits for its review (review_pending, a review batch next); a review request's result finishes it, and one
-    that errored or expired stores the Summary unreviewed after that one round."""
+    that errored or expired stores the Summary unreviewed after that one round. room() and asked(): as summarize_now's,
+    for the edits of number-refused replies (edit_now)."""
     if claude.messages.batches.retrieve(pending["id"]).processing_status != "ended":
         return None
     by_id = {i["id"]: i for i in incidents}
@@ -1635,9 +1658,21 @@ def collect_batch(pending, incidents, claude, stamp, review=False):
                 touched.append(incident)
             continue
         if item.result.type == "succeeded":
-            save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, sent.get("candidates", []),
-                       review_with=BATCH if review else None, fix_rows=sent.get("fix_rows", ()), carry=sent.get("carry", ()),
-                       finders=sent.get("finders", ()))
+            save = {"listed": sent.get("candidates", []), "review_with": BATCH if review else None,
+                    "fix_rows": sent.get("fix_rows", ()), "carry": sent.get("carry", ()), "finders": sent.get("finders", ())}
+            rejected = save_reply(incident, item.result.message, sent["input"], sent["basis"], stamp, **save)
+            # A number-refused reply is edited here by direct calls, at full price rather than the batch's half: the
+            # refused reply is never stored (the month file is public), so it cannot wait for the next batch. An API
+            # error ends the edits of this collection only; the row waits for a later batch as before, and a budget
+            # error stops the cycle at its next request.
+            if rejected and room():
+                listed = [by_id[c] for c in save["listed"] if c in by_id]
+                try:
+                    edit_now(incident, claude, sent["input"], sent["basis"], stamp, rejected, room, asked,
+                             same_as_text(listed), **save)
+                except anthropic.APIError as err:
+                    print(f"summaries: {incident['id']} edit not asked: {err!r}"[:300], file=sys.stderr)
+                    room = lambda: False  # noqa: E731
         elif item.result.type == "errored":
             failed(incident, f"batch request errored: {item.result.error.error.type}")
         touched.append(incident)
@@ -1649,14 +1684,15 @@ def carry_note(items):
     return "\n".join([CARRY_HEAD, *(f"- {CARRY_LINE[c['kind']]}{c['words']} ({c['source']})" for c in items)]) if items else ""
 
 
-def retry(incident, text="", carry=()):
+def retry(incident, text="", carry=(), rejected=None):
     """What the last rejected try of this Incident got wrong, for the next request (owner, 2026-11-10: three blind tries
     failed the same way; Netpbm's "10.86.51" kept coming back as "10.86"). The note is sent beside the input, never
     inside it: a reply is checked against the input alone, so a number named here does not become allowed.
     A rejected number is answered with the input's own versions it stands for (IBM API Connect's "10.0.8.0 through
     10.0.8.12" came back as "10.0.8" three times; owner: the check stays exact).
     carry: the must-carry list (sheets.must_carry), which starts the note on the first try and on every later one (carry
-    trial part 2: Java4Shell carried every item in 6 of 6 runs, against 4 of 12 with the list only in a retry)."""
+    trial part 2: Java4Shell carried every item in 6 of 6 runs, against 4 of 12 with the list only in a retry).
+    rejected: the reply the number check just refused (edit_now), sent back after the note to be edited."""
     reason = incident.get("summary_error", {}).get("reason", "")
     # A one-CVE Incident never cut off and read from two pages or fewer asks with params()' own MAX_TOKENS, as before.
     room = {"max_tokens": budget(incident, text)} if budget(incident, text) != MAX_TOKENS else {}
@@ -1674,10 +1710,63 @@ def retry(incident, text="", carry=()):
         lines = []
         for token in re.findall(r"'([^']*)'", bad[1]):
             behind = [k for k in known if k.startswith(f"{token}.")][:6]
-            lines.append(f"- {token}: the input has {', '.join(behind)}; write one of them exactly, or the range as the input"
-                         " writes it" if behind else f"- {token}: not in the input, leave it out")
+            # Owner, 11-22: a version's head may also be a name's number (CVE-2026-134545's "3" was "Third-generation",
+            # and the note sent the model to the input's 3.2), so both readings are given.
+            lines.append(f"- {token}: the input has {', '.join(behind)} only as part of a version; if you mean that version,"
+                         " write it exactly as the input does, or the range as the input writes it; if the number comes"
+                         " from a name or a count, write the name as the input writes it or leave the number out"
+                         if behind else f"- {token}: not in the input, leave it out")
         note += " For each rejected number:\n" + "\n".join(lines)
+    if rejected:
+        note += edit_note(rejected, reason, text)
     return {"note": "\n\n".join(p for p in (head, note) if p)} | room
+
+
+NUMBER_REASONS = ("numbers not in the input", "Korean and English numbers differ")  # edited at once (edit_now)
+EDIT_HEAD = ("Here is that rejected reply. Send it back as it is, changing only the sentences listed after it so that each"
+             " rejected number is written as the input writes it, or left out; for a Korean and English difference you may"
+             " also change the same field in the other language. Copy every other field and sentence word for word.")
+
+
+def flagged_sentences(data, tokens, known=frozenset(), keys=("ko", "en", "fixed", "devices", "fixes")):
+    """(field path, sentence, its words that give a token) for each sentence of the reply's checked text holding one of
+    tokens, read as parse() reads numbers: the language fields (but names and a line's cve) without the line names it
+    lets through (without_line_names; known: the input's numbers), ko_numbers for Korean; and fixed, devices and fixes
+    as they are; keys: the parts read. (Trial 11-22: read raw, "the 16 line" was flagged in seven places and the edit
+    dropped every line name.)"""
+    found = []
+    fixed = numbers("\n".join(v for v in [data.get("fixed") or "", *(f.get("version") or "" for f in data.get("fixes") or []
+                                                                       if isinstance(f, dict))] if not DISTRO_PACKAGE.search(v)))
+
+    def walk(value, path):
+        if isinstance(value, str):
+            words = ko_numbers if path.startswith("ko.") else numbers
+            read = (lambda s: words(without_line_names(s, fixed, known))) if path[:3] in ("ko.", "en.") else words
+            found.extend((path, s.strip(), [w for w in s.split() if words(w) & tokens])
+                         for s in SENTENCE_END.split(value) if s.strip() and read(s) & tokens)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if key not in ("names", "cve"):
+                    walk(item, f"{path}.{key}" if path else key)
+        elif isinstance(value, list):
+            for n, item in enumerate(value):
+                walk(item, f"{path}[{n}]")
+    for key in keys:
+        walk(data.get(key), key)
+    return found
+
+
+def edit_note(data, reason, text):
+    tokens = set(re.findall(r"'([^']*)'", reason))
+    # The Korean and English comparison reads the language fields only (parse()).
+    found = (flagged_sentences(data, tokens, numbers(text), keys=("ko", "en")) if reason.startswith(NUMBER_REASONS[1])
+             else flagged_sentences(data, tokens, numbers(text)))
+    unplaced = sorted(tokens - {t for _, s, _ in found for t in numbers(s) | ko_numbers(s)})
+    # The words too (trial 11-22: told only the sentence, the model rewrote "3.2 이하" and kept the "3세대" it was refused for).
+    lines = [f"- {path}: {sentence}" + (f" (refused: {', '.join(words)})" if words else "") for path, sentence, words in found] + [
+        f"- {t}: in no single sentence (a number written as a word, or across a line break); change only the words that"
+        " give it" for t in unplaced]
+    return f"\n\n{EDIT_HEAD}\n\n{json.dumps(data, ensure_ascii=False)}\n\nSentences to change:\n" + "\n".join(lines)
 
 
 def params(text, ttl=None, note="", max_tokens=MAX_TOKENS, candidates=""):

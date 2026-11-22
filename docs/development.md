@@ -85,7 +85,8 @@ Fields, in this order (times in whole seconds; a stage shows `off` when not set 
 `stopped` or `paused` when an API error ended the Summary step, `-` when a failed cycle never got to it):
 `start` (UTC), `took`; the stages `read` (every source read), `link` (joining Mentions into Incidents, NVD and KEV
 facts), `distros` (the Distribution table), `sheets`, `summaries` (batches, instant Summaries, titles, batch requests),
-`board` (every document written); `new` (Incidents first seen this cycle); `summaries_asked` (instant),
+`board` (every document written); `new` (Incidents first seen this cycle); `summaries_asked` (instant requests, the
+in-cycle edits of number-refused replies included, a collected batch reply's too),
 `summaries_kept_back` (instant candidates left for the next cycle by `INSTANT_SECONDS` or the cycle deadline,
 `CYCLE_SECONDS` into the cycle, past which the Summary step starts nothing but the first of each kind),
 `summaries_failed` (instant asks that stored no Summary), `summaries_batched` (requests sent in a Message Batch);
@@ -157,7 +158,12 @@ number word the input spells ("zero", "eight"; never "one") counts as in it (`nu
 matches its word in the English text.
 A digit inside a fixed Korean word (`KO_DIGIT_WORDS`, only "제3자" so far) is not counted in Korean text.
 Each retry says why the last reply was rejected, beside the input and never inside it (so a number named there is
-still not allowed); a reply cut off at the token cap gets more room. After the third rejected try the Summary is given
+still not allowed); a reply cut off at the token cap gets more room. A reply refused for a number (not in the input,
+or Korean and English differ) is sent back at once in the same cycle, with the same input, to be edited in the
+sentences that hold the refused number only (`edit_now`; a refused edit is edited again, up to the three tries); each
+edit is a request within `INSTANT_SECONDS` and the cycle deadline (a collected batch reply's within `BULK_SECONDS`,
+as a direct full-price call), else the row waits for a fresh draw in a later cycle. The refused reply is never stored:
+the month file is public. After the third rejected try the Summary is given
 up and never asked for again; an older Summary stays on the page.
 A fixed version below the CVE records' first fixed version of the same major (the Incident's `product<version`
 fix keys, one product only) is rejected on every try, the last included (`fixed_conflict`; FreeRDP's advisory said
@@ -309,7 +315,9 @@ Unit tests cannot see what Anthropic accepts (2026-11-11: one more required fiel
 request fail with "The compiled grammar is too large"), so a change to a schema or a prompt is checked with
 `python -m collector --smoke`: with the collector's own settings and key, one small real request of each shape (the
 Summary, quick titles, per-CVE lines; batches send the same parameters), one line each, exit 1 on a rejection, nothing
-read from or written to the store. Run it from the new image
+read from or written to the store. Before those it builds what a cycle builds (`cycle_parts`: the HTTP getter, the
+clients, the notifier and the pinger; nothing sent) and prints `smoke: cycle wiring ok`, or `smoke: cycle wiring
+FAILED: <error>` and exits 1 (2026-11-21: a NameError there stopped every cycle while `--smoke` passed). Run it from the new image
 (`docker compose run --rm -T --no-deps collector python -m collector --smoke`) before recreating, and do not
 recreate when it fails; the live box's redeploy script does both (it is kept with the owner's ops notes, not in this
 repository).

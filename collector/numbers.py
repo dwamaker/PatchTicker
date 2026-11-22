@@ -108,6 +108,9 @@ def en_numbers(text):
 # No "one": it is a pronoun far too often ("one of", "no one") and would let any "1" through; only before a unit it is
 # the number (httpd's "1바이트" beside "a one-byte overwrite", "by one byte" was refused in every trial round).
 NUMBER_WORDS = {w: str(n) for n, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split()) if w != "one"}
+# Owner, 2026-11-22: ordinals too (CVE-2026-134545's "Second-level System Third-generation" written "2차", "제3세대"). No
+# "first", as no "one": far too common ("first reported", "the first request") and would let any "1" through.
+NUMBER_WORDS |= {w: str(n) for n, w in enumerate("second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth".split(), 2)}
 NUMBER_WORD_RE = re.compile(rf"\b(?:{'|'.join(NUMBER_WORDS)}|one(?=[\s-](?:byte|bit|character)s?\b))\b", re.I)
 
 

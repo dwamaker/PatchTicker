@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 from collector import cve_lines, review, sheets, summaries
-from collector.__main__ import smoke, smoke_main
+from collector.__main__ import cycle_main, smoke, smoke_main
 from test_batch_summaries import api_error
 from test_summaries import FakeClaude
 
@@ -68,6 +68,28 @@ class SmokeTest(unittest.TestCase):
             self.assertEqual(code, 0)
             client.assert_called_once_with(api_key="test-key")
             self.assertFalse(store.exists())
+
+    def test_a_wiring_error_in_what_the_cycle_builds_fails_the_smoke(self):
+        # 11-21: cycle_main raised NameError at startup while --smoke passed.
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ), mock.patch("anthropic.Anthropic") as client, \
+                mock.patch("collector.__main__.make_http_get", side_effect=NameError("name 'agent' is not defined")):
+            env = Path(folder, ".env")
+            env.write_text(f"VR_COLLECTOR_ID=t\nVR_CONTACT=t\nVR_STORE_DIR={folder}\nANTHROPIC_API_KEY=test-key\n", encoding="utf-8")
+            code, out = run(smoke_main, str(env))
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "smoke: cycle wiring FAILED: NameError: name 'agent' is not defined\n")
+        client.return_value.messages.create.assert_not_called()
+
+    def test_the_cycle_gets_what_cycle_parts_builds(self):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ), \
+                mock.patch("collector.__main__.run_cycle") as run_cycle:
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+            env = Path(folder, ".env")
+            env.write_text(f"VR_COLLECTOR_ID=box\nVR_CONTACT=t\nVR_STORE_DIR={folder}\n", encoding="utf-8")
+            cycle_main(str(env))
+        kwargs = run_cycle.call_args.kwargs
+        self.assertEqual((kwargs["collector_id"], kwargs["claude"], kwargs["review"]), ("box", None, True))
+        self.assertTrue(callable(kwargs["http_get"]))
 
     def test_no_key_exits_1_and_says_so(self):
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(os.environ), mock.patch("anthropic.Anthropic") as client:

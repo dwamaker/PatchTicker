@@ -259,10 +259,12 @@ class InstantSummaryTest(unittest.TestCase):
         for case, reply in bad.items():
             with self.subTest(case):
                 self.setUp()
-                self.run_at("2026-11-07T12:30:00", FakeClaude(reply), hn="sshole.json")
+                self.run_at("2026-11-07T12:30:00", FakeClaude(*[reply] * summaries.MAX_TRIES), hn="sshole.json")
                 incident = board(self.store)[HN_STORY]
                 self.assertNotIn("summary", incident)
-                self.assertEqual(incident["summary_error"]["tries"], 1)
+                # A number refusal is edited in the same cycle (summaries.edit_now), up to MAX_TRIES; others wait.
+                number = incident["summary_error"]["reason"].startswith(summaries.NUMBER_REASONS)
+                self.assertEqual(incident["summary_error"]["tries"], summaries.MAX_TRIES if number else 1)
 
     def test_a_lead_written_another_way_is_the_input_url_it_stands_for(self):
         # Round 2: the KISA notice "https://www.boho.or.kr/...?…&nttId=…" came back without www. and was refused.
@@ -795,7 +797,7 @@ class NumberCheckTest(unittest.TestCase):
         story["mentions"].append({"kind": "writeup", "url": page_url})
         store.write("months/2026-11.json", {"month": "2026-11", "incidents": [story]})
         run_cycle(store, recorded(None, web={page_url: page}), at("2026-11-08T03:45:00"), "test-box",
-                  claude=FakeClaude(reply))
+                  claude=FakeClaude(*[reply] * summaries.MAX_TRIES))  # a number refusal is edited in the same cycle
         return board(store)[story["id"]]
 
     def test_korean_counters_and_number_units_pass_when_the_value_is_the_sources(self):
@@ -1366,6 +1368,23 @@ class NumberWordTest(unittest.TestCase):
                               ("8비트입니다.", "It is 8 bits.", "an unsigned char")):
             with self.subTest(types):
                 self.parse(ko, en, types)
+
+    def test_an_ordinal_gives_its_number(self):
+        """11-22: CVE-2026-134545 (VulDB) was given up 3/3 on "numbers not in the input" for "2차" and "제3세대": the
+        record says "Huangjintong Second-level System Third-generation Management Terminal System up to 3.2"."""
+        self.assertEqual(summaries.number_words("Second-level System Third-generation"), {"2", "3"})
+        self.assertEqual(summaries.number_words("the twelfth request"), {"12"})
+        for text in ("first reported", "a timeout of 30 seconds", "the first request"):
+            with self.subTest(text):
+                self.assertEqual(summaries.number_words(text), set())
+        source = ("Xinchen Technology Huangjintong Second-level System Third-generation Management Terminal System up to "
+                  "3.2 /paraframework/storSelect.htm warehouseID sql injection")
+        summary = self.parse("황금통 2차 관리 단말 시스템 제3세대 관리 단말 시스템에 SQL 인젝션이 있습니다.",
+                             "The Second-level System Third-generation Management Terminal has an SQL injection.", source)
+        self.assertTrue(summary["en"]["summary"].endswith("has an SQL injection."))
+        with self.assertRaises(summaries.Rejected) as caught:
+            self.parse("1차 관리 단말 시스템입니다.", "It is the first management terminal.", "the first management terminal")
+        self.assertEqual(str(caught.exception), "numbers not in the input: ['1']")
 
     def test_a_bit_width_the_input_does_not_imply_is_refused(self):
         cases = {"no type": ("32비트로 잘립니다.", "It is cut to 32 bits.", "the directory size is truncated", "['32']"),

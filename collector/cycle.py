@@ -480,12 +480,17 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
     before, and is not asked again meanwhile). store: where the page sheets are cached (sheets.fill); None makes none.
     line: the cycle's CycleLine (the sheets' time and the counts). deadline: the clock reading (CYCLE_SECONDS into the
     cycle) past which no page sheet, instant Summary, titles request or batch request starts, but the first of each;
-    None, no deadline. A try that fails waits for a later cycle, never runs twice in one."""
+    None, no deadline. A try that fails waits for a later cycle, never runs twice in one, but for a reply the number
+    check refused: it is sent back to be edited at once (summaries.edit_now), each edit a request counted in
+    summaries_asked and started only within the deadline and the instant time (the batch's within BULK_SECONDS of its
+    collection), else the row waits as before."""
     line = line or CycleLine(stamp, clock)
     open_ = (lambda: True) if deadline is None else (lambda: clock() < deadline)  # noqa: E731
     before = {i["id"]: i.get("summary") for i in incidents}  # keep() stores a new dict: what changed was stored here
+    edits = bulk_budget(clock)
     for pending in list(batches):
-        touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review)
+        touched = summaries.collect_batch(pending, incidents, claude, stamp, review=review, room=lambda: edits() and open_(),
+                                          asked=lambda: line.count("summaries_asked"))
         if touched is not None:
             batches.remove(pending)
             changed.update(month_of(i["first_seen"]) for i in touched)
@@ -523,7 +528,8 @@ def route_summaries(incidents, batches, claude, http_get, now, stamp, changed, p
                     line.count("summaries_deadline", len(instant) - n)
                 break
         line.count("summaries_asked")
-        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident))
+        summaries.summarize_now(incident, claude, http_get, stamp, same_as(incident), review=review, sheets=sheets_of(incident),
+                                room=lambda: more() and open_(), asked=lambda: line.count("summaries_asked"))
         changed.add(month_of(incident["first_seen"]))
         if (incident.get("summary") or {}).get("at") != stamp:
             line.count("summaries_failed")  # a try counted (summary_error), the stored Summary or Brief stays

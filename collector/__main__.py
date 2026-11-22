@@ -130,13 +130,17 @@ def alert_test_main(path):
 def cycle_main(path):
     settings = load_settings(path)
     logfile.start(settings)  # VR_LOG_DIR: everything printed from here, and the cycle line, also goes to the day's file
+    run_cycle(make_store(settings), now=datetime.now(timezone.utc), **cycle_parts(settings))
+
+
+def cycle_parts(settings):
+    """run_cycle's arguments but the store and the time; --smoke builds them too (11-21: a NameError in here passed
+    --smoke and stopped every cycle). Builds clients only, sends nothing."""
     key = settings.get("ANTHROPIC_API_KEY")
     agent = user_agent(settings)
-    run_cycle(
-        make_store(settings),
-        make_http_get(agent),
-        datetime.now(timezone.utc),
-        settings["VR_COLLECTOR_ID"],
+    return dict(
+        http_get=make_http_get(agent),
+        collector_id=settings["VR_COLLECTOR_ID"],
         nvd_api_key=settings.get("VR_NVD_API_KEY", ""),
         github_token=settings.get("VR_GITHUB_TOKEN") or None,
         curator_feeds=[u.strip() for u in settings["VR_CURATOR_FEEDS"].split(",") if u.strip()]
@@ -198,12 +202,18 @@ def smoke(claude):
 
 
 def smoke_main(path):
-    """The collector's own settings and key; reads nothing from the store and writes nothing to it."""
-    key = load_settings(path).get("ANTHROPIC_API_KEY")
-    if not key:
+    """The collector's own settings and key; reads nothing from the store and writes nothing to it. First builds what a
+    cycle builds (cycle_parts), so a wiring error fails here; its client is the one the requests go through."""
+    try:
+        claude = cycle_parts(load_settings(path))["claude"]
+    except Exception as err:  # noqa: BLE001
+        print(f"smoke: cycle wiring FAILED: {type(err).__name__}: {err}"[:300])
+        return 1
+    print("smoke: cycle wiring ok")
+    if not claude:
         print("smoke: ANTHROPIC_API_KEY is not set; nothing was checked")
         return 1
-    return smoke(anthropic.Anthropic(api_key=key))
+    return smoke(claude)
 
 
 def restore_main(path):
