@@ -558,6 +558,8 @@ test('Highlights of the shared case: one score, the same pick as the collector',
   assert.deepEqual(ids(filterBoard(kase.old_events.incidents, [], '', now).highlights), kase.old_events.expected);
   // Owner, 11-19: an advisory's Critical without a score is a candidate; recency at 25 puts a fresh 7.2 over a 9.8 five days old.
   assert.deepEqual(ids(filterBoard(kase.severity.incidents, [], '', now).highlights), kase.severity.expected);
+  // 11-22: a second row of one label (Fastify) or one Summary product name (MONAI Label) pays the penalty too.
+  assert.deepEqual(ids(filterBoard(kase.same_product.incidents, [], '', now).highlights), kase.same_product.expected);
 });
 
 // Owner, 11-19: no score yet, the official advisory's severity word sets a provisional level; the row stays drawn as

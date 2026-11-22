@@ -113,31 +113,37 @@ def old_event(view, now):
     return bool(day) and day < (date.fromisoformat(now[:10]) - timedelta(days=OLD_EVENT_DAYS)).isoformat()
 
 
-def same_key(view):
-    """A port of sameKey in web/board.mjs: the first Product id's vendor with its well_known.json category, else the
-    vendor, else the row."""
+def same_keys(view):
+    """A port of sameKeys in web/board.mjs, where the rule is explained: two rows are the same when they share a key
+    (the first Product id's vendor with its well_known.json category, else the vendor; the label; the Summary's first
+    product name); with none of them, the row alone."""
     vendor = ((view.get("products") or [{}])[0].get("id") or "").split(":")[0]
-    if not vendor:
-        return f"id:{view['id']}"
     kind = view.get("known_kind")
-    return f"{vendor}|{kind}" if isinstance(kind, str) and kind else vendor
+    known = view.get("known")
+    name = ((view.get("summary") or {}).get("products") or [None])[0]
+    keys = [k for k in (vendor and vendor + (f"|{kind}" if isinstance(kind, str) and kind else ""),
+                        isinstance(known, str) and known and f"known:{known}",
+                        isinstance(name, str) and name.strip() and f"name:{name.strip().lower()}") if k]
+    return keys or [f"id:{view['id']}"]
 
 
 def highlights(views, since, now=None):
     """The week's Highlights as filterBoard picks them from row views (pickHighlights in web/board.mjs, where the rule is
     explained; tests/fixtures/board/highlights-case.json keeps the two in step): of the Board's rows at 위험 or above
     published since `since`, no old event, by highlight_score (newest, then the id, among equals), the best each time
-    after SAME_PENALTY per chosen row of its same_key; HIGHLIGHTS in all (owner, 11-19: one score, no reserved places)."""
+    after SAME_PENALTY per chosen row that shares one of its same_keys; HIGHLIGHTS in all (owner, 11-19: one score, no
+    reserved places)."""
     # Published in the window only (owner, 11-17), and no old event (old_event; now defaults to the window's end).
     now = now or (date.fromisoformat(since[:10]) + timedelta(days=RECENT_DAYS)).isoformat() + since[10:]
     rest = sorted((v for v in views if on_board(v) and published_at(v) >= since and risk_level(v) != "notice" and not old_event(v, now)),
                   key=lambda v: v["id"])
     rest.sort(key=lambda v: (highlight_score(v, now), published_at(v)), reverse=True)  # stable: ids ascending among equals
     scored = {v["id"]: highlight_score(v, now) for v in rest}
+    keys = {v["id"]: set(same_keys(v)) for v in rest}
     chosen = []
     while rest and len(chosen) < HIGHLIGHTS:
-        keys = [same_key(c) for c in chosen]
-        best = max(range(len(rest)), key=lambda n: scored[rest[n]["id"]] - SAME_PENALTY * keys.count(same_key(rest[n])))
+        same = lambda v: sum(1 for c in chosen if keys[c["id"]] & keys[v["id"]])
+        best = max(range(len(rest)), key=lambda n: scored[rest[n]["id"]] - SAME_PENALTY * same(rest[n]))
         chosen.append(rest.pop(best))
     return chosen
 

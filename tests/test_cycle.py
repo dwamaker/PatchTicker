@@ -227,9 +227,12 @@ class CycleTest(unittest.TestCase):
             ids = [v["id"] for v in cycle.highlights(rows, "2026-11-09T12:00:00Z", "2026-11-16T12:00:00Z")]
             self.assertIn("T1", ids)
             self.assertNotIn("T2", ids)
-        self.assertEqual(cycle.same_key(pair[0]), "acme")
-        self.assertEqual(cycle.same_key(pair[0] | {"known_kind": "Browsers"}), "acme|Browsers")
-        self.assertEqual(cycle.same_key({"id": "x", "products": []}), "id:x")
+        self.assertEqual(cycle.same_keys(pair[0]), ["acme", "known:Acme"])
+        self.assertEqual(cycle.same_keys(pair[0] | {"known_kind": "Browsers"}), ["acme|Browsers", "known:Acme"])
+        self.assertEqual(cycle.same_keys({"id": "x", "products": []}), ["id:x"])
+        # 11-22: a story with no Product id is the same as its CVE row by the Summary's first product name.
+        story = {"id": "s", "products": [], "summary": {"products": [" MONAI Label "]}}
+        self.assertEqual(cycle.same_keys(story), ["name:monai label"])
 
     def test_the_highlights_match_the_page_on_the_shared_case(self):
         # tests/board.test.mjs checks filterBoard on the same case.
@@ -244,6 +247,8 @@ class CycleTest(unittest.TestCase):
         self.assertEqual([i["id"] for i in cycle.highlights(case["kev_week"]["incidents"], since)], case["kev_week"]["expected"])
         # Owner, 11-19: an advisory's Critical without a score is a candidate; recency puts a fresh 7.2 over an older 9.8.
         self.assertEqual([i["id"] for i in cycle.highlights(case["severity"]["incidents"], since)], case["severity"]["expected"])
+        # 11-22: a second row of one label (Fastify) or one Summary product name (MONAI Label) pays the penalty too.
+        self.assertEqual([i["id"] for i in cycle.highlights(case["same_product"]["incidents"], since)], case["same_product"]["expected"])
 
     def test_status_file_holds_last_update_and_collector(self):
         run_cycle(self.store, recorded(), at("2026-11-07T13:30:00"), "test-box")

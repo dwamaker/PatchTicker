@@ -220,16 +220,24 @@ export const PINNED = 4;
 // of its field, 3 known inside it. A label on no list (a Summary's widely_used), or a row written before the collector
 // carried known_tier, counts as 3; a row with no label has none (null).
 export const tierOf = (i) => (i.known ? ([1, 2, 3].includes(i.known_tier) ? i.known_tier : 3) : null);
-// What "the same" is for the Highlights: the first Product id's vendor and the category of collector/well_known.json (as
-// pinKey), else the vendor, else the row. Only fields the collector's row views carry (also collector/cycle.py, same_key).
-const sameKey = (i) => {
+// What "the same" is for the Highlights: two rows are when they share one of these keys: the first Product id's vendor
+// and the category of collector/well_known.json (as pinKey; else the vendor), the label (known), the Summary's first
+// product name. No one key in an order can do it (11-22): the label must join @fastify/express and @fastify/middie (two
+// vendors, one "Fastify"), the vendor and category must keep joining Jira and Confluence (two labels, one Atlassian), and
+// a story with no Product id joins its CVE row by the name ("MONAI Label"; the record's vendor is "project-monia").
+// Pairwise, never chained. None of them: the row alone. Only fields the collector's row views carry (also
+// collector/cycle.py, same_keys).
+export const sameKeys = (i) => {
   const vendor = vendorOf(i);
-  if (!vendor) return `id:${i.id}`;
-  return typeof i.known_kind === 'string' && i.known_kind ? `${vendor}|${i.known_kind}` : vendor;
+  const kind = typeof i.known_kind === 'string' && i.known_kind ? `|${i.known_kind}` : '';
+  const name = i.summary?.products?.[0];
+  const keys = [vendor && vendor + kind, typeof i.known === 'string' && i.known && `known:${i.known}`,
+    typeof name === 'string' && name.trim() && `name:${name.trim().toLowerCase()}`].filter(Boolean);
+  return keys.length ? keys : [`id:${i.id}`];
 };
-// One vendor and category does not fill the list (owner, 11-16: Chrome stood at 2 and 11): each row already chosen of
-// the same sameKey costs a candidate SAME_PENALTY (one CVSS point is 5), so a second F5 BIG-IP row has to beat the
-// next-best other row by that much.
+// One product does not fill the list (owner, 11-16: Chrome stood at 2 and 11): each row already chosen that is the same
+// (sameKeys) costs a candidate SAME_PENALTY (one CVSS point is 5), so a second F5 BIG-IP row has to beat the next-best
+// other row by that much.
 const SAME_PENALTY = 10;
 // The Highlights of the candidates, sorted in showOrder (filterBoard): the best each time, after the penalty; of equals,
 // the first. now: as highlightScore's.
@@ -237,11 +245,13 @@ export function pickHighlights(candidates, now) {
   const chosen = [];
   const rest = [...candidates];
   const scored = new Map(candidates.map((i) => [i, highlightScore(i, now)]));
+  const keys = new Map(candidates.map((i) => [i, sameKeys(i)]));
+  const same = (a, b) => keys.get(a).some((k) => keys.get(b).includes(k));
   while (rest.length && chosen.length < HIGHLIGHTS) {
     let best = 0;
     let top = -Infinity;
     rest.forEach((i, n) => {
-      const value = scored.get(i) - SAME_PENALTY * chosen.filter((c) => sameKey(c) === sameKey(i)).length;
+      const value = scored.get(i) - SAME_PENALTY * chosen.filter((c) => same(c, i)).length;
       if (value > top) [best, top] = [n, value];
     });
     chosen.push(...rest.splice(best, 1));

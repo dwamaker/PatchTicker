@@ -85,8 +85,9 @@ product on no list that the Summary calls widely used counts as 3); urgency (exp
 row a little); then how new it is, falling evenly to nothing at seven days old (owner, 2026-11-19: "최신 소식이 위에", raised the same
 day when no Incident of the day reached the list: one day weighs about 0.7 of a CVSS point, so a fresh 7.0 passes a
 9.8 five days old, and a fresh 9.8 passes an exploited 9.8 three days old). Discussion, curators and Mentions only break
-ties. Each Incident already chosen of the same vendor and category of the hand-kept list costs the next one of them
-two CVSS points, so one release does not fill the list. Twelve in all. This replaced every exploited one first
+ties. Each Incident already chosen that is the same (the same vendor and category of the hand-kept list, the same
+label, or the same first product name in its Summary; 2026-11-22) costs the next one of them two CVSS points, so one
+release, or one event told twice, does not fill the list. Twelve in all. This replaced every exploited one first
 (2026-11-10), the lifted best-scored well-known row per product (2026-11-11, 2026-11-16) and the tier order
 (2026-11-17). A product is well known when it is
 on the collector's hand-kept list or its Summary says a large share of ordinary people or organisations run it (both,
