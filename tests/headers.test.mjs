@@ -288,3 +288,20 @@ test('the API catalog lists /api/check with llms.txt as its documentation, serve
   assert.match(block, /^\s+Content-Type: application\/linkset\+json; profile="https:\/\/www\.rfc-editor\.org\/info\/rfc9727"$/m);
   assert.match(block, /^\s+Link: <\/\.well-known\/api-catalog>; rel="api-catalog"$/m);
 });
+
+// The 주요 사건 header's count (app.mjs pinCount): "4/20" with a spoken sentence while 주요 사건 더 보기 holds some back,
+// the one number once every chosen Highlight is on screen. The sentences come from the source's three TEXT blocks.
+test('the Highlights header says shown/total, spoken as a sentence, and one number when all are shown', async () => {
+  const vm = await import('node:vm');
+  const app = read('web/app.mjs');
+  const said = [...app.matchAll(/ pinShown: (\([^)]*\) => `[^`]*`)/g)].map((m) => vm.runInNewContext(m[1])(4, 20));
+  assert.deepEqual(said, ['20건 중 4건 표시', '4 of 20 shown', '20件中4件を表示']);
+  const el = (tag, cls, text) => ({ cls, text, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } });
+  const pinCount = vm.runInNewContext(`(${app.match(/function pinCount[\s\S]*?\n\}/)[0]})`,
+    { el, lang: 'en', TEXT: { en: { pinShown: (s, n) => `${s} of ${n}` } } });
+  const [n, spoken] = pinCount(4, 20);
+  assert.deepEqual([n.cls, n.text, n.attrs['aria-hidden'], spoken.cls, spoken.text], ['n', '4/20', 'true', 'sr-only', '4 of 20']);
+  for (const [shown, total] of [[4, 4], [20, 20], [3, 3]]) {
+    assert.deepEqual(Array.from(pinCount(shown, total), (x) => [x.cls, x.text, x.attrs['aria-hidden']]), [['n', String(shown), undefined]]);
+  }
+});

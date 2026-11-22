@@ -43,7 +43,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: '불러오는 중…',
     variants: (n) => `비슷한 이름 ${n}건도 함께 보여 줍니다.`,
     loadDetail: (msg) => `자세한 내용: ${msg}`, olderDone: (n) => (n ? `이전 사건을 모두 불러왔습니다 (${n}건 추가).` : '이전 사건은 이미 모두 목록에 있습니다.'),
-    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', published: '게시일', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, reportedBy: (h) => `${h} 보도`, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
+    loadError: '현황판을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', olderFailed: '이전 사건을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.', retry: '다시 시도', filterBtn: '필터', fp: { title: '필터', published: '게시일', from: '게시일 시작', to: '게시일 끝', cvss: '최소 CVSS 점수', cve: 'CVE 번호', any: '전체', cveYes: 'CVE 번호 있음', cveNo: 'CVE 번호 아직 없음', risk: '위험 단계', flags: '공격·공지 여부', has: { advisory: '공식 공지 있음', repo: '공격 코드 공개됨' }, sort: '정렬', sorts: { new: '최신순', risk: '위험도순', cvss: 'CVSS 높은순' }, close: '닫기', reset: '필터 초기화', apply: '필터 적용', applyN: (n) => `필터 적용 · ${n}건`, zeroChip: '이 조건을 더하면 0건이 됩니다', riskNote: '점수 대기: CVSS 점수가 아직 없는 사건. 실제 공격이 보고된 사건은 점수가 없어도 맨 위 단계에 들어 있습니다.', osNote: '고른 운영체제에서 돌아가는 프로그램이 모두 나옵니다.', zeroNote: '점선 칩은 지금 조건에 더하면 0건이 됩니다.', dropCond: (l) => `‘${l}’ 빼기` }, textSizeGroup: '글자 크기', textGlyph: '가', textDown: '글자 작게', textUp: '글자 크게', textNow: (p) => `글자 크기 ${p}%`, pinMore: (n) => `주요 사건 더 보기 (${n})`, pinLess: '주요 사건 접기', pinShown: (s, n) => `${n}건 중 ${s}건 표시`, qfKev: '공격 발생만', noneForFilters: '고른 조건에 맞는 사건이 지금 현황판에 없습니다.', easyLevels: { highest: '긴급!', high: '경계', pending: '점수 대기', notice: '주의' }, why: { curator: '보안 뉴스레터 언급', buzz: 'HN 화제' }, reportedBy: (h) => `${h} 보도`, skip: '주요 사건 건너뛰고 최신순으로', skipTop: '현황판으로 건너뛰기', found: (n) => `${n}건이 보입니다.`, sorted: (s) => `${s}으로 정렬했습니다.`,
     status: (updated) => `마지막 업데이트 ${updated}`, counts: (today, week) => ` · 오늘 ${today}건 · 7일 ${week}건`, countAll: (n) => ` · 전체 ${n}건`, shownOf: (shown, all) => ` · ${all}건 중 ${shown}건`,
     products: '사용하는 제품', tokensSet: (n) => `선택 ${n}개`, sgHead: '제품', sgCount: (n) => `최근 30일 ${n}건`, resultCount: (n) => `${n.toLocaleString('ko')}건`, picked: '고른 제품', fpApplied: '적용한 필터', remove: (name) => `${name} 빼기`,
     repo: 'GitHub 저장소', search: '검색', clearSearch: '검색어 지우기', noticeClose: '알림 닫기', noticeSince: ['Patch Ticker는 2026년 11월 9일부터 수집을 시작했습니다.', '그 전에 공개된 취약점은 목록에 없을 수 있습니다.'], noticeKeep: '패치가 나와도 사건은 지워지지 않고 90일 동안 남습니다.', searchHint: '제품, 키워드, CVE 번호', searchHintShort: '제품, 키워드', all: '최신순', sortLabel: '정렬', expandAll: '모두 펼치기', collapseAll: '모두 접기', unfold: '묶음 풀기', refold: '묶어 보기', groupTag: '묶음', patchTag: '함께 공개', prefs: '화면 설정', toTop: '맨 위로', toBottom: '맨 아래로', stepUp: '한 화면 위로', stepDown: '한 화면 아래로', stepGroup: '한 화면씩 이동', newAbove: (n) => `새 사건 ${n}건`, newAdded: (n) => `새 사건 ${n}건이 추가되었습니다.`, toNew: '첫 새 사건으로 이동', foldEnd: (v) => `${v} 묶음 접기`, foldOpened: (v, n, wp) => `${v} 묶음을 펼쳤습니다 (${wp ? '플러그인' : '공지'} ${n}건).`, theme: '어두운 화면',
@@ -98,7 +98,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: 'Loading…',
     variants: (n) => `Also showing ${n} under a similar name.`,
     loadDetail: (msg) => `Details: ${msg}`, olderDone: (n) => (n ? `Earlier Incidents are loaded (${n} more).` : 'There are no earlier Incidents: they are already all in the list.'),
-    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', published: 'Published', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, reportedBy: (h) => `reported by ${h}`, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
+    loadError: 'Could not load the Board. Check your connection and try again.', olderFailed: 'Could not load earlier Incidents. Check your connection and try again.', retry: 'Try again', filterBtn: 'Filters', fp: { title: 'Filters', published: 'Published', from: 'Published from', to: 'Published to', cvss: 'Minimum CVSS', cve: 'CVE ID', any: 'Any', cveYes: 'Has a CVE', cveNo: 'No CVE yet', risk: 'Risk level', flags: 'Attacks and advisories', has: { advisory: 'Official advisory', repo: 'Attack code published' }, sort: 'Sort', sorts: { new: 'Newest', risk: 'Highest risk', cvss: 'Highest CVSS' }, close: 'Close', reset: 'Reset filters', apply: 'Apply filters', applyN: (n) => `Apply filters · ${n}`, zeroChip: 'Adding this leaves nothing', riskNote: 'Score pending: no CVSS score yet. An attacked Incident is at the top level even without one.', osNote: 'Shows everything that runs on the chosen systems.', zeroNote: 'A dashed chip would leave nothing if added.', dropCond: (l) => `Drop “${l}”` }, textSizeGroup: 'Text size', textGlyph: 'A', textDown: 'Smaller text', textUp: 'Larger text', textNow: (p) => `Text size ${p}%`, pinMore: (n) => `More Highlights (${n})`, pinLess: 'Fewer Highlights', pinShown: (s, n) => `${s} of ${n} shown`, qfKev: 'Attacked only', noneForFilters: 'No Incident on the Board matches these filters.', easyLevels: { highest: 'Urgent!', high: 'Warning', pending: 'Score pending', notice: 'Caution' }, why: { curator: 'In security newsletters', buzz: 'Trending on HN' }, reportedBy: (h) => `reported by ${h}`, skip: 'Skip to newest', skipTop: 'Skip to the Board', found: (n) => `${n} Incidents shown.`, sorted: (s) => `Sorted: ${s}.`,
     status: (updated) => `Last updated ${updated}`, counts: (today, week) => ` · today ${today} · 7 days ${week}`, countAll: (n) => ` · all ${n}`, shownOf: (shown, all) => ` · ${shown} of ${all}`,
     products: 'Products you run', tokensSet: (n) => `${n} set`, sgHead: 'Products', sgCount: (n) => `${n} in 30 days`, resultCount: (n) => `${n.toLocaleString('en')} ${n === 1 ? 'result' : 'results'}`, picked: 'Picked Products', fpApplied: 'Applied filters', remove: (name) => `Remove ${name}`,
     repo: 'GitHub repository', search: 'Search', clearSearch: 'Clear search', noticeClose: 'Dismiss notice', noticeSince: ['Patch Ticker has collected since 9 November 2026.', 'Vulnerabilities published before then may be missing.'], noticeKeep: 'An Incident is not removed when a patch ships; it stays for 90 days.', searchHint: 'Product, keyword, CVE ID', searchHintShort: 'Product or keyword', all: 'Newest first', sortLabel: 'Sort', expandAll: 'Expand all', collapseAll: 'Collapse all', unfold: 'Ungroup', refold: 'Group again', groupTag: 'Group', patchTag: 'Disclosed together', prefs: 'Display settings', toTop: 'Back to top', toBottom: 'Go to bottom', stepUp: 'Up one screen', stepDown: 'Down one screen', stepGroup: 'Move one screen', newAbove: (n) => `${n} new`, newAdded: (n) => `${n} new Incidents added.`, toNew: 'Go to the first new Incident', foldEnd: (v) => `Fold ${v} back`, foldOpened: (v, n, wp) => `Opened the ${v} group (${n} ${wp ? 'plugins' : 'notices'}).`, theme: 'Dark theme',
@@ -153,7 +153,7 @@ const TEXT = {
     brand: 'Patch Ticker', loading: '読み込み中…',
     variants: (n) => `似た名前の${n}件もあわせて表示しています。`,
     loadDetail: (msg) => `詳細: ${msg}`, olderDone: (n) => (n ? `以前のインシデントをすべて読み込みました（${n}件追加）。` : '以前のインシデントはこれ以上ありません。すでにすべて一覧にあります。'),
-    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', published: '公開日', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, reportedBy: (h) => `${h} の報告`, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
+    loadError: 'ボードを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', olderFailed: '以前のインシデントを読み込めませんでした。インターネット接続を確認して、もう一度お試しください。', retry: '再試行', filterBtn: 'フィルター', fp: { title: 'フィルター', published: '公開日', from: '公開日（開始）', to: '公開日（終了）', cvss: '最小 CVSS スコア', cve: 'CVE 番号', any: 'すべて', cveYes: 'CVE 番号あり', cveNo: 'CVE 番号なし', risk: '危険度', flags: '攻撃・勧告の有無', has: { advisory: '公式勧告あり', repo: '攻撃コード公開済み' }, sort: '並び順', sorts: { new: '新しい順', risk: '危険度順', cvss: 'CVSS の高い順' }, close: '閉じる', reset: 'フィルターをリセット', apply: 'フィルターを適用', applyN: (n) => `フィルターを適用 · ${n}件`, zeroChip: 'この条件を加えると0件になります', riskNote: 'スコア待ち: CVSS スコアがまだないインシデント。実際の攻撃が報告されたものは、スコアがなくても最上位に入ります。', osNote: '選んだ OS で動くプログラムがすべて表示されます。', zeroNote: '点線のチップは、今の条件に加えると0件になるチップです。', dropCond: (l) => `「${l}」を外す` }, textSizeGroup: '文字サイズ', textGlyph: 'あ', textDown: '文字を小さく', textUp: '文字を大きく', textNow: (p) => `文字サイズ ${p}%`, pinMore: (n) => `注目のインシデントをもっと見る (${n})`, pinLess: '注目のインシデントを閉じる', pinShown: (s, n) => `${n}件中${s}件を表示`, qfKev: '攻撃発生のみ', noneForFilters: '選んだ条件に合うインシデントは、今ボードにありません。', easyLevels: { highest: '緊急！', high: '警戒', pending: 'スコア待ち', notice: '注意' }, why: { curator: 'セキュリティニュースレターで言及', buzz: 'HN で話題' }, reportedBy: (h) => `${h} の報告`, skip: '注目をとばして新しい順へ', skipTop: 'ボードへスキップ', found: (n) => `${n}件を表示しています。`, sorted: (s) => `${s}に並べ替えました。`,
     status: (updated) => `最終更新 ${updated}`, counts: (today, week) => ` · 今日 ${today}件 · 7日間 ${week}件`, countAll: (n) => ` · 全${n}件`, shownOf: (shown, all) => ` · ${all}件中${shown}件`,
     products: '使っている製品', tokensSet: (n) => `${n}件選択`, sgHead: '製品', sgCount: (n) => `直近30日 ${n}件`, resultCount: (n) => `${n.toLocaleString('ja')}件`, picked: '選んだ製品', fpApplied: '適用中のフィルター', remove: (name) => `${name}を外す`,
     repo: 'GitHub リポジトリ', search: '検索', clearSearch: '検索をクリア', noticeClose: 'お知らせを閉じる', noticeSince: ['Patch Ticker は2026年11月9日から収集しています。', 'それ以前に公開された脆弱性は一覧にない場合があります。'], noticeKeep: 'パッチが出てもインシデントは消えず、90日間残ります。', searchHint: '製品、キーワード、CVE 番号', searchHintShort: '製品、キーワード', all: '新しい順', sortLabel: '並び順', expandAll: 'すべて開く', collapseAll: 'すべて閉じる', unfold: 'まとめを解除', refold: 'まとめて表示', groupTag: 'まとめ', patchTag: '同時公開', prefs: '表示設定', toTop: '先頭へ', toBottom: '末尾へ', stepUp: '1画面上へ', stepDown: '1画面下へ', stepGroup: '1画面ずつ移動', newAbove: (n) => `新着 ${n}件`, newAdded: (n) => `新しいインシデントが${n}件追加されました。`, toNew: '最初の新着インシデントへ移動', foldEnd: (v) => `${v} のまとめを閉じる`, foldOpened: (v, n, wp) => `${v} のまとめを開きました（${wp ? 'プラグイン' : '勧告'} ${n}件）。`, theme: 'ダークテーマ',
@@ -538,6 +538,41 @@ addEventListener('offline', leave);
 addEventListener('pageshow', (e) => { if (e.persisted) back(); });
 addEventListener('online', back);
 
+// Owner 11-20 ("펼치기 누르면 해당 내용으로 화면 이동해 고정, 닫으면 원복"): a row the visitor opens comes up to just under
+// the frozen bar (index.html scroll-padding-top) and is held there while redraws change its panel (the full Incident
+// arriving, the view, the text size); closing it goes back to where the page was. One row at a time: opening another
+// holds that one, whose close goes back to where the first had brought the page. A scroll of the visitor's own lets
+// go, and the row then closes where it is. Only a click on the row starts a hold (row()); 모두 펼치기, a filter or tag
+// and rows drawn open by a reload never do.
+// held: { key, top: the row's place in the window before the open, at: when it opened or closed, from: scrollY then,
+// ms: the glide's length, back: closing (the glide goes back to top, and the hold ends where it lands) }
+let held = null;
+// The rise runs with the panel's unfold and the way back with its fold (fold(): 300ms and 240ms on FOLD_EASE), so each
+// reads as one motion from the tap frame (owner 11-21, MuMu: a smooth scroll starts slow and only moved once the panel
+// was out or shut). The place is read again every frame: a redraw or a panel that grows re-aims the glide, never
+// restarts it.
+let rising = 0; // the glide's frame (holdRow)
+function holdRow() {
+  cancelAnimationFrame(rising);
+  const li = held && document.querySelector(`li[data-vt="${rowName(held.key)}"]`);
+  if (!li) {
+    if (held?.back) held = null; // a closing row redrawn away: nothing left to go back with
+    return;
+  }
+  const place = held.back ? held.top : parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  const to = scrollY + li.getBoundingClientRect().top - place;
+  const p = reducedMotion.matches ? 1 : Math.min(1, (performance.now() - held.at) / held.ms);
+  scrollTo({ top: held.from + (to - held.from) * (1 - (1 - p) ** 3), behavior: 'instant' }); // FOLD_EASE is an ease-out cubic
+  if (p < 1) rising = requestAnimationFrame(holdRow);
+  else if (held.back) held = null;
+}
+const letGo = () => { held = null; };
+addEventListener('wheel', letGo, { passive: true });
+addEventListener('touchmove', letGo, { passive: true });
+addEventListener('pointerdown', (e) => { if (e.target === document.documentElement) letGo(); }); // the scrollbar
+addEventListener('keydown', (e) => { if (/^(Page(Up|Down)|Home|End|Arrow(Up|Down))$/.test(e.key) || (e.key === ' ' && e.target === document.body)) letGo(); });
+document.addEventListener('click', (e) => { if (e.target.closest?.('#jump, .skip, #new-above')) letGo(); });
+
 // A redraw that changes what stands above the window (a refresh, the full week arriving) holds the row at the top of the
 // window where it was, and a focused row keeps the focus.
 function holdPlace(redraw) {
@@ -546,7 +581,8 @@ function holdPlace(redraw) {
   const focused = document.activeElement?.matches('button.row') && document.activeElement.closest('li[data-vt]')?.dataset.vt;
   redraw();
   const again = anchor && document.querySelector(`li[data-vt="${anchor.dataset.vt}"]`);
-  if (again) scrollBy(0, again.getBoundingClientRect().top - anchorTop);
+  if (held) holdRow(); // a row the visitor opened stays where it was brought (render did it; the anchor must not undo it)
+  else if (again) scrollBy(0, again.getBoundingClientRect().top - anchorTop);
   if (focused) document.querySelector(`li[data-vt="${focused}"] button.row`)?.focus({ preventScroll: true });
 }
 
@@ -653,6 +689,7 @@ async function openLinked() {
     $('pick-hint').textContent = TEXT[lang].linkNotFound;
     return false;
   }
+  letGo(); // the link's row is brought into view here, not a held one
   open.add(id);
   // Past the first page (owner, 11-10: a link from 11-04 landed on the top with nothing open): draw up to its page.
   // A pinned Highlight is reached on top (its list copy waits at its own place): no page of the list is drawn for it.
@@ -1272,7 +1309,7 @@ function render() {
   // CVE text is untrusted input, so it only ever goes in through textContent.
   $('highlights').replaceChildren(...highlights.map((i) => row(i, true)));
   $('pinned').hidden = !highlights.length;
-  $('pinned-head').replaceChildren(`${TEXT[lang].pin} `, el('span', 'n', String(highlights.length)));
+  $('pinned-head').replaceChildren(`${TEXT[lang].pin} `, ...pinCount(highlights.length, highlights.length + (pinAll ? 0 : extra.length)));
   $('pinned-head').hidden = !highlights.length;
   $('pin-more').replaceChildren(...(extra.length ? [pinToggle(extra.length)] : []));
   const count = panelCount();
@@ -1339,6 +1376,7 @@ function render() {
   watchFresh();
   measureStick();
   placeJump();
+  holdRow();
 }
 let shownCount = 0;
 // A list item as rows (a vendor fold is several), and the keys 모두 펼치기 counts for the drawn ones.
@@ -1691,6 +1729,14 @@ const panelCount = () => filter.risk.length + (filter.kev ? 1 : 0) + osPicks().l
   + (filter.cvssMin ? 1 : 0) + (filter.cve ? 1 : 0) + filter.has.length;
 const activeFilters = () => filter.picks.length - osPicks().length + panelCount() + (filter.query ? 1 : 0);
 
+// The 주요 사건 header's count: "4/20" while 주요 사건 더 보기 holds some back (spoken as a sentence), else the one number.
+function pinCount(shown, total) {
+  if (total <= shown) return [el('span', 'n', String(shown))];
+  const n = el('span', 'n', `${shown}/${total}`);
+  n.setAttribute('aria-hidden', 'true');
+  return [n, el('span', 'sr-only', TEXT[lang].pinShown(shown, total))];
+}
+
 // 주요 사건 더 보기: pin every chosen Highlight (pickHighlights: twenty at most), or back to four.
 let pinAll = false;
 function pinToggle(rest) {
@@ -1876,6 +1922,7 @@ function applyPanel(event) {
 }
 
 function update(change, animate = true, first = () => {}) {
+  letGo(); // a new filter is a new Board: no row is held (holdRow)
   // A search word rewrites its own step; starting a search (from none) is a new step, so Back first clears the search.
   const onlyQuery = Object.keys(change).length === 1 && 'query' in change;
   const push = !onlyQuery || (!filter.query && Boolean(change.query));
@@ -2151,6 +2198,7 @@ $('fold-toggle').addEventListener('click', () => boardTransition(() => {
   $('announce').textContent = folding ? TEXT[lang].refoldDone : TEXT[lang].unfoldDone;
 }));
 $('expand-all').addEventListener('click', () => boardTransition(() => {
+  letGo(); // the rows open or close where they are (held)
   const closing = allOpen();
   if (!closing) fullFailed = false; // opening rows is the visitor asking: row views ask for the week again
   for (const id of visibleIds) closing ? open.delete(id) : open.add(id);
@@ -3059,7 +3107,7 @@ function details(incident, onStrip = false) {
   const ids = facts.length ? [factList(facts)] : [];
   // Owner 11-19: opening a row moves its ring and tags from the header down into the panel's top, the tags as working
   // filters, so no one scrolls past a long panel to pick one; they travel there with the fold (carry). They stand straight
-  // under their header places (index.html .p-top, alignRing), beside the facts; the Easy view's facts sit at its foot.
+  // under their header places from 768px (index.html .p-top), beside the facts; the Easy view's facts sit at its foot.
   const side = el('div', 'p-side');
   side.append(scoreCell(incident));
   const tags = tagLine(incident);
@@ -3345,90 +3393,138 @@ function evidenceCell(incident) {
   return el('small', 'c-ev', reason.kind === 'kev' ? [t.kevListed, reason.date].filter(Boolean).join(' ') : t.reportedBy(host(reason.url)));
 }
 
-// Owner 11-19: opening or closing a row carries its ring and tags between the header and the panel's top as one motion
-// with the fold (same duration and curve). A ghost, a copy of the header's (the panel clips its own while it folds),
-// travels inside the row while the real copies are held invisible by animations, so a finish or a cancel leaves no
-// trace. The rings are the same, so the ghost hands over on landing; the tags differ in the panel (buttons, 나머지 N개
-// 보기), so the ghost fades into the real line on the way. Reduced motion: no travel, a 200ms cross-fade. starts: where
-// each copy is seen before the change (a ghost's place when a click turns it round mid-way), from carryStarts.
+// Owner 11-19, 11-21: opening or closing a row carries its ring and tags between the header and the panel's top as one
+// motion with the fold (same duration and curve). A ghost, a copy of the header's (the panel clips its own while it
+// folds), travels inside the row while the real copies are held invisible by animations, so a finish or a cancel leaves
+// no trace. The ring travels whole and hands over on landing, on phones too (owner 11-21: "원도 똑같이 움직여야지", which
+// ends 11-19's phone cross-fade). The tags move one by one (FLIP, Paul Lewis, aerotwist.com/blog/flip-your-animations):
+// each pill of the ghost line slides from where it is seen to its own place in the other line, matched by name, so none
+// blinks; a piece only one line has (외 N개, 나머지 N개 보기, a tag past the header's four) fades out early or in late,
+// and a pill whose size differs (a name the header cut with "…") cross-fades with its real copy at the far end.
+// Not a View Transition (Chrome's modern-web-guidance, same-document and scoped-component transitions): it draws
+// snapshots on an overlay over the root, where "any animations will appear to be paused" (the fold, the scroll glide in
+// holdRow); the overlay blocks pointer events, so a click could not turn the row round mid-way; one runs at a time (the
+// Board's redraws use it); and Element.startViewTransition, scoped to the row, is Chrome 147+ only.
+// Reduced motion: no travel, a 200ms cross-fade. starts: where each piece is seen before the change (in its ghost when a
+// click turns it round mid-way), from carryStarts.
 // The header's ring and tags and the panel's, by index (0 ring, 1 tags); null where one is missing.
 function carryParts(button, body) {
   const side = body.querySelector(':scope > .p-top > .p-side');
   return [[button.querySelector(':scope > .c-score'), side?.querySelector(':scope > .c-score')],
     [button.querySelector(':scope > .c-tags'), side?.querySelector('.tag-line')]];
 }
+// A tag line's shown pieces (a tag button by its pill, which is what both lines show) and the name that pairs them.
+const carryPieces = (line) => [...(line?.children || [])].filter((x) => x.getClientRects().length).map((x) => (x.matches('.tag-btn') ? x.firstElementChild : x));
+const pieceKey = (x) => x.querySelector(':scope > .ln-t')?.textContent ?? x.className;
 function carryStarts(button, body, flights, opening) {
+  const [[ring, ringThere], [tags, line]] = carryParts(button, body);
   // a ghost still in flight is where its copy is seen; one that has landed is gone from the page
-  return carryParts(button, body).map(([head, there], n) => ((flights[n]?.ghost.isConnected && flights[n].ghost) || (opening ? head : there))?.getBoundingClientRect());
-}
-// Owner 11-19 (no diagonal path): the panel's ring stands straight under the header's. From 768px the columns do it
-// (index.html .p-top); on phones the header ring follows the risk sign, whose width varies, so the panel's is moved
-// sideways to match (a translate, so nothing around it reflows). The header's keeps its place while open.
-// ringShift: how far to move it (null: nothing to line up), read without writing, so many rows can be read first.
-function ringShift(button, body) {
-  const head = button.querySelector(':scope > .c-score');
-  const there = body.querySelector(':scope > .p-top > .p-side > .c-score');
-  if (!head || !there) return null;
-  const now = parseFloat(there.style.translate) || 0;
-  return [there, head.getBoundingClientRect().left - (there.getBoundingClientRect().left - now)];
-}
-const setShift = ([there, dx]) => { there.style.translate = Math.abs(dx) > 0.5 ? `${dx}px 0` : ''; };
-function alignRing(button, body) {
-  const shift = ringShift(button, body);
-  if (shift) setShift(shift);
-}
-// Rows drawn open (a redraw: the first open loading the full Incident, 모두 펼치기, a tag click) are lined up once they
-// are on the page: all read, then all written, in one frame (as nameRows). A row not attached yet waits a few frames.
-const toAlign = new Map();
-function alignLater(button, body) {
-  if (!toAlign.size) requestAnimationFrame(alignDrawn);
-  toAlign.set(button, [body, 0]);
-}
-function alignDrawn() {
-  const ready = [...toAlign].filter(([button]) => button.isConnected);
-  const shifts = ready.map(([button, [body]]) => ringShift(button, body));
-  for (const [button, [body, tries]] of toAlign) {
-    if (button.isConnected || tries > 10) toAlign.delete(button); // a row of an old draw is never attached
-    else toAlign.set(button, [body, tries + 1]);
-  }
-  shifts.filter(Boolean).forEach(setShift);
-  if (toAlign.size) requestAnimationFrame(alignDrawn);
+  const flying = (n) => flights[n]?.ghost.isConnected && flights[n].ghost;
+  const pieces = [...carryPieces(opening ? tags : line), ...(flying(1) ? flying(1).children : [])];
+  return [(flying(0) || (opening ? ring : ringThere))?.getBoundingClientRect(),
+    { box: tags?.getBoundingClientRect(), pieces: new Map(pieces.map((x) => [pieceKey(x), x.getBoundingClientRect()])) }];
 }
 function carry(li, button, body, opening, starts, flights) {
   flights.forEach((f) => f?.stop());
-  const parts = carryParts(button, body);
-  if (!parts[0][1]) return []; // no group in the panel (a row still loading): the header keeps its own
+  const [[ring, ringThere], [tags, line]] = carryParts(button, body);
+  if (!ringThere) return []; // no group in the panel (a row still loading): the header keeps its own
+  const box = li.getBoundingClientRect();
   const still = reducedMotion.matches;
   const timing = { duration: still ? 200 : opening ? 300 : 240, easing: still ? EASE_OUT : FOLD_EASE, fill: 'forwards' };
-  const box = li.getBoundingClientRect();
-  li.classList.add('carrying');
-  return parts.map(([head, there], n) => {
-    const a = starts[n];
-    if (!head?.childElementCount || !there || !a?.width) return null;
-    const [from, to] = opening ? [head, there] : [there, head];
-    const b = to.getBoundingClientRect();
-    const ghost = head.cloneNode(true);
-    for (const x of [ghost, ...ghost.querySelectorAll('[id]')]) x.removeAttribute('id');
+  const runs = [];
+  const ghosts = [];
+  // Every box is read before anything is written: the animations start together at the end (play) and the ghosts are
+  // placed once, as each write between two reads made the browser restyle and lay out the row again (a group's dozen
+  // pills, a dozen layouts in the tap's frame).
+  const plays = [];
+  const play = (x, keys) => plays.push([x, keys]);
+  // opacity frames as [offset, value]; offsets are of the eased way, so "late" is near the landing place
+  const fade = (x, ...frames) => play(x, frames.map(([offset, opacity]) => ({ offset, opacity })));
+  const move = ([x, y]) => `translate(${x}px, ${y}px)`;
+  const ghostOf = (x, at) => {
+    const ghost = x.cloneNode(true);
+    for (const y of [ghost, ...ghost.querySelectorAll('[id]')]) y.removeAttribute('id');
     ghost.classList.add('ghost');
     ghost.setAttribute('aria-hidden', 'true');
-    Object.assign(ghost.style, { left: `${a.left - box.left}px`, top: `${a.top - box.top}px`, width: `${head.getBoundingClientRect().width || a.width}px`, fontSize: getComputedStyle(head).fontSize });
-    li.append(ghost);
-    const ring = n === 0 && !still; // the same ring at both ends: it lands and hands over
-    // The tags hand over near landing (from 60% of the way), so two sets never show at once.
-    const hand = still ? 0 : 0.6;
-    const runs = [
-      ghost.animate([{ transform: 'none', opacity: 1 }, { opacity: 1, offset: hand }, { transform: still ? 'none' : `translate(${b.left - a.left}px, ${b.top - a.top}px)`, opacity: ring ? 1 : 0 }], timing),
-      from.animate([{ opacity: 0 }, { opacity: 0 }], timing),
-      to.animate([{ opacity: 0 }, { opacity: 0, offset: hand }, { opacity: ring ? 0 : 1 }], timing),
-    ];
-    const stop = () => {
-      runs.forEach((r) => r.cancel());
-      ghost.remove();
-      if (!li.querySelector(':scope > .ghost')) li.classList.remove('carrying');
-    };
-    runs[0].onfinish = stop;
-    return { ghost, stop };
-  });
+    Object.assign(ghost.style, { left: `${at.left - box.left}px`, top: `${at.top - box.top}px`, width: `${x.getBoundingClientRect().width || at.width}px`, fontSize: getComputedStyle(x).fontSize });
+    return ghost;
+  };
+  let placed = false;
+  const place = () => { // the ghosts' frame, then the ghosts, once
+    if (placed) return;
+    placed = true;
+    li.classList.add('carrying');
+    li.append(...ghosts.filter(Boolean));
+  };
+  const a = starts[0];
+  if (ring?.childElementCount && a?.width) {
+    const b = (opening ? ringThere : ring).getBoundingClientRect();
+    ghosts[0] = ghostOf(ring, a);
+    play(ghosts[0], [{ transform: 'none', opacity: 1 }, { transform: still ? 'none' : move([b.left - a.left, b.top - a.top]), opacity: still ? 0 : 1 }]);
+    fade(opening ? ring : ringThere, [0, 0], [1, 0]);
+    fade(opening ? ringThere : ring, [0, 0], [1, still ? 1 : 0]);
+  }
+  const { box: was, pieces: seen } = starts[1];
+  if (tags?.childElementCount && line && (!opening || was?.width)) {
+    // the ghost line stands at the header's place (gone from the layout once open on narrow screens: where it was)
+    const ghost = ghostOf(tags, opening ? was : tags.getBoundingClientRect());
+    ghosts[1] = ghost;
+    place(); // the pills' own places are read from the ghost line below
+    const panel = new Map(carryPieces(line).map((x) => [pieceKey(x), x]));
+    const same = (p, q) => Math.abs(p.width - q.width) < 1 && Math.abs(p.height - q.height) < 1;
+    const shows = new Map(); // a paired pill's ghost seen at the start and at the end (0: its real copy is, cross-fading)
+    // Closing below 1024px the header's line comes back into the layout and pushes the panel down in the click's frame:
+    // what the panel shows of its own then goes at once rather than step down (the pills fly from where they were seen).
+    const pushed = !opening && !was?.width;
+    let way = [[0, 0], [0, 0]]; // the last pill's travel: a piece only the header has goes along with it
+    [...ghost.children].forEach((g, n) => {
+      const key = pieceKey(g);
+      const home = g.getBoundingClientRect();
+      const now = seen.get(key);
+      const there = panel.get(key)?.getBoundingClientRect();
+      const off = (r) => [r.left - home.left, r.top - home.top];
+      const from = now ? off(now) : way[0];
+      const to = opening ? (there ? off(there) : way[1]) : [0, 0];
+      let frames;
+      if (there) {
+        way = [from, to];
+        const ends = [now && (pushed || same(now, home)) ? 1 : 0, opening && !same(there, home) ? 0 : 1];
+        shows.set(key, ends);
+        frames = still ? [[0, ends[0]], [1, 0]] : [[0, ends[0]], [0.1, 1], [0.9, 1], [1, ends[1]]];
+      } else if (opening) frames = still ? [[0, 1], [1, 0]] : [[0, 1], [0.4, 0], [1, 0]];
+      else frames = still ? [[0, 0], [1, 0]] : [[0, 0], [0.6, 0], [1, 1]];
+      const keys = frames.map(([offset, opacity]) => ({ offset, opacity }));
+      keys[0].transform = move(from);
+      keys.at(-1).transform = move(still ? from : to);
+      play(g, keys);
+      if (!opening) fade(tags.children[n], [0, 0], [1, still ? 1 : 0]); // the header's own shows when the ghost lands
+    });
+    // the panel's own: held while its ghost is seen, else shown late (opening) or gone early (closing)
+    for (const [key, x] of panel) {
+      const ends = shows.get(key);
+      if (still) fade(x, [0, opening ? 0 : 1], [1, opening ? 1 : 0]);
+      else if (ends?.[opening ? 1 : 0]) fade(x, [0, 0], [1, 0]);
+      else if (opening) fade(x, [0, 0], [ends ? 0.9 : 0.6, 0], [1, 1]);
+      else fade(x, [0, pushed ? 0 : 1], [ends ? 0.1 : 0.4, 0], [1, 0]);
+    }
+    // What stands in the pills' way shows once they have passed it and goes before they come: the line's 제품 label, and
+    // below 1024px, where the header's line sits above the facts and the panel's under them, the facts.
+    const label = line.parentElement.querySelector(':scope > .p-label');
+    const facts = line.closest('.p-top').querySelector(':scope > .facts');
+    const [f, l, h] = [facts, line, ghost].map((x) => x?.getBoundingClientRect());
+    const crossed = f && f.top < Math.max(l.top, h.top) && f.bottom > Math.min(l.top, h.top) && f.left < l.right && f.right > l.left;
+    if (!still) for (const [x, go] of [[label, 0.1], [crossed && facts, 0.15]]) if (x) fade(x, ...(opening ? [[0, 0], [0.9, 0], [1, 1]] : [[0, pushed ? 0 : 1], [go, 0], [1, 0]]));
+  }
+  place();
+  for (const [x, keys] of plays) runs.push(x.animate(keys, timing));
+  const stop = () => {
+    runs.forEach((r) => r.cancel());
+    ghosts.forEach((g) => g?.remove());
+    if (!li.querySelector(':scope > .ghost')) li.classList.remove('carrying');
+  };
+  if (!runs.length) return stop() || [];
+  runs[0].onfinish = stop;
+  return ghosts.map((ghost) => ghost && { ghost, stop });
 }
 
 // One board row: a button that opens the details below it, like opening a post. A Highlight is one alert of the
@@ -3481,7 +3577,7 @@ function row(incident, pinned, vendor = '') {
   let flights = []; // the ring and tags in flight between the header and the panel (carry)
   button.addEventListener('click', () => {
     const opening = !open.has(key);
-    if (!opening) alignRing(button, body); // a row drawn open (a redraw) was never lined up
+    const top = li.getBoundingClientRect().top; // where the row stood, to go back to on close (held)
     // Where the ring and tags are seen now and how tall the header is, before the change moves them.
     const starts = carryStarts(button, body, flights, opening);
     const before = heading.offsetHeight;
@@ -3490,17 +3586,21 @@ function row(incident, pinned, vendor = '') {
       open.add(key);
       fill(true);
       body.hidden = false;
-      alignRing(button, body);
     } else open.delete(key);
     const shift = Math.max(0, opening ? before - heading.offsetHeight : heading.offsetHeight - before);
     flights = carry(li, button, body, opening, starts, flights);
-    if (opening) foldOrFade(body, true, undefined, shift);
+    // the row comes up last, after every box above was read (a ghost flies from where its copy was seen); once the panel
+    // is out it is brought up again, as a row near the Board's end could not rise while the panel was still short
+    if (opening) foldOrFade(body, true, () => { if (held?.key === key) holdRow(); }, shift);
     else foldOrFade(body, false, () => { body.hidden = !open.has(key); }, shift); // reopened mid-way: stay open
+    // closing goes back by the row, not the old scrollY: a row above that changed meanwhile would leave this one elsewhere
+    if (opening || held?.key === key) {
+      held = opening ? { key, top, ms: 300 } : { ...held, ms: 240, back: true };
+      Object.assign(held, { at: performance.now(), from: scrollY });
+      holdRow();
+    }
   });
-  if (!body.hidden) {
-    fill();
-    alignLater(button, body);
-  }
+  if (!body.hidden) fill();
   const heading = el('h3', 'row-h');
   heading.append(button);
   li.append(heading, body);
