@@ -508,32 +508,51 @@ addEventListener('offline', leave);
 addEventListener('pageshow', (e) => { if (e.persisted) back(); });
 addEventListener('online', back);
 
-// Owner 11-20 ("펼치기 누르면 해당 내용으로 화면 이동해 고정, 닫으면 원복"): a row the visitor opens comes up to just under
-// the frozen bar (index.html scroll-padding-top) and is held there while redraws change its panel (the full Incident
-// arriving, the view, the text size); closing it goes back to where the page was. One row at a time: opening another
-// holds that one, whose close goes back to where the first had brought the page. A scroll of the visitor's own lets
-// go, and the row then closes where it is. Only a click on the row starts a hold (row()); 모두 펼치기, a filter or tag
-// and rows drawn open by a reload never do.
-// held: { key, top: the row's place in the window before the open, at: when it opened or closed, from: scrollY then,
-// ms: the glide's length, back: closing (the glide goes back to top, and the hold ends where it lands) }
+// Owner 11-20 ("펼치기 누르면 해당 내용으로 화면 이동해 고정, 닫으면 원복"): a row or a vendor fold the visitor opens comes
+// up to just under the frozen bar (index.html scroll-padding-top) and is held there while redraws change its panel (the
+// full Incident arriving, the view, the text size); closing it goes back to where the page was. One at a time: opening
+// another (a row inside a held fold too) holds that one, whose close goes back to where the first had brought the page.
+// Owner 11-22 ("펼쳤을때 화면에 전부 보이면 이동x"): an item whose header and whole panel already fit in the window,
+// under the bar, stays where it is, and so does its close; a panel that grows past the window's edge (a row view's full
+// Incident arriving) rises then. A scroll of the visitor's own lets go, and the item then closes where it is. Only a
+// click starts a hold (row(), foldRows()); 모두 펼치기, a filter or tag and rows drawn open by a reload never do.
+// held: { key (a fold's is fold:<its key>), top: its place in the window before the open, at: when the glide began,
+// from: its place in the window then, ms: the glide's length, still: fits (held at top, not under the bar), back:
+// closing (the glide goes back to top, and the hold ends where it lands) }
 let held = null;
 // The rise runs with the panel's unfold and the way back with its fold (fold(): 300ms and 240ms on FOLD_EASE), so each
 // reads as one motion from the tap frame (owner 11-21, MuMu: a smooth scroll starts slow and only moved once the panel
 // was out or shut). The place is read again every frame: a redraw or a panel that grows re-aims the glide, never
-// restarts it.
+// restarts it. The glide runs in window places, not scrollY: a Board redraw lays the rows above the window out at their
+// content-visibility stand-in height (index.html) for a moment, and the browser's scroll anchoring kept that shift, so a
+// fold below the list's tenth item jumped by 100-270px on opening (owner 11-22).
 let rising = 0; // the glide's frame (holdRow)
-function holdRow() {
+function holdRow(frame) {
+  const owed = !frame && rising; // a call between frames (a redraw) takes the next frame's place, so it runs it too
   cancelAnimationFrame(rising);
+  rising = 0;
   const li = held && document.querySelector(`li[data-vt="${rowName(held.key)}"]`);
   if (!li) {
     if (held?.back) held = null; // a closing row redrawn away: nothing left to go back with
     return;
   }
-  const place = held.back ? held.top : parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-  const to = scrollY + li.getBoundingClientRect().top - place;
+  // a redrawn row is skipped (index.html content-visibility) until a frame finds it on screen: no height to hold by
+  const item = li.closest('#board > li');
+  if (item) item.style.contentVisibility = 'visible';
+  const box = li.getBoundingClientRect();
+  const bar = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  // judged on the full height: mid-unfold the panel is short, and its done() asks again
+  const body = li.querySelector(':scope > .details, :scope > .fold-body');
+  if (held.still && !held.back && !body?.folding && (held.top < bar || held.top + box.height > innerHeight)) {
+    Object.assign(held, { still: false, at: performance.now() });
+  }
+  const place = held.back || held.still ? held.top : bar;
   const p = reducedMotion.matches ? 1 : Math.min(1, (performance.now() - held.at) / held.ms);
-  scrollTo({ top: held.from + (to - held.from) * (1 - (1 - p) ** 3), behavior: 'instant' }); // FOLD_EASE is an ease-out cubic
-  if (p < 1) rising = requestAnimationFrame(holdRow);
+  const at = held.from + (place - held.from) * (1 - (1 - p) ** 3); // FOLD_EASE is an ease-out cubic
+  const y = scrollY;
+  scrollTo({ top: y + box.top - at, behavior: 'instant' });
+  // a frame more after each correction: skipped rows the glide brought near the window take their real height then
+  if (p < 1 || owed || Math.abs(scrollY - y) >= 1) rising = requestAnimationFrame(holdRow);
   else if (held.back) held = null;
 }
 const letGo = () => { held = null; };
@@ -1695,18 +1714,26 @@ function pinCount(shown, total) {
 
 // 주요 사건 더 보기: pin every chosen Highlight (pickHighlights: twenty at most), or back to four.
 let pinAll = false;
+// Where 더 보기 stood in the window when pressed: 접기 puts the new 더 보기 back there (owner, 11-22: back to the screen
+// before), by the button and not an old scrollY. Reaching 접기 takes a scroll, so no scroll cancels it; a reload has none.
+let pinFrom = null;
 function pinToggle(rest) {
   const t = TEXT[lang];
   const button = Object.assign(el('button', 'btn', pinAll ? t.pinLess : t.pinMore(rest)), { type: 'button' });
   button.setAttribute('aria-expanded', pinAll);
-  button.addEventListener('click', () => boardTransition(() => {
-    pinAll = !pinAll;
-    render();
-    const again = $('pin-more').querySelector('button'); // render() built a new one: keep keyboard users on it
-    const added = pinAll && $('highlights').children[PINNED]?.querySelector('button.row');
-    (added || again)?.focus({ preventScroll: true });
-    (added || again)?.scrollIntoView({ block: 'nearest' });
-  }));
+  button.addEventListener('click', () => {
+    const from = pinAll ? pinFrom : button.getBoundingClientRect().top;
+    boardTransition(() => {
+      pinAll = !pinAll;
+      pinFrom = pinAll ? from : null;
+      render();
+      const again = $('pin-more').querySelector('button'); // render() built a new one: keep keyboard users on it
+      const added = pinAll && $('highlights').children[PINNED]?.querySelector('button.row');
+      (added || again)?.focus({ preventScroll: true });
+      if (!pinAll && from !== null && again) scrollBy(0, again.getBoundingClientRect().top - from);
+      else (added || again)?.scrollIntoView({ block: 'nearest' });
+    });
+  });
   return button;
 }
 
@@ -3290,16 +3317,27 @@ function foldRows(group) {
   chevron.setAttribute('aria-hidden', 'true');
   button.append(riskCell(gravest), title, scoreCell(top), tags, dateCell(newest), chevron);
   const foldRow = () => document.querySelector(`button.row[data-fold="${CSS.escape(group.fold)}"]`);
+  const key = `fold:${group.fold}`; // held like a row (holdRow), by the name its li carries
+  const placeOf = () => foldRow()?.closest('li').getBoundingClientRect().top;
   const toggle = (closing) => {
+    const top = placeOf();
     if (closing) {
       const body = foldRow()?.closest('li').querySelector(':scope > .fold-body');
+      const back = held?.key === key;
+      if (back) {
+        Object.assign(held, { ms: 240, back: true, at: performance.now(), from: top });
+        holdRow();
+      }
       const done = () => {
+        const was = placeOf();
         openFolds.delete(group.fold);
         render();
         clearTimeout(announcing);
         $('announce').textContent = t.foldClosed(vendor);
         foldRow()?.focus({ preventScroll: true });
-        foldRow()?.scrollIntoView({ block: 'nearest' }); // closed from the bottom: bring the row back into view
+        const now = placeOf();
+        if (was !== undefined && now !== undefined) scrollBy(0, now - was); // the redraw's shift (holdRow)
+        if (!back) foldRow()?.scrollIntoView({ block: 'nearest' }); // closed from the bottom: bring the row back into view
       };
       return body ? fold(body, false, done) : done();
     }
@@ -3307,8 +3345,10 @@ function foldRows(group) {
     render();
     const body = foldRow()?.closest('li').querySelector(':scope > .fold-body');
     foldRow()?.focus({ preventScroll: true });
+    held = { key, top, from: top, ms: 300, still: true, at: performance.now() };
+    holdRow();
     if (body) {
-      fold(body, true);
+      fold(body, true, () => { if (held?.key === key) holdRow(); });
       if (!reducedMotion.matches) {
         [...body.querySelectorAll('.fold-members > li')].slice(0, 10).forEach((m, n) => m.animate(
           [{ opacity: 0, translate: '0 -6px' }, { opacity: 1, translate: '0 0' }],
@@ -3545,16 +3585,17 @@ function row(incident, pinned, vendor = '') {
     } else open.delete(key);
     const shift = Math.max(0, opening ? before - heading.offsetHeight : heading.offsetHeight - before);
     flights = carry(li, button, body, opening, starts, flights);
-    // the row comes up last, after every box above was read (a ghost flies from where its copy was seen); once the panel
-    // is out it is brought up again, as a row near the Board's end could not rise while the panel was still short
-    if (opening) foldOrFade(body, true, () => { if (held?.key === key) holdRow(); }, shift);
-    else foldOrFade(body, false, () => { body.hidden = !open.has(key); }, shift); // reopened mid-way: stay open
+    // the row is held after every box above was read (a ghost flies from where its copy was seen) and before the panel
+    // folds, whose full height says whether it fits; once the panel is out it is brought up again, as a row near the
+    // Board's end could not rise while the panel was still short
     // closing goes back by the row, not the old scrollY: a row above that changed meanwhile would leave this one elsewhere
     if (opening || held?.key === key) {
-      held = opening ? { key, top, ms: 300 } : { ...held, ms: 240, back: true };
-      Object.assign(held, { at: performance.now(), from: scrollY });
+      held = opening ? { key, top, ms: 300, still: true } : { ...held, ms: 240, back: true };
+      Object.assign(held, { at: performance.now(), from: li.getBoundingClientRect().top });
       holdRow();
     }
+    if (opening) foldOrFade(body, true, () => { if (held?.key === key) holdRow(); }, shift);
+    else foldOrFade(body, false, () => { body.hidden = !open.has(key); }, shift); // reopened mid-way: stay open
   });
   if (!body.hidden) fill();
   const heading = el('h3', 'row-h');
