@@ -58,7 +58,10 @@ class VendorNoticeTest(unittest.TestCase):
                     "https://www.gl-inet.com/products/gl-mt6000/",  # a product page
                     "https://gl-inet-support.com/security-notice",  # not the vendor's name
                     "https://glinet.example.com/security-notice",  # a subdomain of someone else's
-                    "https://example.com/gl-inet-security-notice"):  # the name only in the path
+                    "https://example.com/gl-inet-security-notice",  # the name only in the path
+                    "https://docs.gl-inet.com/router/en/4/security/",  # a manual page: "security" alone
+                    "https://status.gl-inet.com/incidents/x1",  # an uptime status page
+                    "https://gitlab.gl-inet.com/security/vulnerability-reports/-/work_items/9"):  # a reporter's tracker item
             with self.subTest(url):
                 self.assertFalse(summaries.vendor_notice(url, names))
         self.assertFalse(summaries.vendor_notice(NOTICE, ["Router firmware"]))  # no vendor name to match

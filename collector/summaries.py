@@ -458,12 +458,16 @@ def input_reports_attacks(input_text, source, reporters, finders=(), vendors=())
 # "gl-inet" in www.gl-inet.com or "toshiba" in toshiba.co.jp) written without its punctuation must equal a vendor name so
 # written: the first one, two or three words of a product name ("GL.iNet routers": "glinet", "glinetrouters"). Equality
 # only, no substring ("gl-inet-support.com", "glinet.example.com" never). Not on a site's user pages (forum.gl-inet.com
-# is customers talking), and only an address that says what it is: a path naming a security notice, advisory, bulletin
-# or incident, so a vendor's product or marketing page never counts. shortcut: the same name under another suffix
-# (gl-inet.co) passes; keep a vendor's own domains if one is ever abused.
+# is customers talking; a status page neither), and only an address that says what it is: a path naming a notice, an
+# advisory, a bulletin or an incident, so a vendor's product or marketing page never counts. shortcut: the same name
+# under another suffix (gl-inet.co) passes; keep a vendor's own domains if one is ever abused.
 SECOND_LEVEL = {"co", "com", "net", "org", "or", "ne", "ac", "go", "gov", "edu", "gob", "gv"}
-USER_PAGES = {"forum", "forums", "community", "communities", "discuss", "discussions", "answers", "ideas", "groups", "users"}
-NOTICE_PATH = re.compile(r"secur|advisor|bulletin|psirt|notice|incident|vulnerab|cve-\d", re.I)
+# Not a notice: customers' pages, an uptime status page, an issue tracker whose items reporters write (11-22 audit:
+# status.optimizely.com's "/incidents/", gitlab.eclipse.org's "security/vulnerability-reports" items).
+USER_PAGES = {"forum", "forums", "community", "communities", "discuss", "discussions", "answers", "ideas", "groups", "users",
+              "status", "gitlab", "github", "git", "bugs", "bugzilla", "issues", "jira", "tracker"}
+# "security" alone is no notice (11-22 audit: docs.docker.com/ai/sandboxes/security/isolation/, a manual page).
+NOTICE_PATH = re.compile(r"advisor|bulletin|psirt|notice|incident|vulnerab|cve-\d", re.I)
 squash = lambda text: re.sub(r"[^a-z0-9]", "", text.lower())
 
 
