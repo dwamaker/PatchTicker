@@ -246,6 +246,9 @@ class CycleTest(unittest.TestCase):
         express, middie = (rows_view(row(f"F{n}", "@fastify/" + p) | {"products": [{"id": f"@fastify/{p}:@fastify/{p}", "name": p}]})
                            for n, p in ((1, "express"), (2, "middie")))
         self.assertIn("known:Fastify", set(cycle.same_keys(express)) & set(cycle.same_keys(middie)))
+        # 11-22, vendorOf: the npm scope is the vendor, so they are the same without the label too.
+        plain = [cycle.same_keys({k: v for k, v in view.items() if k != "known"}) for view in (express, middie)]
+        self.assertTrue(set(plain[0]) & set(plain[1]), plain)
 
     def test_the_highlights_match_the_page_on_the_shared_case(self):
         # tests/board.test.mjs checks filterBoard on the same case.

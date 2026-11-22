@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import sys
 import time
 from datetime import date, timedelta
@@ -117,7 +118,8 @@ def same_keys(view):
     """A port of sameKeys in web/board.mjs, where the rule is explained: two rows are the same when they share a key
     (the first Product id's vendor with its well_known.json category, else the vendor; the label; the Summary's first
     product name); with none of them, the row alone."""
-    vendor = ((view.get("products") or [{}])[0].get("id") or "").split(":")[0]
+    # vendorOf: an npm package keyed by its own name has its scope as vendor ("@fastify/express" -> "@fastify").
+    vendor = re.sub(r"^(@[^/]+)/.*", r"\1", ((view.get("products") or [{}])[0].get("id") or "").split(":")[0])
     kind = view.get("known_kind")
     known = view.get("known")
     name = ((view.get("summary") or {}).get("products") or [None])[0]

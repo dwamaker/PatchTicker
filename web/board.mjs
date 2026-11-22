@@ -959,7 +959,11 @@ export function reportUrl(i, lang, link, slug) {
 // A vendor as people write it, from the id's vendor part. Spellings live in vendors.json (the collector reads it too and
 // lists vendors it lacks in unknown_vendors.json; how to add one: docs/agents/vendors.md). A fold line still needs a name
 // for the rest: short codes in capitals (acme → ACME), else one capital (sonatype → Sonatype).
-export const vendorName = (v) => VENDORS[v] || (v.length <= 4 ? v.toUpperCase() : v[0].toUpperCase() + v.slice(1));
+// An npm scope reads without its "@" (vendorOf: "@fastify" -> "Fastify").
+export const vendorName = (v) => {
+  const bare = v.replace(/^@/, '');
+  return VENDORS[v] || (bare.length <= 4 ? bare.toUpperCase() : bare[0].toUpperCase() + bare.slice(1));
+};
 // The vendor's own spelling, or '' when vendors.json lacks it: titles are never led by a guessed name
 // ("Apache_software_foundation Apache Axis2", critique 14).
 export const knownVendor = (v) => VENDORS[v] || '';
@@ -1040,7 +1044,10 @@ export function relativeAge(iso, now) {
 // item once this many of its rows share a publish day; each row stays its own Incident inside. 0 turns the fold off.
 // Owner, late 11-09: 3, not 5, so a smaller push folds too (Red Hat's three GStreamer CVEs in one minute).
 export const VENDOR_FOLD_MIN = 3;
-export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0];
+// Owner, 11-22: an npm package keyed by its own name ("@fastify/express:@fastify/express") has its scope as vendor
+// ("@fastify"), so one project's packages of a day fold like a vendor's push, each still its own Incident. Ported in
+// collector/cycle.py (same_keys).
+export const vendorOf = (i) => (i.products?.[0]?.id || '').split(':')[0].replace(/^(@[^/]+)\/.*/, '$1');
 // Owner, critique 14 c.1: WordPress plugins and themes are about a quarter of the list, so they fold as one pseudo-vendor,
 // ahead of their own vendor's fold (one fold per row). WordPress itself is not a plugin. Also in collector/incidents.py
 // (WP_PLUGIN, is_wordpress_plugin: a row view carries the answer as wp_plugin), kept in step by rows-case.json.
