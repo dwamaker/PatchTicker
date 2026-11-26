@@ -817,6 +817,18 @@ def language_gaps(summary):
 VERSION_RE = re.compile(r"(?<!\d)\d{1,20}(?:\.\d{1,20})+(?!\d)")  # bounded: int() rejects over 4300 digits
 # DISTRO_PACKAGE (incidents.py, where group_releases needs it too): a distribution's package version.
 FIXED_CONFLICT = "fixed version "  # retry() gives it its own sentence
+# 11-26: where the records bound a build of a release ("<32.1.3-2p1"), the product is fixed by builds, and a build of
+# another release ("32.1.2-2p3") is not below that bound: VMware Avi's record text fixes 32.1.1-32.1.2 in 32.1.2-2p3
+# (CVE-2026-123926, given up 3 of 3). Only then: a bare bound still rejects a build below it (10.6p2 under <10.6.3).
+BUILD_SUFFIX = re.compile(r"[-_+][0-9A-Za-z]|[A-Za-z]+\d")
+
+
+def version_order(a, b):
+    """-1, 0 or 1 for two version tuples, a missing part counting as 0: 1.7 is 1.7.0 (Drupal Scheduler,
+    CVE-2026-122075, 11-26: "1.7 is below 1.7.0" gave its Summary up 3 of 3)."""
+    width = max(len(a), len(b))
+    a, b = a + (0,) * (width - len(a)), b + (0,) * (width - len(b))
+    return (a > b) - (a < b)
 
 
 def fixed_conflict(incident, summary):
@@ -831,17 +843,20 @@ def fixed_conflict(incident, summary):
     if len({product for product, _ in strict}) != 1:
         return ""
     bounds = {tuple(map(int, v.split("."))) for _, value in strict for v in VERSION_RE.findall(value)}
+    builds = any(BUILD_SUFFIX.match(value, m.end()) for _, value in strict for m in VERSION_RE.finditer(value))
     # .get: stored Summaries from before "fixes" (11-08) are read here too (needs_summary).
     # Owner, 2026-11-12: GStreamer's Red Hat backports (CVE-2026-125712, "1.16.1-8.el8_10") were rejected three times
     # against the upstream bound 1.28.4; a package under "fixes" is true for its distribution, a bare "fixed" is not.
     for text in [summary.get("fixed"), *(f.get("version") for f in summary.get("fixes") or []
                                          if isinstance(f, dict) and not DISTRO_PACKAGE.search(str(f.get("version"))))]:
         found = isinstance(text, str) and VERSION_RE.search(text)
+        if found and builds and BUILD_SUFFIX.match(text, found.end()):
+            continue
         version = found and tuple(map(int, found[0].split(".")))
         # Owner 11-16: only a bound of the fix's own release line (major.minor); a backport on an older line
         # (2.2.35 beside records bounded at <2.4.62) passes. A bound of a lower line can never reject a higher fix.
         same = [b for b in bounds if version and b[:2] == version[:2]]
-        if same and version not in bounds and all(version < b for b in same):
+        if same and all(version_order(version, b) for b in bounds) and all(version_order(version, b) < 0 for b in same):
             return (f"{FIXED_CONFLICT}{found[0]} is below {'.'.join(map(str, min(same)))}, the first fixed version in the CVE"
                     " records; a version below it is still affected")
     return ""

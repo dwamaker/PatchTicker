@@ -45,6 +45,11 @@ LINE_WORD = re.compile(r"(?:\.x)?\s*(?:line|branch|series|계열|라인|브랜�
 WORDED = re.compile(r"line|branch|series|계열|라인|브랜치|버전대", re.I)
 # A line word after one or more listed lines ("12.3 및 12.4 계열", "12.0 to 12.3 lines", "6.3.x와 5.19.x 계열").
 LINE_AFTER = re.compile(rf"(?:(?:\.x)?\s*(?:,|및|와|과|~|–|and|to|through|or|또는)\s*v?\d+(?:\.\d+)*)*(?:{LINE_WORD.pattern})", re.I)
+# 11-26: a major alone right after a name, with no line word ("Update OTP 28 to 28.5.0.9", "29.1.3 on OTP 29":
+# CVE-2026-119443 given up 3 of 3 on the English, while the Korean's "OTP 28 계열" passed). Never a count: what follows
+# is the sentence's end, punctuation, a joining word or a Korean particle, so "28 flaws" and "28건" stay numbers.
+NAME_BEFORE = re.compile(r"(?<![A-Za-z])[A-Z][A-Za-z+/.-]*\s$")
+MAJOR_AFTER = re.compile(r"\s*(?:$|[,.;:)]|(?:to|and|or|is|are|needs?|users?|should|must)\b|[은는이가의와과도]|에서|용)")
 
 
 def without_line_names(text, fixed, known):
@@ -67,8 +72,9 @@ def without_line_names(text, fixed, known):
             # A line word names a line; a bare ".x" ("Update 26.1.x to 26.1.11") also needs the reply's own fix on it.
             if after and line(t, known) and (WORDED.search(after[0]) or line(t, fixed)):
                 return True
-            return ("." in t and not TARGET_BEFORE.search(sentence[:m.start()]) and not TARGET_AFTER.match(sentence, m.end())
-                    and line(t, fixed) and line(t, here))
+            named = "." in t or (NAME_BEFORE.search(sentence[:m.start()]) and MAJOR_AFTER.match(sentence, m.end()))
+            return bool(named and not TARGET_BEFORE.search(sentence[:m.start()]) and not TARGET_AFTER.match(sentence, m.end())
+                        and line(t, fixed) and line(t, here))
         return NUMBER_RE.sub(lambda m: " " if name(m) else m[0], sentence)
     return "\n".join(map(strip, SENTENCE_END.split(text)))
 
@@ -81,8 +87,10 @@ def plain(value):
 # failed three times on it). To add one, append the whole word; never a pattern, so "3자리" stays a number.
 # 11-19: the Korean for MFA, which the Easy view may not write as "MFA" (EASY_BANNED): CVE-2026-16021's group was given
 # up on "2단계 인증" and "2단계 로그인" where no input version held a bare 2.
-KO_DIGIT_WORDS = ("제3자", "2단계 인증", "2단계인증", "2단계 로그인", "2차 인증", "2차인증", "2FA")
-KO_DIGIT_WORD_RE = re.compile("|".join(map(re.escape, KO_DIGIT_WORDS)))
+# 11-26: "1:1" and "1대1" for a name the input spells "One to one" (CVE-2026-107654, WPGuppy's "One to one user Chat"
+# written "1:1 채팅": given up 3 of 3, and "one" is no number word). Never inside a longer number ("21:15", "1:10").
+KO_DIGIT_WORDS = ("제3자", "2단계 인증", "2단계인증", "2단계 로그인", "2차 인증", "2차인증", "2FA", "1:1", "1대1")
+KO_DIGIT_WORD_RE = re.compile(rf"(?<![\d.:])(?:{'|'.join(map(re.escape, KO_DIGIT_WORDS))})(?![\d:])")
 
 
 def ko_numbers(text):
