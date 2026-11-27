@@ -810,7 +810,8 @@ def write_sitemap_months(store, listed, pages, now, more=lambda: True):
         months[month] = store.read(SITEMAP_MONTH.format(month)) or {}
     if hashes != index:
         store.write(SITEMAP_MONTHS, dict(sorted(hashes.items())))
-    return months
+    # the oldest month's pages past PAGE_KEEP_DAYS answer 410: the CVE map leaves them out (Gemini, round 8)
+    return {m: {s: e for s, e in doc.items() if e.get("first_seen", "") >= gone} for m, doc in months.items()}
 
 
 def write_moves(store, incidents, had_page, now, stamp):

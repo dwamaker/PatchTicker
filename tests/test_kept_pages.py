@@ -38,6 +38,7 @@ class SitemapMonthsTest(unittest.TestCase):
         write_sitemap_months(store, [], {}, at("2026-11-12T00:00:00"))
         self.assertEqual(month(store), {"CVE-2026-1005": first["CVE-2026-1005"]})
         kept = write_sitemap_months(store, [], {}, at("2027-03-01T00:00:00"))  # frozen: read back, not rewritten
+        self.assertEqual(write_sitemap_months(store, [], {}, at("2027-08-15T00:00:00")), {"2026-08": {}})  # past 365: out of the CVE map, the month not yet gone
         self.assertEqual(kept, {"2026-08": {"CVE-2026-1005": first["CVE-2026-1005"]}})
         write_sitemap_months(store, [], {}, at("2027-09-01T00:00:00"))  # past 365 days
         self.assertIsNone(month(store))

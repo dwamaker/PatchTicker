@@ -474,7 +474,8 @@ export function pageHtml(i, lang, slug, others = null, pages = [], links = {}) {
     leadLine(i, t),
     cveLineList(i, lang, t),
     mentions(i, lang, t),
-    `<p class="share"><a class="btn" href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
+    `<p class="share">${links.frozen ? `<a class="btn" href="/">${esc(t.home)}</a>` // past 90 days the Board no longer holds it (Gemini, round 8)
+      : `<a class="btn" href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`}`
       + `<a class="btn" href="${esc(reportUrl(i, lang, self, slug))}"${NEW_TAB}>${REPORT_ICON}<span>${esc(t.report)}</span></a></p>`,
     '</div>',
     `<script>${LOCAL_TIME}</script>`,

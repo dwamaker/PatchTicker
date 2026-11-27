@@ -376,6 +376,10 @@ test('a listed page past 90 days stays a year with a frozen line; an unlisted on
   const res = await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old, 'sitemaps/2026-08.json': month }), 'ko', 'CVE-2026-123158', NOW);
   assert.equal(res.status, 200);
   assert.match(await res.text(), /<p class="caution frozen">이 기록은 2026-11-08 이후 갱신되지 않습니다\. 이후 수정 사항은 제조사 공지를 확인하세요\.<\/p>/);
+  // its Board row is gone past 90 days: the button leads to the Board itself (Gemini, round 8)
+  const frozenHtml = await (await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old, 'sitemaps/2026-08.json': month }), 'ko', 'CVE-2026-123158', NOW)).text();
+  assert.match(frozenHtml, /<p class="share"><a class="btn" href="\/">현황판으로 가기<\/a>/);
+  assert.doesNotMatch(frozenHtml, /href="\/#i=/);
   assert.equal((await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old }), 'ko', 'CVE-2026-123158', NOW)).status, 410);
   assert.equal((await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old, 'sitemaps/2026-08.json': month }), 'ko', 'CVE-2026-123158',
     Date.parse('2027-08-11T00:00:00Z'))).status, 410); // past 365 days
