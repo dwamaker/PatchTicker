@@ -303,7 +303,10 @@ from the same `check/p/<slug>.json`: the product's Incidents of the last 90 days
 version, each linking its Incident page (or its Board row), in the Incident page's shell and CSP, with a link to the
 product's feed. A product with fewer than 3 Incidents (`PRODUCT_PAGE_MIN`, in `edge/product.mjs` and
 `collector/checks.py`) is `noindex`. 404 for a slug that is not 16 hex characters or has no document, 503 when R2 cannot
-be read. An Incident page links its products' pages (at most five, operating systems aside), and states its headline,
+be read. An Incident page links its products' pages (at most five, operating systems aside; a merged product's at its
+new address, read from its `{moved}` document, so no link answers 301), up to five other recent Incidents of its first
+product that have a page, and its day list `/d/<day>` when it is on it (`pageLinks` in `edge/page.mjs`, Gemini review
+2026-11-28: the page reads those check documents and the day's list document; anything unreadable is left out), and states its headline,
 description, dates, language and address as JSON-LD in a `<script type="application/ld+json">` block, which runs
 nothing (the CSP's `script-src` does not apply to it) and holds no `<`, `>` or `&` unescaped.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps

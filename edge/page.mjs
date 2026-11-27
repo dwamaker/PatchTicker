@@ -34,7 +34,8 @@ const TEXT = {
   ko: {
     ...WORDS.ko,
     ...ROW.ko,
-    path: '/i/', productPath: '/p/', locale: 'ko_KR',
+    path: '/i/', productPath: '/p/', dayPath: '/d/', locale: 'ko_KR',
+    related: (name) => `${name}의 다른 최근 사건`, dayLink: (day) => `${day} 보안 사건 모두 보기`,
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     productPages: '제품별 사건', summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     firstSeen: '처음 확인', zone: ' KST',
@@ -45,7 +46,8 @@ const TEXT = {
   en: {
     ...WORDS.en,
     ...ROW.en,
-    path: '/en/i/', productPath: '/en/p/', locale: 'en_US',
+    path: '/en/i/', productPath: '/en/p/', dayPath: '/en/d/', locale: 'en_US',
+    related: (name) => `Other recent Incidents of ${name}`, dayLink: (day) => `All Incidents of ${day}`,
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     productPages: 'Incidents by product', summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
     firstSeen: 'First seen', zone: ' UTC',
@@ -57,7 +59,8 @@ const TEXT = {
   ja: {
     ...WORDS.ja,
     ...ROW.ja,
-    path: '/ja/i/', productPath: '/ja/p/', locale: 'ja_JP',
+    path: '/ja/i/', productPath: '/ja/p/', dayPath: '/ja/d/', locale: 'ja_JP',
+    related: (name) => `${name} のほかの最近のインシデント`, dayLink: (day) => `${day} のインシデント一覧`,
     rating: { critical: '緊急', high: '重要', medium: '警告', low: '注意', none: 'なし' },
     productPages: '製品別のインシデント', summary: '要約', todo: '対処法', products: '対象の製品と OS', cves: 'CVE 番号', moreCves: (n) => `CVE をあと${n}件表示`, mentions: '原文リンク', times: '日時', links: 'このインシデントをもっと見る',
     firstSeen: '初確認', zone: ' JST',
@@ -242,6 +245,34 @@ const PRODUCT_LINKS = 5;
 export const productPageList = async (i, lang) => Promise.all(productsOf(i, lang).filter((x) => !x.id.startsWith('os:')).slice(0, PRODUCT_LINKS)
   .map(async (x) => ({ name: x.name, slug: await checkSlug(x.id) })));
 
+// Gemini review, 11-28 (P1, P2): what the page links besides its products, read from the collector's documents.
+// pages: productPageList's answer. A product page that moved (its id merged, collector/checks.py moved_docs) is linked
+// at its new address, not through a 301; one that names another canonical (same_lists) keeps its own, which names the
+// visitor's model. related: up to RELATED other Incidents of the first product that have a page, newest first (the
+// check document's order). day: the day list (/d/<day>, the day of first sight in Korea, as collector/cycle.py
+// list_docs) when the Incident is on it. Anything unreadable is left out, never an error.
+const RELATED = 5;
+const PRODUCT_SLUG = /^[0-9a-f]{16}$/; // check_slug in collector/checks.py
+const LIST_DAY_MS = 9 * 3600e3; // collector/cycle.py LIST_DAY_HOURS
+export async function pageLinks(bucket, i, pages) {
+  const read = (key) => readJson(bucket, key).catch(() => null);
+  const docs = await Promise.all(pages.map((x) => read(`check/p/${x.slug}.json`)));
+  const linked = pages.map((x, k) => (typeof docs[k]?.moved === 'string' && PRODUCT_SLUG.test(docs[k].moved) ? { ...x, slug: docs[k].moved } : x));
+  let first = docs[0];
+  if (linked.length && linked[0].slug !== pages[0].slug) first = await read(`check/p/${linked[0].slug}.json`);
+  const own = `${SITE}/i/`;
+  const related = linked.length && Array.isArray(first?.incidents) ? first.incidents.filter((e) => e && e.id !== i.id
+    && typeof e.url === 'string' && e.url.startsWith(own) && SLUG.test(e.url.slice(own.length))).slice(0, RELATED) : [];
+  const day = Number.isFinite(Date.parse(i.first_seen)) ? new Date(Date.parse(i.first_seen) + LIST_DAY_MS).toISOString().slice(0, 10) : null;
+  const list = day ? await read(`lists/d/${day}.json`) : null;
+  const listed = Array.isArray(list?.incidents) && list.incidents.some((e) => e?.id === i.id);
+  return { pages: linked, related: related.length ? { name: linked[0].name, items: related } : null, day: listed ? day : null };
+}
+const relatedBlock = (related, lang, t) => (related ? `<p class="others">${esc(t.related(related.name))}</p><ul class="mentions related">`
+  + related.items.map((e) => `<li><a href="${t.path}${esc(e.url.slice(`${SITE}/i/`.length))}">${esc(String((lang === 'ko' ? e.title_ko : e.title_en) || e.id))}</a></li>`).join('')
+  + '</ul>' : '');
+const dayLine = (day, t) => (day ? `<p class="others"><a href="${t.dayPath}${day}">${esc(t.dayLink(day))}</a></p>` : '');
+
 // M1 (owner, 11-15): under the Mitigation, the Board filtered to the first Product when it had other Incidents lately.
 function othersLink(i, lang, t, others) {
   const found = productOthers(i, lang, others);
@@ -374,7 +405,7 @@ export function clip(text, max = DESCRIPTION_MAX) {
 }
 
 // others: board/others.json (M1), or null. pages: productPageList's answer (the products' pages), or none.
-export function pageHtml(i, lang, slug, others = null, pages = []) {
+export function pageHtml(i, lang, slug, others = null, pages = [], links = {}) {
   const t = TEXT[lang];
   const s = i.summary?.[lang] || {};
   const level = riskLevel(i);
@@ -429,6 +460,8 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
       : `<ul class="cond-list">${conditions.map((c) => `<li>${condition(c, i.cves)}</li>`).join('')}</ul>`) : '',
     othersLink(i, lang, t, others),
     productPages(pages, t),
+    relatedBlock(links.related, lang, t),
+    dayLine(links.day, t),
     distroFold(i, lang, t),
     cveFold(i, t),
     leadLine(i, t),
@@ -486,7 +519,8 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
     const others = await readJson(bucket, 'board/others.json', lang).catch(() => null);
-    return new Response(pageHtml(doc, lang, slug, others, await productPageList(doc, lang)), {
+    const links = await pageLinks(bucket, doc, await productPageList(doc, lang));
+    return new Response(pageHtml(doc, lang, slug, others, links.pages, links), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP },
     });
   }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));

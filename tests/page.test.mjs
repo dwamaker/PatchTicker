@@ -569,7 +569,8 @@ test('the page shows the Public date among the facts and links the product\'s ot
 test('the page reads the counts once, and a missing or broken counts document only drops the link', async () => {
   reads.length = 0;
   await withOthers(SSHOLE, 'ko', OTHERS);
-  assert.deepEqual(reads, ['pages/CVE-2026-123158.json', 'board/others.json']);
+  // then the linked product's check document and the day's list (pageLinks: Gemini review, 11-28)
+  assert.deepEqual(reads, ['pages/CVE-2026-123158.json', 'board/others.json', 'check/p/3e96ab9cc2cec1ca.json', 'lists/d/2026-11-06.json']);
   const broken = { get: async (key) => (key === 'board/others.json' ? { text: async () => '{not json' } : { text: async () => JSON.stringify(SSHOLE) }) };
   const failing = { get: async (key) => { if (key === 'board/others.json') throw new Error('R2 down'); return { text: async () => JSON.stringify(SSHOLE) }; } };
   for (const store of [bucket({ 'pages/CVE-2026-123158.json': SSHOLE }), broken, failing]) {
@@ -723,4 +724,40 @@ test('the description is the Easy line and the first Summary sentence, cut at a 
   // no Easy line: the first Summary sentence alone; no Summary: the source's own line
   const plain = await (await page({ ...SSHOLE, summary: { ...SSHOLE.summary, ko: { ...SSHOLE.summary.ko, easy: '' } } }, 'ko')).text();
   assert.match(plain, /<meta name="description" content="musl 기반에서만 해당합니다.">/);
+});
+
+// Gemini review, 11-28 (P1, P2): the page links the first product's other recent Incidents that have a page, the day
+// list when the Incident is on it, and a merged product at its new address; a same-list page keeps its own.
+test('an Incident page links its product\'s recent Incidents, its day list, and a moved product at its new address', async () => {
+  const ssh = '3e96ab9cc2cec1ca';
+  const entry = (n, url) => ({ id: `CVE-2026-${10000 + n}`, url, title_ko: `사건 ${n}`, title_en: `Incident ${n}` });
+  const own = (n) => entry(n, `https://patchticker.com/i/CVE-2026-${10000 + n}`);
+  const docs = { 'pages/CVE-2026-123158.json': SSHOLE,
+    [`check/p/${ssh}.json`]: { product: 'OpenSSH', incidents: [own(1), entry(2, 'https://patchticker.com/#i=CVE-2026-10002'), { ...own(3), id: 'CVE-2026-123158' }, own(4), own(5), own(6), own(7), own(8), own(9)] },
+    'lists/d/2026-11-06.json': { day: '2026-11-06', incidents: [{ id: 'CVE-2026-123158' }] } };
+  const ko = await (await pageResponse(bucket(docs), 'ko', 'CVE-2026-123158', NOW)).text();
+  const related = /<p class="others">OpenSSH의 다른 최근 사건<\/p><ul class="mentions related">(.*?)<\/ul>/.exec(ko)[1];
+  // itself and a row without a page left out, five at most, newest first
+  assert.deepEqual([...related.matchAll(/href="([^"]+)">([^<]+)</g)].map((m) => [m[1], m[2]]),
+    [['/i/CVE-2026-10001', '사건 1'], ['/i/CVE-2026-10004', '사건 4'], ['/i/CVE-2026-10005', '사건 5'], ['/i/CVE-2026-10006', '사건 6'], ['/i/CVE-2026-10007', '사건 7']]);
+  assert.match(ko, /<p class="others"><a href="\/d\/2026-11-06">2026-11-06 보안 사건 모두 보기<\/a><\/p>/);
+  const ja = await (await pageResponse(bucket(docs), 'ja', 'CVE-2026-123158', NOW)).text();
+  assert.match(ja, /<a href="\/ja\/i\/CVE-2026-10001">Incident 1<\/a>/); // English titles under Japanese labels, as the lists
+  assert.match(ja, /<a href="\/ja\/d\/2026-11-06">/);
+
+  // not on the day list: no day link; the product merged into another: linked there, its list read from there
+  const moved = { ...docs, 'lists/d/2026-11-06.json': { incidents: [{ id: 'CVE-2026-10009' }] }, [`check/p/${ssh}.json`]: { moved: 'aaaaaaaaaaaaaaaa' },
+    'check/p/aaaaaaaaaaaaaaaa.json': { product: 'OpenSSH', incidents: [own(11)] } };
+  const html = await (await pageResponse(bucket(moved), 'ko', 'CVE-2026-123158', NOW)).text();
+  assert.match(html, /<a href="\/p\/aaaaaaaaaaaaaaaa">OpenSSH<\/a>/);
+  assert.doesNotMatch(html, new RegExp(`/p/${ssh}`));
+  assert.match(html, /<a href="\/i\/CVE-2026-10011">사건 11<\/a>/);
+  assert.doesNotMatch(html, /보안 사건 모두 보기/);
+  // a same-list page (it names another canonical) keeps its own address: it names the visitor's model
+  const same = { ...docs, [`check/p/${ssh}.json`]: { ...docs[`check/p/${ssh}.json`], canonical: 'bbbbbbbbbbbbbbbb' } };
+  assert.match(await (await pageResponse(bucket(same), 'ko', 'CVE-2026-123158', NOW)).text(), new RegExp(`<a href="/p/${ssh}">OpenSSH</a>`));
+  // hostile entries stay text and never become another site's link
+  const evil = { ...docs, [`check/p/${ssh}.json`]: { incidents: [{ id: 'x', url: 'https://patchticker.com/i/"><script>', title_ko: 't' }, { id: 'y', url: 'https://evil.example/i/CVE-1', title_ko: 'e' }] } };
+  const bad = await (await pageResponse(bucket(evil), 'ko', 'CVE-2026-123158', NOW)).text();
+  assert.doesNotMatch(bad, /"><script>|evil\.example|class="mentions related"/); // the page's own <script> aside
 });
