@@ -265,12 +265,20 @@ It also answers the Incident pages `/i/<slug>` and `/en/i/<slug>` (`functions/i/
 `edge/page.mjs`, rules imported from `web/board.mjs`) from `pages/<slug>.json`: one document per Incident with a
 Summary first seen in the last 90 days, written by the collector only when its fields changed (`page_hashes.json` in
 the store, `{slug: {hash, changed}}` for the current page set only, so a cycle reads one document instead of one per
-page). 404 for an unknown slug or an Incident not on the Board, 410 past 90 days, 503 when R2 cannot be read or a
+page). 404 for an unknown slug or an Incident not on the Board, 410 past 90 days (a page the sitemaps listed: past
+365 days, see below), 503 when R2 cannot be read or a
 document cannot be rendered. When an Incident that had a page is absorbed into another, the survivor lists its ID in
 `absorbed` and the collector replaces its page document with `{id, moved_to, moved_to_id, moved}` (`moves.json` in the
 store, `{slug: {moved_to, moved_to_id, moved}}`, drops moves past 90 days): 301 to the survivor's page in the same
 language, 302 to the survivor's row on the Board (`/#i=<id>`) while the survivor has no page yet, 410 once the move or
-the survivor is past 90 days. The edge cache keeps 200, 301, 302 and 410 answers for 5 minutes and 404s for 1 minute,
+the survivor is past 90 days, unless the survivor is a kept page.
+Kept pages (owner, 2026-11-28: a year, not for ever; Gemini review P4): a page the sitemaps listed lives
+`PAGE_KEEP_DAYS` (365; `collector/cycle.py`, `web/board.mjs`), frozen after 90 days, when the store forgets its Incident;
+the page then says since when it is not updated. Each cycle writes `sitemaps/<YYYY-MM>.json` (`write_sitemap_months`):
+the listed pages first seen that calendar month, `{slug: {first_seen, changed, cves}}`, an entry past 90 days kept as it
+was, a month past 365 days deleted, `sitemaps/index.json` holding their hashes. The page function reads the month's
+document only for a page past 90 days (`kept` in `edge/page.mjs`); the monthly sitemaps read it too; the CVE map keeps
+the kept pages' other CVEs; a day list past 90 days stays as written until 365 days. The edge cache keeps 200, 301, 302 and 410 answers for 5 minutes and 404s for 1 minute,
 never a 503. Every function answers HEAD as it answers GET, without the body (`cached()` reads and keeps it under GET's
 cache entry); without a HEAD handler Pages would serve `index.html` for it, a 200 `text/html` even for a feed or an
 unknown slug.
@@ -312,9 +320,10 @@ address of a CVE inside another Incident answers 301 to that Incident's page: ea
 function reads only when no page document is found. An Incident page states its headline,
 description, dates, language and address as JSON-LD in a `<script type="application/ld+json">` block, which runs
 nothing (the CSP's `script-src` does not apply to it) and holds no `<`, `>` or `&` unescaped.
-The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
+The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and 13 Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
-pages worth a listing first seen n calendar months ago (UTC) and within 90 days, in Korean and English with `hreflang`
+pages worth a listing first seen n calendar months ago (UTC) and within 365 days (the month's `sitemaps/<YYYY-MM>.json`,
+else `sitemap.json`), in Korean and English with `hreflang`
 alternates and the page's last change as `lastmod`, at most 25,000 pages (50,000 URLs) per file, newest first.
 Since 2026-11-27 (owner, after Google crawled 1,831 pages without indexing them) the list is narrower than
 search-worthy: `sitemap_worthy` in `collector/incidents.py` keeps a page about a Product on
@@ -368,10 +377,10 @@ canonical and 152 hold only 참고 Incidents, and with 36 new ones 448 remain. A
 also states `image`, an `author` with its url, and `dateModified` from the `changed` stamp `write_pages` adds to the
 page document (outside its hash).
 Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
-`pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
-`wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document
-when the move happens, so 100 days after the last write is always past the 90 days in which it answers anything but
-410; after the rule deletes it, the address answers 404. The rule does not reach the SQLite copy, which keeps every
+`pages/` prefix after their last write (set by the owner, in the Cloudflare dashboard or with `wrangler r2 bucket
+lifecycle`): 100 days until the kept pages (2026-11-28), which need it at about 370 days, past the 365 days in which a
+kept page answers anything but 410; after the rule deletes it, the address answers 404. **The rule must be changed to
+about 370 days before the first kept page passes 100 days (February 2027), or kept pages vanish at day 100.** The rule does not reach the SQLite copy, which keeps every
 page document it was sent.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.

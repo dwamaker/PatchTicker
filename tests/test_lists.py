@@ -61,13 +61,21 @@ class ListDocumentsTest(unittest.TestCase):
         self.assertEqual([n for n in store.writes if n.startswith("lists/d/")], ["lists/d/2026-11-09.json"])
         self.assertEqual(store.read("lists/d/2026-11-09.json")["incidents"][0]["title_ko"], "새 제목")
 
-    def test_a_day_past_the_90_days_leaves_the_index_and_loses_its_document(self):
-        store = cycle(WatchedStore(), [row(1, cvss=9.8, products=OPENSSH), row(5, kev=True, first_seen="2026-08-12T00:00:00Z")])
-        self.assertIn("2026-08-12", store.read("lists/index.json")["days"])
-        cycle(store, now="2026-11-11T12:00:00")  # the 12th of August is 91 days back
-        self.assertEqual(list(store.read("lists/index.json")["days"]), ["2026-11-09"])
+    def test_a_day_past_the_90_days_stays_as_written_until_365_days(self):
+        # P4 (owner 11-28): the day lists the kept pages, which live a year; the store forgets the day's Incidents, so the
+        # document is never rewritten smaller, and goes at PAGE_KEEP_DAYS.
+        store = cycle(WatchedStore(), [row(1, cvss=9.8, products=OPENSSH), row(5, kev=True, first_seen="2026-08-12T00:00:00Z"),
+                                       row(6, kev=True, first_seen="2026-08-12T10:00:00Z")])
+        day = store.read("lists/d/2026-08-12.json")
+        self.assertEqual(len(day["incidents"]), 2)
+        cycle(store, now="2026-11-10T06:00:00")  # half of the 12th (KST) is past 90 days: the store forgot row 5
+        self.assertEqual(store.read("lists/d/2026-08-12.json"), day)
+        cycle(store, now="2026-11-11T12:00:00")  # the whole day is past 90 days
+        self.assertEqual(store.read("lists/d/2026-08-12.json"), day)
+        self.assertEqual(store.read("lists/index.json")["days"], {"2026-11-09": 1, "2026-08-12": 2})
+        cycle(store, now="2027-08-13T12:00:00")  # past 365 days
         self.assertIsNone(store.read("lists/d/2026-08-12.json"))
-        self.assertEqual(list(store.read("list_hashes.json")), ["2026-11-09"])
+        self.assertNotIn("2026-08-12", store.read("list_hashes.json"))
 
     def test_out_of_budget_a_new_day_waits_and_the_index_does_not_name_it(self):
         store = MemoryStore()

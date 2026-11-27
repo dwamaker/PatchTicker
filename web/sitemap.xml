@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- The home page, then the Incident sitemaps: incidents-<n>.xml lists the search-worthy Incident pages first seen
-     n months ago (within the last 90 days), rendered by the Pages Function (edge/sitemap.mjs), then the product pages worth a search. -->
+     n months ago (a listed page stays a year: 13 of them), rendered by the Pages Function (edge/sitemap.mjs), then the product pages worth a search. -->
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap><loc>https://patchticker.com/sitemap-home.xml</loc></sitemap>
   <sitemap><loc>https://patchticker.com/sitemaps/incidents-0.xml</loc></sitemap>
   <sitemap><loc>https://patchticker.com/sitemaps/incidents-1.xml</loc></sitemap>
   <sitemap><loc>https://patchticker.com/sitemaps/incidents-2.xml</loc></sitemap>
   <sitemap><loc>https://patchticker.com/sitemaps/incidents-3.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-4.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-5.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-6.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-7.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-8.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-9.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-10.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-11.xml</loc></sitemap>
+  <sitemap><loc>https://patchticker.com/sitemaps/incidents-12.xml</loc></sitemap>
   <sitemap><loc>https://patchticker.com/sitemaps/products.xml</loc></sitemap>
 </sitemapindex>

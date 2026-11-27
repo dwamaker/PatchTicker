@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveHead, cveLines, cveScore, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, provisionalLevel, severityWord, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveHead, cveLines, cveScore, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, provisionalLevel, severityWord, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinKeepDays, withinPageDays, PAGE_DAYS, WORDS, LANGS } from '../web/board.mjs';
 import { SEARCH_LANGS, SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, searchLang, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -35,6 +35,7 @@ const TEXT = {
     ...WORDS.ko,
     ...ROW.ko,
     path: '/i/', productPath: '/p/', dayPath: '/d/', locale: 'ko_KR',
+    frozen: (day) => `이 기록은 ${day} 이후 갱신되지 않습니다. 이후 수정 사항은 제조사 공지를 확인하세요.`,
     related: (name) => `${name}의 다른 최근 사건`, dayLink: (day) => `${day} 보안 사건 모두 보기`,
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     productPages: '제품별 사건', summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
@@ -47,6 +48,7 @@ const TEXT = {
     ...WORDS.en,
     ...ROW.en,
     path: '/en/i/', productPath: '/en/p/', dayPath: '/en/d/', locale: 'en_US',
+    frozen: (day) => `This record has not been updated since ${day}. Check the vendor's advisory for later fixes.`,
     related: (name) => `Other recent Incidents of ${name}`, dayLink: (day) => `All Incidents of ${day}`,
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     productPages: 'Incidents by product', summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
@@ -60,6 +62,7 @@ const TEXT = {
     ...WORDS.ja,
     ...ROW.ja,
     path: '/ja/i/', productPath: '/ja/p/', dayPath: '/ja/d/', locale: 'ja_JP',
+    frozen: (day) => `この記録は ${day} 以降更新されていません。その後の修正はベンダーの告知を確認してください。`,
     related: (name) => `${name} のほかの最近のインシデント`, dayLink: (day) => `${day} のインシデント一覧`,
     rating: { critical: '緊急', high: '重要', medium: '警告', low: '注意', none: 'なし' },
     productPages: '製品別のインシデント', summary: '要約', todo: '対処法', products: '対象の製品と OS', cves: 'CVE 番号', moreCves: (n) => `CVE をあと${n}件表示`, mentions: '原文リンク', times: '日時', links: 'このインシデントをもっと見る',
@@ -252,6 +255,8 @@ export const productPageList = async (i, lang) => Promise.all(productsOf(i, lang
 // check document's order). day: the day list (/d/<day>, the day of first sight in Korea, as collector/cycle.py
 // list_docs) when the Incident is on it. Anything unreadable is left out, never an error.
 const RELATED = 5;
+// the day the store let the Incident go (PAGE_DAYS after first sight): the page's last update (P4)
+const frozenDay = (firstSeen) => new Date(Date.parse(firstSeen) + PAGE_DAYS * 864e5).toISOString().slice(0, 10);
 const PRODUCT_SLUG = /^[0-9a-f]{16}$/; // check_slug in collector/checks.py
 const LIST_DAY_MS = 9 * 3600e3; // collector/cycle.py LIST_DAY_HOURS
 export async function pageLinks(bucket, i, pages) {
@@ -449,6 +454,7 @@ export function pageHtml(i, lang, slug, others = null, pages = [], links = {}) {
       + `${i.cves.length ? `<p class="sub"><span class="cve">${idLine(i.cves, t)}</span></p>` : ''}</div>`
       // the publish time only: a first sighting is never passed off as one (app.mjs dateCell); the facts say 처음 확인
       + `${i.published ? `<span class="c-date">${when(i.published, lang)}</span>` : ''}</div>`,
+    links.frozen ? `<p class="caution frozen">${esc(t.frozen(frozenDay(i.first_seen)))}</p>` : '',
     p(plain, 'easy'),
     '<div class="details">',
     `<div class="p-top">${facts(i, lang, t)}<div class="p-side">${ring(i, t)}${tagLine(i, lang, t)}</div></div>`,
@@ -495,6 +501,13 @@ export function note(lang, status, text, links) {
 
 // Gemini review, 11-28 (P5): a CVE inside another Incident has no page of its own; its address answers 301 to that
 // Incident's page, from the collector's small map (collector/cycle.py cve_map_docs), read only when no page is found.
+// P4 (owner 11-28, Gemini review): a page past PAGE_DAYS lives on, frozen, until PAGE_KEEP_DAYS when the sitemaps
+// listed it: its slug in the month's document (collector/cycle.py write_sitemap_months), read only for such a page.
+async function kept(bucket, slug, firstSeen, now) {
+  if (!withinKeepDays(firstSeen, now) || !/^\d{4}-\d{2}/.test(firstSeen)) return false;
+  const month = await readJson(bucket, `sitemaps/${firstSeen.slice(0, 7)}.json`).catch(() => null);
+  return Boolean(month && typeof month === 'object' && Object.hasOwn(month, slug));
+}
 async function groupedIn(bucket, slug) {
   const found = /^CVE-(\d{4})-(\d{4,7})$/.exec(slug);
   if (!found) return null;
@@ -521,19 +534,22 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     if (doc.moved_to) {
       // An absorbed Incident (ticket 04): its address moves to the survivor's page while both are within PAGE_DAYS,
       // and to the survivor's row on the Board while the survivor has no page yet (owner, 11-10).
-      if (!withinPageDays(doc.moved, now)) return expired(null);
+      // Past PAGE_DAYS, while the survivor is a kept page (P4), the move stays.
       if (typeof doc.moved_to_id !== 'string' || !doc.moved_to_id) throw new Error(`pages/${slug}.json: no survivor`);
       const target = SLUG.test(doc.moved_to) ? await readJson(bucket, `pages/${doc.moved_to}.json`, lang) : null;
-      if (target?.first_seen && !withinPageDays(target.first_seen, now)) return expired(target);
+      const alive = target?.first_seen && (withinPageDays(target.first_seen, now) || await kept(bucket, doc.moved_to, target.first_seen, now));
+      if (!withinPageDays(doc.moved, now) && !alive) return expired(null);
+      if (target?.first_seen && !alive) return expired(target);
       if (!target?.summary || target.moved_to || !onBoard(target)) return redirect(302, `${SITE}/#i=${encodeURIComponent(doc.moved_to_id)}`);
       return redirect(301, pageUrl(lang, doc.moved_to));
     }
-    if (!withinPageDays(doc.first_seen, now)) return expired(doc);
+    const frozen = !withinPageDays(doc.first_seen, now);
+    if (frozen && !await kept(bucket, slug, doc.first_seen, now)) return expired(doc);
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
     const [others, links] = await Promise.all([readJson(bucket, 'board/others.json', lang).catch(() => null),
       productPageList(doc, lang).then((pages) => pageLinks(bucket, doc, pages))]);
-    return new Response(pageHtml(doc, lang, slug, others, links.pages, links), {
+    return new Response(pageHtml(doc, lang, slug, others, links.pages, { ...links, frozen }), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP },
     });
   }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));

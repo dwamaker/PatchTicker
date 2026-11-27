@@ -10,7 +10,8 @@ const DOC = { pages: {
   'CVE-2026-1001': { first_seen: '2026-11-09T00:00:00Z', changed: '2026-11-09T12:00:00Z' },
   'hn-77': { first_seen: '2026-10-31T23:00:00Z', changed: '2026-11-01T08:00:00Z' },
   'CVE-2026-1005': { first_seen: '2026-08-13T00:00:00Z', changed: '2026-08-13T00:10:00Z' },
-  'CVE-2026-1006': { first_seen: '2026-08-12T00:00:00Z', changed: '2026-08-12T00:10:00Z' }, // past 90 days by now: its page answers 410
+  'CVE-2026-1006': { first_seen: '2026-08-12T00:00:00Z', changed: '2026-08-12T00:10:00Z' }, // past 90 days: kept, frozen (P4)
+  'CVE-2025-1007': { first_seen: '2025-11-09T00:00:00Z', changed: '2025-11-09T00:10:00Z' }, // past 365 days: gone
 } };
 const xml = async (name, doc = DOC) => (await sitemapResponse(bucket(doc), name, NOW)).text();
 // A small well-formedness check (Node has no XML parser): balanced tags, quoted attributes, no stray < or &.
@@ -35,7 +36,18 @@ test('each monthly sitemap lists that month\'s pages (by first seen) in every la
   assert.deepEqual(locs(await xml('incidents-0.xml')), all('CVE-2026-1001'));
   assert.deepEqual(locs(await xml('incidents-1.xml')), all('hn-77'));
   assert.deepEqual(locs(await xml('incidents-2.xml')), []);
-  assert.deepEqual(locs(await xml('incidents-3.xml')), all('CVE-2026-1005'));
+  assert.deepEqual(locs(await xml('incidents-3.xml')), [...all('CVE-2026-1005'), ...all('CVE-2026-1006')]);
+  assert.deepEqual(locs(await xml('incidents-12.xml')), []);
+});
+
+// P4 (owner 11-28): the month's own document (collector/cycle.py write_sitemap_months) when there is one: its pages stay
+// listed past 90 days, until 365.
+test('a monthly sitemap reads the month\'s document first, sitemap.json only when there is none', async () => {
+  const month = { 'CVE-2026-2001': { first_seen: '2026-08-01T00:00:00Z', changed: '2026-08-02T00:00:00Z', cves: ['CVE-2026-2002'] } };
+  const store = { get: async (key) => (key === 'sitemaps/2026-08.json' ? { text: async () => JSON.stringify(month) }
+    : key === 'sitemap.json' ? { text: async () => JSON.stringify(DOC) } : null) };
+  assert.deepEqual(locs(await (await sitemapResponse(store, 'incidents-3.xml', NOW)).text()), all('CVE-2026-2001'));
+  assert.deepEqual(locs(await (await sitemapResponse(store, 'incidents-0.xml', NOW)).text()), all('CVE-2026-1001'));
 });
 
 test('every URL names its last change and every search language as hreflang alternates, Korean as x-default, no Japanese', async () => {
@@ -91,18 +103,18 @@ test('answers XML with a short cache; 404 for any other name; 503 when the store
   assert.equal(ok.status, 200);
   assert.equal(ok.headers.get('content-type'), 'application/xml; charset=utf-8');
   assert.match(ok.headers.get('cache-control'), /max-age=300/);
-  for (const name of ['incidents-4.xml', 'incidents-0', '2026-11.xml', 'incidents-00.xml']) {
+  for (const name of ['incidents-13.xml', 'incidents-0', '2026-11.xml', 'incidents-100.xml']) {
     assert.equal((await sitemapResponse(bucket(DOC), name, NOW)).status, 404, name);
   }
   assert.equal((await sitemapResponse(bucket(null), 'incidents-0.xml', NOW)).status, 503);
   assert.equal((await sitemapResponse({ get: async () => { throw new Error('R2 down'); } }, 'incidents-0.xml', NOW)).status, 503);
 });
 
-test('the static /sitemap.xml is an index of the home page\'s sitemap and the four monthly Incident sitemaps', () => {
+test('the static /sitemap.xml is an index of the home page\'s sitemap and the 13 monthly Incident sitemaps', () => {
   const index = readFileSync(new URL('../web/sitemap.xml', import.meta.url), 'utf8');
   assert.match(index, /<sitemapindex xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9">/);
   assert.deepEqual(locs(index), ['https://patchticker.com/sitemap-home.xml',
-    ...[0, 1, 2, 3].map((n) => `https://patchticker.com/sitemaps/incidents-${n}.xml`), 'https://patchticker.com/sitemaps/products.xml']);
+    ...Array.from({ length: 13 }, (_, n) => `https://patchticker.com/sitemaps/incidents-${n}.xml`), 'https://patchticker.com/sitemaps/products.xml']);
   const home = readFileSync(new URL('../web/sitemap-home.xml', import.meta.url), 'utf8');
   // the home page and the list pages' indexes (edge/lists.mjs, owner 11-27), in the search languages
   assert.deepEqual(locs(home), ['https://patchticker.com/', 'https://patchticker.com/d/', 'https://patchticker.com/en/d/', 'https://patchticker.com/p/', 'https://patchticker.com/en/p/']);

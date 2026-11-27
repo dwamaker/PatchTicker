@@ -441,6 +441,9 @@ export async function slug(id) {
 export const PAGE_DAYS = 90;
 // Whether a time (an Incident's first seen, a move) is within PAGE_DAYS of now: the Board, the pages and the sitemaps.
 export const withinPageDays = (stamp, now) => Date.parse(stamp) >= now - PAGE_DAYS * DAY_MS;
+// A page the sitemaps listed stays this long, frozen after PAGE_DAYS (also collector/cycle.py PAGE_KEEP_DAYS; owner 11-28).
+export const PAGE_KEEP_DAYS = 365;
+export const withinKeepDays = (stamp, now) => Date.parse(stamp) >= now - PAGE_KEEP_DAYS * DAY_MS;
 
 // "Copy this Incident's link": its Incident page in the visitor's language when it has one (a Summary, on the Board,
 // first seen within PAGE_DAYS), else the Board's #i= link. pageSlug is slug(i.id) worked out ahead, so the click writes

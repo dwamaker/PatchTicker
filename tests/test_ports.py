@@ -22,7 +22,7 @@ class SharedConstantsTest(unittest.TestCase):
         return re.findall(r"'([^']*)'", self.literal(name, wrap.format(r"([^\]]*)")))
 
     def test_the_numbers_match(self):
-        for python, js in ((cycle.PAGE_DAYS, "PAGE_DAYS"), (cycle.HIGHLIGHTS, "HIGHLIGHTS"),
+        for python, js in ((cycle.PAGE_DAYS, "PAGE_DAYS"), (cycle.PAGE_KEEP_DAYS, "PAGE_KEEP_DAYS"), (cycle.HIGHLIGHTS, "HIGHLIGHTS"),
                            (cycle.SAME_PENALTY, "SAME_PENALTY"), (incidents.RECENCY, "RECENCY"),
                            (incidents.HALF_LIFE_DAYS, "HALF_LIFE_DAYS"), (incidents.ATTENTION_MAX, "ATTENTION_MAX"),
                            (incidents.HIGHEST_CVSS, "HIGHEST_CVSS"),

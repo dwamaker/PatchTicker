@@ -352,8 +352,9 @@ test('a merged Incident answers 301 to the survivor in the same language', async
   assert.equal(en.headers.get('location'), 'https://patchticker.com/en/i/CVE-2026-123158');
 });
 
-test('410 when the move or the survivor is past 90 days', async () => {
-  for (const [doc, target] of [[{ ...MOVED, moved: '2026-08-10T00:00:00Z' }, SSHOLE], [MOVED, { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' }]]) {
+test('410 when the move or the survivor is past 90 days, unless the survivor is a kept page', async () => {
+  const old = { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' };
+  for (const [doc, target] of [[{ ...MOVED, moved: '2026-08-10T00:00:00Z' }, old], [MOVED, old]]) {
     const res = await moved(doc, target);
     assert.equal(res.status, 410);
     const html = await res.text();
@@ -361,6 +362,28 @@ test('410 when the move or the survivor is past 90 days', async () => {
     assert.match(html, /noindex/);
   }
   assert.equal((await moved({ ...MOVED, moved: '2026-08-12T00:00:00Z' })).status, 301);
+  // P4: a survivor the sitemaps listed (its month's document) stays a year, so the move does too
+  const keptStore = bucket({ 'pages/CVE-2026-1002.json': { ...MOVED, moved: '2026-08-10T00:00:00Z' }, 'pages/CVE-2026-123158.json': old,
+    'sitemaps/2026-08.json': { 'CVE-2026-123158': { first_seen: '2026-08-10T00:00:00Z' } } });
+  assert.equal((await pageResponse(keptStore, 'ko', 'CVE-2026-1002', NOW)).status, 301);
+});
+
+// P4 (owner 11-28, Gemini review): a page the sitemaps listed lives a year, frozen and saying so; any other page ends at
+// 90 days as before; a listed page ends at 365 days.
+test('a listed page past 90 days stays a year with a frozen line; an unlisted one answers 410', async () => {
+  const old = { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' };
+  const month = { 'CVE-2026-123158': { first_seen: '2026-08-10T00:00:00Z' } };
+  const res = await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old, 'sitemaps/2026-08.json': month }), 'ko', 'CVE-2026-123158', NOW);
+  assert.equal(res.status, 200);
+  assert.match(await res.text(), /<p class="caution frozen">이 기록은 2026-11-08 이후 갱신되지 않습니다\. 이후 수정 사항은 제조사 공지를 확인하세요\.<\/p>/);
+  assert.equal((await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old }), 'ko', 'CVE-2026-123158', NOW)).status, 410);
+  assert.equal((await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old, 'sitemaps/2026-08.json': month }), 'ko', 'CVE-2026-123158',
+    Date.parse('2027-08-11T00:00:00Z'))).status, 410); // past 365 days
+  const fresh = await (await pageResponse(bucket({ 'pages/CVE-2026-123158.json': SSHOLE }), 'ko', 'CVE-2026-123158', NOW)).text();
+  assert.doesNotMatch(fresh, /class="caution frozen"/);
+  reads.length = 0;
+  await pageResponse(bucket({ 'pages/CVE-2026-123158.json': SSHOLE }), 'ko', 'CVE-2026-123158', NOW);
+  assert.ok(!reads.some((k) => k.startsWith('sitemaps/'))); // a page within 90 days never reads the month
 });
 
 test('302 to the survivor on the Board while the survivor has no page yet (owner, 11-10)', async () => {

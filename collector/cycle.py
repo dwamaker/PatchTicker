@@ -45,6 +45,9 @@ FEED_ALL_SIZE = 600
 # An Incident page lives this long from first seen; edge/page.mjs answers 410 after it (PAGE_DAYS in web/board.mjs). The
 # store keeps an Incident as long (owner, 11-10: 90 days, really; one that gets news later may come back as a new one).
 PAGE_DAYS = 90
+# Owner, 11-28 ("영구히 남긴다고? 싫은데") and the Gemini review (P4): a page the sitemaps listed stays this long, frozen
+# after PAGE_DAYS (edge/page.mjs says so on the page); every other page ends at PAGE_DAYS as before.
+PAGE_KEEP_DAYS = 365
 MERGE_LOG_SIZE = 300  # merge_log.json keeps the newest same_as decisions
 # Seconds a cycle spends on Incident page and check documents; the rest waits for the next cycle. 2026-11-17: a field
 # added to every check document made one cycle rewrite all 3,252 one PUT after another (~2.3 a second, 25 min), so
@@ -364,8 +367,9 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
                "products": checks.product_pages(product_docs)}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
-    write_lists(store, listed, product_docs, more)
-    write_cve_map(store, cve_map_docs(shown_incidents, pages), more)
+    write_lists(store, listed, product_docs, more, now)
+    archive = write_sitemap_months(store, listed, pages, now, more)
+    write_cve_map(store, cve_map_docs(shown_incidents, pages, archive), more)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(shown_incidents, picker_since)})
     # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
@@ -684,14 +688,23 @@ def list_docs(listed, product_docs):
             sorted(products, key=lambda p: (p["name"].casefold(), p["slug"])))
 
 
-def write_lists(store, listed, product_docs, more=lambda: True):
+def write_lists(store, listed, product_docs, more=lambda: True, now=None):
     """The list pages' documents, as write_checks writes the check documents: a day's document is rewritten only when it
     changed (list_hashes.json keeps {day: {hash, count}}), newest days first; then the index ({days: {day: count},
     products}) when it changed, naming only the days whose document is stored; then a day that left the 90 days loses
     its document. more() as in write_pages: a day left unwritten keeps its old document, hash and count."""
     docs, products = list_docs(listed, product_docs)
     known = store.read("list_hashes.json") or {}
-    hashes = {day: known[day] for day in docs if day in known}
+    if now is not None:
+        # P4: a day whose first Incidents the store forgets (PAGE_DAYS) stays as it was written whole, until PAGE_KEEP_DAYS
+        # (the kept pages it lists live that long): never rewritten smaller, nor deleted.
+        frozen = (datetime.strptime(stamp_ago(now, days=PAGE_DAYS), STAMP) + timedelta(hours=LIST_DAY_HOURS)).date().isoformat()
+        gone = (datetime.strptime(stamp_ago(now, days=PAGE_KEEP_DAYS), STAMP) + timedelta(hours=LIST_DAY_HOURS)).date().isoformat()
+        docs = {day: doc for day, doc in docs.items() if day > frozen or day not in known}
+        keep = {day for day in known if gone <= day <= frozen}
+    else:
+        keep = set()
+    hashes = {day: known[day] for day in docs if day in known} | {day: known[day] for day in keep}
     for day in sorted((d for d in docs if (known.get(d) or {}).get("hash") != digest_of(docs[d])), reverse=True):
         if not more():
             break
@@ -700,7 +713,7 @@ def write_lists(store, listed, product_docs, more=lambda: True):
     index = {"days": {day: hashes[day]["count"] for day in sorted(hashes, reverse=True)}, "products": products}
     if store.read(LIST_INDEX) != index:
         store.write(LIST_INDEX, index)
-    for day in known.keys() - docs.keys():
+    for day in known.keys() - docs.keys() - keep:
         if more():
             store.delete(LIST_DAY.format(day))
         else:
@@ -716,10 +729,17 @@ CVE_MAP = "cve_map/{}/{}.json"
 CVE_PAGE = re.compile(r"CVE-(\d{4})-(\d{4,7})")
 
 
-def cve_map_docs(incidents, pages):
+def cve_map_docs(incidents, pages, archive=None):
     """{document name: {CVE slug: Incident page slug}} for every CVE of an Incident with a page (pages: write_pages'
-    index) whose own slug is not that page's."""
+    index) whose own slug is not that page's, and for the member CVEs of the kept pages past PAGE_DAYS (archive:
+    write_sitemap_months' answer); an Incident within PAGE_DAYS wins."""
     shards = {}
+    for month in (archive or {}).values():
+        for slug, entry in month.items():
+            for own in entry.get("cves", ()):
+                found = CVE_PAGE.fullmatch(own)
+                if found and own != slug:
+                    shards.setdefault(CVE_MAP.format(found[1], int(found[2]) // 1000), {})[own] = slug
     for incident in incidents:
         slug = page_slug(incident["id"])
         if slug not in pages or not on_board(incident):  # a page off the Board answers 404: never a target
@@ -749,6 +769,48 @@ def write_cve_map(store, docs, more=lambda: True):
             hashes[name] = known[name]
     if hashes != known:
         store.write("cve_map_hashes.json", hashes)
+
+
+# P4 (owner 11-28, Gemini review): the pages the sitemaps listed, by the calendar month (UTC) of first sight, so a month
+# freezes once it is past PAGE_DAYS: {slug: {first_seen, changed, cves}} (cves: its other CVEs, for the CVE map). One
+# source for the monthly sitemaps and for the page function's "kept" check past PAGE_DAYS (edge/sitemap.mjs, page.mjs).
+SITEMAP_MONTH = "sitemaps/{}.json"
+SITEMAP_MONTHS = "sitemaps/index.json"
+
+
+def write_sitemap_months(store, listed, pages, now, more=lambda: True):
+    """Each month that still holds a page within PAGE_DAYS is rewritten from the listed Incidents, keeping its entries
+    already past PAGE_DAYS as they were (the store forgets those Incidents: they are kept, never re-judged); a month past
+    PAGE_KEEP_DAYS is deleted. The index ({month: hash}) names the months written. Returns {month: document} of every month
+    kept, read back for the CVE map. more() as in write_pages: a month left unwritten keeps its old document and hash."""
+    cutoff, gone = stamp_ago(now, days=PAGE_DAYS), stamp_ago(now, days=PAGE_KEEP_DAYS)
+    index = store.read(SITEMAP_MONTHS) or {}
+    current = {}
+    for incident in listed:
+        slug = page_slug(incident["id"])
+        if slug in pages:
+            others = sorted({c for c in (page_slug(c) for c in incident["cves"]) if c != slug})
+            current.setdefault(incident["first_seen"][:7], {})[slug] = {"first_seen": incident["first_seen"],
+                                                                        "changed": pages[slug]["changed"], "cves": others}
+    months, hashes = {}, dict(index)
+    for month in sorted(set(current) | {m for m in index if m >= cutoff[:7]}):
+        old = store.read(SITEMAP_MONTH.format(month)) or {}
+        doc = dict(sorted(({s: e for s, e in old.items() if e["first_seen"] < cutoff} | current.get(month, {})).items()))
+        if index.get(month) != digest_of(doc):
+            if not more():
+                months[month] = old
+                continue
+            store.write(SITEMAP_MONTH.format(month), doc)
+            hashes[month] = digest_of(doc)
+        months[month] = doc
+    for month in [m for m in hashes if m < gone[:7]]:
+        store.delete(SITEMAP_MONTH.format(month))
+        del hashes[month]
+    for month in hashes.keys() - months.keys():  # frozen months: read back, unchanged
+        months[month] = store.read(SITEMAP_MONTH.format(month)) or {}
+    if hashes != index:
+        store.write(SITEMAP_MONTHS, dict(sorted(hashes.items())))
+    return months
 
 
 def write_moves(store, incidents, had_page, now, stamp):
