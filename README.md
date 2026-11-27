@@ -89,10 +89,21 @@ for a second lookup, and a result found that way is marked `maybe`.
 
 ## FAQ
 
-- **How is this different from a CVE database?** It merges related CVEs, CISA KEV, KISA, 6 Linux distribution trackers and advisories into one row per event, with plain-language mitigation and `/api/check`.
-- **Can AI summaries make up versions or commands?** Rules set risk levels; a Summary naming a number or version missing from its sources is sent back and rewritten, and a command is shown only when it appears verbatim in the sources.
-- **Why 90 days on the Board and 1 year on major pages?** It is a live triage board for what to patch now, not a historical archive since 1999.
-- **Can I use it from CI, a bot or an AI agent?** Yes — call `/api/check?products=...` or `/en/feed.xml?products=...` with no API key (at most once every 10 minutes, with a named `User-Agent`).
+**Q. How is this different from a CVE database?**
+
+It merges related CVEs, CISA KEV, KISA, 6 Linux distribution trackers and advisories into one row per event, with plain-language mitigation and `/api/check`.
+
+**Q. Can AI summaries make up versions or commands?**
+
+Rules set risk levels; a Summary naming a number or version missing from its sources is sent back and rewritten, and a command is shown only when it appears verbatim in the sources.
+
+**Q. Why 90 days on the Board and 1 year on major pages?**
+
+It is a live triage board for what to patch now, not a historical archive since 1999.
+
+**Q. Can I use it from CI, a bot or an AI agent?**
+
+Yes — call `/api/check?products=...` or `/en/feed.xml?products=...` with no API key (at most once every 10 minutes, with a named `User-Agent`).
 
 <p align="center">
   <em>Free, no ads. Find it useful? A coffee keeps it running.</em><br>
