@@ -6,8 +6,8 @@ Incidents. edge/check.mjs reads them; it normalizes asked names with productKey,
 import hashlib
 from urllib.parse import quote
 
-from collector.incidents import (WELL_KNOWN, cve_order, is_exploited, known_product, on_board, page_slug, product_key, products_of,
-                                 published_at, risk_level, row_tags, search_worthy, vendor_words)
+from collector.incidents import (SPELLING, WELL_KNOWN, cve_order, is_exploited, known_product, on_board, page_slug, product_key, products_of,
+                                 published_at, risk_level, row_tags, search_worthy, vendor_words, with_vendor)
 
 SITE = "https://patchticker.com"
 DATA = "https://data.patchticker.com"
@@ -58,23 +58,57 @@ def feed_entry(incident):
 
 def product_pages(docs):
     """The product pages worth a sitemap entry: the check documents' slugs with PRODUCT_PAGE_MIN Incidents or more, sorted."""
-    return sorted(slug for slug, doc in docs.items() if len(doc["incidents"]) >= PRODUCT_PAGE_MIN)
+    return sorted(slug for slug, doc in docs.items() if len(doc.get("incidents", ())) >= PRODUCT_PAGE_MIN)  # a redirect has none
 
 
-def check_docs(incidents, since):
+def name_aliases(incidents):
+    """{"name:..." id: the record Product id it names}: a Product a Summary named where the Incident's record has no
+    Product of that name ("name:chrome", "Google Chrome") is the record Product another Incident lists under that very
+    name, with or without its web/vendors.json vendor ("google:chrome"), when exactly one record Product has it. Only the
+    pages and the check documents fold it: the Board's filter joins the two already (sameProduct in web/board.mjs)."""
+    form = lambda name: SPELLING.sub("", name.lower())  # noqa: E731
+    named, record = {}, {}
+    for incident in incidents:
+        for p in products_of(incident, "en"):
+            if p["id"].startswith("name:"):
+                named.setdefault(p["id"], set()).add(form(p["name"]))
+            elif not p["id"].startswith("os:"):
+                for name in (p["name"], with_vendor(p)):
+                    record.setdefault(form(name), set()).add(p["id"])
+    found = {pid: {r for f in forms for r in record.get(f, ())} for pid, forms in named.items()}
+    return {pid: hit.pop() for pid, hit in found.items() if len(hit) == 1}
+
+
+def moved_docs(aliases, docs):
+    """{slug: {"moved": the slug of the Product it is}} for each id that became another's (product_aliases, name_aliases)
+    whose Product has a document: its old product page answers with a redirect (edge/product.mjs) instead of a 404."""
+    return {check_slug(old): {"moved": check_slug(new)} for old, new in sorted(aliases.items())
+            if check_slug(new) in docs and check_slug(old) not in docs}
+
+
+def check_docs(incidents, since, aliases=None):
     """({slug: document}, index) for every Product, operating systems aside, of the Board Incidents first seen since
     `since`: a document is {product: its English name, id, incidents: newest first}; the index maps each normalized name
-    to its Products' slugs, keys sorted."""
+    to its Products' slugs, keys sorted. A "name:" Product another Incident's record names is that Product
+    (name_aliases); `aliases` ({old id: kept id}, incidents.product_aliases) adds a redirect document per old id
+    (moved_docs)."""
     docs, index = {}, {}
     shown = sorted((i for i in incidents if i["first_seen"] >= since and on_board(i)), key=lambda i: (published_at(i), i["id"]),
                    reverse=True)
+    folded = name_aliases(shown)
     for incident in shown:
-        ko = {p["id"]: p["name"] for p in products_of(incident, "ko")}
+        ko = {folded.get(p["id"], p["id"]): p["name"] for p in products_of(incident, "ko")}
+        mine = set()
         for product in products_of(incident, "en"):
             if product["id"].startswith("os:"):
                 continue
-            slug = check_slug(product["id"])
-            docs.setdefault(slug, {"product": product["name"], "id": product["id"], "incidents": []})["incidents"].append(entry(incident))
-            for key in names_of(product, ko.get(product["id"], "")):
+            pid = folded.get(product["id"], product["id"])
+            slug = check_slug(pid)
+            doc = docs.setdefault(slug, {"product": product["name"], "id": pid, "incidents": []})
+            if slug not in mine:  # "Google Chrome" and its "name:chrome" in one Incident: one entry
+                doc["incidents"].append(entry(incident))
+                mine.add(slug)
+            for key in names_of(product | {"id": pid}, ko.get(pid, "")):
                 index.setdefault(key, set()).add(slug)
+    docs |= moved_docs({**(aliases or {}), **folded}, docs)
     return docs, {key: sorted(index[key]) for key in sorted(index)}

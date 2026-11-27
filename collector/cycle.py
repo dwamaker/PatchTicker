@@ -13,7 +13,7 @@ from collector import (checks, curators, cve_lines, cvelist, discord, distros, g
                        same_event, sheets, summaries, summary_input, vendors)
 from collector.logfile import CycleLine
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
-                                 named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
+                                 named as reader_named, on_board, page_keys, page_slug, product_aliases, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
                                  search_worthy, sitemap_worthy, stamp_ago, summary_failures, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
@@ -355,7 +355,7 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     # One budget, pages first: a check document's `detail` names a page, so no check is written before every due page is.
     pages = write_pages(store, shown_incidents, had_page, now, stamp, more := bulk_budget(clock))
     write_moves(store, incidents, had_page, now, stamp)
-    product_docs = write_checks(store, shown_incidents, now, more)
+    product_docs = write_checks(store, shown_incidents, now, more, product_aliases(incidents))
     # The sitemaps' document (edge/sitemap.mjs): {slug: {first_seen, changed}} of every Incident page worth a listing
     # (sitemap_worthy: narrower than search-worthy since 11-27), and
     # the product pages with enough Incidents to be worth a search (owner, 11-17).
@@ -629,14 +629,14 @@ def write_pages(store, incidents, known, now, stamp, more=lambda: True):
     return pages
 
 
-def write_checks(store, incidents, now, more=lambda: True):
+def write_checks(store, incidents, now, more=lambda: True, aliases=None):
     """GET /api/check's documents (collector/checks.py): a Product's check/p/<slug>.json is rewritten only when it
     changed (check_hashes.json keeps {slug: hash}, so a cycle reads one document, not one per Product), the index when
     it changed, and a Product with no Incident left loses its document, after the index stops naming it. more() as in
     write_pages: new Products first; one left unwritten keeps its old document and hash, or, new, is in no index yet; a
     delete left over keeps its hash, so a later cycle deletes it. Returns the documents stored (the sitemap's product
     pages are worked out from them)."""
-    docs, index = checks.check_docs(incidents, stamp_ago(now, days=PAGE_DAYS))
+    docs, index = checks.check_docs(incidents, stamp_ago(now, days=PAGE_DAYS), aliases)
     known = store.read("check_hashes.json") or {}
     hashes = {slug: known[slug] for slug in docs if slug in known}  # what the store holds: an older document still answers
     for slug in sorted((s for s in docs if known.get(s) != digest_of(docs[s])), key=lambda s: s in known):

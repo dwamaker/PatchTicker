@@ -97,3 +97,15 @@ test('a product page says what its list holds as a whole: Incidents by Risk, att
   const quiet = await (await render('ko', SSH, { [`check/p/${SSH}.json`]: { ...doc, incidents: [DOC.incidents[2]] } })).text();
   assert.doesNotMatch(quiet, /<dt>공격 발생/); // none attacked: no line for it
 });
+
+test('a Product that turned out to be another one redirects its old address there (collector/checks.py moved_docs)', async () => {
+  const OLD = 'aaaaaaaaaaaaaaaa';
+  const docs = { [`check/p/${OLD}.json`]: { moved: SSH }, [`check/p/${SSH}.json`]: DOC };
+  for (const [lang, path] of [['ko', `/p/${SSH}`], ['en', `/en/p/${SSH}`], ['ja', `/ja/p/${SSH}`]]) {
+    const res = await render(lang, OLD, docs);
+    assert.equal(res.status, 301, lang);
+    assert.equal(res.headers.get('location'), path);
+  }
+  // A malformed or self target is no redirect: the page is missing.
+  for (const moved of ['../x', OLD]) assert.equal((await render('en', OLD, { [`check/p/${OLD}.json`]: { moved } })).status, 404);
+});

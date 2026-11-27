@@ -124,6 +124,10 @@ export async function productResponse(bucket, lang, slug) {
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
     const doc = await readJson(bucket, `check/p/${slug}.json`, lang);
+    // A Product that turned out to be another's (collector/checks.py moved_docs): its old address points there.
+    if (doc && typeof doc.moved === 'string' && SLUG.test(doc.moved) && doc.moved !== slug) {
+      return new Response(null, { status: 301, headers: { location: `${t.path}${doc.moved}`, 'cache-control': 'public, max-age=3600' } });
+    }
     if (!doc || !Array.isArray(doc.incidents) || !doc.incidents.length) return note(lang, 404, t.missing, [home]);
     return new Response(productHtml(doc, lang, slug), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300', 'content-security-policy': PAGE_CSP },

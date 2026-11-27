@@ -439,8 +439,66 @@ def named(incidents):
     for takes its chosen English name. The record Products keep the record's order (the page's vendor fold and pin key
     read the first, a Brief-only row shows them in it) unless productsOf's first match would then give a Summary name
     to another Product than product_slots picks: then the rest, or failing that all, go longest name first (11-17)."""
+    aliases = product_aliases(incidents)
+    incidents = [one_id(i, aliases) for i in incidents]
     chosen = chosen_names(incidents)
     return [with_names(i, chosen) for i in incidents]
+
+
+# What two spellings of one record Product id may differ by: letter case, spaces, punctuation, a doubled space ("AMD
+# Ryzen™ Embedded 5000 Series  Processors"). "#", "+" and "*" are kept: they tell products apart ("MongoDB C# Driver" and
+# "MongoDB C Driver").
+SPELLING = re.compile(r"[^\w#+*]|_")
+
+
+def id_form(pid):
+    vendor, _, product = pid.partition(":")
+    return f"{SPELLING.sub('', vendor.lower())}:{SPELLING.sub('', product.lower())}"
+
+
+def product_aliases(incidents):
+    """{record Product id: the id of the Product it is}, for ids that are one Product (owner, 11-27: "뼈대 잡혔으니 추천안대로
+    진행해"; one product had two pages and split counts): ids spelled alike (id_form: "redhat:exploit_intelligence" and
+    "red_hat:exploit_intelligence"), and ids of the same product under two vendors that one Incident's record lists
+    together (the CNA's "aio-libs:aiohttp" beside NVD's "aiohttp:aiohttp"). The same product name under two vendors
+    without that is left apart: "automattic:mongoose" and "cesanta:mongoose" are two products. Of one group the id kept is
+    the one on collector/well_known.json, then with a web/vendors.json vendor, then without a doubled space, then the
+    first in order: never by counts, so a product page's address does not move from day to day."""
+    parent = {}
+
+    def root(pid):
+        while parent.setdefault(pid, pid) != pid:
+            pid = parent[pid]
+        return pid
+
+    def join(a, b):
+        parent[root(a)] = root(b)
+
+    by_form = {}
+    for incident in incidents:
+        ids = [p["id"] for p in incident.get("products") or []]
+        for pid in ids:
+            join(pid, by_form.setdefault(id_form(pid), pid))
+        tails = {}
+        for pid in ids:
+            join(pid, tails.setdefault(id_form(pid).split(":", 1)[1], pid))
+    groups = {}
+    for pid in parent:
+        groups.setdefault(root(pid), []).append(pid)
+    kept = lambda pid: (not KNOWN_IDS.match(pid.lower()), pid.split(":")[0] not in VENDORS, "__" in pid, pid)  # noqa: E731
+    return {pid: best for group in groups.values() if len(group) > 1 for best in [min(group, key=kept)] for pid in group
+            if pid != best}
+
+
+def one_id(incident, aliases):
+    """The Incident with each record Product under its kept id (product_aliases), one entry per id, the record's order."""
+    records = incident.get("products") or []
+    if not any(p["id"] in aliases for p in records):
+        return incident
+    seen = {}
+    for p in records:
+        seen.setdefault(aliases.get(p["id"], p["id"]), {**p, "id": aliases.get(p["id"], p["id"])})
+    return incident | {"products": list(seen.values())}
 
 
 def first_match_ids(records, products):
@@ -470,6 +528,12 @@ def with_names(incident, chosen):
         ko = [n if HANGUL.search(n := chosen.get((ids[k], "ko")) or "") else en[k] for k in range(len(products))]
         view["summary"] = summary | {"products": en} | {lang: (summary.get(lang) or {}) | {"names": names}
                                                           for lang, names in (("ko", ko), ("en", en))}
+        # A record Product a Summary name stands for keeps its own name, unless the chosen name no longer contains it
+        # (one id of two spellings, product_aliases: "pardus-boot-repair" for "Pardus Boot Repair"): then it takes that
+        # name, so productsOf matches the Summary name to it again instead of making a second Product of it.
+        shown = {pid: en[k] for k, pid in reversed(list(enumerate(ids)))}
+        order = [{**p, "name": shown[p["id"]]} if p["id"] in shown and p["name"].lower() not in shown[p["id"]].lower() else p
+                 for p in order]
         longest = lambda ps: sorted(ps, key=lambda p: -len(p["name"]))  # noqa: E731
         for candidate in (order, order[:1] + longest(order[1:]), longest(order)):
             if first_match_ids(candidate, en) == ids:
