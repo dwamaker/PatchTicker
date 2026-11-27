@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://patchticker.com"><img src="docs/assets/logo.svg" width="88" alt="Patch Ticker logo"></a>
+  <a href="https://patchticker.com/en/"><img src="docs/assets/logo.svg" width="88" alt="Patch Ticker logo"></a>
 </p>
 
 <h1 align="center">Patch Ticker</h1>
@@ -8,29 +8,24 @@
 
 <p align="center">
   <b>New security vulnerabilities, sorted by the products you run.</b><br>
-  A free, no-login live tracker, Korean first with English alongside.
+  A free, no-login live tracker in <a href="https://patchticker.com/en/">English</a> and <a href="https://patchticker.com/">Korean</a>.
 </p>
 
 <p align="center">
-  <a href="https://patchticker.com"><img src="https://img.shields.io/badge/live-patchticker.com-1a5fb4?style=for-the-badge" alt="Live: patchticker.com"></a>
+  <a href="https://patchticker.com/en/"><img src="https://img.shields.io/badge/live-patchticker.com%2Fen%2F-1a5fb4?style=for-the-badge" alt="Live: patchticker.com/en/"></a>
   <img src="https://img.shields.io/badge/updates-every%2010%20min-2e7d32?style=for-the-badge" alt="Updates every 10 minutes">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555?style=for-the-badge" alt="License: MIT"></a>
 </p>
 
 <p align="center">
-  <b>Follow by RSS</b> (Korean · English)<br>
-  Main feed, Elevated and up, attacked or no CVE yet: <a href="https://patchticker.com/feed.xml">/feed.xml</a> · <a href="https://patchticker.com/en/feed.xml">/en/feed.xml</a><br>
-  The whole Board: <a href="https://patchticker.com/feed/all.xml">/feed/all.xml</a> · <a href="https://patchticker.com/en/feed/all.xml">/en/feed/all.xml</a><br>
-  Only your products: <code>/feed.xml?products=openssh,nginx</code> (up to 30 names; the site's RSS button builds it from the products you pick)
+  <b>Follow by RSS</b> (English · Korean)<br>
+  Main feed, Elevated and up, attacked or no CVE yet: <a href="https://patchticker.com/en/feed.xml">/en/feed.xml</a> · <a href="https://patchticker.com/feed.xml">/feed.xml</a><br>
+  The whole Board: <a href="https://patchticker.com/en/feed/all.xml">/en/feed/all.xml</a> · <a href="https://patchticker.com/feed/all.xml">/feed/all.xml</a><br>
+  Only your products: <code>/en/feed.xml?products=openssh,nginx</code> (up to 30 names; the site's RSS button builds it from the products you pick)
 </p>
 
 <p align="center">
-  <em>Find it useful? A coffee keeps it running.</em><br>
-  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
-</p>
-
-<p align="center">
-  <a href="https://patchticker.com">
+  <a href="https://patchticker.com/en/">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-en-dark.png">
       <img src="docs/assets/screenshot-en-light.png" width="860" alt="Patch Ticker: Highlights on top, each Incident with its risk level, CVSS score and products">
@@ -47,22 +42,21 @@ Patch Ticker answers both in seconds, with no security background needed.
 
 - **Live**: collected every 10 minutes; an open page updates by itself.
 - **Your products only**: pick what you run and the list narrows to it. Picks stay in your browser.
-- **Plain summaries** in Korean and English: what it is, who is affected, how to fix it.
+- **Plain summaries** in English and Korean: what it is, who is affected, how to fix it.
 - **Easy view**: no jargon, just the risk and one thing to do now.
 - **Highlights**: the week's Incidents ranked by score, how widely the product is used, attacks and date stand on top.
 - **Before a CVE exists**: write-ups and mailing-list posts show up at once and merge when the CVE is assigned.
 - **Folds**: one vendor's same-day notices, and fixes shipped in one update, fold into one line.
 - **Linked to sources**: every claim links to its source; a command is shown only as a source wrote it.
-- **Share and subscribe**: every Incident has an address, and filters live in the address. RSS in
-  [Korean](https://patchticker.com/feed.xml) and [English](https://patchticker.com/en/feed.xml), the newest 200 with
-  products and level as categories, or only your products with `?products=openssh,chrome`. The whole Board, notice
-  level included, as light items: [Korean](https://patchticker.com/feed/all.xml) and
-  [English](https://patchticker.com/en/feed/all.xml). Each product has a page of
-  its Incidents, linked from every Incident page.
-- **For AI agents**: `GET https://patchticker.com/api/check?products=openssh,chrome` answers which Incidents touch
-  those products, as JSON, each with `detail`, the address of its whole record. Send a User-Agent that names your
-  client (`my-agent/1.0`): Cloudflare answers 403 to Python urllib's default one. How to ask:
-  [llms.txt](https://patchticker.com/llms.txt).
+- **Direct URLs, browse lists and RSS**:
+  - Every CVE with a Summary from the last 90 days (major Incidents: a year) is reachable at `https://patchticker.com/en/i/<CVE-ID>` (or `/i/<CVE-ID>` in Korean); a CVE grouped into another Incident redirects (`301`) to that Incident's page.
+  - Browse by [day](https://patchticker.com/en/d/) or by [product](https://patchticker.com/en/p/).
+  - RSS in [English](https://patchticker.com/en/feed.xml) and [Korean](https://patchticker.com/feed.xml) (newest 200, with products and level as categories), per product via `?products=openssh,chrome`, or the whole Board ([English](https://patchticker.com/en/feed/all.xml), [Korean](https://patchticker.com/feed/all.xml)).
+- **For AI agents and scripts**: `GET /api/check` answers which Incidents touch the products you run as JSON, with `detail` linking the full record. No API key; send a User-Agent naming your client (`Python-urllib`'s bare default gets 403 from Cloudflare). See [llms.txt](https://patchticker.com/llms.txt).
+
+```sh
+curl -A "my-script/1.0" "https://patchticker.com/api/check?products=openssh,nginx&min=high"
+```
 
 ## Risk levels
 
@@ -93,6 +87,18 @@ Summaries are written by AI from these sources only and reviewed once more; one 
 sources is thrown away and written again. When `/api/check` does not know a product name, AI guesses its English name
 for a second lookup, and a result found that way is marked `maybe`.
 
+## FAQ
+
+- **How is this different from a CVE database?** It merges related CVEs, CISA KEV, KISA, 6 Linux distribution trackers and advisories into one row per event, with plain-language mitigation and `/api/check`.
+- **Can AI summaries make up versions or commands?** Rules set risk levels; a Summary naming a number or version missing from its sources is sent back and rewritten, and a command is shown only when it appears verbatim in the sources.
+- **Why 90 days on the Board and 1 year on major pages?** It is a live triage board for what to patch now, not a historical archive since 1999.
+- **Can I use it from CI, a bot or an AI agent?** Yes — call `/api/check?products=...` or `/en/feed.xml?products=...` with no API key (at most once every 10 minutes, with a named `User-Agent`).
+
+<p align="center">
+  <em>Free, no ads. Find it useful? A coffee keeps it running.</em><br>
+  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
+</p>
+
 ## Privacy
 
 No login, no cookies, no ad trackers. Visits are only counted anonymously. Picks and filters never leave your
@@ -116,7 +122,8 @@ Running it yourself: [docs/development.md](docs/development.md).
 
 ## Notices and license
 
-- For reference only: check each Incident's source advisory before you act. Incidents are kept for at most 90 days.
+- For reference only: check each Incident's source advisory before you act. Incidents stay on the Board for 90 days;
+  major Incident pages are kept for 1 year (no longer updated after 90 days).
 - This product uses data from the NVD API but is not endorsed or certified by the NVD.
 - CVE® records: Copyright © 1999–2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation.
   Used under the [CVE Terms of Use](https://www.cve.org/Legal/TermsOfUse).
