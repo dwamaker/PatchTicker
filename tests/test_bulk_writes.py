@@ -58,7 +58,7 @@ def stale(store):
     def old(name):
         doc = store.read(name) | {"old": True}
         store.write(name, doc)
-        return digest_of(doc)
+        return digest_of({k: v for k, v in doc.items() if k != "changed"})  # a page's stamp is outside its hash
     store.write("page_hashes.json", {s: e | {"hash": old(f"pages/{s}.json")} for s, e in store.read("page_hashes.json").items()})
     store.write("check_hashes.json", {s: old(f"check/p/{s}.json") for s in store.read("check_hashes.json")})
 
@@ -83,7 +83,10 @@ def assert_named_exist(test, store):
 def assert_hashes_tell_the_store(test, store):
     """Each hash is the stored document's own, so a hash that differs from a cycle's means: still to write."""
     for slug, entry in store.read("page_hashes.json").items():
-        test.assertEqual(digest_of(store.read(f"pages/{slug}.json")), entry["hash"], slug)
+        page = store.read(f"pages/{slug}.json")
+        # The stamp of the change (dateModified) rides outside the hash, which is of the fields alone (write_pages).
+        test.assertEqual(page.pop("changed"), entry["changed"], slug)
+        test.assertEqual(digest_of(page), entry["hash"], slug)
     for slug, digest in (store.read("check_hashes.json") or {}).items():
         test.assertEqual(digest_of(store.read(f"check/p/{slug}.json")), digest, slug)
 
