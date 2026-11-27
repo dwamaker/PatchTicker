@@ -33,7 +33,7 @@ const SSHOLE = {
 const mentionsOf = (html) => (html.split('<ul class="mentions">')[1] || '').split('<p class="share">')[0];
 const tagsOf = (html) => html.split('<div class="tag-line">')[1].split('</div>')[0];
 const factsOf = (html) => html.split('<dl class="facts">')[1].split('</dl>')[0];
-const linesOf = (html) => (html.split('<p class="cve-lines-head">')[1] || '').split('<ul class="mentions">')[0];
+const linesOf = (html) => (html.split('<h2 class="cve-lines-head">')[1] || '').split('<ul class="mentions">')[0];
 const NOTICE = { ...SSHOLE, id: 'CVE-2026-55555', cves: ['CVE-2026-55555'], cvss: 5.3, kev: false, kev_date: undefined };
 
 test('slugs match the collector: one shared fixture', async () => {
@@ -158,6 +158,13 @@ test('the page shows what the Board panel shows, with the Board rules', async ()
   assert.match(html, /The MITRE Corporation/);
   // the opened row's order: what to do, then what it is, then when it applies
   assert.ok(html.indexOf('>대처법</h2>') < html.indexOf('>요약</h2>') && html.indexOf('>요약</h2>') < html.indexOf('>해당 조건</h2>'));
+  // one or two IDs are linked among the facts, so the record is reached without a cve_record Mention too
+  const bare = factsOf(await (await page({ ...SSHOLE, mentions: [SSHOLE.mentions[0]] })).text());
+  assert.match(bare, /<dt>CVE<\/dt><dd><a href="https:\/\/www\.cve\.org\/CVERecord\?id=CVE-2026-123158"[^>]*>CVE-2026-123158<span class="sr-only">/);
+  // no publish time: the head row shows no date (first seen is among the facts, said as such)
+  const unpublished = await (await page({ ...SSHOLE, published: undefined })).text();
+  assert.doesNotMatch(unpublished.split('<p class="easy">')[0], /class="c-date"/);
+  assert.match(factsOf(unpublished), /<dt>처음 확인<\/dt><dd><time datetime="2026-11-06T00:46:00.000Z">/);
 });
 
 test('no score and no exploit: the sign is dashed and says the score is pending, as on the Board (critique 13)', async () => {

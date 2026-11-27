@@ -84,7 +84,7 @@ const CSS = `.page .wrap{max-width:52rem}
 @media (max-width:599px){.p-head{grid-template-columns:minmax(0,1fr) max-content}.p-head .c-title{grid-column:1/-1;grid-row:2}}
 .page .easy{margin:1rem 0 0;font-size:calc(1.0625rem * var(--ts));font-weight:600}
 .page .details{margin-top:1.5rem;padding:0}
-.page .details h2.sec-head{color:var(--ink)}
+.page .details :is(h2.sec-head,h2.cve-lines-head){color:var(--ink)}
 .page .details .others{margin:.75rem 0 0}
 .fix-list:has(+ .fix-more:not([open])) > .rest{display:none}
 .fix-more[open] .closed,.fix-more:not([open]) .opened{display:none}
@@ -150,7 +150,7 @@ function cveLineList(i, lang, t) {
     return `<strong>${quiet(cveUrl(line.cve), line.cve)}</strong>${esc(line.text)}${marks.length ? ` ${marks.join(' · ')}` : ''}`
       + `${links.length ? ` <span class="cve-src">${links.join(' · ')}</span>` : ''}`;
   };
-  return `<p class="cve-lines-head">${esc(t.cveLinesHead(lines.length))}<span class="sr-only">${esc(t.newTabAll)}</span></p>`
+  return `<h2 class="cve-lines-head">${esc(t.cveLinesHead(lines.length))}<span class="sr-only">${esc(t.newTabAll)}</span></h2>`
     + ul(lines.slice(0, 3).map(item), 'cve-lines')
     + (lines.length > 3 ? fold(esc(t.moreLines(lines.length - 3)), ul(lines.slice(3).map(item), 'cve-lines')) : '');
 }
@@ -197,7 +197,9 @@ function ring(i, t) {
 // M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
 function facts(i, lang, t) {
   const rows = [];
-  if (i.cves.length) rows.push([t.cveHead, idLine(i.cves, t)]);
+  // One or two IDs: each linked to its record here, since no CVE fold does it (the Board's row is a button, its IDs text;
+  // 30 of 22,911 pages on 11-27 had no other link to their CVE record).
+  if (i.cves.length) rows.push([t.cveHead, i.cves.length > 2 ? idLine(i.cves, t) : i.cves.map((c) => link(cveUrl(c), c, t)).join(', ')]);
   const top = scoreCve(i);
   const pair = scorePair(i); // a score a page raised: both standards' scores, higher first (owner 11-18)
   if (pair || Number.isFinite(i.cvss)) rows.push([t.scoreHead, [pair || `CVSS ${i.cvss.toFixed(1)}`, top].filter(Boolean).map(esc).join(' · ')]);
@@ -399,7 +401,8 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
   const main = ['<article>',
     `<div class="p-head risk-${level}">${riskSign(i, t)}<div class="c-title"><h1 class="title">${esc(title)}</h1>`
       + `${i.cves.length ? `<p class="sub"><span class="cve">${idLine(i.cves, t)}</span></p>` : ''}</div>`
-      + `<span class="c-date">${when(i.published || i.first_seen, lang)}</span></div>`,
+      // the publish time only: a first sighting is never passed off as one (app.mjs dateCell); the facts say 처음 확인
+      + `${i.published ? `<span class="c-date">${when(i.published, lang)}</span>` : ''}</div>`,
     p(plain, 'easy'),
     '<div class="details">',
     `<div class="p-top">${facts(i, lang, t)}<div class="p-side">${ring(i, t)}${tagLine(i, lang, t)}</div></div>`,
