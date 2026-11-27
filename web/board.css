@@ -17,7 +17,6 @@
   /* their tags' text on an 18% wash of the edge colour (Astryx Token teal / purple): 5.0:1+ on every ground in both themes */
   --patch-ink: light-dark(#005a63, #3fc1cc);
   --fold-ink: light-dark(#5326c9, #c2adff);
-  --rainbow: #ff4d4d, #ffa02e, light-dark(#d9a400, #ffe03a), #4cd964, #3ab7ff, #7a6cff, #ff5ad8, #ff4d4d; /* the 쉬운 설명 beckon only (DESIGN.md beckon-*) */ /* ground of a row that stands for several Incidents: a cool step off the page, not the opened-row white */
   --ink: light-dark(#16191d, #ececec);
   --ink-2: light-dark(#4f5862, #a8afb7);
   --ink-3: light-dark(#5f6872, #8c949d);
@@ -808,23 +807,24 @@ li.fresh-out { animation: fresh-out 520ms cubic-bezier(0.4, 0, 0.2, 1); }
 /* Astryx Motion, Respecting User Preferences: "opacity only, in 200 ms or less": the pill keeps its centring transform, only its movement goes */
 @media (prefers-reduced-motion: reduce) { .jump button, .jump button.off { transform: none; translate: none; } .new-above.off { translate: none; } .jump button:active { transform: none; scale: none; } .new-above:active { scale: none; } .new-above { transition-duration: 200ms, 0s, 120ms, 0s; } }
 /* 쉬운 설명 beckons as the Board arrives in 기본 (until it has been tried once; owner, 11-09: it sits at the very top,
-   so it must be loud): twice, 1.4s each, the whole 기본|쉬운 설명 switch swells to 112% and settles with a bounce, a
-   rainbow ring spins around it, the word 쉬운 설명 runs through the rainbow and swells to 116%, and a rainbow band
-   crosses the button. Reduced motion: the rainbow word and a still rainbow ring, no movement. */
+   so it must be loud): twice, 1.4s each, the whole 기본|쉬운 설명 switch swells to 112% and settles with a bounce, an
+   arc of the site's own blue (--focus) spins around it, the word 쉬운 설명 turns that blue and swells to 116%, and a
+   blue sheen crosses the button. No rainbow (owner, 11-27: "무지개는 빼고, 사이트 테마색으로"). Reduced motion: the blue
+   word and a still blue ring, no movement. */
 @property --spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 #view-easy { position: relative; overflow: hidden; }
 #views.beckon { animation: beckon-switch 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) 500ms 2; }
 #views.beckon::after { content: ""; position: absolute; inset: -4px; z-index: -2; border-radius: calc(var(--r-ctl) + 4px); padding: 3px; pointer-events: none;
-  background: conic-gradient(from var(--spin), var(--rainbow));
+  background: conic-gradient(from var(--spin), transparent 0 20%, var(--focus) 50%, transparent 80% 100%);
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
   animation: beckon-spin 1400ms linear 500ms 2 both, beckon-ring-fade 2800ms ease-in-out 500ms 1 both; }
 #view-easy.beckon { animation: beckon-word 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) 500ms 2; }
-#view-easy.beckon { background-image: linear-gradient(90deg, var(--rainbow)); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; }
+#view-easy.beckon { color: var(--focus); }
 #view-easy.beckon::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; mix-blend-mode: screen;
-  background: linear-gradient(105deg, transparent 20%, rgb(255 77 77 / 0.55) 35%, rgb(255 224 58 / 0.6) 45%, rgb(76 217 100 / 0.55) 55%, rgb(58 183 255 / 0.6) 65%, transparent 80%);
+  background: linear-gradient(105deg, transparent 25%, color-mix(in srgb, var(--focus) 45%, transparent) 50%, transparent 75%);
   transform: translateX(-120%); animation: beckon-band 1400ms cubic-bezier(0.4, 0, 0.2, 1) 500ms 2; }
 @keyframes beckon-switch { 0%, 100% { transform: scale(1); } 22% { transform: scale(1.12); } 42% { transform: scale(0.98); } 62% { transform: scale(1.04); } }
-@keyframes beckon-word { 0% { transform: scale(1); background-position: 0% 0; } 22% { transform: scale(1.16); } 42% { transform: scale(0.97); } 62% { transform: scale(1.05); } 100% { transform: scale(1); background-position: 200% 0; } }
+@keyframes beckon-word { 0%, 100% { transform: scale(1); } 22% { transform: scale(1.16); } 42% { transform: scale(0.97); } 62% { transform: scale(1.05); } }
 @keyframes beckon-spin { to { --spin: 360deg; } }
 @keyframes beckon-ring-fade { 0% { opacity: 0; } 12%, 80% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes beckon-band { to { transform: translateX(120%); } }

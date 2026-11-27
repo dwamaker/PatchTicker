@@ -45,15 +45,6 @@ colors:
   line-09: "#960078"
   line-ink-dark: "#0d0f12"
   line-ink-light: "#ffffff"
-  # 쉬운 설명 beckon only (owner, 11-09): never a risk, never a Product line
-  beckon-red: "#ff4d4d"
-  beckon-orange: "#ffa02e"
-  beckon-yellow: "#ffe03a"
-  beckon-yellow-light: "#d9a400" # the yellow stop on the light ground, where #ffe03a all but vanished (critique 12)
-  beckon-green: "#4cd964"
-  beckon-blue: "#3ab7ff"
-  beckon-violet: "#7a6cff"
-  beckon-pink: "#ff5ad8"
 typography:
   headline:
     fontFamily: "Pretendard Variable, Pretendard, Apple SD Gothic Neo, Malgun Gothic, Noto Sans KR, system-ui, sans-serif"
@@ -1040,9 +1031,9 @@ ring stays inside the row and a group's frame at 320px too.
   Incident) slide in 4px; the frozen row's shadow eases in; the settings icon turns 90°; the jump buttons and the pill
   dip to 94-96% on a press.
 - **쉬운 설명 beckon, louder (owner, 11-09: it sits at the very top, so it must be loud):** twice, 1.4s each, the whole
-  기본|쉬운 설명 switch swells to 112% and settles with a bounce, a rainbow ring spins once around it per beat, the
-  word 쉬운 설명 runs through a rainbow and swells to 116%, and a rainbow band crosses the button. The rainbow belongs
-  to this one moment only (it never marks risk). Reduced motion: the rainbow word and a still rainbow ring.
+  기본|쉬운 설명 switch swells to 112% and settles with a bounce, an arc of the site's blue (Focus) spins once around
+  it per beat, the word 쉬운 설명 turns that blue and swells to 116%, and a blue sheen crosses the button. No rainbow
+  since 11-27 (owner: "무지개는 빼고, 사이트 테마색으로 바꾸자"). Reduced motion: the blue word and a still blue ring.
 - **Critique 13 (11-09):**
   - 필터 keeps the place: the panel remembers its opener and the scroll; closed without 필터 적용 both come back.
     Mid-list it opens where the reader is: the phone sheet in place, wider a panel floating under the frozen row over
