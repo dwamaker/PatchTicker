@@ -256,15 +256,16 @@ const PRODUCT_SLUG = /^[0-9a-f]{16}$/; // check_slug in collector/checks.py
 const LIST_DAY_MS = 9 * 3600e3; // collector/cycle.py LIST_DAY_HOURS
 export async function pageLinks(bucket, i, pages) {
   const read = (key) => readJson(bucket, key).catch(() => null);
-  const docs = await Promise.all(pages.map((x) => read(`check/p/${x.slug}.json`)));
-  const linked = pages.map((x, k) => (typeof docs[k]?.moved === 'string' && PRODUCT_SLUG.test(docs[k].moved) ? { ...x, slug: docs[k].moved } : x));
+  const day = Number.isFinite(Date.parse(i.first_seen)) ? new Date(Date.parse(i.first_seen) + LIST_DAY_MS).toISOString().slice(0, 10) : null;
+  const [list, ...docs] = await Promise.all([day ? read(`lists/d/${day}.json`) : null, ...pages.map((x) => read(`check/p/${x.slug}.json`))]);
+  // a moved product can land on one the Incident also names: one link each (Gemini, round 6)
+  const linked = pages.map((x, k) => (typeof docs[k]?.moved === 'string' && PRODUCT_SLUG.test(docs[k].moved) ? { ...x, slug: docs[k].moved } : x))
+    .filter((x, k, all) => all.findIndex((y) => y.slug === x.slug) === k);
   let first = docs[0];
   if (linked.length && linked[0].slug !== pages[0].slug) first = await read(`check/p/${linked[0].slug}.json`);
   const own = `${SITE}/i/`;
   const related = linked.length && Array.isArray(first?.incidents) ? first.incidents.filter((e) => e && e.id !== i.id
     && typeof e.url === 'string' && e.url.startsWith(own) && SLUG.test(e.url.slice(own.length))).slice(0, RELATED) : [];
-  const day = Number.isFinite(Date.parse(i.first_seen)) ? new Date(Date.parse(i.first_seen) + LIST_DAY_MS).toISOString().slice(0, 10) : null;
-  const list = day ? await read(`lists/d/${day}.json`) : null;
   const listed = Array.isArray(list?.incidents) && list.incidents.some((e) => e?.id === i.id);
   return { pages: linked, related: related.length ? { name: linked[0].name, items: related } : null, day: listed ? day : null };
 }
@@ -530,8 +531,8 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     if (!withinPageDays(doc.first_seen, now)) return expired(doc);
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
-    const others = await readJson(bucket, 'board/others.json', lang).catch(() => null);
-    const links = await pageLinks(bucket, doc, await productPageList(doc, lang));
+    const [others, links] = await Promise.all([readJson(bucket, 'board/others.json', lang).catch(() => null),
+      productPageList(doc, lang).then((pages) => pageLinks(bucket, doc, pages))]);
     return new Response(pageHtml(doc, lang, slug, others, links.pages, links), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP },
     });

@@ -722,7 +722,7 @@ def cve_map_docs(incidents, pages):
     shards = {}
     for incident in incidents:
         slug = page_slug(incident["id"])
-        if slug not in pages:
+        if slug not in pages or not on_board(incident):  # a page off the Board answers 404: never a target
             continue
         for cve in incident["cves"]:
             own = page_slug(cve)

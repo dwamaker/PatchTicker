@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { slug } from '../web/board.mjs';
-import { clip, note, pageResponse } from '../edge/page.mjs';
+import { clip, note, pageLinks, pageResponse } from '../edge/page.mjs';
 import { cached, readJson } from '../edge/shared.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');
@@ -570,7 +570,8 @@ test('the page reads the counts once, and a missing or broken counts document on
   reads.length = 0;
   await withOthers(SSHOLE, 'ko', OTHERS);
   // then the linked product's check document and the day's list (pageLinks: Gemini review, 11-28)
-  assert.deepEqual(reads, ['pages/CVE-2026-123158.json', 'board/others.json', 'check/p/3e96ab9cc2cec1ca.json', 'lists/d/2026-11-06.json']);
+  // read side by side after the page (Gemini, round 6), so in no fixed order
+  assert.deepEqual([reads[0], ...reads.slice(1).sort()], ['pages/CVE-2026-123158.json', 'board/others.json', 'check/p/3e96ab9cc2cec1ca.json', 'lists/d/2026-11-06.json']);
   const broken = { get: async (key) => (key === 'board/others.json' ? { text: async () => '{not json' } : { text: async () => JSON.stringify(SSHOLE) }) };
   const failing = { get: async (key) => { if (key === 'board/others.json') throw new Error('R2 down'); return { text: async () => JSON.stringify(SSHOLE) }; } };
   for (const store of [bucket({ 'pages/CVE-2026-123158.json': SSHOLE }), broken, failing]) {
@@ -779,4 +780,11 @@ test('the address of a CVE inside another Incident answers 301 to that Incident\
   assert.ok(!reads.some((k) => k.startsWith('cve_map/'))); // a page that exists never reads the map
   const down = { get: async (key) => { if (key.startsWith('cve_map/')) throw new Error('R2 down'); return null; } };
   assert.equal((await pageResponse(down, 'ko', 'CVE-2026-124001', NOW)).status, 404); // an unreadable map: as before
+});
+
+test('a moved product that lands on one the Incident also names is linked once (Gemini, round 6)', async () => {
+  const docs = { 'check/p/aaaaaaaaaaaaaaaa.json': { moved: 'bbbbbbbbbbbbbbbb' }, 'check/p/bbbbbbbbbbbbbbbb.json': { incidents: [] } };
+  const { pages } = await pageLinks(bucket(docs), { id: 'CVE-2026-123158', first_seen: '2026-11-06T00:46:00Z' },
+    [{ name: 'Chrome', slug: 'aaaaaaaaaaaaaaaa' }, { name: 'Google Chrome', slug: 'bbbbbbbbbbbbbbbb' }]);
+  assert.deepEqual(pages, [{ name: 'Chrome', slug: 'bbbbbbbbbbbbbbbb' }]);
 });

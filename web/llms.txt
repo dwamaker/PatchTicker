@@ -42,7 +42,7 @@ Example (values illustrative, trimmed): `https://patchticker.com/api/check?produ
 
 `detail` is the address of the Incident's whole record as JSON, the same one its page is drawn from: every CVE in `cves`, and for each its one-line text (`cve_texts`), its score (`cve_scores`, in a group) and its record links (`cve_links`); `summary` with `ko` and `en` (title, summary, conditions, mitigation), the fixed versions and the products; `mentions`, every source link by kind (advisory, write-up, CVE record, discussion); `cvss`, `kev`, `published`, `first_seen`. A record is tens of kilobytes even for a group of twenty CVEs. It exists for an Incident with a Summary first seen in the last 90 days.
 
-An Incident's page is `https://patchticker.com/i/<CVE ID>` (`/en/i/` in English). For a CVE that is part of another Incident, that address answers 301 to the Incident's page, so a CVE ID is always enough to build the address.
+An Incident's page is `https://patchticker.com/i/<CVE ID>` (`/en/i/` in English). For a CVE that is part of another Incident, that address answers 301 to the Incident's page while that page exists, so a CVE ID is enough to build the address of any Incident with a Summary.
 
 ## Feeds
 
