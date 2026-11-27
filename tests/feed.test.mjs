@@ -137,6 +137,7 @@ test('answers RSS with a short cache, and 503 when the store cannot be read', as
   const ok = await feedResponse(bucket({ incidents: [] }), 'ko');
   assert.equal(ok.status, 200);
   assert.equal(ok.headers.get('content-type'), 'application/rss+xml; charset=utf-8');
+  assert.equal(ok.headers.get('x-robots-tag'), 'noindex'); // owner, 11-27: a feed is no search result (Bing listed it with the home page's title)
   assert.match(ok.headers.get('cache-control'), /max-age=300/);
   assert.equal((await feedResponse(bucket(null), 'ko')).status, 503);
   assert.equal((await feedResponse({ get: async () => { throw new Error('R2 down'); } }, 'en')).status, 503);
@@ -235,6 +236,7 @@ test('the whole-Board feed lists every level as light items, its links where /ap
   const res = await allFeed('ko');
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'application/rss+xml; charset=utf-8');
+  assert.equal(res.headers.get('x-robots-tag'), 'noindex');
   assert.match(res.headers.get('cache-control'), /max-age=300/);
   const xml = await res.text();
   assert.match(xml, /<atom:link href="https:\/\/patchticker.com\/feed\/all.xml" rel="self"/);

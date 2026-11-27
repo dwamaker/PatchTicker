@@ -74,7 +74,10 @@ export async function feedXml(doc, lang) {
 // documents alone (no Summary there, and no page document is read per request). Like the API it is never kept in the
 // edge cache, so asked names are stored nowhere; a reader may keep it 5 minutes.
 const MAX_ITEMS = 100;
-const RSS_HEADERS = { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=300' };
+// x-robots-tag (owner, 2026-11-27): a feed is for feed readers, not a search result. Bing listed /feed.xml as a page
+// with the home page's title ("many pages with the same title"). noindex keeps a feed out of the index; its links are
+// still followed, and a feed reader ignores the header.
+const RSS_HEADERS = { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=300', 'x-robots-tag': 'noindex' };
 // A check document's address is the site's own page or Board row; anything else (it never should be) becomes the row.
 function itemLink(e, lang) {
   const url = typeof e.url === 'string' && e.url.startsWith(`${SITE}/`) ? e.url : `${SITE}/#i=${encodeURIComponent(String(e.id))}`;
@@ -177,6 +180,6 @@ export const feedResponse = (bucket, lang) => failClosed(async () => {
   const doc = await readJson(bucket, FEED_DOC, lang);
   if (!doc) throw new Error(`${FEED_DOC} missing`);
   return new Response(await feedXml(doc, lang), {
-    headers: { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=300' },
+    headers: RSS_HEADERS,
   });
 }, () => unavailable('The RSS feed')); // a reader retries later, never gets a half feed
