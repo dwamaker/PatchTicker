@@ -1,7 +1,7 @@
 // The RSS feeds (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The Pages Function reads the
 // collector's board/feed.json from R2 and renders RSS 2.0 per request. Titles, Summaries and links come from the web
 // and a model: every text is escaped, and the only outside link is the Lead mention's, when it is http(s).
-import { easyLine, langPrefix, riskLevel, rowTags, slug, WORDS } from '../web/board.mjs';
+import { boardPath, easyLine, langPrefix, riskLevel, rowTags, slug, WORDS } from '../web/board.mjs';
 import { down, error, LEVELS, lookUp, MAX_DOCS, readQuery } from './check.mjs';
 import { SITE, escapeXml, failClosed, host, http, readJson, titleOf, unavailable, whatToDo } from './shared.mjs';
 
@@ -60,7 +60,7 @@ export async function feedXml(doc, lang) {
   return ['<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>',
     `<title>${escapeXml(t.title)}</title>`,
-    `<link>${SITE}/</link>`,
+    `<link>${SITE}${boardPath(lang)}</link>`,
     `<description>${escapeXml(t.about)}</description>`,
     `<language>${lang}</language>`,
     `<atom:link href="${SITE}${t.feed}" rel="self" type="application/rss+xml"/>`,
@@ -80,7 +80,7 @@ const MAX_ITEMS = 100;
 const RSS_HEADERS = { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=300', 'x-robots-tag': 'noindex' };
 // A check document's address is the site's own page or Board row; anything else (it never should be) becomes the row.
 function itemLink(e, lang) {
-  const url = typeof e.url === 'string' && e.url.startsWith(`${SITE}/`) ? e.url : `${SITE}/#i=${encodeURIComponent(String(e.id))}`;
+  const url = typeof e.url === 'string' && e.url.startsWith(`${SITE}/`) ? e.url : `${SITE}${boardPath(lang)}#i=${encodeURIComponent(String(e.id))}`;
   return lang === 'ko' ? url : url.replace(`${SITE}/i/`, `${SITE}${langPrefix(lang)}/i/`);
 }
 // guid: the item's GUID, the link itself unless given (the whole-Board feed gives the page address).
@@ -130,7 +130,7 @@ export async function productFeedResponse(bucket, request, lang, now = Date.now(
       const xml = ['<?xml version="1.0" encoding="UTF-8"?>',
         '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>',
         `<title>${escapeXml(`Patch Ticker · ${named.join(', ') || query.names.join(', ')}`)}</title>`,
-        `<link>${SITE}/</link>`,
+        `<link>${SITE}${boardPath(lang)}</link>`,
         `<description>${escapeXml([t.aboutProducts, missed.length ? `${t.unmatched} ${missed.join(', ')}` : ''].filter(Boolean).join('. '))}</description>`,
         `<language>${lang}</language>`,
         `<atom:link href="${escapeXml(self)}" rel="self" type="application/rss+xml"/>`,
@@ -165,7 +165,7 @@ export const allFeedResponse = (bucket, lang) => failClosed(async () => {
   const xml = ['<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>',
     `<title>${escapeXml(ALL[lang].title)}</title>`,
-    `<link>${SITE}/</link>`,
+    `<link>${SITE}${boardPath(lang)}</link>`,
     `<description>${escapeXml(ALL[lang].about)}</description>`,
     `<language>${lang}</language>`,
     `<atom:link href="${SITE}${ALL[lang].feed}" rel="self" type="application/rss+xml"/>`,

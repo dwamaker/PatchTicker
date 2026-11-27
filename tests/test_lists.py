@@ -73,7 +73,8 @@ class ListDocumentsTest(unittest.TestCase):
         cycle(store, now="2026-11-11T12:00:00")  # the whole day is past 90 days
         self.assertEqual(store.read("lists/d/2026-08-12.json"), day)
         self.assertEqual(store.read("lists/index.json")["days"], {"2026-11-09": 1, "2026-08-12": 2})
-        cycle(store, now="2027-08-13T12:00:00")  # past 365 days
+        # past 365 days, the store holding only a new Incident (a store still holding old ones means a doubtful clock: no deletes)
+        cycle(store, [row(7, kev=True, first_seen="2027-08-13T00:00:00Z")], now="2027-08-13T12:00:00")
         self.assertIsNone(store.read("lists/d/2026-08-12.json"))
         self.assertNotIn("2026-08-12", store.read("list_hashes.json"))
 

@@ -322,8 +322,8 @@ test('410 past 90 days from first seen, with the Board and the CVE record', asyn
   const res = await page({ ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' });
   assert.equal(res.status, 410);
   const html = await res.text();
-  assert.match(html, /보관 기간 90일이 지나 이 사건 페이지는/);
-  assert.match(html, /href="\/#i=CVE-2026-123158"/);
+  assert.match(html, /보관 기간이 지나 이 사건 페이지는/);
+  assert.doesNotMatch(html, /href="\/#i=/); // its home instead: the Board holds it no more (neon 11-28)
   assert.match(html, /href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
   assert.match(html, /noindex/);
   assert.equal((await page({ ...SSHOLE, first_seen: '2026-08-12T00:00:00Z' })).status, 200);
@@ -358,7 +358,7 @@ test('410 when the move or the survivor is past 90 days, unless the survivor is 
     const res = await moved(doc, target);
     assert.equal(res.status, 410);
     const html = await res.text();
-    assert.match(html, /보관 기간 90일이 지나 이 사건 페이지는/);
+    assert.match(html, /보관 기간이 지나 이 사건 페이지는/);
     assert.match(html, /noindex/);
   }
   assert.equal((await moved({ ...MOVED, moved: '2026-08-12T00:00:00Z' })).status, 301);
@@ -395,7 +395,7 @@ test('302 to the survivor on the Board while the survivor has no page yet (owner
   for (const [doc, target] of [[MOVED, null], [MOVED, { ...SSHOLE, summary: undefined }], [story, null]]) {
     const res = await moved(doc, target, 'en');
     assert.equal(res.status, 302);
-    assert.equal(res.headers.get('location'), `https://patchticker.com/#i=${encodeURIComponent(doc.moved_to_id)}`);
+    assert.equal(res.headers.get('location'), `https://patchticker.com/en/#i=${encodeURIComponent(doc.moved_to_id)}`); // the English Board (11-28)
     assert.match(res.headers.get('cache-control'), /public, max-age=300/);
   }
 });
@@ -814,4 +814,15 @@ test('a moved product that lands on one the Incident also names is linked once (
   const { pages } = await pageLinks(bucket(docs), { id: 'CVE-2026-123158', first_seen: '2026-11-06T00:46:00Z' },
     [{ name: 'Chrome', slug: 'aaaaaaaaaaaaaaaa' }, { name: 'Google Chrome', slug: 'bbbbbbbbbbbbbbbb' }]);
   assert.deepEqual(pages, [{ name: 'Chrome', slug: 'bbbbbbbbbbbbbbbb' }]);
+});
+
+// review 11-28: a CVE whose own page ended (past 90 days, not kept) and that now lives inside another Incident answers
+// 301 there, not 410; with no map entry it still answers 410.
+test('a CVE whose own page ended answers 301 to the Incident it is now part of', async () => {
+  const old = { ...SSHOLE, first_seen: '2026-08-10T00:00:00Z' };
+  const docs = { 'pages/CVE-2026-123158.json': old, 'cve_map/2026/123.json': { 'CVE-2026-123158': 'hn-12' } };
+  const res = await pageResponse(bucket(docs), 'en', 'CVE-2026-123158', NOW);
+  assert.equal(res.status, 301);
+  assert.equal(res.headers.get('location'), 'https://patchticker.com/en/i/hn-12');
+  assert.equal((await pageResponse(bucket({ 'pages/CVE-2026-123158.json': old }), 'ko', 'CVE-2026-123158', NOW)).status, 410);
 });

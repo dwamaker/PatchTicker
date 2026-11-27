@@ -53,6 +53,20 @@ class SitemapMonthsTest(unittest.TestCase):
         self.assertEqual((month(store, "2026-11"), store.read("sitemaps/index.json")), (old, index))
 
 
+class DoubtfulClockTest(unittest.TestCase):
+    def test_a_cycle_with_a_clock_far_ahead_deletes_nothing_the_kept_pages_need(self):
+        # review 11-28: one cycle at a wrong clock deleted the month documents for good; prune refuses such a cycle, and
+        # so do the deletes of the month documents, the day lists and the CVE map.
+        store = cycle(WatchedStore(), [row(1, cvss=9.8, products=OPENSSH, first_seen="2026-11-09T00:00:00Z"),
+                                       row(5, kev=True, first_seen="2026-08-12T00:00:00Z", cves=["CVE-2026-1005", "CVE-2026-2500"])])
+        cycle(store, now="2026-11-12T12:00:00")  # row 5 past 90 days: pruned, kept
+        kept = (month(store), store.read("lists/d/2026-08-12.json"), store.read("cve_map/2026/2.json"))
+        self.assertTrue(all(kept))
+        cycle(store, now="2027-12-01T12:00:00")  # the clock jumps ahead
+        cycle(store, now="2026-11-21T12:00:00")  # and back
+        self.assertEqual((month(store), store.read("lists/d/2026-08-12.json"), store.read("cve_map/2026/2.json")), kept)
+
+
 class KeptCveMapTest(unittest.TestCase):
     def test_a_kept_pages_other_cves_still_redirect_and_a_live_incident_wins(self):
         archive = {"2026-08": {"CVE-2026-1005": {"first_seen": "2026-08-12T00:00:00Z", "cves": ["CVE-2026-3001", "CVE-2026-1001"]}}}

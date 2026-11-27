@@ -41,7 +41,7 @@ const TEXT = {
     productPages: '제품별 사건', summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
     firstSeen: '처음 확인', zone: ' KST',
     board: '현황판에서 보기', cveRecord: 'CVE 기록 보기', tagLink: (name) => `현황판에서 ${name} 사건 보기`,
-    expired: '보관 기간 90일이 지나 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
+    expired: '보관 기간이 지나 이 사건 페이지는 더 이상 없습니다.', missing: '이 주소에는 사건 페이지가 없습니다.',
     down: '지금은 사건 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '현황판으로 가기',
   },
   en: {
@@ -54,7 +54,7 @@ const TEXT = {
     productPages: 'Incidents by product', summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
     firstSeen: 'First seen', zone: ' UTC',
     board: 'Open on the Board', cveRecord: 'See the CVE record', tagLink: (name) => `See ${name} Incidents on the Board`,
-    expired: 'This Incident page has expired: pages are kept for 90 days.', missing: 'There is no Incident page at this address.',
+    expired: 'This Incident page has expired: its retention period is over.', missing: 'There is no Incident page at this address.',
     down: 'Incident pages cannot be loaded right now. Please try again shortly.', home: 'Go to the Board',
   },
   // Japanese (owner, 11-17): the interface only; the Summary is the English one (board.mjs withJapanese).
@@ -68,7 +68,7 @@ const TEXT = {
     productPages: '製品別のインシデント', summary: '要約', todo: '対処法', products: '対象の製品と OS', cves: 'CVE 番号', moreCves: (n) => `CVE をあと${n}件表示`, mentions: '原文リンク', times: '日時', links: 'このインシデントをもっと見る',
     firstSeen: '初確認', zone: ' JST',
     board: 'ボードで見る', cveRecord: 'CVE レコードを見る', tagLink: (name) => `ボードで ${name} のインシデントを見る`,
-    expired: '保存期間の90日を過ぎたため、このインシデントのページはもうありません。', missing: 'このアドレスにはインシデントのページがありません。',
+    expired: '保存期間を過ぎたため、このインシデントのページはもうありません。', missing: 'このアドレスにはインシデントのページがありません。',
     down: '現在インシデントのページを読み込めません。しばらくしてからもう一度お試しください。', home: 'ボードへ戻る',
   },
 };
@@ -256,7 +256,7 @@ export const productPageList = async (i, lang) => Promise.all(productsOf(i, lang
 // list_docs) when the Incident is on it. Anything unreadable is left out, never an error.
 const RELATED = 5;
 // the day the store let the Incident go (PAGE_DAYS after first sight): the page's last update (P4)
-const frozenDay = (firstSeen) => new Date(Date.parse(firstSeen) + PAGE_DAYS * 864e5).toISOString().slice(0, 10);
+const frozenDay = (firstSeen, lang) => new Date(Date.parse(firstSeen) + PAGE_DAYS * 864e5 + (lang === 'en' ? 0 : LIST_DAY_MS)).toISOString().slice(0, 10); // KST but in English
 const PRODUCT_SLUG = /^[0-9a-f]{16}$/; // check_slug in collector/checks.py
 const LIST_DAY_MS = 9 * 3600e3; // collector/cycle.py LIST_DAY_HOURS
 export async function pageLinks(bucket, i, pages) {
@@ -454,7 +454,7 @@ export function pageHtml(i, lang, slug, others = null, pages = [], links = {}) {
       + `${i.cves.length ? `<p class="sub"><span class="cve">${idLine(i.cves, t)}</span></p>` : ''}</div>`
       // the publish time only: a first sighting is never passed off as one (app.mjs dateCell); the facts say 처음 확인
       + `${i.published ? `<span class="c-date">${when(i.published, lang)}</span>` : ''}</div>`,
-    links.frozen ? `<p class="caution frozen">${esc(t.frozen(frozenDay(i.first_seen)))}</p>` : '',
+    links.frozen ? `<p class="caution frozen">${esc(t.frozen(frozenDay(i.first_seen, lang)))}</p>` : '',
     p(plain, 'easy'),
     '<div class="details">',
     `<div class="p-top">${facts(i, lang, t)}<div class="p-side">${ring(i, t)}${tagLine(i, lang, t)}</div></div>`,
@@ -522,9 +522,8 @@ const redirect = (status, location) => new Response(null, { status, headers: { l
 export async function pageResponse(bucket, lang, slug, now = Date.now()) {
   const t = TEXT[lang];
   const home = `<a href="${boardPath(lang)}">${esc(t.home)}</a>`;
-  const expired = (page) => note(lang, 410, t.expired, page?.cves
-    ? [`<a href="${boardPath(lang)}#i=${esc(encodeURIComponent(page.id))}">${esc(t.board)}</a>`, ...(page.cves[0] ? [link(cveUrl(page.cves[0]), t.cveRecord, t)] : [])]
-    : [home]);
+  // the Board no longer holds an expired Incident: its home, not its row (neon review 11-28)
+  const expired = (page) => note(lang, 410, t.expired, page?.cves?.[0] ? [home, link(cveUrl(page.cves[0]), t.cveRecord, t)] : [home]);
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
     const doc = await readJson(bucket, `pages/${slug}.json`, lang);
@@ -541,11 +540,15 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
       const alive = target?.first_seen && (withinPageDays(target.first_seen, now) || await kept(bucket, doc.moved_to, target.first_seen, now));
       if (!withinPageDays(doc.moved, now) && !alive) return expired(null);
       if (target?.first_seen && !alive) return expired(target);
-      if (!target?.summary || target.moved_to || !onBoard(target)) return redirect(302, `${SITE}/#i=${encodeURIComponent(doc.moved_to_id)}`);
+      if (!target?.summary || target.moved_to || !onBoard(target)) return redirect(302, `${SITE}${boardPath(lang)}#i=${encodeURIComponent(doc.moved_to_id)}`);
       return redirect(301, pageUrl(lang, doc.moved_to));
     }
     const frozen = !withinPageDays(doc.first_seen, now);
-    if (frozen && !await kept(bucket, slug, doc.first_seen, now)) return expired(doc);
+    const ended = frozen && !await kept(bucket, slug, doc.first_seen, now);
+    // a CVE whose own page ended (or never showed) may live on inside another Incident: the map first (review 11-28)
+    const page = (ended || !doc.summary || !onBoard(doc)) && await groupedIn(bucket, slug);
+    if (page) return redirect(301, pageUrl(lang, page));
+    if (ended) return expired(doc);
     if (!doc.summary || !onBoard(doc)) return note(lang, 404, t.missing, [home]);
     // M1: the Products' counts, one read beside the page document; missing or unreadable, only the link is left out.
     const [others, links] = await Promise.all([readJson(bucket, 'board/others.json', lang).catch(() => null),

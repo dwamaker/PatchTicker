@@ -11,7 +11,7 @@ const MAX_PAGES = Math.floor(50000 / SEARCH_LANGS.length); // one URL per search
 // P4 (owner 11-28, Gemini review): a listed page stays PAGE_KEEP_DAYS, so 13 monthly files, n months ago, from the collector's
 // sitemaps/<YYYY-MM>.json (collector/cycle.py write_sitemap_months); sitemap.json's pages when a month has none yet.
 const MONTHS = Math.ceil(PAGE_KEEP_DAYS / 30); // 365 days back reach at most 12 calendar months back: 13 files
-const NAME = /^(?:incidents-(\d{1,2})|(products))\.xml$/;
+const NAME = /^(?:incidents-(0|[1-9]\d?)|(products))\.xml$/; // no incidents-05.xml twin
 const PRODUCT = /^[0-9a-f]{16}$/; // collector/checks.py check_slug
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/; // the collector's STAMP, a W3C datetime
 

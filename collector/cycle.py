@@ -184,6 +184,10 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     # Pruned before any source is read: cvelist reads updated records only of CVEs still held, so an aged-out CVE's
     # record updates start nothing; real news about it may (owner, 11-10).
     changed = prune(incidents, stamp_ago(now, days=PAGE_DAYS))
+    # prune refused (a wrong clock or bad data): the store still holds Incidents past PAGE_DAYS. The kept pages' documents
+    # (month documents, frozen day lists, the CVE map) are then not deleted either: they cannot be rebuilt (review 11-28).
+    # shortcut: a clock wrong by less than about 45 days passes this, as it passes prune; a stored last-cycle time would catch it.
+    doubtful = any(i["first_seen"] < stamp_ago(now, days=PAGE_DAYS) for i in incidents)
 
     held_cves = {cve for i in incidents for cve in i["cves"]}
     records, checkpoints["cvelist"], checkpoints["cvelist_missing"] = cvelist.fetch(
@@ -367,9 +371,9 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
                "products": checks.product_pages(product_docs)}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
-    write_lists(store, listed, product_docs, more, now)
-    archive = write_sitemap_months(store, listed, pages, now, more)
-    write_cve_map(store, cve_map_docs(shown_incidents, pages, archive), more)
+    write_lists(store, listed, product_docs, more, now, deletes=not doubtful)
+    archive = write_sitemap_months(store, listed, pages, now, more, deletes=not doubtful)
+    write_cve_map(store, cve_map_docs(shown_incidents, pages, archive), more, deletes=not doubtful)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(shown_incidents, picker_since)})
     # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
@@ -688,7 +692,7 @@ def list_docs(listed, product_docs):
             sorted(products, key=lambda p: (p["name"].casefold(), p["slug"])))
 
 
-def write_lists(store, listed, product_docs, more=lambda: True, now=None):
+def write_lists(store, listed, product_docs, more=lambda: True, now=None, deletes=True):
     """The list pages' documents, as write_checks writes the check documents: a day's document is rewritten only when it
     changed (list_hashes.json keeps {day: {hash, count}}), newest days first; then the index ({days: {day: count},
     products}) when it changed, naming only the days whose document is stored; then a day that left the 90 days loses
@@ -714,7 +718,7 @@ def write_lists(store, listed, product_docs, more=lambda: True, now=None):
     if store.read(LIST_INDEX) != index:
         store.write(LIST_INDEX, index)
     for day in known.keys() - docs.keys() - keep:
-        if more():
+        if more() and deletes:
             store.delete(LIST_DAY.format(day))
         else:
             hashes[day] = known[day]
@@ -752,7 +756,7 @@ def cve_map_docs(incidents, pages, archive=None):
     return {name: dict(sorted(doc.items())) for name, doc in sorted(shards.items())}
 
 
-def write_cve_map(store, docs, more=lambda: True):
+def write_cve_map(store, docs, more=lambda: True, deletes=True):
     """As write_lists: a shard is rewritten only when it changed (cve_map_hashes.json keeps {name: hash}), and one no
     longer made is deleted; more() as in write_pages, a shard left unwritten keeps its old document and hash."""
     known = store.read("cve_map_hashes.json") or {}
@@ -763,7 +767,7 @@ def write_cve_map(store, docs, more=lambda: True):
         store.write(name, docs[name])
         hashes[name] = digest_of(docs[name])
     for name in known.keys() - docs.keys():
-        if more():
+        if more() and deletes:
             store.delete(name)
         else:
             hashes[name] = known[name]
@@ -778,7 +782,7 @@ SITEMAP_MONTH = "sitemaps/{}.json"
 SITEMAP_MONTHS = "sitemaps/index.json"
 
 
-def write_sitemap_months(store, listed, pages, now, more=lambda: True):
+def write_sitemap_months(store, listed, pages, now, more=lambda: True, deletes=True):
     """Each month that still holds a page within PAGE_DAYS is rewritten from the listed Incidents, keeping its entries
     already past PAGE_DAYS as they were (the store forgets those Incidents: they are kept, never re-judged); a month past
     PAGE_KEEP_DAYS is deleted. The index ({month: hash}) names the months written. Returns {month: document} of every month
@@ -803,7 +807,7 @@ def write_sitemap_months(store, listed, pages, now, more=lambda: True):
             store.write(SITEMAP_MONTH.format(month), doc)
             hashes[month] = digest_of(doc)
         months[month] = doc
-    for month in [m for m in hashes if m < gone[:7]]:
+    for month in [m for m in hashes if m < gone[:7] and deletes]:
         store.delete(SITEMAP_MONTH.format(month))
         del hashes[month]
     for month in hashes.keys() - months.keys():  # frozen months: read back, unchanged

@@ -48,7 +48,8 @@
     let early = path === '/en/' ? 'en' : browser === 'ja' ? 'ja' : 'ko';
     try { const saved = localStorage.getItem('vr-lang'); if (langs.includes(saved)) early = saved; } catch {}
     const home = early === 'en' ? '/en/' : '/';
-    if ((path === '/' || path === '/en/') && path !== home) location.replace(home + location.search + location.hash);
+    const leaving = (path === '/' || path === '/en/') && path !== home;
+    if (leaving) location.replace(home + location.search + location.hash);
     // a product or search filter about to be restored (app.mjs loadFilter): the loading Board draws no Highlight frames,
     // since a filtered Board answers in one line instead (app.mjs answerLine)
     try { const h = location.hash.length > 1, f = new URLSearchParams(h ? location.hash.slice(1) : localStorage.getItem('vr-filter') || '');
@@ -60,7 +61,7 @@
     const s = Number(localStorage.getItem('vr-text-pct')); if ([87.5, 112.5, 125, 150].includes(s)) document.documentElement.style.setProperty('--ts', s / 100); } catch {}
     // The first load's four files start loading now, while app.mjs and board.mjs still download: app.mjs takes each
     // response once (getJson, by full URL) instead of asking only after its modules ran (~0.2 s later on a PC, owner 11-10). Same base as DATA_URL.
-    try { const h = location.hostname; const base = ['localhost', '127.0.0.1'].includes(h) ? '/data/' : h.endsWith('.dwamaker.com')
+    if (!leaving) try { const h = location.hostname; const base = ['localhost', '127.0.0.1'].includes(h) ? '/data/' : h.endsWith('.dwamaker.com')
       ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/'; window.vrEarly = {};
       for (const n of ['board/rows.json', 'status.json', 'index.json', 'board/products.json']) {
         const res = fetch(base + n, { cache: 'no-cache', signal: AbortSignal.timeout && AbortSignal.timeout(n === 'status.json' ? 15e3 : 12e4) }); res.catch(() => {}); window.vrEarly[base + n] = res; } } catch {}</script>
