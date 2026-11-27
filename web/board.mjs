@@ -446,9 +446,11 @@ export const withinPageDays = (stamp, now) => Date.parse(stamp) >= now - PAGE_DA
 // first seen within PAGE_DAYS), else the Board's #i= link. pageSlug is slug(i.id) worked out ahead, so the click writes
 // to the clipboard at once (Safari drops the click's permission across an await); undefined means not ready yet.
 export function shareLink(i, pageSlug, lang, board, now = Date.now()) {
-  const hasPage = pageSlug && i.summary && onBoard(i) && withinPageDays(i.first_seen, now);
-  return hasPage ? new URL(`${langPrefix(lang)}/i/${pageSlug}`, board).href : `${board}#i=${encodeURIComponent(i.id)}`;
+  return pageSlug && hasPage(i, now) ? new URL(`${langPrefix(lang)}/i/${pageSlug}`, board).href : `${board}#i=${encodeURIComponent(i.id)}`;
 }
+// Whether the Incident has a page of its own (edge/page.mjs): a Summary, on the Board, first seen within PAGE_DAYS.
+// The opened row's 단독으로 보기 link and shareLink both ask it.
+export const hasPage = (i, now = Date.now()) => Boolean(i.summary && onBoard(i) && withinPageDays(i.first_seen, now));
 
 // The Easy view's one action: update these devices, run the source's command, or update to the fixed version.
 export function easyAction(s) {

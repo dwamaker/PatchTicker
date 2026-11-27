@@ -241,3 +241,14 @@ test('the whole-Board feed is named where the other feeds are: the head links, t
   assert.match(llms, /## Feeds[\s\S]*https:\/\/patchticker.com\/feed\/all.xml[\s\S]*newest 600[\s\S]*## Data/);
 });
 
+// Owner, 11-27: the list pages linked where a visitor sees them, under the drawn Board (#about is hidden under .js), in
+// the page's language, as the collection notice switches.
+test('the footer links the day and product lists in each language, and only the page language shows', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const nav = /<p class="foot-nav">([\s\S]*?)<\/p>/.exec(html)[1];
+  for (const [lang, prefix] of [['ko', ''], ['en', '/en'], ['ja', '/ja']]) {
+    const part = new RegExp(`<span lang="${lang}">([\\s\\S]*?)</span>`).exec(nav)[1];
+    assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map((m) => m[1]), [`${prefix}/d/`, `${prefix}/p/`], lang);
+  }
+  assert.match(readFileSync(new URL('../web/board.css', import.meta.url), 'utf8'), /:root:not\(\[lang="en"\]\) :is\(\.collect-note, \.foot-nav,/);
+});

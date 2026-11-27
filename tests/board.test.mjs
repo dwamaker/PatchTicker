@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, HIGHLIGHTS, stepDistance, oldEvent, sinceStillTrue, statusCounts } from '../web/board.mjs';
+import { nextPage, cveExploit, cveScore, exploitedCves, KEV_CATALOG, scoreCve, searchedCve, cveLines, highlightScore, pendingWhy, isWordPressPlugin, pluginName, aliasesUsed, knownVendor, SEARCH_ALIASES, vendorLedTitle, vendorName, foldByVendor, isExploited, exploitReason, namedHeadline, isLibrary, matchProducts, mergeIncidents, LINES, orderBy, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, onBoard, productsOf, cvssRating, easyAction, filterBoard, filterFromQuery, filterToQuery, lineKeys, productLine, nameLine, productList, publishedAt, relativeAge, riskLevel, riskChoice, RISKS, rowTags, searchWorthy, shareLink, hasPage, slug, uniqueNames, viewFromStorage, firstProduct, titleOf, MENTION_ORDER, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, tagHash, foldTags, ROW_TAGS, linkedPlace, publicDay, productOthers, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, rowKey, pinOrder, HIGHLIGHTS, stepDistance, oldEvent, sinceStillTrue, statusCounts } from '../web/board.mjs';
 import { FEED_NAMES, vendorOf, sameKeys, feedPath, productFeed, LANGS, langPrefix, withJapanese, giveJapanese, answerCounts, mentionGroups, MENTIONS_SHOWN, listboxStep } from '../web/board.mjs';
 import { readQuery } from '../edge/check.mjs';
 // A fold's day is the visitor's (owner, 11-16): the tests name the zone, so they pass on any machine.
@@ -1177,6 +1177,10 @@ test("the copy button gives the Incident page in the visitor's language, and the
   assert.equal(shareLink(cve, undefined, 'ko', board, now), boardLink); // the slug is not ready yet
   const notIncident = { ...story, summary: { incident: false } };
   assert.equal(shareLink(notIncident, await slug(story.id), 'ko', board, now), 'https://patchticker.com/#i=https%3A%2F%2Fnews.ycombinator.com%2Fitem%3Fid%3D50378228');
+  // 단독으로 보기 (owner, 11-27) is shown exactly when the copy button gives a page
+  for (const i of [cve, story, notIncident, { ...cve, summary: undefined }, { ...cve, first_seen: '2026-08-11T23:59:00Z' }]) {
+    assert.equal(hasPage(i, now), shareLink(i, await slug(i.id), 'ko', board, now).includes('/i/'), i.id);
+  }
 });
 
 test('each CVE shows its Summary line, else its own record text, in the Incident order (owner, 2026-11-10)', () => {

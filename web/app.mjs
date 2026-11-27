@@ -1,5 +1,5 @@
-import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, rowPlatforms, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, MENTION_ORDER } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
+import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, rowPlatforms, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, hasPage, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, MENTION_ORDER } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, langPrefix, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
 
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
@@ -62,7 +62,7 @@ const TEXT = {
     mitigation: '대처법', cveLines: (n) => `CVE ${n}건 각각의 내용`, vendorFold: (v, n) => `${v} 보안 공지 ${n}건 묶음`, wpFold: '워드프레스 플러그인', wpFoldTitle: (n) => `워드프레스 플러그인 ${n}건 묶음`, moreProducts: (n) => `외 ${n}개 제품`, cveCount: (n) => `CVE ${n}건`, moreLines: (n) => `${n}건 더 보기`, easyBrief: (p) => `${p ? `${p} ` : ''}새 보안 문제`, easyPrepTag: '쉬운 설명 준비 중', origOnly: '원문만 있음', unfoldDone: '묶음을 풀었습니다.', refoldDone: '다시 묶었습니다.',linkKind: { advisory: '공지', writeup: '분석' }, views: '보기 방식',
     normal: '기본', easy: '쉬운 설명', highest: '긴급!', high: '경계', notice: '주의',
     aboutHead: '요약', scoreHead: '점수', cveHead: 'CVE', // the opened row's section and fact labels (Astryx inspector)
-    copy: '복사', copied: '복사됨', copyFailed: '복사하지 못했습니다. 선택된 명령을 직접 복사하세요.', share: '이 사건 링크 복사',
+    copy: '복사', copied: '복사됨', copyFailed: '복사하지 못했습니다. 선택된 명령을 직접 복사하세요.', share: '이 사건 링크 복사', pageView: '단독으로 보기',
     feeds: 'RSS 피드', feedsHead: 'RSS로 받아 보기', feedMain: '주요 피드', feedMainNote: '위험 이상 사건과 CVE 번호 전 속보',
     feedAll: '현황판 전체', feedAllNote: '참고까지 모든 사건', feedMine: '내 제품', feedPick: '제품 고르기',
     feedNone: '위의 ‘사용하는 제품’ 칸에서 제품을 고르면, 그 제품의 사건만 오는 주소가 여기 생깁니다.',
@@ -107,7 +107,7 @@ const TEXT = {
     mitigation: 'Mitigation', cveLines: (n) => `Each of the ${n} CVEs`, vendorFold: (v, n) => `${v}: ${n} security notices, grouped`, wpFold: 'WordPress plugins', wpFoldTitle: (n) => `WordPress plugins: ${n}, grouped`, moreProducts: (n) => `and ${n} more products`, cveCount: (n) => `${n} CVEs`, moreLines: (n) => `Show ${n} more`, easyBrief: (p) => `New security issue${p ? ` in ${p}` : ''}`, easyPrepTag: 'Plain summary coming', origOnly: 'Source only', unfoldDone: 'Groups opened up.', refoldDone: 'Grouped again.',linkKind: { advisory: 'advisory', writeup: 'write-up' }, views: 'View',
     normal: 'Normal', easy: 'Easy', highest: 'Urgent!', high: 'Warning', notice: 'Caution',
     aboutHead: 'Summary', scoreHead: 'Score', cveHead: 'CVE',
-    copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. The command is selected: copy it yourself.', share: 'Copy link to this Incident',
+    copy: 'Copy', copied: 'Copied', copyFailed: 'Could not copy. The command is selected: copy it yourself.', share: 'Copy link to this Incident', pageView: 'Open as a page',
     feeds: 'RSS feeds', feedsHead: 'Follow by RSS', feedMain: 'Main feed', feedMainNote: 'Elevated and up, attacked, or no CVE yet',
     feedAll: 'The whole Board', feedAllNote: 'Every Incident, Notice too', feedMine: 'My products', feedPick: 'Pick products',
     feedNone: 'Pick products in “Products you run” above, and an address with only their Incidents appears here.',
@@ -152,7 +152,7 @@ const TEXT = {
     mitigation: '対処法', cveLines: (n) => `CVE ${n}件それぞれの内容`, vendorFold: (v, n) => `${v} のセキュリティ勧告 ${n}件のまとめ`, wpFold: 'WordPress プラグイン', wpFoldTitle: (n) => `WordPress プラグイン ${n}件のまとめ`, moreProducts: (n) => `ほか${n}製品`, cveCount: (n) => `CVE ${n}件`, moreLines: (n) => `あと${n}件を表示`, easyBrief: (p) => `${p ? `${p} の` : ''}新しいセキュリティ問題`, easyPrepTag: 'やさしい説明を準備中', origOnly: '原文のみ', unfoldDone: 'まとめを解除しました。', refoldDone: 'まとめ直しました。', linkKind: { advisory: '勧告', writeup: '解説' }, views: '表示方法',
     normal: '標準', easy: 'やさしい説明', highest: '緊急！', high: '警戒', notice: '注意',
     aboutHead: '要約', scoreHead: 'スコア', cveHead: 'CVE',
-    copy: 'コピー', copied: 'コピーしました', copyFailed: 'コピーできませんでした。選択されたコマンドを手動でコピーしてください。', share: 'このインシデントのリンクをコピー',
+    copy: 'コピー', copied: 'コピーしました', copyFailed: 'コピーできませんでした。選択されたコマンドを手動でコピーしてください。', share: 'このインシデントのリンクをコピー', pageView: '単独で表示',
     feeds: 'RSS フィード', feedsHead: 'RSS で受け取る', feedMain: 'メインフィード', feedMainNote: '警戒以上、実際の攻撃、CVE 未採番のインシデント',
     feedAll: 'ボード全体', feedAllNote: '参考を含むすべてのインシデント', feedMine: '自分の製品', feedPick: '製品を選ぶ',
     feedNone: '上の「使っている製品」で製品を選ぶと、その製品のインシデントだけが届くアドレスがここに表示されます。',
@@ -747,8 +747,18 @@ function shareLine(incident) {
       field.select();
     }
   });
-  p.append(button, reportLink(incident));
+  p.append(...(hasPage(incident) ? [pageLink(incident)] : []), button, reportLink(incident));
   return p;
+}
+
+// 단독으로 보기 (owner, 11-27): the Incident's own page, in the visitor's language. Its address waits for the slug
+// (a hash for a story without a CVE); until then the link has no href and goes nowhere.
+function pageLink(incident) {
+  const a = el('a', 'btn');
+  slug(incident.id).then((s) => { a.href = `${langPrefix(lang)}/i/${s}`; }, () => {});
+  a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  a.append(el('span', '', TEXT[lang].pageView));
+  return a;
 }
 
 // 틀린 내용 알리기 (reportUrl). Opening it needs a GitHub account; nothing is sent until the visitor submits the form there.
