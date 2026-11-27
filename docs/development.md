@@ -331,9 +331,9 @@ without `detail`) only when it changed (`list_hashes.json` keeps `{day: {hash, c
 then `lists/index.json` (`{days: {day: count}, products: [{slug, name, count}]}`, naming only the days whose document is
 stored), then deletes the days past 90. Neither is public on data.patchticker.com. 404 for a day that is not
 `YYYY-MM-DD` (no read) or has no document; 503 when the index is missing or unusable or R2 cannot be read.
-A product page also says what its list holds as a whole (its Incidents by Risk, how many are attacked, their CVEs, the
-newest) and names each Incident's CVE IDs; no "newest fixed version": `fixed` is the Incident's own, on an Incident of
-several Products another Product's.
+A product page also says what its list holds as a whole (its Incidents by Risk, how many are attacked, the newest) and
+names each Incident's CVE IDs; no "newest fixed version" and no CVE total: `fixed` and `cve_count` are the Incident's
+own, on an Incident of several Products partly another Product's (136 of 651 product pages on 11-27).
 Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
 `pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
 `wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document

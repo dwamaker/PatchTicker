@@ -79,19 +79,19 @@ test("an Incident page links to the pages of its products, operating systems asi
   assert.match(en, /Incidents by product<\/h2><p class="others"><a href="\/en\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a>/);
 });
 
-test('a product page says what its list holds as a whole: Incidents by Risk, attacked, CVEs, the newest; and names CVE IDs', async () => {
+test('a product page says what its list holds as a whole: Incidents by Risk, attacked, the newest; and names CVE IDs', async () => {
   const doc = { ...DOC, incidents: [
     { ...DOC.incidents[0], cves: ['CVE-2026-120001', 'CVE-2026-120002'], cve_count: 4 },
     { ...DOC.incidents[1], cves: ['CVE-2026-120010'] }, DOC.incidents[2]] };
   const html = await (await render('ko', SSH, { [`check/p/${SSH}.json`]: doc })).text();
-  assert.match(html, /<dl class="facts"><dt>위험도<\/dt><dd>긴급 1건 · 위험 1건 · 참고 1건<\/dd><dt>공격 발생<\/dt><dd>1건<\/dd><dt>CVE<\/dt><dd>6건<\/dd><dt>가장 최근<\/dt><dd><time datetime="2026-11-16T00:30:00.000Z">/);
+  assert.match(html, /<dl class="facts"><dt>위험도<\/dt><dd>긴급 1건 · 위험 1건 · 참고 1건<\/dd><dt>공격 발생<\/dt><dd>1건<\/dd><dt>가장 최근<\/dt><dd><time datetime="2026-11-16T00:30:00.000Z">/);
   assert.match(html, /<meta name="description" content="최근 90일 동안 나온 OpenSSH 보안 사건 3건\(긴급 1건, 위험 1건, 참고 1건, 공격 발생 1건\)의/);
   assert.match(html, /고친 버전 9\.9p2 · CVE-2026-120001, CVE-2026-120002 외 2건<\/p>/);
   assert.match(html, /<p class="pl-sub">CVE-2026-120010<\/p>/);
   assert.match(html, /<a href="\/p\/">모든 제품<\/a><\/nav>/);
-  assert.doesNotMatch(html, /최근 고친|newest fixed/i); // `fixed` is the Incident's, not this product's
+  assert.doesNotMatch(html, /최근 고친|newest fixed|<dt>CVE/i); // `fixed` and `cve_count` are the Incident's, not this product's
   const en = await (await render('en', SSH, { [`check/p/${SSH}.json`]: doc })).text();
-  assert.match(en, /<dt>Risk<\/dt><dd>Urgent 1 · Elevated 1 · Notice 1<\/dd><dt>Attacked<\/dt><dd>1<\/dd><dt>CVEs<\/dt><dd>6<\/dd>/);
+  assert.match(en, /<dt>Risk<\/dt><dd>Urgent 1 · Elevated 1 · Notice 1<\/dd><dt>Attacked<\/dt><dd>1<\/dd><dt>Newest<\/dt>/);
   assert.match(en, /CVE-2026-120001, CVE-2026-120002 and 2 more/);
   assert.match(en, /<a href="\/en\/p\/">All products<\/a>/);
   const quiet = await (await render('ko', SSH, { [`check/p/${SSH}.json`]: { ...doc, incidents: [DOC.incidents[2]] } })).text();

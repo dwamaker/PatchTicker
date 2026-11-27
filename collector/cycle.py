@@ -674,7 +674,7 @@ def list_docs(listed, product_docs):
     days = {}
     for incident in sorted(listed, key=lambda i: (i["first_seen"], i["id"]), reverse=True):
         row = {k: v for k, v in checks.entry(incident).items() if k != "detail"}
-        day = (datetime.strptime(incident["first_seen"], "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=LIST_DAY_HOURS)).date()
+        day = (datetime.strptime(incident["first_seen"], STAMP) + timedelta(hours=LIST_DAY_HOURS)).date()
         days.setdefault(day.isoformat(), []).append(row)
     products = [{"slug": slug, "name": product_docs[slug]["product"], "count": len(product_docs[slug]["incidents"])}
                 for slug in checks.product_pages(product_docs)]
