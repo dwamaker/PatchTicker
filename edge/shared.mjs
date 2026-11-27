@@ -95,14 +95,15 @@ const setting = (text, file, t) => p(typeof file === 'string' && file ? t.settin
 
 // What to do, as the Easy view words it (easyAction), on the Incident page and in the RSS feed alike: the Summary's
 // advice, then the command, devices or versions.
-export function whatToDo(i, lang) {
+// lead: the Mitigation paragraph's class (the Incident page: 'mitigation', as the Board's opened row draws it).
+export function whatToDo(i, lang, lead = '') {
   const t = TODO[lang];
   const sum = i.summary;
   const s = sum[lang] || {};
   const level = riskLevel(i);
   const product = firstProduct(i, lang);
   const action = easyAction(sum);
-  const out = [p(s.mitigation)];
+  const out = [p(s.mitigation, lead)];
   const fixes = usableFixes(sum);
   const table = fixTable(sum);
   // Four or more lines (owner, 11-16): an aligned list, five rows in view; a details after it shows the rest by CSS alone
@@ -112,7 +113,7 @@ export function whatToDo(i, lang) {
     out.push(`<div class="fix-table"><p class="fix-head">${escapeXml(t.fixesTitle)}</p><dl class="fix-list">${table.rows
       .map((f, n) => `<dt${rest(n)}>${escapeXml(f.for)}</dt><dd${rest(n)}>${escapeXml(t.orNewer(f.version))}</dd>`).join('')}</dl>${
       // The label follows the state by CSS (edge/page.mjs), as the Board's button does by script: "12 more", then "Show less".
-      table.more ? `<details class="more fix-more"><summary><span class="closed">${escapeXml(t.fixesMore(table.more))}</span>`
+      table.more ? `<details class="models fix-more"><summary><span class="closed">${escapeXml(t.fixesMore(table.more))}</span>`
         + `<span class="opened">${escapeXml(t.foldLess)}</span></summary></details>` : ''}</div>`);
   } else if (fixes.length > 1) out.push(p(t.fixesIntro), ul(fixes.map((f) => `<strong>${escapeXml(f.for)}</strong> ${escapeXml(t.orNewer(f.version))}`)));
   else if (action.kind === 'version' && !s.mitigation) out.push(p(t.version(action.fixed, product)));

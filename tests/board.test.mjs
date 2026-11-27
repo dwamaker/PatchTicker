@@ -708,9 +708,9 @@ test('no two line colours are near twins', () => {
 });
 
 // Owner, 11-16: a Product pill is never the release group's teal nor the fold's violet, nor reads as either (the same
-// 0.13 as two lines), in either theme. The group colours are read from web/index.html, where they live.
+// 0.13 as two lines), in either theme. The group colours are read from web/board.css, where they live.
 test('no line colour is a group colour or a near twin of one, in either theme', () => {
-  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../web/board.css', import.meta.url), 'utf8');
   const groups = ['--patch-edge', '--fold-edge'].flatMap((name) => new RegExp(`${name}: light-dark\\((#[0-9a-f]{6}), (#[0-9a-f]{6})\\)`).exec(html).slice(1));
   assert.equal(groups.length, 4);
   for (const { bg } of LINES) {
@@ -933,7 +933,7 @@ test('vendor spellings come from web/vendors.json', () => {
 
 // critique 13: the mint line was 0.05 from the dark Clear Green; a Product badge must never read as "all clear".
 test('no line colour is a near twin of Clear Green (--ok) in either theme', () => {
-  const ok = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8').match(/--ok: light-dark\((#\w{6}), (#\w{6})\)/).slice(1);
+  const ok = readFileSync(new URL('../web/board.css', import.meta.url), 'utf8').match(/--ok: light-dark\((#\w{6}), (#\w{6})\)/).slice(1);
   for (const { bg } of LINES) {
     for (const green of ok) {
       const [x, y] = [oklab(bg), oklab(green)];

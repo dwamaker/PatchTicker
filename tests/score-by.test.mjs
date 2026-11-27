@@ -37,13 +37,14 @@ const page = async (doc, lang) => pageResponse({ get: async (key) => (key === `p
   lang, JAVA.id, NOW).then((res) => res.text());
 
 test('the Incident page states the pair where it states the score, the same in every language', async () => {
-  assert.match(await page(JAVA, 'en'), /<p class="reason">Score of CVE-2026-114938: CVSS 4.0 9.2 \/ CVSS 3.1 8.1<\/p>/);
-  assert.match(await page(JAVA, 'ko'), /<p class="reason">CVE-2026-114938의 점수: CVSS 4.0 9.2 \/ CVSS 3.1 8.1<\/p>/);
-  assert.match(await page(JAVA, 'ja'), /<p class="reason">CVE-2026-114938 のスコア: CVSS 4.0 9.2 \/ CVSS 3.1 8.1<\/p>/);
-  assert.match(await page(PLAIN, 'en'), /<p class="reason">Score of CVE-2026-114938: CVSS 9.2<\/p>/); // as before
-  // One CVE: no "Score of" line before; a raised one gets the pair alone, a plain one still nothing.
+  // Owner, 11-27: among the opened row's facts, as the Board says it ("CVSS 4.0 9.2 / CVSS 3.1 8.1 · CVE-…").
+  assert.match(await page(JAVA, 'en'), /<dt>Score<\/dt><dd>CVSS 4.0 9.2 \/ CVSS 3.1 8.1 · CVE-2026-114938<\/dd>/);
+  assert.match(await page(JAVA, 'ko'), /<dt>점수<\/dt><dd>CVSS 4.0 9.2 \/ CVSS 3.1 8.1 · CVE-2026-114938<\/dd>/);
+  assert.match(await page(JAVA, 'ja'), /<dt>スコア<\/dt><dd>CVSS 4.0 9.2 \/ CVSS 3.1 8.1 · CVE-2026-114938<\/dd>/);
+  assert.match(await page(PLAIN, 'en'), /<dt>Score<\/dt><dd>CVSS 9.2 · CVE-2026-114938<\/dd>/); // as before
+  // One CVE: no CVE beside the score; a raised one gets the pair, a plain one its score (owner 11-19: every scored row).
   const one = { ...JAVA, cves: ['CVE-2026-114938'], top_cve: undefined };
-  assert.match(await page(one, 'en'), /<p class="reason">CVSS 4.0 9.2 \/ CVSS 3.1 8.1<\/p>/);
+  assert.match(await page(one, 'en'), /<dt>Score<\/dt><dd>CVSS 4.0 9.2 \/ CVSS 3.1 8.1<\/dd>/);
   const { score_by: __, ...plainOne } = one;
-  assert.doesNotMatch(await page(plainOne, 'en'), /<p class="reason">CVSS/);
+  assert.match(await page(plainOne, 'en'), /<dt>Score<\/dt><dd>CVSS 9.2<\/dd>/);
 });

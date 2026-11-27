@@ -331,6 +331,13 @@ without `detail`) only when it changed (`list_hashes.json` keeps `{day: {hash, c
 then `lists/index.json` (`{days: {day: count}, products: [{slug, name, count}]}`, naming only the days whose document is
 stored), then deletes the days past 90. Neither is public on data.patchticker.com. 404 for a day that is not
 `YYYY-MM-DD` (no read) or has no document; 503 when the index is missing or unusable or R2 cannot be read.
+Since 2026-11-27 (owner: "디자인 왜 따로쓰냐") the Board's styles are one file, `web/board.css`, which `index.html`, every
+Incident, product and list page and `404.html` link (the static CSP allows it as `'self'`): an Incident page is the
+Board's row head and opened panel (`web/app.mjs` `details()`, Normal view) drawn as HTML with the same classes, in its
+order (what to do, the summary, the conditions, then the CVE fold, the Lead, each CVE's line and the sources), plus
+what the page says that the Normal panel leaves to the Easy view (the command and the stopgap). The page's own CSS in
+`edge/page.mjs` holds only its header, title, language menu, closing links and notes. A design change made in
+`board.css` reaches these pages; one that changes the opened row's markup in `app.mjs` must be made in `page.mjs` too.
 A product page also says what its list holds as a whole (its Incidents by Risk, how many are attacked, the newest) and
 names each Incident's CVE IDs; no "newest fixed version" and no CVE total: `fixed` and `cve_count` are the Incident's
 own, on an Incident of several Products partly another Product's (136 of 651 product pages on 11-27).

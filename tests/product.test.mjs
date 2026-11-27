@@ -31,7 +31,7 @@ test("a product page lists its Incidents of the last 90 days with level, title, 
   assert.match(html, /<link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/p\/3e96ab9cc2cec1ca">/);
   assert.match(html, /<link rel="alternate" type="application\/rss\+xml" title="[^"]*" href="\/feed.xml\?products=OpenSSH">/);
   assert.match(html, /<h1>OpenSSH 보안 사건<\/h1>/);
-  assert.match(html, /<li class="risk-highest"><p class="pl-head"><span class="word">긴급<\/span> <span class="kev">공격 발생<\/span> <time datetime="2026-11-16T00:30:00.000Z">2026-11-16 09:30 KST<\/time><\/p><a class="pl-title" href="\/i\/CVE-2026-1">취약점 1<\/a><p class="pl-sub">고친 버전 9.9p2 · CVE 3건<\/p><\/li>/);
+  assert.match(html, /<li class="risk-highest"><p class="pl-head"><span class="loud risk-highest"><b class="word">긴급<\/b><\/span> <span class="kev">공격 발생<\/span> <time datetime="2026-11-16T00:30:00.000Z">2026-11-16 09:30 KST<\/time><\/p><a class="pl-title" href="\/i\/CVE-2026-1">취약점 1<\/a><p class="pl-sub">고친 버전 9.9p2 · CVE 3건<\/p><\/li>/);
   assert.match(html, /<a class="pl-title" href="\/#i=CVE-2026-3">취약점 3<\/a>/); // no page: its row on the Board
   assert.doesNotMatch(html, /noindex/);
   const en = await (await render('en')).text();
@@ -73,10 +73,10 @@ test("an Incident page links to the pages of its products, operating systems asi
     products: [{ id: 'openbsd:openssh', name: 'OpenSSH' }],
     summary: { incident: true, products: ['OpenSSH'], platforms: ['Linux'], ko: { title: 'T', summary: 'S' }, en: { title: 'T', summary: 'S' } } };
   const html = await (await pageResponse(store({ 'pages/CVE-2026-1001.json': doc }), 'ko', 'CVE-2026-1001', NOW)).text();
-  assert.match(html, /<h2 class="label" id="s-product-pages">제품별 사건<\/h2><p class="others"><a href="\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a><\/p>/);
+  assert.match(html, /<p class="others">제품별 사건: <a href="\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a><\/p>/);
   assert.doesNotMatch(html, /href="\/p\/[0-9a-f]{16}">Linux/);
   const en = await (await pageResponse(store({ 'pages/CVE-2026-1001.json': doc }), 'en', 'CVE-2026-1001', NOW)).text();
-  assert.match(en, /Incidents by product<\/h2><p class="others"><a href="\/en\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a>/);
+  assert.match(en, /<p class="others">Incidents by product: <a href="\/en\/p\/3e96ab9cc2cec1ca">OpenSSH<\/a>/);
 });
 
 test('a product page says what its list holds as a whole: Incidents by Risk, attacked, the newest; and names CVE IDs', async () => {

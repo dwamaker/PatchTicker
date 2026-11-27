@@ -3,7 +3,7 @@
 // reader's zone. The rules (risk level, exploited reason, easy action, Product names, on the Board, search-worthy) are
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
-import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, provisionalLevel, severityWord, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
+import { conditionIds, cveExploit, cveHead, cveLines, cveScore, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, provisionalLevel, severityWord, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
 import { SEARCH_LANGS, SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, searchLang, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
@@ -14,9 +14,26 @@ const NVD_EN = 'This product uses data from the NVD API but is not endorsed or c
 const MITRE = 'CVE&reg; records: Copyright &copy; 1999&ndash;2026, The MITRE Corporation. CVE is a registered trademark of The MITRE Corporation. CVE Usage: MITRE hereby grants you a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, publicly perform, sublicense, and distribute Common Vulnerabilities and Exposures (CVE&reg;). Any copy you make for such purposes is authorized provided that you reproduce MITRE\'s copyright designation and this license in any such copy. <a href="https://www.cve.org/Legal/TermsOfUse">CVE Terms of Use</a>';
 
 // The shared words (web/board.mjs WORDS) for what the page shows, plus the page's own.
+// The opened row's own words (web/app.mjs TEXT), word for word, so a heading or a link reads the same on the Board and here.
+const ROW = {
+  ko: { mitigationHead: '대처법', aboutHead: '요약', scoreHead: '점수', cveHead: 'CVE', tagsHead: '제품', patchTag: '함께 공개',
+    moreIds: (n) => ` 외 ${n}건`, cveCount: (n) => `CVE ${n}건`, cveLinesHead: (n) => `CVE ${n}건 각각의 내용`, moreLines: (n) => `${n}건 더 보기`,
+    linkKind: { advisory: '공지', writeup: '분석' }, newTabAll: ' (아래 링크는 모두 새 탭에서 열림)',
+    lead: { advisory: '공식 공지 읽기', writeup: '분석 글 읽기', cve_record: 'CVE 기록 읽기', discussion: '토론 읽기', curator: '뉴스레터 읽기', notice: '보호나라 공지 읽기', repo: '저장소 보기', other: '원문 읽기' } },
+  en: { mitigationHead: 'Mitigation', aboutHead: 'Summary', scoreHead: 'Score', cveHead: 'CVE', tagsHead: 'Products', patchTag: 'Disclosed together',
+    moreIds: (n) => ` and ${n} more`, cveCount: (n) => `${n} CVEs`, cveLinesHead: (n) => `Each of the ${n} CVEs`, moreLines: (n) => `Show ${n} more`,
+    linkKind: { advisory: 'advisory', writeup: 'write-up' }, newTabAll: ' (every link below opens in a new tab)',
+    lead: { advisory: 'Read the advisory', writeup: 'Read the write-up', cve_record: 'Read the CVE record', discussion: 'Read the discussion', curator: 'Read the newsletter', notice: 'Read the KISA notice', repo: 'See the repository', other: 'Read the source' } },
+  ja: { mitigationHead: '対処法', aboutHead: '要約', scoreHead: 'スコア', cveHead: 'CVE', tagsHead: '製品', patchTag: '同時公開',
+    moreIds: (n) => ` ほか${n}件`, cveCount: (n) => `CVE ${n}件`, cveLinesHead: (n) => `CVE ${n}件それぞれの内容`, moreLines: (n) => `あと${n}件を表示`,
+    linkKind: { advisory: '勧告', writeup: '解説' }, newTabAll: '（下のリンクはすべて新しいタブで開きます）',
+    lead: { advisory: '勧告を読む', writeup: '解説記事を読む', cve_record: 'CVE レコードを読む', discussion: '議論を読む', curator: 'ニュースレターを読む', notice: 'KISA の告知を読む', repo: 'リポジトリを見る', other: '原文を読む' } },
+};
+
 const TEXT = {
   ko: {
     ...WORDS.ko,
+    ...ROW.ko,
     path: '/i/', productPath: '/p/', locale: 'ko_KR',
     rating: { critical: '심각', high: '높음', medium: '보통', low: '낮음', none: '없음' },
     productPages: '제품별 사건', summary: '요약', todo: '대처법', products: '대상 제품과 운영체제', cves: 'CVE 번호', moreCves: (n) => `CVE ${n}건 더 보기`, mentions: '원문 링크', times: '시각', links: '이 사건 더 보기',
@@ -27,6 +44,7 @@ const TEXT = {
   },
   en: {
     ...WORDS.en,
+    ...ROW.en,
     path: '/en/i/', productPath: '/en/p/', locale: 'en_US',
     rating: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', none: 'None' },
     productPages: 'Incidents by product', summary: 'Summary', todo: 'What to do', products: 'Products and platforms', cves: 'CVE IDs', moreCves: (n) => `${n} more CVE IDs`, mentions: 'Sources', times: 'Times', links: 'More on this Incident',
@@ -38,6 +56,7 @@ const TEXT = {
   // Japanese (owner, 11-17): the interface only; the Summary is the English one (board.mjs withJapanese).
   ja: {
     ...WORDS.ja,
+    ...ROW.ja,
     path: '/ja/i/', productPath: '/ja/p/', locale: 'ja_JP',
     rating: { critical: '緊急', high: '重要', medium: '警告', low: '注意', none: 'なし' },
     productPages: '製品別のインシデント', summary: '要約', todo: '対処法', products: '対象の製品と OS', cves: 'CVE 番号', moreCves: (n) => `CVE をあと${n}件表示`, mentions: '原文リンク', times: '日時', links: 'このインシデントをもっと見る',
@@ -48,21 +67,27 @@ const TEXT = {
   },
 };
 
-// On a touch screen a list link is a 44px box, ~10px of air over its text: the list under a label pulls up by that much.
-// CVE columns: 9rem + a 1.25rem marker gap is the most that still gives two columns at 360px (328px less the list's 20px).
-const CSS = `:root{color-scheme:light dark;--bg:light-dark(#f4f5f7,#121417);--panel:light-dark(#fff,#191c20);--panel-2:light-dark(#eceef1,#1f2328);--ink:light-dark(#16191d,#ececec);--ink-2:light-dark(#4f5862,#a8afb7);--ink-3:light-dark(#5f6872,#8c949d);--rule:light-dark(#dde1e5,#2a2f35);--rule-2:light-dark(#c4c9cf,#3a4048);--edge:light-dark(#858e97,#6b737c);--shadow:light-dark(rgb(20 25 30 / 0.07),rgb(0 0 0 / 0.32));--high:light-dark(#c0262c,#ff6b62);--mid:light-dark(#8a6100,#f5b400);--mid-mark:light-dark(#a87700,#f5b400);--high-wash:light-dark(#ffc4be,#5b2b28);--high-ink:light-dark(#76000c,#ffaea7);--mid-wash:light-dark(#fae19e,#453a1c);--mid-ink:light-dark(#4b3900,#eec448);--note-wash:light-dark(#dae2ea,#323940);--note-ink:light-dark(#434f5a,#bdc5ce);--note:light-dark(#5a6570,#9aa3ad);--focus:light-dark(#1a5fb4,#7cc4ff);--sans:"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
-*,*::before,*::after{box-sizing:border-box}
-html{background:var(--bg);scrollbar-color:var(--rule-2) var(--bg)}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 0.9375rem/1.55 var(--sans);letter-spacing:-0.005em;word-break:keep-all;overflow-wrap:anywhere;-webkit-font-smoothing:antialiased}
-a{color:var(--focus);text-underline-offset:3px}
-:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-::selection{background:color-mix(in srgb,var(--focus) 32%,transparent)}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.wrap{max-width:45rem;margin:0 auto;padding-inline:1rem}
-header{border-bottom:1px solid var(--rule)}
-header .wrap{min-height:4rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem}
-.brand{display:inline-flex;align-items:center;gap:.625rem;border-radius:8px;color:var(--ink);font:700 1.25rem/1 var(--sans);letter-spacing:-0.02em;text-decoration:none}
-.brand svg{flex:none;height:1em;width:auto;fill:var(--focus)}
+// The page's own rules (owner, 11-27: "디자인 왜 따로쓰냐"). Everything else is the Board's web/board.css, which every
+// page links: the Incident page draws the opened row's markup and classes (web/app.mjs details()), so a design change
+// on the Board reaches it. Here only what the Board has no part for: the page's header, its title, the language menu as
+// a details, the closing links and the short notes.
+const CSS = `.page .wrap{max-width:52rem}
+.page .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:4rem}
+.home{display:inline-flex;align-items:center;gap:.625rem;min-height:var(--tap);color:var(--ink);font:700 calc(1.25rem * var(--ts))/1 var(--sans);letter-spacing:-0.02em;text-decoration:none}
+.home svg{flex:none;height:1em;width:auto;fill:var(--focus)}
+.page main.wrap{min-height:0;padding-block:2rem}
+.page main h1{display:block;margin:0 0 1rem;font:700 calc(1.5rem * var(--ts))/1.3 var(--sans);letter-spacing:-0.02em;white-space:normal;text-wrap:balance}
+.p-head{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content;align-items:center;gap:.5rem 1rem}
+.p-head>*{grid-area:auto}
+.page .p-head h1.title{margin:0;font-size:calc(1.375rem * var(--ts));line-height:1.35}
+.p-head .sub{margin:.25rem 0 0;color:var(--ink-2);font-size:calc(var(--fs-meta) * var(--ts));font-variant-numeric:tabular-nums}
+@media (max-width:599px){.p-head{grid-template-columns:minmax(0,1fr) max-content}.p-head .c-title{grid-column:1/-1;grid-row:2}}
+.page .easy{margin:1rem 0 0;font-size:calc(1.0625rem * var(--ts));font-weight:600}
+.page .details{margin-top:1.5rem;padding:0}
+.page .details h2.sec-head{color:var(--ink)}
+.page .details .others{margin:.75rem 0 0}
+.fix-list:has(+ .fix-more:not([open])) > .rest{display:none}
+.fix-more[open] .closed,.fix-more:not([open]) .opened{display:none}
 .links a,.lang{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:44px;min-width:44px;padding:0 1rem;border:1px solid var(--edge);border-radius:8px;background:none;color:var(--ink);font-size:.875rem;font-weight:500;text-decoration:none;transition:background-color 120ms ease-out,transform 100ms ease-out}
 .links svg{flex:none;width:16px;height:16px}
 @media (hover:hover){.links a:hover,.lang:hover{background:var(--panel-2)}}
@@ -78,102 +103,57 @@ header .wrap{min-height:4rem;display:flex;align-items:center;justify-content:spa
 .langs ul a{display:flex;align-items:center;min-height:44px;padding:0 .75rem;border-radius:8px;color:var(--ink);font-size:.875rem;text-decoration:none}
 @media (hover:hover){.langs ul a:hover{background:var(--panel-2)}}
 .langs ul a[aria-current]{font-weight:700}
-main{padding-block:2.5rem 2rem}
-@media (max-width:599px){.lang .full{display:none}.lang .short{display:inline}main{padding-top:1.75rem}}
-h1{margin:0 0 1rem;font:700 1.5rem/1.3 var(--sans);letter-spacing:-0.02em;text-wrap:balance}
-p{margin:.375rem 0}
-ul{margin:.25rem 0;padding-left:1.25rem}
-.banner{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem;padding:1rem;border:1px solid var(--rule-2);border-left:3px solid var(--note);border-radius:10px;background:var(--panel);box-shadow:0 6px 18px -8px var(--shadow)}
-.banner.risk-highest{border-left-color:var(--high);background:linear-gradient(90deg,color-mix(in srgb,var(--high) 7%,transparent),transparent 40%),var(--panel)}
-.banner.risk-high{border-left-color:var(--mid-mark);background:linear-gradient(90deg,color-mix(in srgb,var(--mid-mark) 5%,transparent),transparent 40%),var(--panel)}
-.sign{margin:0;display:flex;flex-direction:column;align-items:center;gap:.125rem;color:var(--note)}
-.risk-highest .sign{color:var(--high)}
-.risk-high .sign{color:var(--mid)}
-.word{display:inline-flex;align-items:center;min-height:1.5rem;padding:0 .5rem;border-radius:4px;background:var(--note-wash);color:var(--note-ink);font-size:.875rem;font-weight:700;line-height:1.2}
-.risk-highest .word{background:var(--high-wash);color:var(--high-ink)}
-.risk-high .word{background:var(--mid-wash);color:var(--mid-ink)}
-.gauge{position:relative;flex:none;width:2.75rem;height:2.75rem;display:grid;place-items:center;color:var(--note)}
-.gauge svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-.gauge circle{fill:none;stroke-width:3.5}
-.gauge .track{stroke:var(--rule-2);fill:var(--note-wash)}
-.gauge.sev-critical .track{fill:var(--high-wash)}
-.gauge.sev-high .track{fill:var(--mid-wash)}
-.gauge .arc{stroke:currentColor;stroke-dasharray:var(--fill) 1;stroke-linecap:round}
-.gauge.sev-none .arc{display:none}
-.gauge b{position:relative;color:var(--ink);font-size:.8125rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
-.gauge.unrated{border:2px dashed var(--rule-2);border-radius:50%;color:var(--ink-3);font-weight:600}
-.sev-critical{color:var(--high)}
-.sev-high{color:var(--mid-mark)}
-.reason{flex-basis:100%;margin:0;color:var(--ink-2);font-size:.875rem;font-weight:600;font-variant-numeric:tabular-nums}
-@media (pointer:coarse){.reason a{display:inline-block;padding:.625rem 0}}
-.kev{color:var(--high);font-weight:700}
-.why.kev{font-size:.875rem;font-weight:800}
-.banner.unrated .word{border-style:dashed}
-.why.unrated{color:var(--ink-2);font-size:.875rem;font-weight:700}
-.easy{margin-top:1rem;font-size:1.0625rem;font-weight:600}
-section{margin-top:2rem}
-.label{margin:0 0 .5rem;color:var(--ink);font-size:1.0625rem;font-weight:700;line-height:1.4;letter-spacing:-0.01em}
-.facts{display:grid;grid-template-columns:minmax(4rem,max-content) minmax(0,1fr);gap:.25rem 1rem;align-items:baseline;margin:0}
-.facts dt{color:var(--ink-2);font-weight:500}
-.facts dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
-#s-summary~p,#s-todo~p{line-height:1.7}
-code{font-family:var(--mono);font-size:.875rem}
-.command code{display:block;font:.875rem/1.5 var(--mono);background:var(--panel-2);border:1px solid var(--rule-2);border-radius:8px;padding:.75rem 1rem;white-space:pre-wrap;overflow-wrap:break-word}
-.caution{color:var(--ink-2);font-size:.875rem}
-.tags{display:flex;flex-wrap:wrap;gap:.375rem;padding:0;list-style:none}
-.tags li{display:flex;max-width:100%}
-.tags a{display:inline-flex;align-items:center;justify-content:center;max-width:100%;border-radius:999px;text-decoration:none}
-.tags span{display:inline-flex;align-items:center;max-width:100%;min-height:1.625rem;padding:.1875rem .6875rem;border-radius:999px;background:var(--line);color:var(--line-ink);font-size:.78125rem;font-weight:600;line-height:1.2;letter-spacing:0;overflow-wrap:anywhere}
-.tags .os{background:none;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--edge);font-weight:500}
-@media (hover:hover) and (pointer:fine){.tags a:hover span{text-decoration:underline;text-underline-offset:2px}}
-@media (pointer:coarse){.tags{row-gap:0}.tags a{min-height:44px;min-width:44px}}
+@media (max-width:599px){.lang .full{display:none}.lang .short{display:inline}}
 .links{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;padding-top:1rem;border-top:1px solid var(--rule)}
 /* a note in place of a page (note()): Astryx EmptyState, centred, 32/24 padding, 16 gap, an icon over the title, the description in Secondary Ink, the way on one row */
 .gone{display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1.5rem;text-align:center}
 .gone-icon{width:2rem;height:2rem;color:var(--ink-3)}
-.gone h1{margin:0;font-size:1.25rem}
+.page .gone h1{margin:0;font-size:calc(1.25rem * var(--ts))}
 .gone p{margin:-.5rem 0 0;max-width:30rem;color:var(--ink-2)}
-.gone .links{justify-content:center;margin:.25rem 0 0;padding:0;border:0}
-.sources li+li{margin-top:.25rem}
-.cves{display:grid;grid-template-columns:repeat(auto-fill,minmax(9rem,1fr));gap:.25rem 1.25rem}
-.cves.lines{display:block}.cves.lines li+li{margin-top:.375rem}
-.cves,time,#s-todo~ul li{font-variant-numeric:tabular-nums}
-.cve-src{white-space:nowrap;font-size:.8125rem;font-variant-numeric:tabular-nums}
-.credits{color:var(--ink-2);font-size:.875rem}
-.fix-head{margin:.75rem 0 0;font-weight:700}
-.fix-list{display:grid;grid-template-columns:fit-content(20rem) auto;justify-content:start;column-gap:1.25rem;row-gap:.25rem;margin:.375rem 0 0}
-.fix-list dt{min-width:0;overflow-wrap:anywhere}
-.fix-list dd{margin:0;font-variant-numeric:tabular-nums;white-space:nowrap}
-.fix-list:has(+ .fix-more:not([open])) > .rest{display:none}
-.fix-more[open] .closed,.fix-more:not([open]) .opened{display:none}
-.more.fix-more summary{padding-block:.6875rem}
-@media (max-width:22.5rem){.fix-list{grid-template-columns:minmax(0,1fr)}.fix-list dd{padding-left:.75rem;white-space:normal;overflow-wrap:anywhere}.fix-list dt:not(:first-child){margin-top:.25rem}}
-@media (pointer:coarse){:is(.sources,.cves,.others,.credits) a{display:inline-flex;align-items:center;min-height:44px;padding-inline:.25rem}.label+:is(.sources,.cves){margin-top:-.625rem}}
-.more summary{width:fit-content;padding:.375rem 0;color:var(--focus);font-weight:600;cursor:pointer;text-underline-offset:3px}
-@media (pointer:coarse){.more summary{padding-block:.75rem}}
-@media (hover:hover) and (pointer:fine){.more summary:hover{text-decoration:underline}}
-footer{padding:1rem 0 2rem;border-top:1px solid var(--rule);color:var(--ink-3);font-size:.8125rem}`;
+.gone .links{justify-content:center;margin:.25rem 0 0;padding:0;border:0}`;
 
 // A source link opens in a new tab, as on the Board (DESIGN.md), and says so to screen readers.
 const link = (url, text, t) => (http(url) ? `<a href="${esc(url)}"${NEW_TAB}>${esc(text)}<span class="sr-only">${esc(t.newTab)}</span></a>` : '');
-// A release can carry hundreds of CVEs (IBM API Connect: 204): the first CVE_SHOWN stay in view, the rest fold. Every
-// link stays in the HTML for search engines; <details> needs no script.
-const CVE_SHOWN = 10;
-// Each CVE with its one line, as the Board's opened row shows it (cveLines, M3); a CVE with no line yet keeps its id. In
-// the document's order, which the collector writes Lead CVE first (step 4). An exploited CVE wears 악용 발생 and its source.
-const cveList = (i, lang, t) => {
-  const text = new Map(cveLines(i, lang).map((l) => [l.cve, l.text]));
-  const cls = text.size ? 'cves lines' : 'cves';
-  const mark = (cve) => {
-    const hit = cveExploit(i, cve);
-    return hit ? ` <span class="kev">${esc(t.kevReason)}</span> ${link(hit.url, hit.kind === 'kev' ? t.kevSource : host(hit.url), t)}` : '';
+// A link the opened row draws without its own new-tab note (app.mjs anchor(url, text, false)): its list says it once.
+const quiet = (url, text, before = '') => (http(url) ? `<a href="${esc(url)}"${NEW_TAB}>${before ? `<span class="sr-only">${esc(before)}</span>` : ''}${esc(text)}</a>` : '');
+const secHead = (text) => `<h2 class="sec-head">${esc(text)}</h2>`;
+const fold = (summary, body, cls = 'models') => `<details class="${cls}"><summary>${summary}</summary>${body}</details>`;
+
+// The CVE line (app.mjs idLine): one or two IDs, else the first and how many more.
+const idLine = (cves, t) => (cves.length > 2 ? `${esc(cveHead(cves).id)}${esc(t.moreIds(cveHead(cves).more))}` : cves.map(esc).join(', '));
+
+// Every CVE ID, each linked to its record (app.mjs: "CVE 3건" opens to every ID), when there are more than two.
+const cveFold = (i, t) => (i.cves.length > 2
+  ? fold(`${esc(t.cveCount(i.cves.length))}<span class="sr-only">${esc(t.newTabAll)}</span>`, ul(i.cves.map((c) => quiet(cveUrl(c), c))), 'models cve-fold') : '');
+
+// Each CVE's own line (app.mjs cveList): its ID, what it does, its score and attack marks and its own links; three in
+// view, the rest folded. Every link stays in the HTML for search engines; <details> needs no script.
+function cveLineList(i, lang, t) {
+  const lines = cveLines(i, lang);
+  if (!lines.length) return '';
+  const item = (line) => {
+    const marks = [];
+    if (i.cve_scores) {
+      const score = cveScore(i, line.cve);
+      marks.push(`<span class="cve-src">${esc(score == null ? t.unratedWhy : `CVSS ${score.toFixed(1)}`)}</span>`);
+    }
+    const hit = cveExploit(i, line.cve);
+    if (hit) marks.push(`<span class="cve-src"><span class="kev">${esc(t.kevReason)}</span> ${quiet(hit.url, hit.kind === 'kev' ? t.kevSource : host(hit.url), `${line.cve} ${t.kevReason}: `)}</span>`);
+    const own = (i.cve_links?.[line.cve] || []).filter((l) => http(l.url));
+    const seen = {};
+    const many = (kind) => own.filter((l) => l.kind === kind).length > 1; // two advisories read 공지 1 · 공지 2
+    const links = own.map((l) => {
+      seen[l.kind] = (seen[l.kind] || 0) + 1;
+      const name = t.linkKind[l.kind] || host(l.url);
+      return quiet(l.url, many(l.kind) ? `${name} ${seen[l.kind]}` : name, `${line.cve} `);
+    });
+    return `<strong>${quiet(cveUrl(line.cve), line.cve)}</strong>${esc(line.text)}${marks.length ? ` ${marks.join(' · ')}` : ''}`
+      + `${links.length ? ` <span class="cve-src">${links.join(' · ')}</span>` : ''}`;
   };
-  const links = i.cves.map((cve) => (text.has(cve) ? `<strong>${link(cveUrl(cve), cve, t)}</strong>${mark(cve)} ${esc(text.get(cve))}` : link(cveUrl(cve), cve, t) + mark(cve)));
-  if (links.length <= CVE_SHOWN + 2) return ul(links, cls); // two more are not worth a fold
-  return ul(links.slice(0, CVE_SHOWN), cls)
-    + `<details class="more"><summary>${esc(t.moreCves(links.length - CVE_SHOWN))}</summary>${ul(links.slice(CVE_SHOWN), cls)}</details>`;
-};
-const section = (key, label, body) => (body ? `<section aria-labelledby="s-${key}"><h2 class="label" id="s-${key}">${esc(label)}</h2>${body}</section>` : '');
+  return `<p class="cve-lines-head">${esc(t.cveLinesHead(lines.length))}<span class="sr-only">${esc(t.newTabAll)}</span></p>`
+    + ul(lines.slice(0, 3).map(item), 'cve-lines')
+    + (lines.length > 3 ? fold(esc(t.moreLines(lines.length - 3)), ul(lines.slice(3).map(item), 'cve-lines')) : '');
+}
 const pageUrl = (lang, slug) => `${SITE}${TEXT[lang].path}${slug}`;
 
 // Without script, Korean and Japanese pages say their time (UTC+9, no daylight saving), English ones UTC. datetime is the instant in
@@ -188,60 +168,74 @@ export function when(stamp, lang) {
 // shortOffset keeps the text above. A string, not a function: the bundler rewrites code, and the CSP pins these bytes.
 export const LOCAL_TIME = 'for(const t of document.querySelectorAll("time[datetime]"))try{const d=new Date(t.dateTime),two=(n)=>String(n).padStart(2,"0");t.textContent=d.getFullYear()+"-"+two(d.getMonth()+1)+"-"+two(d.getDate())+" "+two(d.getHours())+":"+two(d.getMinutes())+" "+new Intl.DateTimeFormat("en",{timeZoneName:"shortOffset"}).formatToParts(d).find((p)=>p.type==="timeZoneName").value}catch{}';
 const LOCAL_TIME_SHA256 = 'oAEYH/gLR7li4Nk9meP5pB8aLXZMHwekOrjaIjs5Acs='; // tests/page.test.mjs recomputes it
-// One script, LOCAL_TIME, by its hash; inline styles only (the Board's tokens and line colours). The product page's too.
-export const PAGE_CSP = `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}' https://static.cloudflareinsights.com; connect-src https://cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+// One script, LOCAL_TIME, by its hash; the Board's web/board.css and the page's own inline styles and line colours.
+// The product and list pages' too.
+export const PAGE_CSP = `default-src 'none'; script-src 'sha256-${LOCAL_TIME_SHA256}' https://static.cloudflareinsights.com; connect-src https://cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
-// The risk banner: the rule-based level, why it is exploited, and the CVSS ring.
-function banner(i, t) {
+// The row's risk sign (app.mjs riskCell): the level word, with why it is that high or that its score is pending.
+function riskSign(i, t) {
   const level = riskLevel(i);
-  const cvss = Number.isFinite(i.cvss) ? i.cvss : null;
-  const rating = cvssRating(cvss);
-  // Not rated yet, as on the Board (riskCell): the sign is dashed like the empty ring, 점수 대기 under it (critique 13).
-  const pending = !isExploited(i) && !rating;
-  // In a group the score names the CVE it belongs to (step 4): in the ring's label and a small line.
-  const top = rating ? scoreCve(i) : null;
-  const under = isExploited(i) ? `<small class="why kev">${esc(t.kevReason)}</small>` : pending ? `<small class="why unrated">${esc(pendingWhy(i, t))}</small>` : '';
-  const sign = `<p class="sign"><b class="word">${esc(t.levels[level])}</b>${under ? ` ${under}` : ''}</p>`;
-  const ring = rating
-    ? `<span class="gauge sev-${rating}" role="img" aria-label="CVSS ${cvss.toFixed(1)} (${esc(t.rating[rating])})${top ? ` · ${esc(t.scoreOf(top))}` : ''}" style="--fill:${(Math.min(cvss, 10) / 10).toFixed(3)}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg><b>${cvss.toFixed(1)}</b></span>`
-    : `<span class="gauge unrated" role="img" aria-label="${esc(t.unrated)}">—</span>`;
-  const reason = exploitReason(i);
-  let why = '';
-  if (reason?.kind === 'kev') why = `${esc(t.kevListed)}${reason.date ? ` · ${esc(reason.date)}` : ''}`;
-  if (reason?.kind === 'source') why = `${esc(t.attackSource)} ${link(reason.url, host(reason.url), t)}`;
-  const hit = i.cves.length > 1 ? exploitedCves(i) : []; // which CVEs of a group are attacked; older data names none
-  if (why && hit.length) why += ` · ${hit.map(esc).join(', ')}`;
-  const poc = !reason && i.summary?.poc_public === true; // red like the Board's .kev line, the one red reason (critique 14)
-  if (poc) why = esc(t.poc);
-  // A provisional level (owner, 11-19): the sentence with the advisory's link, as the Board's panel says it.
-  const src = provisionalLevel(i) ? i.summary.severity_source : '';
-  const rated = src ? `<p class="reason">${esc(t.vendorRating)}: ${esc(severityWord(i))} · ${link(src, host(src), t)}</p>` : '';
-  // A score a page raised: both standards' scores, higher first (owner 11-18), one-CVE Incidents too.
-  const pair = rating ? scorePair(i) : '';
-  const named = top ? `<p class="reason">${esc(t.scoreOf(top))}: ${esc(pair || `CVSS ${cvss.toFixed(1)}`)}</p>`
-    : pair ? `<p class="reason">${esc(pair)}</p>` : '';
-  return `<div class="banner risk-${level}${pending ? ' unrated' : ''}">${sign}${ring}${named}${why ? `<p class="reason${poc ? ' kev' : ''}">${why}</p>` : ''}${rated}</div>`;
+  const pending = !isExploited(i) && !cvssRating(i.cvss); // dashed like the empty ring, 점수 대기 under it (critique 13)
+  const under = isExploited(i) ? ` <small class="why kev">${esc(t.kevReason)}</small>` : pending ? ` <small class="why unrated">${esc(pendingWhy(i, t))}</small>` : '';
+  return `<span class="c-risk risk-${level} loud${pending ? ' unrated' : ''}"><b class="word">${esc(t.levels[level])}</b>${under}</span>`;
 }
 
-// Each tag links to the Board with that one filter (owner, 11-10), by the rule the Board's own tag buttons follow; same tab.
-function products(i, lang) {
-  const t = TEXT[lang];
-  const items = tagFilters(i, lang).map((tag) => {
-    const { bg, ink } = nameLine(tag.name); // colours from the Board's fixed table by the shown name, as the Board badge
-    const pill = tag.kind === 'os' ? `<span class="os">${esc(tag.name)}</span>` : `<span style="--line:${bg};--line-ink:${ink}">${esc(tag.name)}</span>`;
-    return `<li><a href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${pill}</a></li>`;
-  });
-  if (!items.length) return '';
-  // Past five tags the first four stay in view and the rest fold, as on the Board row (foldTags).
-  const { shown, more } = foldTags(items);
-  const rest = more ? `<details class="more"><summary>${esc(t.tagsRest(more))}</summary><ul class="tags">${items.slice(shown.length).join('')}</ul></details>` : '';
-  return `<ul class="tags">${shown.join('')}</ul>${rest}`;
+// The CVSS ring (app.mjs scoreCell): its arc to the score out of 10, coloured by rating, never filled (owner, 11-19); a
+// dashed dash while unscored. In a group the score names its CVE in the label (step 4).
+function ring(i, t) {
+  const rating = cvssRating(i.cvss);
+  if (!rating) return `<span class="c-score"><span class="gauge unrated" role="img" aria-label="${esc(t.unrated)}" title="${esc(t.unrated)}">—</span></span>`;
+  const top = scoreCve(i);
+  const named = `CVSS ${i.cvss.toFixed(1)}${top ? ` · ${t.scoreOf(top)}` : ''}`;
+  return `<span class="c-score"><span class="gauge sev-${rating}" role="img" aria-label="${esc(named)}" title="${esc(named)}" style="--fill:${(Math.min(i.cvss, 10) / 10).toFixed(3)}">`
+    + '<svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" pathLength="1"/><circle class="arc" cx="20" cy="20" r="17" pathLength="1"/></svg>'
+    + `<b class="num">${i.cvss.toFixed(1)}</b></span></span>`;
+}
+
+// The opened row's facts (app.mjs details()): the CVE line, the score with the CVE it belongs to, the Public date, why
+// it is attacked, a vendor's own rating; and, the page's own, when Patch Ticker first saw it (the Board's date tooltip).
+// M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
+function facts(i, lang, t) {
+  const rows = [];
+  if (i.cves.length) rows.push([t.cveHead, idLine(i.cves, t)]);
+  const top = scoreCve(i);
+  const pair = scorePair(i); // a score a page raised: both standards' scores, higher first (owner 11-18)
+  if (pair || Number.isFinite(i.cvss)) rows.push([t.scoreHead, [pair || `CVSS ${i.cvss.toFixed(1)}`, top].filter(Boolean).map(esc).join(' · ')]);
+  if (publicDay(i)) rows.push([t.publicDate, esc(publicDay(i))]);
+  const reason = exploitReason(i);
+  if (reason) {
+    const hit = i.cves.length > 1 ? exploitedCves(i) : []; // which CVEs of a group are attacked; older data names none
+    let why = reason.kind === 'kev' ? `${esc(t.kevListed)}${reason.date ? ` · <span class="nw">${esc(reason.date)}</span>` : ''}` : link(reason.url, host(reason.url), t);
+    if (hit.length) why += ` · ${hit.map((c) => `<span class="nw">${esc(c)}</span>`).join(', ')}`;
+    rows.push([reason.kind === 'kev' ? t.kevReason : t.attackSource.replace(/[:：]\s*$/, ''), why]);
+  }
+  const src = provisionalLevel(i) ? i.summary.severity_source : ''; // owner, 11-19: with the advisory's link
+  if (src) rows.push([t.vendorRating, `${esc(severityWord(i))} · ${link(src, host(src), t)}`]);
+  rows.push([t.firstSeen, when(i.first_seen, lang)]);
+  return `<dl class="facts">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
+}
+
+// The opened row's 제품 line (app.mjs tagLine), each tag a link to the Board with that one filter (owner, 11-10) where
+// the Board has a button; past five, the first four in view and the rest folded (foldTags). A release group's 함께 공개 leads.
+function tagLine(i, lang, t) {
+  const tags = tagFilters(i, lang);
+  if (!tags.length) return '';
+  const badge = (tag) => {
+    if (tag.kind === 'os') return `<span class="ln os" title="${esc(tag.name)}"><span class="ln-t">${esc(tag.name)}</span></span>`;
+    const { bg, ink } = nameLine(tag.name); // the Board's fixed colour table, by the shown name
+    return `<span class="ln" title="${esc(tag.name)}" style="--line:${bg};--line-ink:${ink}"><span class="ln-t">${esc(tag.name)}</span></span>`;
+  };
+  const item = (tag) => `<a class="tag-btn" href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${badge(tag)}</a>`;
+  const { shown, more } = foldTags(tags);
+  const rest = more ? ` ${fold(esc(t.tagsRest(more)), tags.slice(shown.length).map(item).join(' '))}` : '';
+  const group = i.cves.length > 2 ? `<span class="grp grp-patch">${esc(t.patchTag)}</span> ` : '';
+  return `<div class="p-prod"><span class="p-label">${esc(t.tagsHead)}</span><div class="tag-line">${group}${shown.map(item).join(' ')}${rest}</div></div>`;
 }
 
 // Owner, 11-17: under the tags, each product's page (/p/<slug>, edge/product.mjs), operating systems aside.
 // pages: [{ name, slug }] worked out by pageResponse (the slug is a hash, so async).
 const productPages = (pages, t) => (pages.length
-  ? `<p class="others">${pages.map((x) => `<a href="${t.productPath}${x.slug}">${esc(x.name)}</a>`).join(' · ')}</p>` : '');
+  ? `<p class="others">${esc(t.productPages)}: ${pages.map((x) => `<a href="${t.productPath}${x.slug}">${esc(x.name)}</a>`).join(' · ')}</p>` : '');
 const PRODUCT_LINKS = 5;
 export const productPageList = async (i, lang) => Promise.all(productsOf(i, lang).filter((x) => !x.id.startsWith('os:')).slice(0, PRODUCT_LINKS)
   .map(async (x) => ({ name: x.name, slug: await checkSlug(x.id) })));
@@ -266,48 +260,49 @@ function condition(entry, cves) {
 function distroFold(i, lang, t) {
   const table = distroTable(i, lang);
   if (!table) return '';
-  const lines = table.lines.map((l) => `<strong>${link(l.url, l.label, t) || esc(l.label)}</strong> ${l.package ? `${esc(l.package)} · ` : ''}`
+  const lines = table.lines.map((l) => `<strong>${quiet(l.url, l.label) || esc(l.label)}</strong>${l.package ? `${esc(l.package)} · ` : ''}`
     + `${esc(l.state)}${l.ids.length ? ` ${idMark(l.ids)}` : ''}`);
-  const credits = table.credits.map((c) => (link(c.url, c.name, t) || esc(c.name)) + (c.licence ? ` (${link(c.licenceUrl, c.licence, t) || esc(c.licence)})` : ''));
-  return `<details class="more"><summary>${esc(table.title)}</summary>${ul(lines, 'cves lines')}`
-    + `${credits.length ? `<p class="credits">${esc(t.distroSources)} ${credits.join(' · ')}</p>` : ''}</details>`;
+  const credits = table.credits.map((c) => (quiet(c.url, c.name) || esc(c.name)) + (c.licence ? ` (${quiet(c.licenceUrl, c.licence) || esc(c.licence)})` : ''));
+  return fold(`${esc(table.title)}<span class="sr-only">${esc(t.newTabAll)}</span>`,
+    `<div>${ul(lines, 'cve-lines')}${credits.length ? `<p class="credits">${esc(t.distroSources)} ${credits.join(' · ')}</p>` : ''}</div>`);
 }
 
-// Every Mention by kind, in the Lead order; on the Korean page an English title shows the Summary's Korean line.
+// The Lead mention (app.mjs leadLine): always the rule-based one, named by what it is, then where.
+function leadLine(i, t) {
+  const lead = i.brief?.lead;
+  if (!http(lead)) return '';
+  const kind = i.mentions.find((m) => m.url === lead)?.kind;
+  return `<p class="lead">${link(lead, `${t.lead[kind] || t.lead.other} · ${host(lead)}`, t)}</p>`;
+}
+
+// Every Mention by kind (app.mjs details()), in the Lead order; a kind with more links than MENTIONS_SHOWN folds into one
+// line (mentionGroups). A group's cve.org records are linked from its CVE fold, and an advisory or write-up a CVE line links
+// is left out (step 4); a record elsewhere (NVD) stays, which the Board's panel drops. On the Korean page an English title shows the Summary's Korean line, the original in its title.
 function mentions(i, lang, t) {
   const glosses = Array.isArray(i.summary?.titles_ko) ? i.summary.titles_ko : [];
-  const named = (m) => (lang === 'ko' && glosses.find((g) => g?.url === m.url && typeof g.title === 'string')?.title) || m.title || host(m.url);
-  // A group's CVE section links these already (IBM API Connect had 204 twice); with one or two, as on the Board, Sources keeps them.
-  const listed = new Set(i.cves.length > 2 ? i.cves.map(cveUrl) : []);
-  const shown = (m) => http(m.url) && !(m.kind === 'cve_record' && listed.has(m.url));
-  // With every link hidden the Lead mention, the first CVE record by the Lead order, keeps Sources (H1, owner 11-15).
-  if (!i.mentions.some(shown)) listed.delete(i.mentions.find((m) => http(m.url))?.url);
-  // In a folded kind, a link with no title of its own whose site repeats there is named by the last part of its address
-  // (GHSA-…, a bulletin's file name), as on the Board: ten "news.typo3.com" in a row told them apart by nothing.
+  const linkOf = (m, fallback) => {
+    const gloss = lang === 'ko' && m.title && glosses.find((g) => g?.url === m.url && typeof g.title === 'string')?.title;
+    const a = link(m.url, gloss || m.title || fallback, t);
+    return gloss ? a.replace('<a ', `<a title="${esc(m.title)}" `) : a;
+  };
   const lastPart = (url) => {
     try {
       const u = new URL(url);
-      return u.searchParams.get('id') || decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || '');
+      return u.searchParams.get('id') || decodeURIComponent(u.pathname.split('/').filter(Boolean).pop() || ''); // cve.org: ?id=CVE-…
     } catch {
       return '';
     }
   };
-  // Owner, 11-19: a kind with more links than MENTIONS_SHOWN folds into one line, as on the Board (mentionGroups). The Lead
-  // never folds: this page has no Lead line of its own, so when its kind folds it stays a line of its own ahead of the rest.
-  const kept = i.mentions.filter(shown);
-  const lead = kept.find((m) => m.url === i.brief?.lead);
-  const apart = lead && kept.filter((m) => m.kind === lead.kind).length > MENTIONS_SHOWN ? lead : null;
-  const leadLine = apart ? [`${esc(t.mentionKinds[apart.kind] || apart.kind)}: ${link(apart.url, named(apart), t)}`] : [];
-  return ul([...leadLine, ...mentionGroups(kept.filter((m) => m !== apart)).map(({ kind, list, sites, fold }) => {
-    const label = t.mentionKinds[kind] || kind;
-    const links = list.map((m) => {
-      const name = named(m);
-      const repeats = list.filter((x) => host(x.url) === host(m.url)).length > 1;
-      return link(m.url, fold && repeats && name === host(m.url) ? lastPart(m.url) || name : name, t);
-    });
-    return fold ? `<details class="more"><summary>${esc(t.mentionsMany(label, sites, list.length))}</summary>${ul(links, 'sources')}</details>`
-      : `${esc(label)}: ${links.join(' · ')}`;
-  })], 'sources');
+  const onLines = new Set(cveLines(i, lang).flatMap((l) => (i.cve_links?.[l.cve] || []).map((x) => x.url)));
+  const folded = new Set(i.cves.length > 2 ? i.cves.map(cveUrl) : []);
+  const listed = i.mentions.filter((m) => http(m.url) && !folded.has(m.url) && !(['advisory', 'writeup'].includes(m.kind) && onLines.has(m.url)));
+  const items = mentionGroups(listed).flatMap(({ kind, list, sites, fold: folded }) => {
+    const label = t.mentionKinds[kind] ?? kind;
+    if (!folded) return list.map((m) => `${esc(label)}: ${linkOf(m, host(m.url))}`);
+    const inner = list.map((m) => linkOf(m, (list.filter((x) => host(x.url) === host(m.url)).length > 1 && lastPart(m.url)) || host(m.url)));
+    return [fold(esc(t.mentionsMany(label, sites, list.length)), ul(inner))];
+  });
+  return items.length ? ul(items, 'mentions') : '';
 }
 
 const footer = (t) => `<footer><div class="wrap">${p(t.refNote)}${p(t.nvd)}<p lang="en">${NVD_EN}</p>${p(t.kevNote)}${p(t.cveNote)}<p lang="en">${MITRE}</p></div></footer>`;
@@ -337,10 +332,11 @@ ${head}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121417" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/board.css">
 <style>${CSS}</style>
 </head>
-<body>
-<header><div class="wrap"><a class="brand" href="/">${LOGO}Patch Ticker</a>${other}</div></header>
+<body class="page">
+<header class="top"><div class="wrap"><a class="home" href="/">${LOGO}<span>Patch Ticker</span></a>${other}</div></header>
 <main class="wrap">${main}</main>
 ${footer(t)}
 </body>
@@ -396,25 +392,36 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     jsonLd({ '@context': 'https://schema.org', '@type': 'Article', headline: title, description,
       datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
       isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` } })].join('\n');
-  // M4: the Public date is a day as the CVE record gives it (UTC), so it is text, not a <time> the script rewrites.
-  // As label-value pairs, as the Board's opened row draws its facts (Astryx MetadataList).
-  const times = [i.published ? [t.published, when(i.published, lang)] : null,
-    publicDay(i) ? [t.publicDate, esc(publicDay(i))] : null, [t.firstSeen, when(i.first_seen, lang)]].filter(Boolean);
-  const main = [`<article><h1>${esc(title)}</h1>`,
-    banner(i, t),
+  // Owner, 11-27 ("디자인 왜 따로쓰냐"): the Board's row and its opened panel (web/app.mjs row(), details()) in the
+  // Normal view, in that order: what to do first, then what it is and when it applies, the links last.
+  const conditions = strings(s.conditions);
+  const poc = i.summary?.poc_public === true && !isExploited(i); // a red line after the summary, as the Board's
+  const main = ['<article>',
+    `<div class="p-head risk-${level}">${riskSign(i, t)}<div class="c-title"><h1 class="title">${esc(title)}</h1>`
+      + `${i.cves.length ? `<p class="sub"><span class="cve">${idLine(i.cves, t)}</span></p>` : ''}</div>`
+      + `<span class="c-date">${when(i.published || i.first_seen, lang)}</span></div>`,
     p(plain, 'easy'),
-    section('summary', t.summary, p(s.summary)),
-    section('conditions', t.conditions, ul(strings(s.conditions).map((c) => condition(c, i.cves)))),
-    section('todo', t.todo, whatToDo(i, lang) + othersLink(i, lang, t, others) + distroFold(i, lang, t)),
-    section('products', t.products, products(i, lang)),
-    section('product-pages', t.productPages, productPages(pages, t)),
-    section('cves', t.cves, cveList(i, lang, t)),
-    section('mentions', t.mentions, mentions(i, lang, t)),
-    section('times', t.times, `<dl class="facts">${times.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`),
+    '<div class="details">',
+    `<div class="p-top">${facts(i, lang, t)}<div class="p-side">${ring(i, t)}${tagLine(i, lang, t)}</div></div>`,
+    // Everything the page said to do before, the command and the stopgap too, which the Board's Normal panel leaves to its
+    // Easy view: a page is read on its own, often from a search, with no second view to switch to.
+    secHead(t.mitigationHead) + whatToDo(i, lang, 'mitigation'),
+    s.summary ? secHead(t.aboutHead) + p(s.summary, 'summary') : '',
+    poc ? `<p class="kev">${esc(t.poc)}</p>` : '',
+    conditions.length ? secHead(t.conditions) + (conditions.length === 1 ? `<p class="conditions">${condition(conditions[0], i.cves)}</p>`
+      : `<ul class="cond-list">${conditions.map((c) => `<li>${condition(c, i.cves)}</li>`).join('')}</ul>`) : '',
+    othersLink(i, lang, t, others),
+    productPages(pages, t),
+    distroFold(i, lang, t),
+    cveFold(i, t),
+    leadLine(i, t),
+    cveLineList(i, lang, t),
+    mentions(i, lang, t),
+    `<p class="share"><a class="btn" href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
+      + `<a class="btn" href="${esc(reportUrl(i, lang, self, slug))}"${NEW_TAB}>${REPORT_ICON}<span>${esc(t.report)}</span></a></p>`,
+    '</div>',
     `<script>${LOCAL_TIME}</script>`,
-    '</article>',
-    `<nav class="links" aria-label="${esc(t.links)}"><a href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`
-      + `<a href="${esc(reportUrl(i, lang, self, slug))}"${NEW_TAB}>${REPORT_ICON}${esc(t.report)}</a></nav>`].join('\n');
+    '</article>'].filter(Boolean).join('\n');
   return document(lang, head, main, langMenu(lang, (l) => `${TEXT[l].path}${slug}`));
 }
 

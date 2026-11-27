@@ -29,6 +29,11 @@ const SSHOLE = {
     en: { title: 'OpenSSH sshd authentication bypass (sshole)', easy: 'Linux servers can be broken into!', summary: 'Only musl-based systems.', conditions: ['sshd runs on Alpine Linux'], mitigation: 'Update to 9.9p2.' },
   },
 };
+// Owner, 11-27 ("디자인 왜 따로쓰냐"): the page draws the Board's opened row (web/app.mjs details()) with web/board.css.
+const mentionsOf = (html) => (html.split('<ul class="mentions">')[1] || '').split('<p class="share">')[0];
+const tagsOf = (html) => html.split('<div class="tag-line">')[1].split('</div>')[0];
+const factsOf = (html) => html.split('<dl class="facts">')[1].split('</dl>')[0];
+const linesOf = (html) => (html.split('<p class="cve-lines-head">')[1] || '').split('<ul class="mentions">')[0];
 const NOTICE = { ...SSHOLE, id: 'CVE-2026-55555', cves: ['CVE-2026-55555'], cvss: 5.3, kev: false, kev_date: undefined };
 
 test('slugs match the collector: one shared fixture', async () => {
@@ -56,86 +61,84 @@ test('the Korean page names itself canonical, links the English one and previews
   assert.doesNotMatch(html, /noindex/); // exploited: search-worthy
   assert.equal(html.match(/<script(?! type="application\/ld\+json")/gi).length, 1); // the times' own; the JSON-LD block runs nothing
   assert.equal(html.match(/<h1/g).length, 1);
-  assert.match(html, /<h1>OpenSSH sshd 인증 우회 \(sshole\)<\/h1>/);
+  assert.match(html, /<h1 class="title">OpenSSH sshd 인증 우회 \(sshole\)<\/h1>/);
+  assert.match(html, /<link rel="stylesheet" href="\/board\.css">/); // the Board's own stylesheet, one source
 });
 
-test('a long CVE list shows its first IDs and folds the rest (owner, 11-10: IBM API Connect listed 204)', async () => {
+test('a long CVE list folds every ID, each linked, and the facts give the first and how many more (owner, 11-10: IBM API Connect listed 204)', async () => {
   const cves = Array.from({ length: 25 }, (_, n) => `CVE-2026-${10001 + n}`);
-  for (const [lang, more] of [['ko', 'CVE 15건 더 보기'], ['en', '15 more CVE IDs']]) {
+  for (const [lang, head, line] of [['ko', 'CVE 25건', 'CVE-2026-10001 외 24건'], ['en', '25 CVEs', 'CVE-2026-10001 and 24 more']]) {
     const html = await (await page({ ...SSHOLE, id: cves[0], cves }, lang, cves[0])).text();
-    const [open, folded] = html.split('</header>')[1].split('<details');
-    assert.equal((open.match(/CVERecord\?id=CVE-2026-1\d{4}"/g) || []).length, 10);
-    assert.match(folded, new RegExp(`<summary>${more}</summary>`));
-    for (const cve of cves.slice(10)) assert.match(folded, new RegExp(`CVERecord\\?id=${cve}"`)); // still in the HTML
+    const folded = html.split('<details class="models cve-fold">')[1].split('</details>')[0];
+    assert.match(folded, new RegExp(`^<summary>${head}<span class="sr-only">`));
+    for (const cve of cves) assert.match(folded, new RegExp(`CVERecord\\?id=${cve}"`)); // every one still in the HTML
+    assert.match(factsOf(html), new RegExp(`<dd>${line}</dd>`));
   }
-  const few = await (await page(SSHOLE)).text();
-  assert.doesNotMatch(few.split('</header>')[1], /<details/); // the header's language menu is one
+  assert.doesNotMatch(await (await page(SSHOLE)).text(), /cve-fold/); // one or two IDs: no fold
 });
 
-test('a CVE record the CVE list already links is not listed again under Sources', async () => {
+test('a CVE record the CVE fold already links is not listed again under Sources', async () => {
   const other = 'https://nvd.nist.gov/vuln/detail/CVE-2026-123158';
   const cves = ['CVE-2026-123158', 'CVE-2026-123159', 'CVE-2026-123160']; // a group: more than two, as on the Board
-  const html = await (await page({ ...SSHOLE, cves, mentions: [...SSHOLE.mentions, { kind: 'cve_record', url: other }] })).text();
-  const sources = html.split('id="s-mentions"')[1];
-  assert.doesNotMatch(sources, /cve\.org\/CVERecord/); // already under CVE 번호
+  const sources = mentionsOf(await (await page({ ...SSHOLE, cves, mentions: [...SSHOLE.mentions, { kind: 'cve_record', url: other }] })).text());
+  assert.doesNotMatch(sources, /cve\.org\/CVERecord/); // already in the CVE fold
   assert.match(sources, /CVE 기록: <a href="https:\/\/nvd\.nist\.gov/); // a record elsewhere stays
 });
 
 test('three or more untitled links of one kind are named by the last part of their address, a titled one keeps its title', async () => {
   const at = (n) => `https://news.typo3.com/article/typo3-core-sa-2026-02${n}`;
   const mentions = [{ kind: 'advisory', url: at(5) }, { kind: 'advisory', url: at(6) }, { kind: 'advisory', url: at(7), title: 'TYPO3-CORE-SA-2026-027' }];
-  const sources = (await (await page({ ...SSHOLE, mentions })).text()).split('id="s-mentions"')[1];
+  const sources = mentionsOf(await (await page({ ...SSHOLE, mentions })).text());
   assert.match(sources, />typo3-core-sa-2026-025<span/);
   assert.match(sources, />TYPO3-CORE-SA-2026-027<span/);
   assert.doesNotMatch(sources, />news\.typo3\.com</);
-  assert.match(sources, /<details class="more"><summary>보안 공지 3건: news\.typo3\.com<\/summary><ul class="sources">/); // folded past two (owner, 11-19)
-  const two = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
+  assert.match(sources, /<details class="models"><summary>보안 공지 3건: news\.typo3\.com<\/summary><ul>/); // folded past two (owner, 11-19)
+  const two = mentionsOf(await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text());
   assert.match(two, />news\.typo3\.com</); // two are told apart well enough by their site
 });
 
-test('the Lead never folds: when its kind folds it keeps a line of its own ahead of the rest (owner, 11-19)', async () => {
+test('the Lead has its own line above the Sources, as on the Board, so its kind may fold below it (owner, 11-19)', async () => {
   const lead = 'https://www.openssh.com/txt/release-9.9p2';
   const mentions = [lead, 'https://a.example/1', 'https://b.example/2', 'https://c.example/3'].map((url) => ({ kind: 'advisory', url }));
-  const sources = (await (await page({ ...SSHOLE, mentions })).text()).split('id="s-mentions"')[1];
-  assert.match(sources, /<ul class="sources"><li>보안 공지: <a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"/);
-  assert.match(sources, /<summary>보안 공지 3건: a\.example, b\.example 외<\/summary>/);
-  assert.equal(sources.split('release-9.9p2').length, 2); // once, outside the fold
-  const few = (await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text()).split('id="s-mentions"')[1];
-  assert.match(few, /보안 공지: <a href="https:\/\/www\.openssh\.com[^·]*· <a href="https:\/\/a\.example/); // unfolded: one line as before
+  const html = await (await page({ ...SSHOLE, mentions })).text();
+  assert.match(html, /<p class="lead"><a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"[^>]*>공식 공지 읽기 · openssh\.com<span/);
+  assert.ok(html.indexOf('<p class="lead">') < html.indexOf('<ul class="mentions">'));
+  assert.match(mentionsOf(html), /<summary>보안 공지 4건: openssh\.com, a\.example 외<\/summary>/);
+  const few = mentionsOf(await (await page({ ...SSHOLE, mentions: mentions.slice(0, 2) })).text());
+  assert.match(few, /<li>보안 공지: <a href="https:\/\/www\.openssh\.com[\s\S]*<li>보안 공지: <a href="https:\/\/a\.example/); // unfolded: a line each
 });
 
 test('a one-CVE Incident whose only Mention is its CVE record still shows Sources', async () => {
   const html = await (await page({ ...SSHOLE, mentions: [{ kind: 'cve_record', url: 'https://www.cve.org/CVERecord?id=CVE-2026-123158' }] })).text();
-  assert.match(html, /id="s-mentions"/);
-  assert.match(html.split('id="s-mentions"')[1], /CVE 기록: <a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
+  assert.match(mentionsOf(html), /CVE 기록: <a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/);
 });
 
-test('a group whose only Mentions are its CVE records keeps the Lead record under Sources, in both languages', async () => {
+test('a group whose only Mentions are its CVE records links each from its CVE fold, and keeps its Lead line', async () => {
   const cves = ['CVE-2026-123158', 'CVE-2026-123159', 'CVE-2026-123160'];
   const mentions = cves.map((c) => ({ kind: 'cve_record', url: `https://www.cve.org/CVERecord?id=${c}` }));
-  for (const [lang, label] of [['ko', 'CVE 기록'], ['en', 'CVE record']]) {
-    const sources = (await (await page({ ...SSHOLE, cves, mentions }, lang)).text()).split('id="s-mentions"')[1];
-    assert.ok(sources, lang);
-    assert.match(sources, new RegExp(`${label}: <a href="https://www.cve.org/CVERecord\\?id=CVE-2026-123158"`));
-    assert.doesNotMatch(sources, /CVE-2026-12315[90]"/); // only the Lead, the rest stay under the CVE list
+  for (const lang of ['ko', 'en']) {
+    const html = await (await page({ ...SSHOLE, cves, mentions, brief: { ...SSHOLE.brief, lead: mentions[0].url } }, lang)).text();
+    const folded = html.split('<details class="models cve-fold">')[1].split('</details>')[0];
+    for (const c of cves) assert.match(folded, new RegExp(`CVERecord\\?id=${c}"`), lang);
+    assert.match(html, /<p class="lead"><a href="https:\/\/www\.cve\.org\/CVERecord\?id=CVE-2026-123158"/, lang);
+    assert.doesNotMatch(html, /<ul class="mentions">/, lang); // nothing left to list
   }
 });
 
 // Owner, 11-19: no score, the product's advisory rates it Critical: 긴급, still dashed as pending, the word named.
-test('the banner of an Incident its advisory rates Critical shows a dashed 긴급, the vendor word, and the advisory link', async () => {
+test('an Incident its advisory rates Critical shows a dashed 긴급, the vendor word, and the advisory link', async () => {
   const rated = { ...SSHOLE, kev: false, cvss: undefined, summary: { ...SSHOLE.summary, exploited: false, exploited_source: '',
     severity: 'critical', severity_source: 'https://www.openssh.com/txt/release-9.9p2' } };
-  const banner = (await (await page(rated)).text()).match(/<div class="banner[^"]*">[\s\S]*?<\/div>/)[0];
-  assert.match(banner, /class="banner risk-highest unrated"/);
-  assert.match(banner, /<small class="why unrated">제조사 등급<\/small>/); // one reason under the sign
-  assert.match(banner, /<p class="reason">제조사 등급: Critical · <a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"/); // the sentence with its link
+  const html = await (await page(rated)).text();
+  assert.match(html, /<span class="c-risk risk-highest loud unrated"><b class="word">긴급<\/b> <small class="why unrated">제조사 등급<\/small><\/span>/); // one reason under the sign
+  assert.match(factsOf(html), /<dt>제조사 등급<\/dt><dd>Critical · <a href="https:\/\/www\.openssh\.com\/txt\/release-9\.9p2"/); // the sentence with its link
 });
 
 test('the page shows what the Board panel shows, with the Board rules', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, />긴급</); // riskLevel: KEV
   assert.match(html, /공격 발생/);
-  assert.match(html, /CISA KEV 등재 · 2026-11-07/); // exploitReason
+  assert.match(html, /<dt>공격 발생<\/dt><dd>CISA KEV 등재 · <span class="nw">2026-11-07<\/span><\/dd>/); // exploitReason, among the facts
   assert.match(html, /9\.8/);
   assert.match(html, /musl 기반에서만 해당합니다\./);
   assert.match(html, /Alpine 리눅스에서 sshd를 켜 둔 경우/);
@@ -153,68 +156,66 @@ test('the page shows what the Board panel shows, with the Board rules', async ()
   assert.match(html, /href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*"/);
   assert.match(html, /NVD API/);
   assert.match(html, /The MITRE Corporation/);
-  assert.match(html, /<p class="reason">CISA KEV 등재/); // a reason in Secondary Ink, not red
-  assert.match(html, /<ul class="cves"><li><a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158"/); // the CVE IDs in their own list
+  // the opened row's order: what to do, then what it is, then when it applies
+  assert.ok(html.indexOf('>대처법</h2>') < html.indexOf('>요약</h2>') && html.indexOf('>요약</h2>') < html.indexOf('>해당 조건</h2>'));
 });
 
 test('no score and no exploit: the sign is dashed and says the score is pending, as on the Board (critique 13)', async () => {
   const unrated = { ...NOTICE, cvss: undefined };
   const ko = await (await page(unrated, 'ko', 'CVE-2026-55555')).text();
-  assert.match(ko, /<div class="banner risk-notice unrated">/);
-  assert.match(ko, /<small class="why unrated">점수 대기<\/small>/);
+  assert.match(ko, /<span class="c-risk risk-notice loud unrated"><b class="word">참고<\/b> <small class="why unrated">점수 대기<\/small><\/span>/);
+  assert.match(ko, /<span class="gauge unrated" role="img"/);
   assert.match(await (await page(unrated, 'en', 'CVE-2026-55555')).text(), /<small class="why unrated">Score pending<\/small>/);
   const exploited = await (await page({ ...SSHOLE, cvss: undefined })).text();
-  assert.doesNotMatch(exploited, /class="why unrated"|class="banner[^"]*unrated/); // the ring alone still says "CVSS 점수 대기"
+  assert.doesNotMatch(exploited, /class="why unrated"|loud unrated/); // the ring alone still says "CVSS 점수 대기"
   assert.match(exploited, /<small class="why kev">공격 발생<\/small>/);
 });
 
-test('public exploit code is the one red reason line (critique 14)', async () => {
+test('public exploit code is a red line after the summary, as on the Board (critique 14)', async () => {
   const html = await (await page({ ...NOTICE, summary: { ...NOTICE.summary, poc_public: true } }, 'ko', 'CVE-2026-55555')).text();
-  assert.match(html, /<p class="reason kev">/);
+  assert.match(html, /<p class="summary">[^<]*<\/p>\n<p class="kev">/);
+  assert.doesNotMatch(await (await page({ ...SSHOLE, summary: { ...SSHOLE.summary, poc_public: true } })).text(), /<p class="kev">/); // attacked says more
 });
 
 test('source links open in a new tab and say so, as on the Board; the Board and language links stay in the tab', async () => {
   const html = await (await page(SSHOLE)).text();
   assert.match(html, /<a href="https:\/\/www.openssh.com\/txt\/release-9.9p2" target="_blank" rel="noopener noreferrer">OpenSSH 9.9p2 release notes<span class="sr-only"> \(새 탭에서 열림\)<\/span><\/a>/);
-  assert.match(html, /<a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158" target="_blank" rel="noopener noreferrer">CVE-2026-123158</);
-  assert.match(html, /<a href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*" target="_blank" rel="noopener noreferrer"><svg [^>]*aria-hidden="true">[\s\S]*?<\/svg>틀린 내용 알리기</);
-  assert.match(html, /<a href="\/#i=CVE-2026-123158">/);
+  assert.match(html, /<a href="https:\/\/www.cve.org\/CVERecord\?id=CVE-2026-123158" target="_blank" rel="noopener noreferrer">cve\.org</);
+  assert.match(html, /<a class="btn" href="https:\/\/github.com\/dwamaker\/PatchTicker\/issues\/new\?[^"]*" target="_blank" rel="noopener noreferrer"><svg [^>]*aria-hidden="true">[\s\S]*?<\/svg><span>틀린 내용 알리기<\/span>/);
+  assert.match(html, /<a class="btn" href="\/#i=CVE-2026-123158">/);
   assert.match(html, /<a href="\/en\/i\/CVE-2026-123158" hreflang="en"/);
   assert.match(await (await page(SSHOLE, 'en')).text(), /<span class="sr-only"> \(opens in a new tab\)<\/span>/);
 });
 
 test('each tag links to the Board with that one filter, in the same tab, with a name that says so', async () => {
   const doc = { ...SSHOLE, summary: { ...SSHOLE.summary, devices: ['SonicWall TZ270', '<b>"x</b>'] } };
-  const tags = (html) => html.split('<ul class="tags">')[1].split('</ul>')[0];
-  const ko = tags(await (await page(doc)).text());
+  const ko = tagsOf(await (await page(doc)).text());
   assert.deepEqual(ko.match(/<a [^>]*>/g), [
-    '<a href="/#p=os%3Alinux" aria-label="현황판에서 Linux 사건 보기">',
-    '<a href="/#p=openbsd%3Aopenssh" aria-label="현황판에서 OpenSSH 사건 보기">',
-    '<a href="/#q=SonicWall+TZ270" aria-label="현황판에서 SonicWall TZ270 사건 보기">',
-    '<a href="/#q=%3Cb%3E%22x%3C%2Fb%3E" aria-label="현황판에서 &lt;b&gt;&quot;x&lt;/b&gt; 사건 보기">',
+    '<a class="tag-btn" href="/#p=os%3Alinux" aria-label="현황판에서 Linux 사건 보기">',
+    '<a class="tag-btn" href="/#p=openbsd%3Aopenssh" aria-label="현황판에서 OpenSSH 사건 보기">',
+    '<a class="tag-btn" href="/#q=SonicWall+TZ270" aria-label="현황판에서 SonicWall TZ270 사건 보기">',
+    '<a class="tag-btn" href="/#q=%3Cb%3E%22x%3C%2Fb%3E" aria-label="현황판에서 &lt;b&gt;&quot;x&lt;/b&gt; 사건 보기">',
   ]);
-  assert.match(ko, /<span class="os">Linux<\/span>/);
-  assert.match(ko, /<span style="--line:#[0-9a-f]{6};--line-ink:#[0-9a-f]{6}">OpenSSH<\/span>/);
+  assert.match(ko, /<span class="ln os" title="Linux"><span class="ln-t">Linux<\/span><\/span>/); // the Board's badges
+  assert.match(ko, /<span class="ln" title="OpenSSH" style="--line:#[0-9a-f]{6};--line-ink:#[0-9a-f]{6}"><span class="ln-t">OpenSSH<\/span><\/span>/);
   assert.match(ko, />&lt;b&gt;&quot;x&lt;\/b&gt;<\/span>/);
   assert.doesNotMatch(ko, /target=|<b>/);
-  assert.match(tags(await (await page(doc, 'en')).text()), /aria-label="See OpenSSH Incidents on the Board"/);
+  assert.match(tagsOf(await (await page(doc, 'en')).text()), /aria-label="See OpenSSH Incidents on the Board"/);
 });
 
 test('past five tags the page shows the first four and folds the rest, as the Board row does (CVE-2024-36309 had 51)', async () => {
   const names = Array.from({ length: 7 }, (_, k) => `AMD Ryzen ${k + 1}000`);
   const many = { ...SSHOLE, summary: { ...SSHOLE.summary, products: names } }; // Linux + 7 Products: 8 tags
   for (const [lang, more] of [['ko', '나머지 4개 보기'], ['en', 'Show 4 more']]) {
-    const products = (await (await page(many, lang)).text()).split('id="s-products"')[1].split('</section>')[0];
-    const [open, folded] = products.split('<details');
+    const [open, folded] = tagsOf(await (await page(many, lang)).text()).split('<details');
     assert.equal((open.match(/<a /g) || []).length, 4);
-    assert.match(open, /<span class="os">Linux<\/span>[\s\S]*AMD Ryzen 3000/); // operating systems first
+    assert.match(open, /<span class="ln-t">Linux<\/span>[\s\S]*AMD Ryzen 3000/); // operating systems first
     assert.equal((folded.match(/<a /g) || []).length, 4);
-    assert.match(folded, new RegExp(`^ class="more"><summary>${more}</summary><ul class="tags">`));
+    assert.match(folded, new RegExp(`^ class="models"><summary>${more}</summary><a `));
   }
-  const few = { ...SSHOLE, summary: { ...SSHOLE.summary, products: names.slice(0, 2) } }; // Linux + 2: 3 tags
-  const products = (await (await page(few)).text()).split('id="s-products"')[1].split('</section>')[0];
-  assert.equal((products.match(/<a /g) || []).length, 3);
-  assert.doesNotMatch(products, /<details/);
+  const tags = tagsOf(await (await page({ ...SSHOLE, summary: { ...SSHOLE.summary, products: names.slice(0, 2) } })).text()); // Linux + 2
+  assert.equal((tags.match(/<a /g) || []).length, 3);
+  assert.doesNotMatch(tags, /<details/);
 });
 
 test('the English page is the English Summary, canonical to itself', async () => {
@@ -222,7 +223,7 @@ test('the English page is the English Summary, canonical to itself', async () =>
   assert.match(html, /<html lang="en">/);
   assert.match(html, /<link rel="canonical" href="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
   assert.match(html, /<link rel="alternate" hreflang="x-default" href="https:\/\/patchticker.com\/i\/CVE-2026-123158">/);
-  assert.match(html, /<h1>OpenSSH sshd authentication bypass \(sshole\)<\/h1>/);
+  assert.match(html, /<h1 class="title">OpenSSH sshd authentication bypass \(sshole\)<\/h1>/);
   assert.match(html, /<meta property="og:locale" content="en_US">/);
   assert.match(html, />Urgent</);
   assert.match(html, /Listed in CISA KEV/);
@@ -248,17 +249,18 @@ test('where scripts run, the times show in the visitor zone, by the one script t
   assert.doesNotMatch(await (await page(null)).text(), /<script/); // the short notes have none
 });
 
-test('the header carries the logo home and the language switch; the links row holds the Board and report buttons', async () => {
+test('the header carries the logo home and the language switch; the panel ends with the Board and report buttons', async () => {
   const html = await (await page(SSHOLE)).text();
-  const header = html.split('</header>')[0].split('<header>')[1];
-  assert.match(header, /<a class="brand" href="\/"><svg viewBox="0 0 64 56" aria-hidden="true">[\s\S]*?<\/svg>Patch Ticker<\/a>/);
+  const header = html.split('</header>')[0].split('<header class="top">')[1];
+  assert.match(header, /<a class="home" href="\/"><svg viewBox="0 0 64 56" aria-hidden="true">[\s\S]*?<\/svg><span>Patch Ticker<\/span><\/a>/);
   // The language menu (owner, 11-17): a details naming the page's language, its list linking this page in every language.
   assert.match(header, /<details class="langs"><summary class="lang" aria-label="언어: 한국어">[\s\S]*?<span class="full">한국어<\/span><span class="short">한<\/span><\/summary>/);
   assert.deepEqual(header.split('<ul>')[1].match(/<a [^>]*>[^<]*/g), ['<a href="/i/CVE-2026-123158" hreflang="ko" lang="ko" aria-current="page">한국어',
     '<a href="/en/i/CVE-2026-123158" hreflang="en" lang="en">English', '<a href="/ja/i/CVE-2026-123158" hreflang="ja" lang="ja">日本語']);
-  const links = html.split('<nav class="links"')[1].split('</nav>')[0];
-  assert.deepEqual(links.match(/<a href="[^"]*/g).map((a) => a.slice(9).split('?')[0]), ['/#i=CVE-2026-123158', 'https://github.com/dwamaker/PatchTicker/issues/new']);
-  assert.doesNotMatch(links, /hreflang/); // the language switch moved up
+  const share = html.split('<p class="share">')[1].split('</p>')[0];
+  assert.deepEqual(share.match(/<a class="btn" href="[^"]*/g).map((a) => a.slice(21).split('?')[0]), ['/#i=CVE-2026-123158', 'https://github.com/dwamaker/PatchTicker/issues/new']);
+  assert.doesNotMatch(share, /hreflang/); // the language switch is in the header
+  assert.match(html, /<body class="page">/);
 });
 
 test('the Japanese page is the interface in Japanese with the English Summary, and names the English page canonical', async () => {
@@ -269,7 +271,7 @@ test('the Japanese page is the interface in Japanese with the English Summary, a
   assert.doesNotMatch(html, /<link rel="alternate" hreflang="ja"/);
   assert.match(html, /<link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
   assert.match(html, /<meta property="og:locale" content="ja_JP">/);
-  assert.match(html, /<h1>OpenSSH sshd authentication bypass \(sshole\)<\/h1>/); // the English Summary
+  assert.match(html, /<h1 class="title">OpenSSH sshd authentication bypass \(sshole\)<\/h1>/); // the English Summary
   assert.match(html, />緊急</);
   assert.match(html, /CISA KEV 掲載/);
   assert.match(html, /<time datetime="2026-11-05T10:00:00.000Z">2026-11-05 19:00 JST<\/time>/);
@@ -278,7 +280,7 @@ test('the Japanese page is the interface in Japanese with the English Summary, a
 
 test('a note (404) keeps the logo header but has no language switch', async () => {
   const html = await (await pageResponse(bucket({}), 'ko', 'CVE-2026-99999', NOW)).text();
-  assert.match(html, /<header><div class="wrap"><a class="brand" href="\/"><svg viewBox="0 0 64 56"[\s\S]*?Patch Ticker<\/a><\/div><\/header>/);
+  assert.match(html, /<header class="top"><div class="wrap"><a class="home" href="\/"><svg viewBox="0 0 64 56"[\s\S]*?Patch Ticker<\/span><\/a><\/div><\/header>/);
   assert.doesNotMatch(html, /hreflang|class="lang"/);
 });
 
@@ -470,16 +472,20 @@ test('a HEAD shares the cache entry of a GET, and never stores a bodiless answer
   }
 });
 
-test('a group page shows each CVE with its one line, the Summary\'s else the record\'s, and a CVE with no line keeps its id (M3)', async () => {
+test('a group page shows each CVE that has a line, the Summary\'s else the record\'s, and every ID in the CVE fold (M3)', async () => {
   const cves = Array.from({ length: 14 }, (_, n) => `CVE-2026-${1000 + n}`);
   const lines = [{ cve: cves[0], text: '첫 번째 줄' }];
   const group = { ...SSHOLE, cves, cve_texts: { [cves[1]]: 'Record <b>text</b>', [cves[13]]: 'Last one' },
     summary: { ...SSHOLE.summary, ko: { ...SSHOLE.summary.ko, cve_lines: lines } } };
   const html = await (await page(group)).text();
-  assert.match(html, /<ul class="cves lines"><li><strong><a href="https:\/\/www\.cve\.org\/CVERecord\?id=CVE-2026-1000"[^>]*>CVE-2026-1000<span[^>]*>[^<]*<\/span><\/a><\/strong> 첫 번째 줄<\/li>/);
-  assert.match(html, /CVE-2026-1001<span[^>]*>[^<]*<\/span><\/a><\/strong> Record &lt;b&gt;text&lt;\/b&gt;<\/li>/); // escaped
-  assert.match(html, /<li><a [^>]*>CVE-2026-1002<span[^>]*>[^<]*<\/span><\/a><\/li>/); // no line: the id alone
-  assert.match(html, /<details class="more">[\s\S]*CVE-2026-1013<span[^>]*>[^<]*<\/span><\/a><\/strong> Last one<\/li>[\s\S]*<\/details>/); // past the fold too
+  const block = linesOf(html);
+  assert.match(block, /^CVE 3건 각각의 내용<span class="sr-only">/); // the three with a line
+  assert.match(block, /<ul class="cve-lines"><li><strong><a href="https:\/\/www\.cve\.org\/CVERecord\?id=CVE-2026-1000"[^>]*>CVE-2026-1000<\/a><\/strong>첫 번째 줄<\/li>/);
+  assert.match(block, />CVE-2026-1001<\/a><\/strong>Record &lt;b&gt;text&lt;\/b&gt;<\/li>/); // escaped
+  assert.match(block, />CVE-2026-1013<\/a><\/strong>Last one<\/li>/);
+  assert.doesNotMatch(block, /<details/); // three: all in view
+  const folded = html.split('<details class="models cve-fold">')[1].split('</details>')[0];
+  assert.match(folded, /CVERecord\?id=CVE-2026-1002"/); // a CVE with no line keeps its id, in the CVE fold
 });
 
 // Step 4 (H3, N1): the three groups of the plan with the keys the collector adds (tests/fixtures/board/step4-groups.json).
@@ -490,15 +496,15 @@ const before = (i) => {
   const { exploited_cves, ...summary } = i.summary;
   return { ...rest, summary };
 };
-const cveSection = (html) => html.split('id="s-cves"')[1].split('</section>')[0];
+const cveSection = linesOf;
 
 test('the score names its CVE in a group and not in a one-CVE Incident', async () => {
   const [chrome] = STEP4;
   const ko = await (await page(chrome, 'ko', chrome.id)).text();
-  assert.match(ko, /aria-label="CVSS 9\.6 \(심각\) · CVE-2026-125345의 점수"/);
-  assert.match(ko, /<p class="reason">CVE-2026-125345의 점수: CVSS 9\.6<\/p>/);
+  assert.match(ko, /aria-label="CVSS 9\.6 · CVE-2026-125345의 점수"/);
+  assert.match(factsOf(ko), /<dt>점수<\/dt><dd>CVSS 9\.6 · CVE-2026-125345<\/dd>/);
   const en = await (await page(chrome, 'en', chrome.id)).text();
-  assert.match(en, /<p class="reason">Score of CVE-2026-125345: CVSS 9\.6<\/p>/);
+  assert.match(factsOf(en), /<dt>Score<\/dt><dd>CVSS 9\.6 · CVE-2026-125345<\/dd>/);
   const one = await (await page({ ...SSHOLE, top_cve: 'CVE-2026-123158', cve_scores: { 'CVE-2026-123158': { cvss: 9.8, vector: 'CVSS:3.1/AV:N' } } })).text();
   assert.doesNotMatch(one, /의 점수/);
 });
@@ -509,14 +515,14 @@ test('only the exploited CVE wears the mark, with the KEV link, and the reason n
     const html = await (await page(chrome, lang, chrome.id)).text();
     const cves = cveSection(html);
     assert.equal(cves.match(/class="kev"/g).length, 1, lang);
-    assert.match(cves, new RegExp(`^[^]*?<li><strong><a href="https://www.cve.org/CVERecord[?]id=CVE-2026-125350"[^]*?</strong> <span class="kev">${word}</span> <a href="${KEV_LINK}"[^>]*>CISA KEV<`)); // the Lead first
-    assert.match(html, new RegExp(`<p class="reason">${listed} · 2026-11-10 · CVE-2026-125350</p>`));
+    assert.match(cves, new RegExp(`^[^]*?<li><strong><a href="https://www.cve.org/CVERecord[?]id=CVE-2026-125350"[^]*?</strong>[^<]*(<span class="cve-src">[^<]*</span> · )?<span class="cve-src"><span class="kev">${word}</span> <a href="${KEV_LINK}"[^>]*><span class="sr-only">[^<]*</span>CISA KEV<`)); // the Lead first
+    assert.match(factsOf(html), new RegExp(`<dd>${listed} · <span class="nw">2026-11-10</span> · <span class="nw">CVE-2026-125350</span></dd>`));
   }
   // An attack the Summary's source names: its own link beside the CVE.
   const [, , fortios] = STEP4;
   const told = { ...fortios, summary: { ...fortios.summary, exploited: true, exploited_source: 'https://example.com/attacks', exploited_cves: ['CVE-2026-126255'] } };
   const cves = cveSection(await (await page(told, 'en', told.id)).text());
-  assert.match(cves, /CVE-2026-126255<span[^]*?<\/strong> <span class="kev">Attacked<\/span> <a href="https:\/\/example\.com\/attacks"[^>]*>example\.com</);
+  assert.match(cves, /CVE-2026-126255<\/a><\/strong>[^]*?<span class="kev">Attacked<\/span> <a href="https:\/\/example\.com\/attacks"[^>]*><span class="sr-only">[^<]*<\/span>example\.com</);
 });
 
 test('a document without the step 4 keys shows no CVE beside the score and no mark', async () => {
@@ -524,7 +530,7 @@ test('a document without the step 4 keys shows no CVE beside the score and no ma
     const html = await (await page(doc, 'ko', doc.id)).text();
     assert.doesNotMatch(html, /의 점수/, doc.id);
     assert.doesNotMatch(cveSection(html), /class="kev"/, doc.id);
-    assert.doesNotMatch(html, /<p class="reason">[^<]* · CVE-/, doc.id);
+    assert.doesNotMatch(factsOf(html), /<span class="nw">CVE-/, doc.id);
   }
 });
 
@@ -533,18 +539,15 @@ test('a document without the step 4 keys shows no CVE beside the score and no ma
 const OTHERS = { since: '2026-10-10T12:00:00Z', counts: { 'openbsd:openssh': 5 } };
 const withOthers = (doc, lang, others) => pageResponse(bucket({ 'pages/CVE-2026-123158.json': doc, 'board/others.json': others }), lang, 'CVE-2026-123158', NOW);
 
-test('the page shows the Public date among the times and links the product\'s other Incidents under the Mitigation', async () => {
+test('the page shows the Public date among the facts and links the product\'s other Incidents after the conditions', async () => {
   const doc = { ...SSHOLE, public_date: '2026-10-30' };
   const ko = await (await withOthers(doc, 'ko', OTHERS)).text();
-  // Section titles are headings, so heading navigation reaches 요약, 대처법 and the rest (audit 11-19); the page's one h1 stays.
-  assert.match(ko, /<section aria-labelledby="s-todo"><h2 class="label" id="s-todo">/);
-  assert.doesNotMatch(ko, /<p class="label"/);
+  // Section titles are headings, so heading navigation reaches 대처법, 요약 and the rest (audit 11-19); the page's one h1 stays.
+  assert.match(ko, /<h2 class="sec-head">대처법<\/h2>/);
   assert.equal(ko.match(/<h1\b/g).length, 1);
-  const times = ko.slice(ko.indexOf('id="s-times"'));
-  assert.match(times, /<dt>공개일<\/dt><dd>2026-10-30<\/dd>/);
-  const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));
+  assert.match(factsOf(ko), /<dt>공개일<\/dt><dd>2026-10-30<\/dd>/);
   // 5 counted, the Incident itself among them (published 11-05, inside the window): 4 others.
-  assert.match(todo, /<p class="others"><a href="\/#p=openbsd%3Aopenssh">최근 30일 동안 이 제품의 다른 사건 4건<\/a><\/p><\/section>/);
+  assert.match(ko, /<p class="conditions">[^<]*<\/p>\n<p class="others"><a href="\/#p=openbsd%3Aopenssh">최근 30일 동안 이 제품의 다른 사건 4건<\/a><\/p>/);
   const en = await (await withOthers(doc, 'en', OTHERS)).text();
   assert.match(en, /<dt>Public date<\/dt><dd>2026-10-30<\/dd>/);
   assert.match(en, />4 other Incidents of this product in the last 30 days<\/a>/);
@@ -579,7 +582,7 @@ test('a group\'s condition shows the ids it holds for as a mark before its text,
       'CVE-2026-123159, CVE-2026-123160: the renderer process must first be compromised', 'Windows: version 11',
       'CVE-2026-999999: an id not of this Incident'] } } };
   const html = await (await page(group, 'en')).text();
-  const conditions = html.slice(html.indexOf('id="s-conditions"'), html.indexOf('id="s-todo"'));
+  const conditions = html.split('<ul class="cond-list">')[1].split('</ul>')[0];
   assert.match(conditions, /<li><span class="cve-src">CVE-2026-123159<\/span>, <span class="cve-src">CVE-2026-123160<\/span> the renderer process must first be compromised<\/li>/);
   assert.match(conditions, /<li>Windows: version 11<\/li>/);
   assert.match(conditions, /<li>CVE-2026-999999: an id not of this Incident<\/li>/);
@@ -587,27 +590,28 @@ test('a group\'s condition shows the ids it holds for as a mark before its text,
 
 // Step 10 (owner, 11-15/16): the Distribution table, folded under the Mitigation, with its credit line (fixtures/board/distro-case.json).
 const DISTRO = JSON.parse(readFileSync(new URL('./fixtures/board/distro-case.json', import.meta.url), 'utf8'));
-const todoOf = (html) => html.slice(html.indexOf('id="s-todo"'), html.indexOf('id="s-products"'));
+// the Mitigation, through the Distribution table's fold (it comes after the conditions, as on the Board)
+const distroOf = (html) => html.slice(html.indexOf('<h2 class="sec-head">'), html.indexOf('<p class="lead">'));
 
-test('the page shows the table folded under the Mitigation in both languages with the credit line under it', async () => {
+test('the page shows the table folded after the conditions in both languages with the credit line under it', async () => {
   const doc = { ...SSHOLE, distro_rows: DISTRO.one.distro_rows, distro_credits: DISTRO.one.distro_credits };
-  const ko = todoOf(await (await page(doc, 'ko')).text());
-  assert.match(ko, /<details class="more"><summary>배포판별 패키지 \(3\)<\/summary><ul class="cves lines">/);
-  assert.ok(ko.indexOf('9.9p2') < ko.indexOf('<details class="more">')); // under the Mitigation
-  assert.match(ko, /<li><strong><a href="https:\/\/ubuntu.com\/security\/CVE-2026-123158"[^>]*>Ubuntu 24.04 LTS<span class="sr-only">[^<]*<\/span><\/a><\/strong> openssh · 영향 없음<\/li>/);
-  assert.match(ko, />Alpine 3.24<span[^>]*>[^<]*<\/span><\/a><\/strong> openssh · 10.3_p1-r2에서 수정됨<\/li>/);
-  assert.match(ko, /openssh · 10\.3_p1-r2에서 수정됨<\/li><\/ul><p class="credits">출처: <a href="https:\/\/security-tracker.debian.org\/tracker\/"[^>]*>Debian Security Tracker<span/);
-  assert.match(ko, />Ubuntu Security Notices \(Canonical\)<span[^>]*>[^<]*<\/span><\/a> \(<a href="https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/"[^>]*>CC BY-SA 4.0<span[^>]*>[^<]*<\/span><\/a>\)<\/p><\/details><\/section>/);
+  const ko = distroOf(await (await page(doc, 'ko')).text());
+  assert.match(ko, /<details class="models"><summary>배포판별 패키지 \(3\)<span class="sr-only">[^<]*<\/span><\/summary><div><ul class="cve-lines">/);
+  assert.ok(ko.indexOf('9.9p2') < ko.indexOf('<details class="models">')); // after the Mitigation
+  assert.match(ko, /<li><strong><a href="https:\/\/ubuntu.com\/security\/CVE-2026-123158"[^>]*>Ubuntu 24.04 LTS<\/a><\/strong>openssh · 영향 없음<\/li>/);
+  assert.match(ko, />Alpine 3.24<\/a><\/strong>openssh · 10.3_p1-r2에서 수정됨<\/li>/);
+  assert.match(ko, /openssh · 10\.3_p1-r2에서 수정됨<\/li><\/ul><p class="credits">출처: <a href="https:\/\/security-tracker.debian.org\/tracker\/"[^>]*>Debian Security Tracker<\/a>/);
+  assert.match(ko, />Ubuntu Security Notices \(Canonical\)<\/a> \(<a href="https:\/\/creativecommons.org\/licenses\/by-sa\/4.0\/"[^>]*>CC BY-SA 4.0<\/a>\)<\/p><\/div><\/details>/);
   assert.doesNotMatch(ko, /cve-src/); // one CVE: no ids on a line
-  const en = todoOf(await (await page(doc, 'en')).text());
-  assert.match(en, /<summary>Distribution packages \(3\)<\/summary>/);
+  const en = distroOf(await (await page(doc, 'en')).text());
+  assert.match(en, /<summary>Distribution packages \(3\)<span/);
   assert.match(en, /openssh-ssh1 · will not be fixed<\/li>/);
   assert.match(en, /<p class="credits">Sources: /);
 });
 
 test('a grouped Incident\'s table keeps each differing version with the ids it holds for', async () => {
   const doc = { ...SSHOLE, cves: DISTRO.group.cves, distro_rows: DISTRO.group.distro_rows, distro_credits: DISTRO.group.distro_credits };
-  const en = todoOf(await (await page(doc, 'en')).text());
+  const en = distroOf(await (await page(doc, 'en')).text());
   assert.match(en, /linux · fixed in 6\.1\.192-1 <span class="cve-src">CVE-2026-99218<\/span><\/li>/);
   assert.match(en, /linux · fixed in 6\.1\.76-1 <span class="cve-src">CVE-2024-1086<\/span><\/li>/);
   assert.match(en, /linux-hwe-6\.2 · will not be fixed<\/li>/); // holds for both: no ids
@@ -619,8 +623,8 @@ test('a page without the table keys is unchanged, and an unknown state is plain 
   const odd = { ...SSHOLE, distro_rows: [{ label: 'RHEL 9', package: 'openssh', state: '<b>under_review</b>', url: 'javascript:alert(1)' }] };
   const res = await page(odd, 'en');
   assert.equal(res.status, 200);
-  const todo = todoOf(await res.text());
-  assert.match(todo, /<li><strong>RHEL 9<\/strong> openssh · &lt;b&gt;under_review&lt;\/b&gt;<\/li><\/ul><\/details>/); // no link, no credits
+  const todo = distroOf(await res.text());
+  assert.match(todo, /<li><strong>RHEL 9<\/strong>openssh · &lt;b&gt;under_review&lt;\/b&gt;<\/li><\/ul><\/div><\/details>/); // no link, no credits
 });
 
 // Owner, 11-16: four or more fixed lines show on the page as an aligned list under the Mitigation, five in view.
@@ -628,12 +632,12 @@ const withFixes = (n) => ({ ...SSHOLE, summary: { ...SSHOLE.summary, command: ''
   fixes: Array.from({ length: n }, (_, k) => ({ for: `Windows Server 20${10 + k}`, version: `10.0.${k}.1` })) } });
 test('four or more fixed lines are an aligned list, five in view and the rest behind one disclosure', async () => {
   const ko = await (await page(withFixes(17), 'ko')).text();
-  const todo = ko.slice(ko.indexOf('id="s-todo"'), ko.indexOf('id="s-products"'));
+  const todo = ko.slice(ko.indexOf('>대처법</h2>'), ko.indexOf('>요약</h2>'));
   assert.match(todo, /<div class="fix-table"><p class="fix-head">제품별 수정 버전<\/p><dl class="fix-list"><dt>Windows Server 2010<\/dt><dd>10\.0\.0\.1 이상<\/dd>/);
   assert.equal((todo.match(/<dt>/g) || []).length, 5);
   assert.equal((todo.match(/<dt class="rest">/g) || []).length, 12);
   // The label follows the state by CSS: "12줄 더 보기" closed, "접기" open.
-  assert.match(todo, /<\/dl><details class="more fix-more"><summary><span class="closed">12줄 더 보기<\/span><span class="opened">접기<\/span><\/summary><\/details><\/div>/);
+  assert.match(todo, /<\/dl><details class="models fix-more"><summary><span class="closed">12줄 더 보기<\/span><span class="opened">접기<\/span><\/summary><\/details><\/div>/);
   assert.doesNotMatch(todo, /내 제품에 맞는 버전/); // one list, not two
   const en = await (await page(withFixes(5), 'en')).text();
   assert.match(en, /<p class="fix-head">Fixed version by product<\/p>/);

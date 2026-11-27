@@ -1,9 +1,10 @@
 # Static files only; the Functions (Incident pages, feeds, sitemaps) set their own headers.
-# The hashes are index.html's inline theme <script> and its <style>, then 404.html's <style> (its only inline block):
+# The hashes are index.html's inline theme <script>, then 404.html's <style> (its only inline block); the Board's
+# stylesheet is web/board.css ('self'):
 # tests/headers.test.mjs fails when any of them changes.
 # static.cloudflareinsights.com / cloudflareinsights.com: the Web Analytics beacon Cloudflare injects (PRODUCT.md).
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'sha256-ShP1IX67LDGBo7iLZfuEFfIyI8kCVWRP6TEPdVRUeCk=' 'sha256-Y9CUHu8ffrdYC4sIy96hTBPTheLAhA0ZIe5nFmAWha0='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-/3q5xYClq85E7VC6JD7dFpWzS1LtjgSt9788ZHfqA1s=' https://static.cloudflareinsights.com; style-src 'self' 'sha256-jXLTv3jkVEBJnpMk5aGJ0yt1wIPJMOUM1D1wt/1SQrs='; connect-src 'self' https://data.patchticker.com https://patchticker-data.dwamaker.com https://cloudflareinsights.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()

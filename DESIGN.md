@@ -662,8 +662,8 @@ ring stays inside the row and a group's frame at 320px too.
   under the risk word, and the opened Normal panel does not repeat it.
 - **Colour:** by CVSS rating: `ring-red` 9.0+, `ring-gold` 7.0+, `ring-slate` below (bright by day, deep by night,
   owner 11-19); never filled (owner, 11-19: "누가 내부 채우래?"). Unrated shows an empty dashed ring with a dash in Hint Ink ("CVSS 점수 대기" as its tooltip and label). Shown in both views.
-  The Incident page has not caught up: its ring is still filled with its level's wash and drawn in the risk red and gold
-  (`edge/page.mjs`), a follow-up.
+  The Incident page draws the same ring: since 11-27 (owner) it is the opened row drawn with `web/board.css`, the Board's
+  one stylesheet (`edge/page.mjs`, docs/development.md).
 
 ### Board row (signature)
 - **Style:** a full-width button, 72 px minimum, on a single hairline. Risk sign, the Incident title over

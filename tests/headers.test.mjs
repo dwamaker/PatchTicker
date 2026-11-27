@@ -16,12 +16,14 @@ const value = (name) => new RegExp(`^\\s+${name}:\\s*(.+)$`, 'im').exec(headers)
 const csp = Object.fromEntries(value('Content-Security-Policy').split(';').map((d) => d.trim().split(/\s+/)).map(([k, ...v]) => [k, v]));
 const hash = (text) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`;
 
-test('every inline script and style block of index.html is allowed by its hash, and nothing else inline is', () => {
+// Owner, 11-27: the Board's styles are web/board.css, which the Incident, product and list pages link too ('self').
+test('every inline script of index.html is allowed by its hash, its styles are board.css, and nothing else inline is', () => {
   const scripts = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
-  assert.ok(scripts.length && styles.length);
+  assert.ok(scripts.length);
   for (const s of scripts) assert.ok(csp['script-src'].includes(hash(s)), `script-src lacks ${hash(s)}`);
-  for (const s of styles) assert.ok(csp['style-src'].includes(hash(s)), `style-src lacks ${hash(s)}`);
+  assert.doesNotMatch(html, /<style/);
+  assert.match(html, /<link rel="stylesheet" href="\/board\.css">/);
+  assert.ok(csp['style-src'].includes("'self'"));
   assert.ok(!csp['script-src'].includes("'unsafe-inline'") && !csp['style-src'].includes("'unsafe-inline'"));
   assert.doesNotMatch(html, /\son[a-z]+=|\sstyle=/i); // a handler or style attribute would need 'unsafe-inline'
 });

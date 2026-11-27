@@ -130,8 +130,8 @@ test('the collection notice in index.html is app.mjs\'s sentences, a box each, i
 
 // Owner, 11-17: in a Board transition the named rows lay over the frozen search bar. What stays put on screen gets a
 // name of its own while one runs (app.mjs adds .vt-board), drawn after the rows, neither faded nor moved.
-test('the real index.html keeps the frozen bar and the jump group above the rows in a Board transition', () => {
-  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+test('the real stylesheet keeps the frozen bar and the jump group above the rows in a Board transition', () => {
+  const html = readFileSync(new URL('../web/board.css', import.meta.url), 'utf8');
   for (const sel of ['#filter', '.search-row', '#jump', '#new-above']) {
     assert.match(html, new RegExp(`\\.vt-board ${sel.replace(/[.#-]/g, '\\$&')} \\{ view-transition-name: vt-[a-z]+; view-transition-class: frozen; \\}`), sel);
   }
@@ -177,7 +177,7 @@ test('the static about block, which only readers without script see, says where 
   const about = /<section id="about">([\s\S]*?)<\/section>/.exec(html)[1];
   assert.match(about, /<p>프로그램과 에이전트용 데이터: <a href="\/llms.txt">llms.txt<\/a>[^\n]*\/api\/check\?products=[^\n]*\/feed.xml\?products=/);
   assert.match(about, /<p lang="en">For programs and agents: <a href="\/llms.txt">llms.txt<\/a>[^\n]*\/api\/check\?products=[^\n]*\/en\/feed.xml\?products=/);
-  assert.match(html, /\.js #about \{ display: none; \}/); // so a visitor with script never sees it, and nothing moves
+  assert.match(readFileSync(new URL('../web/board.css', import.meta.url), 'utf8'), /\.js #about \{ display: none; \}/); // so a visitor with script never sees it, and nothing moves
 });
 
 test('the static data line and llms.txt tell a program to name itself in its User-Agent (Cloudflare refuses urllib\'s default)', () => {

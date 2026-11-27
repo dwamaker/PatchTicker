@@ -42,7 +42,6 @@ export const CSS = `<style>.lede{color:var(--ink-2)}
 .plist li{padding:.75rem 1rem;border:1px solid var(--rule-2);border-left:3px solid var(--note);border-radius:10px;background:var(--panel)}
 .plist li.risk-highest{border-left-color:var(--high)}.plist li.risk-high{border-left-color:var(--mid-mark)}
 .pl-head{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .625rem;margin:0 0 .375rem;color:var(--ink-2);font-size:.8125rem;font-variant-numeric:tabular-nums}
-.pl-head .word{font-size:.8125rem;color:var(--note)}.risk-highest .pl-head .word{color:var(--high)}.risk-high .pl-head .word{color:var(--mid)}
 .pl-title{color:var(--ink);font-weight:700;font-size:1.0625rem;line-height:1.4;text-decoration:none}
 @media (hover:hover){.pl-title:hover{text-decoration:underline}}
 .pl-sub{margin:.25rem 0 0;color:var(--ink-2);font-size:.875rem;font-variant-numeric:tabular-nums}</style>`;
@@ -66,7 +65,8 @@ export function item(e, lang, t) {
   const level = LEVELS.includes(e.level) ? e.level : 'notice';
   const sub = [e.fixed ? t.fixed(e.fixed) : '', cveText(e, t)].filter(Boolean).join(' · ');
   const stamp = e.published || e.first_seen;
-  return `<li class="risk-${level}"><p class="pl-head"><span class="word">${esc(t.levels[level])}</span>`
+  // the Board's risk sign (web/board.css .loud): the level's wash and ink
+  return `<li class="risk-${level}"><p class="pl-head"><span class="loud risk-${level}"><b class="word">${esc(t.levels[level])}</b></span>`
     + `${e.exploited === true ? ` <span class="kev">${esc(t.kevReason)}</span>` : ''}${typeof stamp === 'string' ? ` ${when(stamp, lang)}` : ''}</p>`
     + `<a class="pl-title" href="${esc(href(e, t))}">${esc(e[`title_${lang}`] || e.title_en || e.id)}</a>${sub ? `<p class="pl-sub">${esc(sub)}</p>` : ''}</li>`;
 }
