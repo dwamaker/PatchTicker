@@ -18,13 +18,6 @@
 </p>
 
 <p align="center">
-  <b>Follow by RSS</b> (English · Korean)<br>
-  Main feed, Elevated and up, attacked or no CVE yet: <a href="https://patchticker.com/en/feed.xml">/en/feed.xml</a> · <a href="https://patchticker.com/feed.xml">/feed.xml</a><br>
-  The whole Board: <a href="https://patchticker.com/en/feed/all.xml">/en/feed/all.xml</a> · <a href="https://patchticker.com/feed/all.xml">/feed/all.xml</a><br>
-  Only your products: <code>/en/feed.xml?products=openssh,nginx</code> (up to 30 names; the site's RSS button builds it from the products you pick)
-</p>
-
-<p align="center">
   <a href="https://patchticker.com/en/">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshot-en-dark.png">
@@ -41,18 +34,27 @@ Patch Ticker answers both in seconds, with no security background needed.
 ## Features
 
 - **Live**: collected every 10 minutes; an open page updates by itself.
-- **Your products only**: pick what you run and the list narrows to it. Picks stay in your browser.
+- **Your products only**: pick what you run and the list narrows to it. Picks stay in your browser and can be shared by URL.
 - **Plain summaries** in English and Korean: what it is, who is affected, how to fix it.
 - **Easy view**: no jargon, just the risk and one thing to do now.
-- **Highlights**: the week's Incidents ranked by score, how widely the product is used, attacks and date stand on top.
+- **Highlights**: the week's Incidents ranked by score, reach, active attacks and recency stand on top.
 - **Before a CVE exists**: write-ups and mailing-list posts show up at once and merge when the CVE is assigned.
 - **Folds**: one vendor's same-day notices, and fixes shipped in one update, fold into one line.
 - **Linked to sources**: every claim links to its source; a command is shown only as a source wrote it.
-- **Direct URLs, browse lists and RSS**:
-  - Every CVE with a Summary from the last 90 days (major Incidents: a year) is reachable at `https://patchticker.com/en/i/<CVE-ID>` (or `/i/<CVE-ID>` in Korean); a CVE grouped into another Incident redirects (`301`) to that Incident's page.
-  - Browse by [day](https://patchticker.com/en/d/) or by [product](https://patchticker.com/en/p/).
-  - RSS in [English](https://patchticker.com/en/feed.xml) and [Korean](https://patchticker.com/feed.xml) (newest 200, with products and level as categories), per product via `?products=openssh,chrome`, or the whole Board ([English](https://patchticker.com/en/feed/all.xml), [Korean](https://patchticker.com/feed/all.xml)).
-- **For AI agents and scripts**: `GET /api/check` answers which Incidents touch the products you run as JSON, with `detail` linking the full record. No API key; send a User-Agent naming your client (`Python-urllib`'s bare default gets 403 from Cloudflare). See [llms.txt](https://patchticker.com/llms.txt).
+
+## Direct URLs, RSS and API
+
+- **Direct CVE URLs**: every CVE with a Summary from the last 90 days (major Incidents: 1 year) is reachable at
+  `https://patchticker.com/en/i/<CVE-ID>` (or `/i/<CVE-ID>` in Korean). A CVE grouped into another Incident redirects
+  (`301`) to that Incident's page.
+- **Browse lists**: by [day](https://patchticker.com/en/d/) or by [product](https://patchticker.com/en/p/).
+- **RSS**:
+  - Main feed (Elevated and up, attacked or no CVE yet): [English](https://patchticker.com/en/feed.xml) · [Korean](https://patchticker.com/feed.xml)
+  - Whole Board (every level, light items): [English](https://patchticker.com/en/feed/all.xml) · [Korean](https://patchticker.com/feed/all.xml)
+  - Only your products: `/en/feed.xml?products=openssh,nginx` (up to 30 names; the site's RSS button builds it from your picks)
+- **JSON API for scripts and AI agents**: `GET /api/check` answers which Incidents touch the products you run, with `detail`
+  linking each full record. No API key; send a `User-Agent` naming your client (`Python-urllib`'s bare default gets 403
+  from Cloudflare). Full spec: [llms.txt](https://patchticker.com/llms.txt).
 
 ```sh
 curl -A "my-script/1.0" "https://patchticker.com/api/check?products=openssh,nginx&min=high"
@@ -83,42 +85,9 @@ Rules set the level, never the AI.
 | [KISA 보호나라](https://www.boho.or.kr/) | Korean security notices for an Incident's CVEs |
 | Debian, Ubuntu, Red Hat, SUSE, Alpine and Arch security trackers | Whether each Linux distribution has the fix |
 
-Summaries are written by AI from these sources only and reviewed once more; one with a number or version not in its
-sources is thrown away and written again. When `/api/check` does not know a product name, AI guesses its English name
-for a second lookup, and a result found that way is marked `maybe`.
-
-## FAQ
-
-**Q. How is this different from a CVE database?**
-
-It merges related CVEs, CISA KEV, KISA, 6 Linux distribution trackers and advisories into one row per event, with plain-language mitigation and `/api/check`.
-
-**Q. Can AI summaries make up versions or commands?**
-
-Rules set risk levels; a Summary naming a number or version missing from its sources is sent back and rewritten, and a command is shown only when it appears verbatim in the sources.
-
-**Q. Why 90 days on the Board and 1 year on major pages?**
-
-It is a live triage board for what to patch now, not a historical archive since 1999.
-
-**Q. Can I use it from CI, a bot or an AI agent?**
-
-Yes — call `/api/check?products=...` or `/en/feed.xml?products=...` with no API key (at most once every 10 minutes, with a named `User-Agent`).
-
-<p align="center">
-  <em>Free, no ads. Find it useful? A coffee keeps it running.</em><br>
-  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
-</p>
-
-## Privacy
-
-No login, no cookies, no ad trackers. Visits are only counted anonymously. Picks and filters never leave your
-browser. `/api/check` stores nothing about a request; only a product name it does not know is sent to AI.
-
-## Found a mistake?
-
-Open the Incident and press **Report a mistake**: a new issue opens here with the Incident filled in. Or
-[open an issue](https://github.com/dwamaker/PatchTicker/issues) yourself. Fixes are listed under [Releases](https://github.com/dwamaker/PatchTicker/releases).
+Summaries are written by AI strictly from these sources, checked by rules, and reviewed once more. When `/api/check`
+does not know a product name, AI guesses its English name for a second lookup, and any match found that way is marked
+`maybe`.
 
 ## How it works
 
@@ -128,8 +97,42 @@ Collector (Docker, every 10 min)  ──writes──▶  Cloudflare R2 (public J
   mailing lists, HN, GitHub                    status.json                              in the browser
 ```
 
-No server of ours answers visitors. The page, the feeds and `/api/check` are all made from the same public files.
+No origin server answers visitors. The page, feeds and `/api/check` are all served from the same public files.
 Running it yourself: [docs/development.md](docs/development.md).
+
+## Privacy
+
+No login, no cookies, no ad trackers. Visits are only counted anonymously. Picks and filters never leave your
+browser. `/api/check` stores nothing about a request; only a product name it does not know is sent to AI.
+
+## FAQ
+
+**Q. How is this different from a CVE database?**
+
+It merges related CVEs, CISA KEV, KISA notices, 6 Linux distribution trackers and advisories into one row per event, with plain-language mitigation and `/api/check`.
+
+**Q. Can AI summaries make up versions or commands?**
+
+Rules set risk levels; a Summary naming a number or version missing from its sources is sent back and rewritten, and a command is shown only when it appears verbatim in the input sources.
+
+**Q. Why 90 days on the Board and 1 year on major pages?**
+
+It is a live triage board for what to patch now, not a historical archive since 1999.
+
+**Q. Can I use it from CI, a bot or an AI agent?**
+
+Yes — call `/api/check?products=...` or `/en/feed.xml?products=...` with no API key (at most once every 10 minutes, with a named `User-Agent`).
+
+## Feedback and issues
+
+- **Report a mistake**: open any Incident and press **Report a mistake** to pre-fill an issue with its details.
+- **Suggestions and feature ideas**: improvements, new sources or UX feedback are welcome in [Issues](https://github.com/dwamaker/PatchTicker/issues).
+- Shipped fixes and changes are listed under [Releases](https://github.com/dwamaker/PatchTicker/releases).
+
+<p align="center">
+  <em>Free, no ads. Find it useful? A coffee keeps it running.</em><br>
+  <a href="https://buymeacoffee.com/dwamaker"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
+</p>
 
 ## Notices and license
 
