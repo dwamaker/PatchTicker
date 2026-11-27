@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { slug } from '../web/board.mjs';
-import { note, pageResponse } from '../edge/page.mjs';
+import { clip, note, pageResponse } from '../edge/page.mjs';
 import { cached, readJson } from '../edge/shared.mjs';
 
 const NOW = Date.parse('2026-11-09T12:00:00Z');
@@ -48,7 +48,9 @@ test('the Korean page names itself canonical, links the English one and previews
   assert.match(html, /<link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
   assert.match(html, /<link rel="alternate" hreflang="x-default" href="https:\/\/patchticker.com\/i\/CVE-2026-123158">/);
   assert.match(html, /<meta property="og:title" content="OpenSSH sshd 인증 우회 \(sshole\)">/);
-  assert.match(html, /<meta property="og:description" content="리눅스 서버가 뚫릴 수 있습니다!">/);
+  // Owner, 11-27: the Easy line, then the Summary's first sentence (the Easy line alone was too short for a search result).
+  assert.match(html, /<meta property="og:description" content="리눅스 서버가 뚫릴 수 있습니다! musl 기반에서만 해당합니다.">/);
+  assert.match(html, /<meta name="description" content="리눅스 서버가 뚫릴 수 있습니다! musl 기반에서만 해당합니다.">/);
   assert.match(html, /<meta property="og:image" content="https:\/\/patchticker.com\/og.png">/);
   assert.match(html, /<meta property="og:locale" content="ko_KR">/);
   assert.doesNotMatch(html, /noindex/); // exploited: search-worthy
@@ -647,7 +649,7 @@ test('an Incident page states its headline, description, dates, language and add
   const html = await (await page(SSHOLE)).text();
   const ld = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(html)[1]);
   assert.deepEqual(ld, { '@context': 'https://schema.org', '@type': 'Article', headline: 'OpenSSH sshd 인증 우회 (sshole)',
-    description: '리눅스 서버가 뚫릴 수 있습니다!', datePublished: '2026-11-05T10:00:00Z', dateCreated: '2026-11-06T00:46:00Z', inLanguage: 'ko',
+    description: '리눅스 서버가 뚫릴 수 있습니다! musl 기반에서만 해당합니다.', datePublished: '2026-11-05T10:00:00Z', dateCreated: '2026-11-06T00:46:00Z', inLanguage: 'ko',
     url: 'https://patchticker.com/i/CVE-2026-123158', mainEntityOfPage: 'https://patchticker.com/i/CVE-2026-123158',
     isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: 'https://patchticker.com/' } });
   const en = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(await (await page(SSHOLE, 'en')).text())[1]);
@@ -676,4 +678,20 @@ test('a note splits at a sentence end only, never at a dot inside a word', async
   assert.match(html, /<h1>Node\.js 1\.2 pages cannot load\.<\/h1><p>Try again\.<\/p>/);
   const ja = await note('ja', 503, '読み込めません。しばらくしてからお試しください。', []).text();
   assert.match(ja, /<h1>読み込めません。<\/h1><p>しばらくしてからお試しください。<\/p>/);
+});
+
+// Owner, 11-27 (Bing: "meta descriptions too short"): what a search result shows under the title.
+test('the description is the Easy line and the first Summary sentence, cut at a word\'s end when it is long', async () => {
+  const long = 'A flaw in how the server handles one header lets an unauthenticated attacker who knows only a login name redirect password-reset links to their own host and take over the account.';
+  const en = await (await page({ ...SSHOLE, summary: { ...SSHOLE.summary, en: { ...SSHOLE.summary.en, summary: `${long} A second sentence.` } } }, 'en')).text();
+  const said = /<meta name="description" content="([^"]*)">/.exec(en)[1];
+  assert.ok(said.startsWith('Linux servers can be broken into! A flaw in how the server handles one header'), said);
+  assert.ok([...said].length <= 160 && said.endsWith('…') && !said.includes('A second sentence'), said);
+  assert.doesNotMatch(said, /\s…$/); // cut at the end of a word
+  assert.equal(clip('가'.repeat(160)), '가'.repeat(160)); // at the limit: as it is
+  assert.equal(clip('가'.repeat(161)), `${'가'.repeat(159)}…`); // no space to cut at: by characters
+  assert.equal(clip('word '.repeat(40)).length <= 160, true);
+  // no Easy line: the first Summary sentence alone; no Summary: the source's own line
+  const plain = await (await page({ ...SSHOLE, summary: { ...SSHOLE.summary, ko: { ...SSHOLE.summary.ko, easy: '' } } }, 'ko')).text();
+  assert.match(plain, /<meta name="description" content="musl 기반에서만 해당합니다.">/);
 });

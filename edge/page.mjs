@@ -354,6 +354,17 @@ const LD_UNSAFE = new RegExp(`[<>&${String.fromCharCode(0x2028, 0x2029)}]`, 'g')
 const jsonLd = (data) => `<script type="application/ld+json">${JSON.stringify(data)
   .replace(LD_UNSAFE, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)}</script>`;
 
+// A description for a search result: at most DESCRIPTION_MAX characters, cut at a word's end with an ellipsis (search
+// engines cut near there anyway, in the middle of a word; English first sentences ran to 326 characters).
+const DESCRIPTION_MAX = 160;
+export function clip(text, max = DESCRIPTION_MAX) {
+  const chars = [...String(text)]; // by code point: never half an emoji or a surrogate pair
+  if (chars.length <= max) return chars.join('');
+  const cut = chars.slice(0, max - 1).join('');
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:·(\[-]+$/, '')}…`;
+}
+
 // others: board/others.json (M1), or null. pages: productPageList's answer (the products' pages), or none.
 export function pageHtml(i, lang, slug, others = null, pages = []) {
   const t = TEXT[lang];
@@ -361,7 +372,10 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
   const level = riskLevel(i);
   const title = titleOf(i, lang);
   const plain = s.easy ? easyLine(s.easy, level) : '';
-  const description = plain || String(s.summary || '').split(/(?<=[.!?])\s/)[0] || i.brief?.text || title;
+  // Owner, 2026-11-27: the Easy line and the Summary's first sentence, in that order. The Easy line alone was 28 to 46
+  // characters on Korean pages and often names no product (Bing: "meta descriptions too short"); the Summary's first
+  // sentence names the product and the version. Both are text the page already shows.
+  const description = clip([plain, String(s.summary || '').split(/(?<=[.!?])\s/)[0]].filter(Boolean).join(' ') || i.brief?.text || title);
   const self = pageUrl(lang, slug);
   const head = [`<title>${esc(title)} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(description)}">`,
