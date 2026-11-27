@@ -4,4 +4,20 @@
     <loc>https://patchticker.com/</loc>
     <changefreq>hourly</changefreq>
   </url>
+  <url>
+    <loc>https://patchticker.com/d/</loc>
+    <changefreq>hourly</changefreq>
+  </url>
+  <url>
+    <loc>https://patchticker.com/en/d/</loc>
+    <changefreq>hourly</changefreq>
+  </url>
+  <url>
+    <loc>https://patchticker.com/p/</loc>
+    <changefreq>hourly</changefreq>
+  </url>
+  <url>
+    <loc>https://patchticker.com/en/p/</loc>
+    <changefreq>hourly</changefreq>
+  </url>
 </urlset>

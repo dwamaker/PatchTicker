@@ -2,6 +2,7 @@
 // latest Incident pages in place of its <!--home-links--> marker. The shell is never cached (a cached one could meet a
 // newer app.mjs after a deploy); only the link list is, for 300 seconds.
 import { slug } from '../web/board.mjs';
+import { DAY } from './lists.mjs';
 import { escapeXml, readJson, titleOf } from './shared.mjs';
 
 const MARKER = '<!--home-links-->';
@@ -17,11 +18,18 @@ const LINK = ['</.well-known/api-catalog>; rel="api-catalog"', '</llms.txt>; rel
   '</ja/feed/all.xml>; rel="alternate"; type="application/rss+xml"; title="Patch Ticker, whole Board (Japanese)"'].join(', ');
 const LINKS_KEY = '/__home-links'; // the edge cache entry for the list; never a real path
 
-export async function homeLinks(doc) {
+// Owner, 11-27: the list pages (edge/lists.mjs) too, so one visit leads to every page the sitemaps list: the newest
+// DAYS_LINKED days, every day and every product page. lists: the collector's lists/index.json; none, no list links.
+const DAYS_LINKED = 7;
+export async function homeLinks(doc, lists = null) {
   const items = (doc.incidents || []).slice(0, 20);
-  if (!items.length) return '';
   const li = await Promise.all(items.map(async (i) => `<li><a href="/i/${await slug(i.id)}">${escapeXml(titleOf(i, 'ko'))}</a></li>`));
-  return `<h2>최근 주요 보안 사건</h2><ul>${li.join('')}</ul>`;
+  const recent = items.length ? `<h2>최근 주요 보안 사건</h2><ul>${li.join('')}</ul>` : '';
+  const days = lists?.days && typeof lists.days === 'object' ? Object.entries(lists.days).filter(([d, n]) => DAY.test(d) && Number.isInteger(n) && n > 0) : null;
+  if (!days) return recent;
+  const newest = days.sort(([a], [b]) => (a < b ? 1 : -1)).slice(0, DAYS_LINKED).map(([d, n]) => `<li><a href="/d/${d}">${d} 보안 사건 ${n}건</a></li>`);
+  return `${recent}<h2>날짜별·제품별 보안 사건</h2><ul>${newest.join('')}<li><a href="/d/">모든 날짜</a></li><li><a href="/p/">제품별 보안 사건</a></li>`
+    + '<li><a href="/en/d/" lang="en">Security Incidents by day</a></li><li><a href="/en/p/" lang="en">Security Incidents by product</a></li></ul>';
 }
 
 // Fail open, the opposite of failClosed: the Board must open even when this list cannot be read.
@@ -33,7 +41,8 @@ async function links(context) {
     if (hit) return await hit.text();
     const doc = await readJson(context.env.DATA, 'board/feed.json');
     if (!doc) throw new Error('board/feed.json missing');
-    const html = await homeLinks(doc);
+    const lists = await readJson(context.env.DATA, 'lists/index.json').catch(() => null); // fails open on its own
+    const html = await homeLinks(doc, lists);
     if (cache) context.waitUntil(cache.put(key, new Response(html, { headers: { 'cache-control': 'public, max-age=300' } })));
     return html;
   } catch {

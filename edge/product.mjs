@@ -15,26 +15,29 @@ export { checkSlug } from './shared.mjs';
 export const PRODUCT_PAGE_MIN = 3;
 const SLUG = /^[0-9a-f]{16}$/; // collector/checks.py check_slug: anything else never reads R2
 
-const TEXT = {
+export const TEXT = {
   ko: { ...WORDS.ko, path: '/p/', page: '/i/', feed: '/feed.xml', locale: 'ko_KR',
     heading: (name) => `${name} 보안 사건`, count: (n) => `최근 90일 동안 ${n}건이며 최신순입니다. 대처법과 원문은 각 사건 페이지에 있습니다.`,
-    about: (name, n) => `최근 90일 동안 나온 ${name} 보안 사건 ${n}건의 위험도, 고친 버전, 사건 페이지 링크입니다.`,
+    about: (name, n, tally) => `최근 90일 동안 나온 ${name} 보안 사건 ${n}건(${tally})의 위험도, 고친 버전, CVE 번호, 사건 페이지 링크입니다.`,
+    tally: (word, n) => `${word} ${n}건`, risk: '위험도', cveTotal: 'CVE', newest: '가장 최근', moreCves: (n) => ` 외 ${n}건`, allProducts: '모든 제품',
     fixed: (v) => `고친 버전 ${v}`, cves: (n) => `CVE ${n}건`, rss: (name) => `${name} RSS 구독`, board: '현황판에서 보기',
     missing: '이 주소에는 제품 페이지가 없습니다.', down: '지금은 제품 페이지를 불러올 수 없습니다. 잠시 뒤 다시 시도하세요.', home: '현황판으로 가기', links: '이 제품 더 보기' },
   en: { ...WORDS.en, path: '/en/p/', page: '/en/i/', feed: '/en/feed.xml', locale: 'en_US',
     heading: (name) => `${name} security Incidents`, count: (n) => `${n} in the last 90 days, newest first. Each Incident page says what to do and links its sources.`,
-    about: (name, n) => `${n} security Incidents of ${name} in the last 90 days: risk level, fixed version and a link to each Incident page.`,
+    about: (name, n, tally) => `${n} security Incidents of ${name} in the last 90 days (${tally}): risk level, fixed version, CVE IDs and a link to each Incident page.`,
+    tally: (word, n) => `${word} ${n}`, risk: 'Risk', cveTotal: 'CVEs', newest: 'Newest', moreCves: (n) => ` and ${n} more`, allProducts: 'All products',
     fixed: (v) => `Fixed in ${v}`, cves: (n) => `${n} CVE${n === 1 ? '' : 's'}`, rss: (name) => `RSS for ${name}`, board: 'Open on the Board',
     missing: 'There is no product page at this address.', down: 'Product pages cannot be loaded right now. Please try again shortly.', home: 'Go to the Board', links: 'More on this product' },
   ja: { ...WORDS.ja, path: '/ja/p/', page: '/ja/i/', feed: '/ja/feed.xml', locale: 'ja_JP',
     heading: (name) => `${name} のセキュリティインシデント`, count: (n) => `過去90日間に${n}件、新しい順。対処法と原文は各インシデントのページにあります。`,
-    about: (name, n) => `過去90日間の ${name} に関するセキュリティインシデント${n}件: 危険度、修正バージョン、インシデントページへのリンク。`,
+    about: (name, n, tally) => `過去90日間の ${name} に関するセキュリティインシデント${n}件（${tally}）: 危険度、修正バージョン、CVE 番号、インシデントページへのリンク。`,
+    tally: (word, n) => `${word}${n}件`, risk: '危険度', cveTotal: 'CVE', newest: '最新', moreCves: (n) => ` ほか${n}件`, allProducts: 'すべての製品',
     fixed: (v) => `修正バージョン ${v}`, cves: (n) => `CVE ${n}件`, rss: (name) => `${name} の RSS`, board: 'ボードで見る',
     missing: 'このアドレスには製品ページがありません。', down: '現在製品ページを読み込めません。しばらくしてからもう一度お試しください。', home: 'ボードへ戻る', links: 'この製品をもっと見る' },
 };
 
 // The list, in the Incident page's look (DESIGN.md: product page): a panel per Incident edged in its Risk colour.
-const CSS = `<style>.lede{color:var(--ink-2)}
+export const CSS = `<style>.lede{color:var(--ink-2)}
 .plist{list-style:none;margin:1.25rem 0 0;padding:0;display:grid;gap:.5rem}
 .plist li{padding:.75rem 1rem;border:1px solid var(--rule-2);border-left:3px solid var(--note);border-radius:10px;background:var(--panel)}
 .plist li.risk-highest{border-left-color:var(--high)}.plist li.risk-high{border-left-color:var(--mid-mark)}
@@ -50,14 +53,34 @@ function href(e, t) {
   return page ? `${t.page}${page[1]}` : `/#i=${encodeURIComponent(String(e.id))}`;
 }
 
-function item(e, lang, t) {
-  const level = LEVELS.includes(e.level) ? e.level : 'notice';
+const CVE = /^CVE-\d{4}-\d{4,7}$/;
+// The CVE IDs an entry carries (collector/checks.py keeps CVES_SHOWN), and how many more it has, or only the count.
+function cveText(e, t) {
   const count = Number.isInteger(e.cve_count) ? e.cve_count : 0;
-  const sub = [e.fixed ? t.fixed(e.fixed) : '', count ? t.cves(count) : ''].filter(Boolean).join(' · ');
+  const ids = Array.isArray(e.cves) ? e.cves.filter((c) => typeof c === 'string' && CVE.test(c)).slice(0, count) : [];
+  if (!ids.length) return count ? t.cves(count) : '';
+  return ids.join(', ') + (count > ids.length ? t.moreCves(count - ids.length) : '');
+}
+
+export function item(e, lang, t) {
+  const level = LEVELS.includes(e.level) ? e.level : 'notice';
+  const sub = [e.fixed ? t.fixed(e.fixed) : '', cveText(e, t)].filter(Boolean).join(' · ');
   const stamp = e.published || e.first_seen;
   return `<li class="risk-${level}"><p class="pl-head"><span class="word">${esc(t.levels[level])}</span>`
     + `${e.exploited === true ? ` <span class="kev">${esc(t.kevReason)}</span>` : ''}${typeof stamp === 'string' ? ` ${when(stamp, lang)}` : ''}</p>`
     + `<a class="pl-title" href="${esc(href(e, t))}">${esc(e[`title_${lang}`] || e.title_en || e.id)}</a>${sub ? `<p class="pl-sub">${esc(sub)}</p>` : ''}</li>`;
+}
+
+// What the list says as a whole, from the check document alone (owner, 11-27: product pages with more on them): the
+// Incidents by Risk, how many are attacked, their CVEs, the newest. No "newest fixed version": `fixed` is the Incident's
+// own (its Summary's), on an Incident of several Products another Product's version.
+function tallies(incidents, t) {
+  const levels = [...LEVELS].reverse().map((l) => [t.levels[l], incidents.filter((e) => (LEVELS.includes(e.level) ? e.level : 'notice') === l).length]);
+  const attacked = incidents.filter((e) => e.exploited === true).length;
+  const cves = incidents.reduce((n, e) => n + (Number.isInteger(e.cve_count) ? e.cve_count : 0), 0);
+  const stamps = incidents.map((e) => e.published || e.first_seen).filter((s) => typeof s === 'string' && !Number.isNaN(Date.parse(s)));
+  const newest = stamps.length ? stamps.reduce((a, b) => (Date.parse(b) > Date.parse(a) ? b : a)) : null;
+  return { risk: levels.filter(([, n]) => n).map(([w, n]) => t.tally(w, n)), attacked, cves, newest };
 }
 
 export function productHtml(doc, lang, slug) {
@@ -66,8 +89,12 @@ export function productHtml(doc, lang, slug) {
   const incidents = Array.isArray(doc.incidents) ? doc.incidents.filter((e) => e && typeof e.id === 'string') : [];
   const self = `${SITE}${t.path}${slug}`;
   const feed = `${t.feed}?products=${encodeURIComponent(name)}`;
+  const sum = tallies(incidents, t);
+  const about = t.about(name, incidents.length, [...sum.risk, ...(sum.attacked ? [t.tally(t.kevReason, sum.attacked)] : [])].join(', '));
+  const facts = [[t.risk, esc(sum.risk.join(' · '))], sum.attacked ? [t.kevReason, esc(t.tally('', sum.attacked).trim())] : null,
+    sum.cves ? [t.cveTotal, esc(t.tally('', sum.cves).trim())] : null, sum.newest ? [t.newest, when(sum.newest, lang)] : null].filter(Boolean);
   const head = [`<title>${esc(t.heading(name))} · Patch Ticker</title>`,
-    `<meta name="description" content="${esc(t.about(name, incidents.length))}">`,
+    `<meta name="description" content="${esc(about)}">`,
     ...(incidents.length < PRODUCT_PAGE_MIN ? ['<meta name="robots" content="noindex">'] : []),
     `<link rel="canonical" href="${SITE}${TEXT[searchLang(lang)].path}${slug}">`,
     ...alternates((l) => `${SITE}${TEXT[l].path}${slug}`),
@@ -76,15 +103,17 @@ export function productHtml(doc, lang, slug) {
     '<meta property="og:site_name" content="Patch Ticker">',
     `<meta property="og:url" content="${self}">`,
     `<meta property="og:title" content="${esc(t.heading(name))}">`,
-    `<meta property="og:description" content="${esc(t.about(name, incidents.length))}">`,
+    `<meta property="og:description" content="${esc(about)}">`,
     `<meta property="og:image" content="${SITE}/og.png">`,
     `<meta property="og:locale" content="${t.locale}">`,
     CSS].join('\n');
   const board = typeof doc.id === 'string' && doc.id ? `<a href="/${esc(tagHash({ pick: doc.id }))}">${esc(t.board)}</a>` : '';
   const main = [`<h1>${esc(t.heading(name))}</h1>`, `<p class="lede">${esc(t.count(incidents.length))}</p>`,
+    `<dl class="facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`,
     `<ol class="plist">${incidents.map((e) => item(e, lang, t)).join('')}</ol>`,
     `<script>${LOCAL_TIME}</script>`,
-    `<nav class="links" aria-label="${esc(t.links)}">${board}<a href="${esc(feed)}">${esc(t.rss(name))}</a></nav>`].join('\n');
+    `<nav class="links" aria-label="${esc(t.links)}">${board}<a href="${esc(feed)}">${esc(t.rss(name))}</a>`
+      + `<a href="${t.path}">${esc(t.allProducts)}</a></nav>`].join('\n');
   return document(lang, head, main, langMenu(lang, (l) => `${TEXT[l].path}${slug}`));
 }
 

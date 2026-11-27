@@ -5,7 +5,7 @@ import json
 import re
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import anthropic
 
@@ -359,11 +359,12 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     # The sitemaps' document (edge/sitemap.mjs): {slug: {first_seen, changed}} of every Incident page worth a listing
     # (sitemap_worthy: narrower than search-worthy since 11-27), and
     # the product pages with enough Incidents to be worth a search (owner, 11-17).
-    sitemap = {"pages": {slug: {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in incidents
-                         if (slug := page_slug(i["id"])) in pages and sitemap_worthy(i)},
+    listed = [i for i in incidents if page_slug(i["id"]) in pages and sitemap_worthy(i)]
+    sitemap = {"pages": {(slug := page_slug(i["id"])): {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in listed},
                "products": checks.product_pages(product_docs)}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
+    write_lists(store, listed, product_docs, more)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(shown_incidents, picker_since)})
     # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
@@ -654,6 +655,56 @@ def write_checks(store, incidents, now, more=lambda: True):
     if hashes != known:
         store.write("check_hashes.json", hashes)
     return {slug: doc for slug, doc in docs.items() if slug in hashes}
+
+
+# The list pages (edge/lists.mjs, owner 11-27: "3, 4 일단 해봐"): plain HTML a crawler follows from the home page to every
+# page the sitemaps list, since Google visited one to eight times a day and a visit led to 20 Incident pages only.
+LIST_DAY = "lists/d/{}.json"
+LIST_INDEX = "lists/index.json"
+# A list day is a day in Korea (UTC+9, no daylight saving), the site's first readers' and the Korean pages' times: by UTC
+# the page of the 26th showed Incidents its own times put on the 27th. The English page keeps the same days.
+LIST_DAY_HOURS = 9
+
+
+def list_docs(listed, product_docs):
+    """({day: document}, products) for the list pages, from the very Incidents and Products the sitemaps list. A day is
+    the date of first_seen at UTC+9 (LIST_DAY_HOURS), the same in every language; a day's document is {day, incidents:
+    the check documents' entries, newest first, without `detail`}. products: {slug, name, count} of each product page
+    in the sitemap, by name."""
+    days = {}
+    for incident in sorted(listed, key=lambda i: (i["first_seen"], i["id"]), reverse=True):
+        row = {k: v for k, v in checks.entry(incident).items() if k != "detail"}
+        day = (datetime.strptime(incident["first_seen"], "%Y-%m-%dT%H:%M:%SZ") + timedelta(hours=LIST_DAY_HOURS)).date()
+        days.setdefault(day.isoformat(), []).append(row)
+    products = [{"slug": slug, "name": product_docs[slug]["product"], "count": len(product_docs[slug]["incidents"])}
+                for slug in checks.product_pages(product_docs)]
+    return ({day: {"day": day, "incidents": rows} for day, rows in days.items()},
+            sorted(products, key=lambda p: (p["name"].casefold(), p["slug"])))
+
+
+def write_lists(store, listed, product_docs, more=lambda: True):
+    """The list pages' documents, as write_checks writes the check documents: a day's document is rewritten only when it
+    changed (list_hashes.json keeps {day: {hash, count}}), newest days first; then the index ({days: {day: count},
+    products}) when it changed, naming only the days whose document is stored; then a day that left the 90 days loses
+    its document. more() as in write_pages: a day left unwritten keeps its old document, hash and count."""
+    docs, products = list_docs(listed, product_docs)
+    known = store.read("list_hashes.json") or {}
+    hashes = {day: known[day] for day in docs if day in known}
+    for day in sorted((d for d in docs if (known.get(d) or {}).get("hash") != digest_of(docs[d])), reverse=True):
+        if not more():
+            break
+        store.write(LIST_DAY.format(day), docs[day])
+        hashes[day] = {"hash": digest_of(docs[day]), "count": len(docs[day]["incidents"])}
+    index = {"days": {day: hashes[day]["count"] for day in sorted(hashes, reverse=True)}, "products": products}
+    if store.read(LIST_INDEX) != index:
+        store.write(LIST_INDEX, index)
+    for day in known.keys() - docs.keys():
+        if more():
+            store.delete(LIST_DAY.format(day))
+        else:
+            hashes[day] = known[day]
+    if hashes != known:
+        store.write("list_hashes.json", hashes)
 
 
 def write_moves(store, incidents, had_page, now, stamp):

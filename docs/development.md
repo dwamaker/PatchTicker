@@ -319,6 +319,21 @@ come from `sitemap.json`, which each cycle rewrites when it changed: `{pages: {s
 [slug]}`, the last change taken from `page_hashes.json`. A fifth, `/sitemaps/products.xml`, lists the product pages in
 `products`, those with at least 3 Incidents (`product_pages` in `collector/checks.py`); a `sitemap.json` from before the
 list gives an empty one.
+The list pages (`edge/lists.mjs`; owner, 2026-11-27, when Google visited one to eight times a day and the home page's
+HTML linked 20 Incident pages) lead a crawler from the home page to every page the sitemaps list: `/d/` lists the
+days, `/d/<YYYY-MM-DD>` the Incident pages first seen that day in Korea (UTC+9; `LIST_DAY_HOURS` in
+`collector/cycle.py`), newest first, with the previous and next day, and `/p/` the product pages by name with their
+counts; `/en/` the same, `/ja/` with its `/en/` twin as canonical (`functions/{,en/,ja/}{d,p}/`). The home page's list
+links the newest seven days, `/d/` and `/p/` (`homeLinks` in `edge/home.mjs`, failing open without the index), and
+`sitemap-home.xml` lists `/d/` and `/p/` in both search languages. Each cycle's `write_lists` writes them from the very
+Incidents and Products of `sitemap.json`: `lists/d/<day>.json` (`{day, incidents}`, the check documents' entries
+without `detail`) only when it changed (`list_hashes.json` keeps `{day: {hash, count}}`, as `check_hashes.json` does),
+then `lists/index.json` (`{days: {day: count}, products: [{slug, name, count}]}`, naming only the days whose document is
+stored), then deletes the days past 90. Neither is public on data.patchticker.com. 404 for a day that is not
+`YYYY-MM-DD` (no read) or has no document; 503 when the index is missing or unusable or R2 cannot be read.
+A product page also says what its list holds as a whole (its Incidents by Risk, how many are attacked, their CVEs, the
+newest) and names each Incident's CVE IDs; no "newest fixed version": `fixed` is the Incident's own, on an Incident of
+several Products another Product's.
 Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
 `pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
 `wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document
