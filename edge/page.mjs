@@ -321,6 +321,15 @@ export function langMenu(lang, path) {
 // Each search language's address of one document, for hreflang (SEARCH_LANGS: no Japanese): Korean is also the x-default.
 export const alternates = (url) => [...SEARCH_LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${url(l)}">`),
   `<link rel="alternate" hreflang="x-default" href="${url('ko')}">`];
+// A page's search lines: canonical and hreflang, or for a noindex page the noindex alone, with a canonical only to
+// itself (Gemini review, 11-27: a noindex /ja/ page named its /en/ twin canonical, and Google's guide on duplicate URLs
+// says not to mix noindex with a canonical elsewhere; a page out of the index is in no hreflang set). url(lang): the
+// document's address in that language.
+export function searchHead(noindex, lang, url) {
+  const canonical = `<link rel="canonical" href="${url(searchLang(lang))}">`;
+  if (!noindex) return [canonical, ...alternates(url)];
+  return ['<meta name="robots" content="noindex">', ...(searchLang(lang) === lang ? [canonical] : [])];
+}
 
 // other: the language menu for the header; the short notes have none. Also the product page's shell (edge/product.mjs).
 export function document(lang, head, main, other = '') {
@@ -375,15 +384,16 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
   // characters on Korean pages and often names no product (Bing: "meta descriptions too short"); the Summary's first
   // sentence names the product and the version. Both are text the page already shows.
   const description = clip([plain, String(s.summary || '').split(/(?<=[.!?])\s/)[0]].filter(Boolean).join(' ') || i.brief?.text || title);
+  // The page's own address for the report link; its canonical one (a /ja/ page's /en/ twin) for og:url and the JSON-LD,
+  // which had named the /ja/ address and Japanese as the language of an English text (Gemini review, 11-27).
   const self = pageUrl(lang, slug);
+  const canon = pageUrl(searchLang(lang), slug);
   const head = [`<title>${esc(title)} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(description)}">`,
-    ...(searchWorthy(i) ? [] : ['<meta name="robots" content="noindex">']),
-    `<link rel="canonical" href="${pageUrl(searchLang(lang), slug)}">`,
-    ...alternates((l) => pageUrl(l, slug)),
+    ...searchHead(!searchWorthy(i), lang, (l) => pageUrl(l, slug)),
     '<meta property="og:type" content="article">',
     '<meta property="og:site_name" content="Patch Ticker">',
-    `<meta property="og:url" content="${self}">`,
+    `<meta property="og:url" content="${canon}">`,
     `<meta property="og:title" content="${esc(title)}">`,
     `<meta property="og:description" content="${esc(description)}">`,
     `<meta property="og:image" content="${SITE}/og.png">`,
@@ -393,7 +403,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     ...LANGS.filter((l) => l !== lang).map((l) => `<meta property="og:locale:alternate" content="${TEXT[l].locale}">`),
     '<meta name="twitter:card" content="summary_large_image">',
     jsonLd({ '@context': 'https://schema.org', '@type': 'Article', headline: title, description,
-      datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
+      datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: searchLang(lang), url: canon, mainEntityOfPage: canon,
       // Google's Article guide recommends image and author (with a url); dateModified when the collector last changed the page.
       ...(CHANGED.test(i.changed || '') ? { dateModified: i.changed } : {}), image: `${SITE}/og.png`,
       author: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` },

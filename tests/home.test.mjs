@@ -3,13 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { homeLinks, homeResponse } from '../edge/home.mjs';
-import { PINNED, slug, WORDS } from '../web/board.mjs';
+import { PINNED, WORDS } from '../web/board.mjs';
 
 // app.mjs's TEXT.ko, TEXT.en and TEXT.ja loading words, in that order (app.mjs needs a DOM, so they are read from its source)
 const [loadingKo, loadingEn, loadingJa] = [...readFileSync(new URL('../web/app.mjs', import.meta.url), 'utf8').matchAll(/ loading: '([^']+)'/g)].map((m) => m[1]);
 const WORDS_APP = { ko: loadingKo, en: loadingEn, ja: loadingJa };
 
-const bucket = (doc) => ({ get: async (key) => (key === 'board/feed.json' && doc ? { text: async () => JSON.stringify(doc) } : null) });
+// The list documents the home page reads (collector/cycle.py write_lists): entries: one day's, or null for no documents.
+const DAY_1 = '2026-11-27';
+const bucket = (entries) => {
+  const docs = entries ? { 'lists/index.json': { days: { [DAY_1]: entries.length }, products: [] }, [`lists/d/${DAY_1}.json`]: { day: DAY_1, incidents: entries } } : {};
+  return { get: async (key) => (docs[key] ? { text: async () => JSON.stringify(docs[key]) } : null) };
+};
 const broken = { get: async () => { throw new Error('R2 down'); } };
 
 const SHELL = '<html><head><title>t</title></head><body><main><section id="about"><p>x</p>\n<!--home-links-->\n</section></main></body></html>';
@@ -27,26 +32,45 @@ const context = (DATA, method = 'GET', ASSETS = assets()) => ({
   waitUntil: () => {},
 });
 
-const incident = (n, title) => ({ id: `CVE-2026-${10000 + n}`, cves: [`CVE-2026-${10000 + n}`], brief: { text: `brief ${n}` }, summary: { ko: { title: title ?? `제목 ${n}` }, en: { title: `Title ${n}` } } });
+// A list document's entry (collector/checks.py entry): its page's address and its Korean title.
+const incident = (n, title) => ({ id: `CVE-2026-${10000 + n}`, url: `https://patchticker.com/i/CVE-2026-${10000 + n}`, title_ko: title ?? `제목 ${n}`, title_en: `Title ${n}` });
 
-test('homeLinks: the first 20 Incidents, linked to their Korean pages under their Korean titles, escaped', async () => {
+test('homeLinks: the first 20 listed Incidents, linked to their Korean pages under their Korean titles, escaped', async () => {
   const doc = { incidents: [incident(0, '<b>A & "B"</b>'), ...Array.from({ length: 24 }, (_, n) => incident(n + 1))] };
   const html = await homeLinks(doc);
   assert.match(html, /^<h2>최근 주요 보안 사건<\/h2><ul>/);
   const links = [...html.matchAll(/<li><a href="([^"]*)">([^<]*)<\/a><\/li>/g)];
   assert.equal(links.length, 20);
-  for (const [k, [, href]] of links.entries()) assert.equal(href, `/i/${await slug(doc.incidents[k].id)}`);
+  for (const [k, [, href]] of links.entries()) assert.equal(href, `/i/${doc.incidents[k].id}`);
   assert.equal(links[0][2], '&lt;b&gt;A &amp; &quot;B&quot;&lt;/b&gt;');
   assert.equal(links[1][2], '제목 1');
   assert.equal(await homeLinks({ incidents: [] }), '');
 });
 
+// Gemini review, 11-27: the home page linked the RSS feed's Incidents, none of them in a sitemap. Only an entry with its
+// own page here is linked (an entry without one has its Board row's address), and the newest days are read in turn.
+test('homeLinks links only an entry\'s own page on this site; homeResponse reads the newest days until 20', async () => {
+  const row = { id: 'CVE-2026-1', url: 'https://patchticker.com/#i=CVE-2026-1', title_ko: 'row' };
+  const away = { id: 'CVE-2026-2', url: 'https://evil.example/i/x', title_ko: 'away' };
+  assert.equal(await homeLinks({ incidents: [row, away, incident(3)] }), '<h2>최근 주요 보안 사건</h2><ul><li><a href="/i/CVE-2026-10003">제목 3</a></li></ul>');
+  const docs = { 'lists/index.json': { days: { '2026-11-27': 12, '2026-11-26': 12, '2026-11-25': 5 }, products: [] },
+    'lists/d/2026-11-27.json': { incidents: Array.from({ length: 12 }, (_, n) => incident(n)) },
+    'lists/d/2026-11-26.json': { incidents: Array.from({ length: 12 }, (_, n) => incident(100 + n)) } };
+  const read = [];
+  const store = { get: async (key) => { read.push(key); return docs[key] ? { text: async () => JSON.stringify(docs[key]) } : null; } };
+  const body = await (await homeResponse(context(store))).text();
+  const recent = /<h2>최근 주요 보안 사건<\/h2><ul>(.*?)<\/ul>/.exec(body)[1];
+  assert.equal([...recent.matchAll(/href="\/i\/CVE-[\d-]+"/g)].length, 20);
+  assert.match(recent, /CVE-2026-10011"[^]*CVE-2026-10100"/); // the newest day first
+  assert.deepEqual(read, ['lists/index.json', 'lists/d/2026-11-27.json', 'lists/d/2026-11-26.json']); // 2026-11-25 not needed
+});
+
 test('homeResponse: the static shell with the list where the marker was; its CSP kept, etag and length dropped', async () => {
-  const res = await homeResponse(context(bucket({ incidents: [incident(1)] })));
+  const res = await homeResponse(context(bucket([incident(1)])));
   assert.equal(res.status, 200);
   const body = await res.text();
   assert.doesNotMatch(body, /<!--home-links-->/);
-  assert.match(body, /<section id="about"><p>x<\/p>\n<h2>최근 주요 보안 사건<\/h2><ul><li><a href="\/i\/CVE-2026-10001">제목 1<\/a><\/li><\/ul>\n<\/section>/);
+  assert.match(body, /<section id="about"><p>x<\/p>\n<h2>최근 주요 보안 사건<\/h2><ul><li><a href="\/i\/CVE-2026-10001">제목 1<\/a><\/li><\/ul><h2>날짜별·제품별 보안 사건<\/h2>/);
   assert.equal(res.headers.get('content-security-policy'), "default-src 'none'");
   assert.equal(res.headers.get('content-type'), 'text/html; charset=utf-8');
   assert.equal(res.headers.get('etag'), null);
@@ -65,7 +89,7 @@ test('homeResponse fails open: a store that throws or has no document still open
 
 test('homeResponse passes a non-200 asset answer on unchanged', async () => {
   for (const status of [404, 500]) {
-    const res = await homeResponse(context(bucket({ incidents: [incident(1)] }), 'GET', assets(status, 'nope')));
+    const res = await homeResponse(context(bucket([incident(1)]), 'GET', assets(status, 'nope')));
     assert.equal(res.status, status);
     assert.equal(res.headers.get('etag'), '"abc"');
     assert.equal(await res.text(), 'nope');
@@ -73,7 +97,7 @@ test('homeResponse passes a non-200 asset answer on unchanged', async () => {
 });
 
 test('homeResponse: a HEAD gets the status and headers with no body', async () => {
-  const res = await homeResponse(context(bucket({ incidents: [incident(1)] }), 'HEAD'));
+  const res = await homeResponse(context(bucket([incident(1)]), 'HEAD'));
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-security-policy'), "default-src 'none'");
   assert.equal(await res.text(), '');

@@ -255,8 +255,9 @@ else the Board row) and its GUID the Incident page's address, as in `/feed.xml`,
 keeps its GUID when it gains a page. Until the collector has written the document the feed answers 503. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
 The home page `/` goes through `functions/index.js` (`edge/home.mjs`) too: the current static `index.html` with links to
-the feed's 20 newest Incident pages in place of its `<!--home-links-->` marker, for readers that run no script (search
-crawlers). `index.html`'s `#about` block holds that text and is hidden once the inline script has set `.js` on `<html>`. It stands last in `<main>` so that the Board's own children
+the 20 newest Incident pages of the list pages' days (`lists/d/<day>.json`, so only pages the sitemaps list; until
+the 2026-11-27 review they were the RSS feed's, none of them in a sitemap) in place of its `<!--home-links-->` marker,
+for readers that run no script (search crawlers). `index.html`'s `#about` block holds that text and is hidden once the inline script has set `.js` on `<html>`. It stands last in `<main>` so that the Board's own children
 keep their positions (a content blocker rule hid the 12th-child section when it stood first).
 Only the link list is cached (300 s); when it cannot be read the page answers without it. Any other path that falls
 back to `index.html` keeps the marker as a comment.
@@ -314,7 +315,10 @@ search-worthy: `sitemap_worthy` in `collector/incidents.py` keeps a page about a
 `collector/well_known.json`, an attacked one, a story without a CVE, or one told by three sites besides its CVE
 records (1,271 of 3,414 search-worthy pages on that day); the other pages answer as before, without `noindex`.
 Japanese is no search language (`SEARCH_LANGS` in `edge/shared.mjs`): a `/ja/` page is the English text under
-Japanese labels, so it is in no sitemap and no `hreflang`, and names its `/en/` twin as canonical. They
+Japanese labels, so it is in no sitemap and no `hreflang`, and names its `/en/` twin as canonical, in `og:url` and in
+the JSON-LD (`url`, `inLanguage` en) too. A `noindex` page (Incident or product) is in no `hreflang` set and names
+only itself canonical, a `/ja/` one none (`searchHead` in `edge/page.mjs`; Google: do not mix `noindex` with a
+canonical elsewhere). They
 come from `sitemap.json`, which each cycle rewrites when it changed: `{pages: {slug: {first_seen, changed}}, products:
 [slug]}`, the last change taken from `page_hashes.json`. A fifth, `/sitemaps/products.xml`, lists the product pages in
 `products`, those with at least 3 Incidents (`product_pages` in `collector/checks.py`); a `sitemap.json` from before the

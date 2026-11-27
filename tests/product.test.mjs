@@ -52,6 +52,14 @@ test("a product page lists its Incidents of the last 90 days with level, title, 
 test(`a product with fewer than ${PRODUCT_PAGE_MIN} Incidents is not offered to search engines (a thin page)`, async () => {
   const html = await (await render('ko', SSH, { [`check/p/${SSH}.json`]: { ...DOC, incidents: DOC.incidents.slice(0, 1) } })).text();
   assert.match(html, /<meta name="robots" content="noindex">/);
+  // Gemini review, 11-27: in no hreflang set, and canonical only to itself, even when it names another page canonical
+  const thin = { [`check/p/${SSH}.json`]: { ...DOC, incidents: DOC.incidents.slice(0, 1), canonical: 'bbbbbbbbbbbbbbbb' } };
+  const ko = await (await render('ko', SSH, thin)).text();
+  assert.doesNotMatch(ko, /<link rel="alternate" hreflang=/);
+  assert.match(ko, new RegExp(`<link rel="canonical" href="https://patchticker.com/p/${SSH}">`));
+  const ja = await (await render('ja', SSH, thin)).text();
+  assert.doesNotMatch(ja, /rel="canonical"|<link rel="alternate" hreflang=/);
+  assert.match(ja, new RegExp(`<meta property="og:url" content="https://patchticker.com/en/p/${SSH}">`));
 });
 
 test('an unknown slug or a product with no document answers 404 like an unknown Incident; a store error 503', async () => {

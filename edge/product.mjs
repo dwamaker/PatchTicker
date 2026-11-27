@@ -5,7 +5,7 @@
 // Board rows become links.
 import { tagHash, WORDS } from '../web/board.mjs';
 import { LEVELS } from './check.mjs';
-import { alternates, document, langMenu, LOCAL_TIME, note, PAGE_CSP, when } from './page.mjs';
+import { document, langMenu, LOCAL_TIME, note, PAGE_CSP, searchHead, when } from './page.mjs';
 import { SITE, escapeXml as esc, failClosed, readJson, searchLang } from './shared.mjs';
 
 export { checkSlug } from './shared.mjs';
@@ -87,11 +87,11 @@ export function productHtml(doc, lang, slug) {
   const t = TEXT[lang];
   const name = String(doc.product || '');
   const incidents = Array.isArray(doc.incidents) ? doc.incidents.filter((e) => e && typeof e.id === 'string') : [];
-  const self = `${SITE}${t.path}${slug}`;
   // Pages with the very same Incidents offer one of them to search engines (collector/checks.py same_lists).
   // Only 참고 Incidents without a page of their own: none is in search, nor is this list (collector/checks.py product_pages).
   const quiet = incidents.every((e) => e.level === 'notice' && !String(e.url).startsWith(`${SITE}/i/`));
   const canon = typeof doc.canonical === 'string' && SLUG.test(doc.canonical) ? doc.canonical : slug;
+  const noindex = incidents.length < PRODUCT_PAGE_MIN || quiet;
   const feed = `${t.feed}?products=${encodeURIComponent(name)}`;
   const sum = tallies(incidents, t);
   const about = t.about(name, incidents.length, [...sum.risk, ...(sum.attacked ? [t.tally(t.kevReason, sum.attacked)] : [])].join(', '));
@@ -99,13 +99,12 @@ export function productHtml(doc, lang, slug) {
     sum.newest ? [t.newest, when(sum.newest, lang)] : null].filter(Boolean);
   const head = [`<title>${esc(t.heading(name))} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(about)}">`,
-    ...(incidents.length < PRODUCT_PAGE_MIN || quiet ? ['<meta name="robots" content="noindex">'] : []),
-    `<link rel="canonical" href="${SITE}${TEXT[searchLang(lang)].path}${canon}">`,
-    ...alternates((l) => `${SITE}${TEXT[l].path}${canon}`),
+    // a noindex page names only itself canonical, never a same-list page (searchHead)
+    ...searchHead(noindex, lang, (l) => `${SITE}${TEXT[l].path}${noindex ? slug : canon}`),
     `<link rel="alternate" type="application/rss+xml" title="${esc(t.rss(name))}" href="${esc(feed)}">`,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="Patch Ticker">',
-    `<meta property="og:url" content="${self}">`,
+    `<meta property="og:url" content="${SITE}${TEXT[searchLang(lang)].path}${slug}">`, // a /ja/ page: its /en/ twin
     `<meta property="og:title" content="${esc(t.heading(name))}">`,
     `<meta property="og:description" content="${esc(about)}">`,
     `<meta property="og:image" content="${SITE}/og.png">`,

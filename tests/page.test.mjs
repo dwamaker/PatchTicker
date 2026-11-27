@@ -295,6 +295,12 @@ test('a 참고 page with a CVE is for sharing only: noindex', async () => {
   const html = await (await page(NOTICE, 'ko', 'CVE-2026-55555')).text();
   assert.match(html, /<meta name="robots" content="noindex">/);
   assert.match(html, />참고</);
+  // Gemini review, 11-27: a noindex page is in no hreflang set, and names no other page canonical (Google: do not mix the two)
+  assert.doesNotMatch(html, /<link rel="alternate" hreflang=/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/patchticker.com\/i\/CVE-2026-55555">/);
+  const ja = await (await page(NOTICE, 'ja', 'CVE-2026-55555')).text();
+  assert.match(ja, /<meta name="robots" content="noindex">/);
+  assert.doesNotMatch(ja, /rel="canonical"|<link rel="alternate" hreflang=/);
 });
 
 test('hostile text is escaped and only http(s) links are kept', async () => {
@@ -670,6 +676,13 @@ test('an Incident page states its headline, description, dates, language and add
   assert.equal('dateModified' in (await ldOf('yesterday')), false);
   const en = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(await (await page(SSHOLE, 'en')).text())[1]);
   assert.equal(en.inLanguage, 'en');
+  // Gemini review, 11-27: a /ja/ page (English text under Japanese labels) names its canonical /en/ twin in og:url and the
+  // JSON-LD, in English, as its canonical link does.
+  const jaHtml = await (await page(SSHOLE, 'ja')).text();
+  const ja = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(jaHtml)[1]);
+  assert.deepEqual([ja.inLanguage, ja.url, ja.mainEntityOfPage], ['en', 'https://patchticker.com/en/i/CVE-2026-123158', 'https://patchticker.com/en/i/CVE-2026-123158']);
+  assert.match(jaHtml, /<meta property="og:url" content="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
+  assert.match(jaHtml, /<link rel="canonical" href="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
   assert.equal(en.url, 'https://patchticker.com/en/i/CVE-2026-123158');
 });
 

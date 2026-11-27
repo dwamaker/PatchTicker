@@ -1,9 +1,8 @@
 // The home page for readers that run no script (search crawlers): the current static index.html with links to the
 // latest Incident pages in place of its <!--home-links--> marker. The shell is never cached (a cached one could meet a
 // newer app.mjs after a deploy); only the link list is, for 300 seconds.
-import { slug } from '../web/board.mjs';
 import { DAY } from './lists.mjs';
-import { escapeXml, readJson, titleOf } from './shared.mjs';
+import { escapeXml, readJson, SITE } from './shared.mjs';
 
 const MARKER = '<!--home-links-->';
 // Owner, 11-17: the machine-readable entry points, for a program that reads the home page's headers. Registered relation
@@ -21,13 +20,19 @@ const LINKS_KEY = '/__home-links'; // the edge cache entry for the list; never a
 // Owner, 11-27: the list pages (edge/lists.mjs) too, so one visit leads to every page the sitemaps list: the newest
 // DAYS_LINKED days, every day and every product page. lists: the collector's lists/index.json; none, no list links.
 const DAYS_LINKED = 7;
+const RECENT = 20;
+// Gemini review, 11-27: the 20 links were the RSS feed's newest search-worthy Incidents, none of them in the sitemaps;
+// now the newest of the list pages' days (lists/d/<day>.json), the very Incidents the sitemaps offer. doc: {incidents:
+// list entries, newest first}; an entry is linked only by its own page's address on this site.
+const days = (lists) => (lists?.days && typeof lists.days === 'object'
+  ? Object.entries(lists.days).filter(([d, n]) => DAY.test(d) && Number.isInteger(n) && n > 0).sort(([a], [b]) => (a < b ? 1 : -1)) : null);
 export async function homeLinks(doc, lists = null) {
-  const items = (doc.incidents || []).slice(0, 20);
-  const li = await Promise.all(items.map(async (i) => `<li><a href="/i/${await slug(i.id)}">${escapeXml(titleOf(i, 'ko'))}</a></li>`));
+  const items = (doc.incidents || []).filter((e) => typeof e?.url === 'string' && e.url.startsWith(`${SITE}/i/`)).slice(0, RECENT);
+  const li = items.map((e) => `<li><a href="${escapeXml(e.url.slice(SITE.length))}">${escapeXml(String(e.title_ko || e.id))}</a></li>`);
   const recent = items.length ? `<h2>최근 주요 보안 사건</h2><ul>${li.join('')}</ul>` : '';
-  const days = lists?.days && typeof lists.days === 'object' ? Object.entries(lists.days).filter(([d, n]) => DAY.test(d) && Number.isInteger(n) && n > 0) : null;
-  if (!days) return recent;
-  const newest = days.sort(([a], [b]) => (a < b ? 1 : -1)).slice(0, DAYS_LINKED).map(([d, n]) => `<li><a href="/d/${d}">${d} 보안 사건 ${n}건</a></li>`);
+  const listed = days(lists);
+  if (!listed) return recent;
+  const newest = listed.slice(0, DAYS_LINKED).map(([d, n]) => `<li><a href="/d/${d}">${d} 보안 사건 ${n}건</a></li>`);
   return `${recent}<h2>날짜별·제품별 보안 사건</h2><ul>${newest.join('')}<li><a href="/d/">모든 날짜</a></li><li><a href="/p/">제품별 보안 사건</a></li>`
     + '<li><a href="/en/d/" lang="en">Security Incidents by day</a></li><li><a href="/en/p/" lang="en">Security Incidents by product</a></li></ul>';
 }
@@ -39,10 +44,15 @@ async function links(context) {
     const key = new Request(new URL(LINKS_KEY, context.request.url));
     const hit = cache && await cache.match(key);
     if (hit) return await hit.text();
-    const doc = await readJson(context.env.DATA, 'board/feed.json');
-    if (!doc) throw new Error('board/feed.json missing');
-    const lists = await readJson(context.env.DATA, 'lists/index.json').catch(() => null); // fails open on its own
-    const html = await homeLinks(doc, lists);
+    const lists = await readJson(context.env.DATA, 'lists/index.json');
+    if (!lists) throw new Error('lists/index.json missing');
+    const incidents = [];
+    for (const [day] of (days(lists) || []).slice(0, DAYS_LINKED)) { // newest days until RECENT; a day holds ~70
+      if (incidents.length >= RECENT) break;
+      const doc = await readJson(context.env.DATA, `lists/d/${day}.json`).catch(() => null);
+      if (Array.isArray(doc?.incidents)) incidents.push(...doc.incidents);
+    }
+    const html = await homeLinks({ incidents }, lists);
     if (cache) context.waitUntil(cache.put(key, new Response(html, { headers: { 'cache-control': 'public, max-age=300' } })));
     return html;
   } catch {
