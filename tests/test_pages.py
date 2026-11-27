@@ -59,6 +59,7 @@ class PageDocumentTest(unittest.TestCase):
         page = store.read("pages/CVE-2026-1001.json")
         self.assertEqual((page["id"], page["summary"], page["cvss"]), ("CVE-2026-1001", SUMMARY, 5.0))
         self.assertNotIn("urls", page)  # the page-facing fields, as the Board file carries them
+        self.assertRegex(page["changed"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")  # its dateModified (edge/page.mjs)
 
     def test_rewrites_a_page_only_when_it_changed_without_reading_pages(self):
         store = cycle(WatchedStore(), [row(1), row(2)])

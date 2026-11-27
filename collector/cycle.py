@@ -622,7 +622,8 @@ def write_pages(store, incidents, known, now, stamp, more=lambda: True):
     for slug, view, digest in sorted(due, key=lambda d: d[0] in known):  # a stable sort: newest first stays
         if not more():
             break
-        store.write(f"pages/{slug}.json", view)
+        # The time of this change rides along for the page's dateModified (edge/page.mjs); the hash is of the fields alone.
+        store.write(f"pages/{slug}.json", view | {"changed": stamp})
         pages[slug] = {"hash": digest, "changed": stamp}
     if pages != known:
         store.write("page_hashes.json", pages)

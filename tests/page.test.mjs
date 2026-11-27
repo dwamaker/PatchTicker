@@ -662,7 +662,12 @@ test('an Incident page states its headline, description, dates, language and add
   assert.deepEqual(ld, { '@context': 'https://schema.org', '@type': 'Article', headline: 'OpenSSH sshd 인증 우회 (sshole)',
     description: '리눅스 서버가 뚫릴 수 있습니다! musl 기반에서만 해당합니다.', datePublished: '2026-11-05T10:00:00Z', dateCreated: '2026-11-06T00:46:00Z', inLanguage: 'ko',
     url: 'https://patchticker.com/i/CVE-2026-123158', mainEntityOfPage: 'https://patchticker.com/i/CVE-2026-123158',
+    image: 'https://patchticker.com/og.png', author: { '@type': 'Organization', name: 'Patch Ticker', url: 'https://patchticker.com/' },
     isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: 'https://patchticker.com/' } });
+  // The collector's stamp of the page's last change (collector/cycle.py write_pages) is its dateModified; anything else is not.
+  const ldOf = async (changed) => JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(await (await page({ ...SSHOLE, changed })).text())[1]);
+  assert.equal((await ldOf('2026-11-07T01:02:03Z')).dateModified, '2026-11-07T01:02:03Z');
+  assert.equal('dateModified' in (await ldOf('yesterday')), false);
   const en = JSON.parse(/<script type="application\/ld\+json">([^<]*)<\/script>/.exec(await (await page(SSHOLE, 'en')).text())[1]);
   assert.equal(en.inLanguage, 'en');
   assert.equal(en.url, 'https://patchticker.com/en/i/CVE-2026-123158');

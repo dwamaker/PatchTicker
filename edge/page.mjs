@@ -355,6 +355,7 @@ const jsonLd = (data) => `<script type="application/ld+json">${JSON.stringify(da
 // A description for a search result: at most DESCRIPTION_MAX characters, cut at a word's end with an ellipsis (search
 // engines cut near there anyway, in the middle of a word; English first sentences ran to 326 characters).
 const DESCRIPTION_MAX = 160;
+const CHANGED = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/; // collector/cycle.py write_pages: the stamp of the page's last change
 export function clip(text, max = DESCRIPTION_MAX) {
   const chars = [...String(text)]; // by code point: never half an emoji or a surrogate pair
   if (chars.length <= max) return chars.join('');
@@ -393,6 +394,9 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
     '<meta name="twitter:card" content="summary_large_image">',
     jsonLd({ '@context': 'https://schema.org', '@type': 'Article', headline: title, description,
       datePublished: i.published || i.first_seen, dateCreated: i.first_seen, inLanguage: lang, url: self, mainEntityOfPage: self,
+      // Google's Article guide recommends image and author (with a url); dateModified when the collector last changed the page.
+      ...(CHANGED.test(i.changed || '') ? { dateModified: i.changed } : {}), image: `${SITE}/og.png`,
+      author: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` },
       isAccessibleForFree: true, publisher: { '@type': 'Organization', name: 'Patch Ticker', url: `${SITE}/` } })].join('\n');
   // Owner, 11-27 ("디자인 왜 따로쓰냐"): the Board's row and its opened panel (web/app.mjs row(), details()) in the
   // Normal view, in that order: what to do first, then what it is and when it applies, the links last.
