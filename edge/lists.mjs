@@ -56,7 +56,7 @@ function head(lang, title, about, path) {
     ...alternates((l) => `${SITE}${path(l)}`),
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="Patch Ticker">',
-    `<meta property="og:url" content="${SITE}${path(lang)}">`,
+    `<meta property="og:url" content="${SITE}${path(searchLang(lang))}">`, // a /ja/ page: its canonical /en/ twin
     `<meta property="og:title" content="${esc(title)}">`,
     `<meta property="og:description" content="${esc(clip(about))}">`,
     `<meta property="og:image" content="${SITE}/og.png">`,

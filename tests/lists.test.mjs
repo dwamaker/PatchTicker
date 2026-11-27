@@ -59,6 +59,7 @@ test('a /ja/ list page names its /en/ twin canonical and still answers', async (
     const html = await res.text();
     assert.match(html, /<html lang="ja">/);
     assert.match(html, /<link rel="canonical" href="https:\/\/patchticker.com\/en\/(d\/(2026-11-26)?|p\/)">/);
+    assert.match(html, /<meta property="og:url" content="https:\/\/patchticker.com\/en\/(d\/(2026-11-26)?|p\/)">/); // as the Incident pages (Gemini, 11-27)
   }
 });
 
