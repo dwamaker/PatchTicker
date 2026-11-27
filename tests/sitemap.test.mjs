@@ -117,7 +117,7 @@ test('the static /sitemap.xml is an index of the home page\'s sitemap and the 13
     ...Array.from({ length: 13 }, (_, n) => `https://patchticker.com/sitemaps/incidents-${n}.xml`), 'https://patchticker.com/sitemaps/products.xml']);
   const home = readFileSync(new URL('../web/sitemap-home.xml', import.meta.url), 'utf8');
   // the home page and the list pages' indexes (edge/lists.mjs, owner 11-27), in the search languages
-  assert.deepEqual(locs(home), ['https://patchticker.com/', 'https://patchticker.com/d/', 'https://patchticker.com/en/d/', 'https://patchticker.com/p/', 'https://patchticker.com/en/p/']);
+  assert.deepEqual(locs(home), ['https://patchticker.com/', 'https://patchticker.com/en/', 'https://patchticker.com/d/', 'https://patchticker.com/en/d/', 'https://patchticker.com/p/', 'https://patchticker.com/en/p/']);
   assertWellFormed(index);
   assertWellFormed(home);
   assert.match(readFileSync(new URL('../web/robots.txt', import.meta.url), 'utf8'), /^Sitemap: https:\/\/patchticker.com\/sitemap.xml$/m);

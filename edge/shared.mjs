@@ -3,6 +3,7 @@
 import { easyAction, easyLine, firstProduct, fixTable, FIXES_SHOWN, isShellCommand, riskLevel, usableFixes, withJapanese, WORDS, LANGS } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
+export { boardPath } from '../web/board.mjs'; // the Board in a language: English at /en/, else / (edge/home.mjs)
 export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
 // Owner, 2026-11-27: the languages offered to search engines (sitemaps, hreflang, canonical). A /ja/ page is the English
 // text under Japanese labels (withJapanese): 75 to 82% the same page as its /en/ twin when measured, a third of the

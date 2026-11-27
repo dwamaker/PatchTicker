@@ -4,7 +4,7 @@
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
 import { conditionIds, cveExploit, cveHead, cveLines, cveScore, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, provisionalLevel, severityWord, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinKeepDays, withinPageDays, PAGE_DAYS, WORDS, LANGS } from '../web/board.mjs';
-import { SEARCH_LANGS, SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, searchLang, strings, titleOf, ul, whatToDo } from './shared.mjs';
+import { SEARCH_LANGS, SITE, SLUG, boardPath, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, searchLang, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
 // The Board's logo symbol (index.html #home) and its 틀린 내용 알리기 icon (app.mjs reportLink).
@@ -233,7 +233,7 @@ function tagLine(i, lang, t) {
     const { bg, ink } = nameLine(tag.name); // the Board's fixed colour table, by the shown name
     return `<span class="ln" title="${esc(tag.name)}" style="--line:${bg};--line-ink:${ink}"><span class="ln-t">${esc(tag.name)}</span></span>`;
   };
-  const item = (tag) => `<a class="tag-btn" href="/${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${badge(tag)}</a>`;
+  const item = (tag) => `<a class="tag-btn" href="${boardPath(lang)}${esc(tagHash(tag))}" aria-label="${esc(t.tagLink(tag.name))}">${badge(tag)}</a>`;
   const { shown, more } = foldTags(tags);
   const rest = more ? ` ${fold(esc(t.tagsRest(more)), tags.slice(shown.length).map(item).join(' '))}` : '';
   const group = i.cves.length > 2 ? `<span class="grp grp-patch">${esc(t.patchTag)}</span> ` : '';
@@ -282,7 +282,7 @@ const dayLine = (day, t) => (day ? `<p class="others"><a href="${t.dayPath}${day
 // M1 (owner, 11-15): under the Mitigation, the Board filtered to the first Product when it had other Incidents lately.
 function othersLink(i, lang, t, others) {
   const found = productOthers(i, lang, others);
-  return found ? `<p class="others"><a href="/${esc(found.hash)}">${esc(t.productOthers(found.n))}</a></p>` : '';
+  return found ? `<p class="others"><a href="${boardPath(lang)}${esc(found.hash)}">${esc(t.productOthers(found.n))}</a></p>` : '';
 }
 
 // H4 (owner, 11-16): a group's condition of some CVEs only shows their ids as a small mark before its text, as the
@@ -384,7 +384,7 @@ ${head}
 <style>${CSS}</style>
 </head>
 <body class="page">
-<header class="top"><div class="wrap"><a class="home" href="/">${LOGO}<span>Patch Ticker</span></a>${other}</div></header>
+<header class="top"><div class="wrap"><a class="home" href="${boardPath(lang)}">${LOGO}<span>Patch Ticker</span></a>${other}</div></header>
 <main class="wrap">${main}</main>
 ${footer(t)}
 </body>
@@ -474,8 +474,8 @@ export function pageHtml(i, lang, slug, others = null, pages = [], links = {}) {
     leadLine(i, t),
     cveLineList(i, lang, t),
     mentions(i, lang, t),
-    `<p class="share">${links.frozen ? `<a class="btn" href="/">${esc(t.home)}</a>` // past 90 days the Board no longer holds it (Gemini, round 8)
-      : `<a class="btn" href="/#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`}`
+    `<p class="share">${links.frozen ? `<a class="btn" href="${boardPath(lang)}">${esc(t.home)}</a>` // past 90 days the Board no longer holds it (Gemini, round 8)
+      : `<a class="btn" href="${boardPath(lang)}#i=${esc(encodeURIComponent(i.id))}">${esc(t.board)}</a>`}`
       + `<a class="btn" href="${esc(reportUrl(i, lang, self, slug))}"${NEW_TAB}>${REPORT_ICON}<span>${esc(t.report)}</span></a></p>`,
     '</div>',
     `<script>${LOCAL_TIME}</script>`,
@@ -521,9 +521,9 @@ const redirect = (status, location) => new Response(null, { status, headers: { l
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). now: for the 90-day check.
 export async function pageResponse(bucket, lang, slug, now = Date.now()) {
   const t = TEXT[lang];
-  const home = `<a href="/">${esc(t.home)}</a>`;
+  const home = `<a href="${boardPath(lang)}">${esc(t.home)}</a>`;
   const expired = (page) => note(lang, 410, t.expired, page?.cves
-    ? [`<a href="/#i=${esc(encodeURIComponent(page.id))}">${esc(t.board)}</a>`, ...(page.cves[0] ? [link(cveUrl(page.cves[0]), t.cveRecord, t)] : [])]
+    ? [`<a href="${boardPath(lang)}#i=${esc(encodeURIComponent(page.id))}">${esc(t.board)}</a>`, ...(page.cves[0] ? [link(cveUrl(page.cves[0]), t.cveRecord, t)] : [])]
     : [home]);
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
@@ -553,5 +553,5 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
     return new Response(pageHtml(doc, lang, slug, others, links.pages, { ...links, frozen }), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': CACHE, 'content-security-policy': PAGE_CSP },
     });
-  }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));
+  }, () => note(lang, 503, t.down, [`<a href="${SITE}${boardPath(lang)}">${esc(t.home)}</a>`]));
 }

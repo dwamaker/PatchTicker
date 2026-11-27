@@ -1,11 +1,11 @@
 import { cveLines, cveExploit, cveScore, exploitedCves, scorePair, scoreCve, searchedCve, WORDPRESS, pluginName, aliasesUsed, exploitReason, isLibrary, namedHeadline, knownVendor, vendorLedTitle, vendorName, foldByVendor, uniqueNames, pickerEntries, rankEntries, mergeIncidents, LINK_KINDS, OSES, PINNED, RISKS, SORTS, pinReason, briefMarker, cveHead, easyLine, easyTitle, isShellCommand, MANY_DEVICES, onBoard, cvssRating, easyAction, filterBoard, isExploited, lineKeys, rowPlatforms, orderBy, filterFromQuery, filterToQuery, nameLine, productList, publishedAt, relativeAge, riskLevel, pendingWhy, severityWord, provisionalLevel, rowTags, shareLink, hasPage, slug, viewFromStorage, firstProduct, mentionGroups, cveUrl, usableFixes, reportUrl, WORDS, tagFilters, foldTags, linkedPlace, productOthers, publicDay, conditionIds, distroTable, foldNewest, localDay, fixTable, fixesLead, FIXES_SHOWN, rowKey, pinOrder, stepDistance, nextPage, sinceStillTrue, productLine, answerCounts, MENTION_ORDER } from './board.mjs';
-import { feedPath, productFeed, statusCounts, LANGS, langPrefix, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
+import { feedPath, productFeed, statusCounts, LANGS, langPrefix, boardLang, boardPath, withJapanese, giveJapanese, groupKey, listboxStep, restingStop } from './board.mjs';
 
 
 // The store's base URL: web/data/ on this machine, the R2 bucket's own domain everywhere else.
 // shortcut: the first address (patchticker.dwamaker.com) keeps its own data domain until it redirects to patchticker.com;
 // drop that branch once the redirect is on.
-const DATA_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'data/'
+const DATA_URL = ['localhost', '127.0.0.1'].includes(location.hostname) ? '/data/'
   : location.hostname.endsWith('.dwamaker.com') ? 'https://patchticker-data.dwamaker.com/' : 'https://data.patchticker.com/';
 const SAVED = 'vr-filter';
 const SAVED_LANG = 'vr-lang';
@@ -198,10 +198,9 @@ function setDefaultView(view) {
 }
 
 function loadLang() {
-  const saved = stored(SAVED_LANG); // storage blocked: the browser's language below
+  const saved = stored(SAVED_LANG); // storage blocked: the address's language below
   if (Object.hasOwn(TEXT, saved ?? '')) return saved; // `in` would take "constructor" as a language
-  const browser = (navigator.language || '').toLowerCase().slice(0, 2);
-  return LANGS.includes(browser) ? browser : 'en';
+  return boardLang(location.pathname, navigator.language); // as index.html's head script
 }
 
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
@@ -2100,7 +2099,17 @@ function conditionList() {
 // The language menu (owner, 11-17: a dropdown now that there are three): a popover like the RSS menu below; where the
 // browser has no popovers the button steps to the next language instead.
 const langsOpen = () => canPop && $('langs').matches(':popover-open');
-const setLang = (next) => crossFade(() => {
+const setLang = (next) => {
+  // Korean and English are two addresses (/ and /en/): the choice is stored first, so the other page keeps it
+  const path = location.pathname, home = boardPath(next);
+  if ((path === '/' || path === '/en/') && path !== home) {
+    store(SAVED_LANG, next);
+    location.assign(home + location.search + location.hash);
+    return;
+  }
+  setLangHere(next);
+};
+const setLangHere = (next) => crossFade(() => {
   // Turning Japanese: what was parsed in Korean or English gains the twins once (products is redrawn below)
   if (next === 'ja' && lang !== 'ja') for (const doc of [incidents, seenProducts, productCounts, ...plainDocs]) giveJapanese(doc);
   lang = next;

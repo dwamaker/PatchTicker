@@ -846,6 +846,11 @@ export function mentionGroups(mentions) {
 // shows the English Summary (withJapanese).
 export const LANGS = ['ko', 'en', 'ja'];
 export const langPrefix = (lang) => (lang === 'ko' ? '' : `/${lang}`);
+// The Board's two addresses (owner 11-28, Gemini review): English at /en/, Korean and Japanese at /. A visitor with no
+// saved choice gets the address's language, so a search engine reads / in Korean and /en/ in English whatever its
+// browser says; only a Japanese browser at / gets Japanese (no search engine renders in Japanese).
+export const boardPath = (lang) => (lang === 'en' ? '/en/' : '/');
+export const boardLang = (path, browser) => (path === '/en/' ? 'en' : String(browser || '').toLowerCase().startsWith('ja') ? 'ja' : 'ko');
 // A JSON.parse reviver for the documents a Japanese page reads (the Board and the edge use it only then: it makes a parse
 // ~5x slower): an object with Korean and English twins and no Japanese one (a Summary, its quick title, a product's
 // names, a CVE line) gets the English as its Japanese, so each reader's `x[lang]` finds text without a language step.

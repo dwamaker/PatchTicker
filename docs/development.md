@@ -254,6 +254,12 @@ row's tags in both languages (`row_tags`, a port of `rowTags` kept in step by
 else the Board row) and its GUID the Incident page's address, as in `/feed.xml`, so an Incident in both is one item and
 keeps its GUID when it gains a page. Until the collector has written the document the feed answers 503. Locally: `npx wrangler@4 pages dev <copy> --r2 DATA=patchradar`
 with a `board/feed.json` put into local R2 (`npx wrangler@4 r2 object put patchradar/board/feed.json --local --file ...`).
+The English Board `/en/` (`functions/en/index.js`, owner 2026-11-28 after the Gemini review: Google rendered `/` in
+English, its browser being en-US) is the same shell with an English head (`EN_HEAD` in `edge/home.mjs`: title,
+description, canonical `/en/`, og lines) and English links; `/en` answers 301 to `/en/`. Both name each other with
+`hreflang` (`index.html`, `sitemap-home.xml`). A visitor with no saved choice gets the address's language (`boardLang`
+in `web/board.mjs`, the head script the same: a Japanese browser at `/` aside); a saved choice of the other address goes
+there with its hash, and the language menu moves between `/` and `/en/`. `index.html` names its files from the root.
 The home page `/` goes through `functions/index.js` (`edge/home.mjs`) too: the current static `index.html` with links to
 the 20 newest Incident pages of the list pages' days (`lists/d/<day>.json`, so only pages the sitemaps list; until
 the 2026-11-27 review they were the RSS feed's, none of them in a sitemap) in place of its `<!--home-links-->` marker,
@@ -378,9 +384,8 @@ also states `image`, an `author` with its url, and `dateModified` from the `chan
 page document (outside its hash).
 Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
 `pages/` prefix after their last write (set by the owner, in the Cloudflare dashboard or with `wrangler r2 bucket
-lifecycle`): 100 days until the kept pages (2026-11-28), which need it at about 370 days, past the 365 days in which a
-kept page answers anything but 410; after the rule deletes it, the address answers 404. **The rule must be changed to
-about 370 days before the first kept page passes 100 days (February 2027), or kept pages vanish at day 100.** The rule does not reach the SQLite copy, which keeps every
+lifecycle`): 370 days since 2026-11-28 (was 100; changed for the kept pages, which answer anything but 410 for 365
+days); after the rule deletes a document, its address answers 404. The rule does not reach the SQLite copy, which keeps every
 page document it was sent.
 `pages dev` also loads `.env` into the function's local environment (hidden, never uploaded). Stopping it leaves
 `workerd` processes holding `.wrangler/`: end them before deleting that folder.

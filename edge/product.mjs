@@ -6,7 +6,7 @@
 import { tagHash, WORDS } from '../web/board.mjs';
 import { LEVELS } from './check.mjs';
 import { document, langMenu, LOCAL_TIME, note, PAGE_CSP, searchHead, when } from './page.mjs';
-import { SITE, escapeXml as esc, failClosed, readJson, searchLang } from './shared.mjs';
+import { SITE, boardPath, escapeXml as esc, failClosed, readJson, searchLang } from './shared.mjs';
 
 export { checkSlug } from './shared.mjs';
 
@@ -47,9 +47,9 @@ export const CSS = `<style>.lede{color:var(--ink-2)}
 .pl-sub{margin:.25rem 0 0;color:var(--ink-2);font-size:.875rem;font-variant-numeric:tabular-nums}</style>`;
 
 // An Incident's address on this site: its page in this language, or its Board row; never anything else.
-function href(e, t) {
+function href(e, t, lang) {
   const page = /^https:\/\/patchticker\.com\/i\/([A-Za-z0-9-]+)$/.exec(typeof e.url === 'string' ? e.url : '');
-  return page ? `${t.page}${page[1]}` : `/#i=${encodeURIComponent(String(e.id))}`;
+  return page ? `${t.page}${page[1]}` : `${boardPath(lang)}#i=${encodeURIComponent(String(e.id))}`;
 }
 
 const CVE = /^CVE-\d{4}-\d{4,7}$/;
@@ -68,7 +68,7 @@ export function item(e, lang, t) {
   // the Board's risk sign (web/board.css .loud): the level's wash and ink
   return `<li class="risk-${level}"><p class="pl-head"><span class="loud risk-${level}"><b class="word">${esc(t.levels[level])}</b></span>`
     + `${e.exploited === true ? ` <span class="kev">${esc(t.kevReason)}</span>` : ''}${typeof stamp === 'string' ? ` ${when(stamp, lang)}` : ''}</p>`
-    + `<a class="pl-title" href="${esc(href(e, t))}">${esc(e[`title_${lang}`] || e.title_en || e.id)}</a>${sub ? `<p class="pl-sub">${esc(sub)}</p>` : ''}</li>`;
+    + `<a class="pl-title" href="${esc(href(e, t, lang))}">${esc(e[`title_${lang}`] || e.title_en || e.id)}</a>${sub ? `<p class="pl-sub">${esc(sub)}</p>` : ''}</li>`;
 }
 
 // What the list says as a whole, from the check document alone (owner, 11-27: product pages with more on them): the
@@ -110,7 +110,7 @@ export function productHtml(doc, lang, slug) {
     `<meta property="og:image" content="${SITE}/og.png">`,
     `<meta property="og:locale" content="${t.locale}">`,
     CSS].join('\n');
-  const board = typeof doc.id === 'string' && doc.id ? `<a href="/${esc(tagHash({ pick: doc.id }))}">${esc(t.board)}</a>` : '';
+  const board = typeof doc.id === 'string' && doc.id ? `<a href="${boardPath(lang)}${esc(tagHash({ pick: doc.id }))}">${esc(t.board)}</a>` : '';
   const main = [`<h1>${esc(t.heading(name))}</h1>`, `<p class="lede">${esc(t.count(incidents.length))}</p>`,
     `<dl class="facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`,
     `<ol class="plist">${incidents.map((e) => item(e, lang, t)).join('')}</ol>`,
@@ -123,7 +123,7 @@ export function productHtml(doc, lang, slug) {
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). The document holds 90 days already.
 export async function productResponse(bucket, lang, slug) {
   const t = TEXT[lang];
-  const home = `<a href="/">${esc(t.home)}</a>`;
+  const home = `<a href="${boardPath(lang)}">${esc(t.home)}</a>`;
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
     const doc = await readJson(bucket, `check/p/${slug}.json`, lang);
@@ -135,5 +135,5 @@ export async function productResponse(bucket, lang, slug) {
     return new Response(productHtml(doc, lang, slug), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300', 'content-security-policy': PAGE_CSP },
     });
-  }, () => note(lang, 503, t.down, [`<a href="${SITE}/">${esc(t.home)}</a>`]));
+  }, () => note(lang, 503, t.down, [`<a href="${SITE}${boardPath(lang)}">${esc(t.home)}</a>`]));
 }

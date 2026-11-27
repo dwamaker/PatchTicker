@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { homeLinks, homeResponse } from '../edge/home.mjs';
+import { EN_HEAD, homeLinks, homeResponse } from '../edge/home.mjs';
 import { PINNED, WORDS } from '../web/board.mjs';
 
 // app.mjs's TEXT.ko, TEXT.en and TEXT.ja loading words, in that order (app.mjs needs a DOM, so they are read from its source)
@@ -251,4 +251,30 @@ test('the footer links the day and product lists in each language, and only the 
     assert.deepEqual([...part.matchAll(/href="([^"]+)"/g)].map((m) => m[1]), [`${prefix}/d/`, `${prefix}/p/`], lang);
   }
   assert.match(readFileSync(new URL('../web/board.css', import.meta.url), 'utf8'), /:root:not\(\[lang="en"\]\) :is\(\.collect-note, \.foot-nav,/);
+});
+
+// Owner 11-28, Gemini review: the English Board at /en/: the same shell with an English head (canonical /en/, each
+// address naming the other with hreflang) and English links; /en without the slash is one 301 away.
+test('/en/ is the home page in English: English head and links, the shell otherwise the same', async () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  for (const [ko] of EN_HEAD) assert.ok(html.includes(ko), ko); // every line /en/ rewrites is in index.html
+  for (const href of ['https://patchticker.com/', 'https://patchticker.com/en/']) assert.match(html, new RegExp(`<link rel="alternate" hreflang="(ko|en|x-default)" href="${href}">`));
+  assert.doesNotMatch(html, / href="(?:app\.mjs|board\.mjs|vendors\.json|favicon\.svg)"| src="app\.mjs"/); // root paths: the shell serves /en/ too
+  const shell = assets(200, html);
+  const ctx = { ...context(bucket([incident(1)]), 'GET', shell), request: new Request('https://patchticker.com/en/') };
+  const body = await (await homeResponse(ctx, 'en')).text();
+  assert.match(body, /<html lang="en"/);
+  assert.match(body, /<title>Patch Ticker · Live security vulnerability board<\/title>/);
+  assert.match(body, /<link rel="canonical" href="https:\/\/patchticker.com\/en\/">/);
+  assert.match(body, /<meta property="og:locale" content="en_US">\n  <meta property="og:locale:alternate" content="ko_KR">/);
+  assert.doesNotMatch(body, /실시간 보안 취약점 현황판|ko_KR">\n  <meta property="og:locale:alternate" content="en_US"/);
+  assert.match(body, /<h2>Latest major security Incidents<\/h2><ul><li><a href="\/en\/i\/CVE-2026-10001">Title 1<\/a><\/li><\/ul>/);
+  assert.match(body, /<a href="\/en\/d\/2026-11-27">2026-11-27: 1 security Incidents<\/a>/);
+  assert.match(body, /<a href="\/d\/" lang="ko">날짜별 보안 사건<\/a>/);
+  const ko = await (await homeResponse({ ...context(bucket([incident(1)]), 'GET', shell) })).text();
+  assert.match(ko, /<html lang="ko"/);
+  assert.match(ko, /<a href="\/i\/CVE-2026-10001">제목 1<\/a>/);
+  const bare = await homeResponse({ ...ctx, request: new Request('https://patchticker.com/en?x=1') }, 'en');
+  assert.equal(bare.status, 301);
+  assert.equal(bare.headers.get('location'), 'https://patchticker.com/en/?x=1');
 });

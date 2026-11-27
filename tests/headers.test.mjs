@@ -35,7 +35,7 @@ test("the CSP lets the page load its modules, its data hosts and the analytics b
     assert.ok(csp['connect-src'].includes(host), host);
   }
   assert.ok(csp['connect-src'].includes("'self'")); // vendors.json is a JSON module: connect-src
-  assert.match(html, /<link rel="modulepreload" href="vendors\.json" as="json">/); // else it waits for board.mjs (11-10)
+  assert.match(html, /<link rel="modulepreload" href="\/vendors\.json" as="json">/); // else it waits for board.mjs (11-10)
   assert.ok(csp['img-src'].includes("'self'")); // favicon.svg
   assert.deepEqual(csp['frame-ancestors'], ["'none'"]);
   assert.equal(value('X-Content-Type-Options'), 'nosniff');
@@ -50,7 +50,7 @@ test("the inline script starts the first load's four files, and getJson takes ea
   let ms; // getJson's time limit, set just before its fetch
   const fetch = (url, { signal }) => { limits[url] = signal.ms ?? ms; const n = calls.push(url); return Promise.resolve({ ok: true, text: async () => JSON.stringify({ url, n }) }); };
   const added = [];
-  const ctx = vm.createContext({ location: { hostname: 'localhost' }, fetch, AbortSignal: { timeout: (t) => ({ ms: t }) }, AbortController, withJapanese, lang: 'ko',
+  const ctx = vm.createContext({ location: { hostname: 'localhost', pathname: '/' }, fetch, AbortSignal: { timeout: (t) => ({ ms: t }) }, AbortController, withJapanese, lang: 'ko',
     setTimeout: (f, t) => { ms = t; }, clearTimeout() {}, navigator: { language: 'ko-KR' },
     document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add: (c) => added.push(c) } } } });
   ctx.window = ctx;
@@ -59,16 +59,16 @@ test("the inline script starts the first load's four files, and getJson takes ea
   // no storage the first-visit line is not drawn (pr-off), as app.mjs's primerOpen = !stored(SAVED_GUIDE, true)
   assert.deepEqual(added.filter((c) => c !== 'cn-off'), ['js', 'pr-off']);
   assert.equal(ctx.document.documentElement.lang, 'ko'); // the notice paints in the visitor's language
-  assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['data/board/products.json', 'data/board/rows.json', 'data/index.json', 'data/status.json']);
+  assert.deepEqual(Object.keys(ctx.vrEarly).sort(), ['/data/board/products.json', '/data/board/rows.json', '/data/index.json', '/data/status.json']);
   const app = read('web/app.mjs');
-  const getJson = vm.runInContext(`const DATA_URL = 'data/'; ${app.match(/const SLOW_MS[\s\S]*?\n\};/)[0]} getJson`, ctx);
+  const getJson = vm.runInContext(`const DATA_URL = '/data/'; ${app.match(/const SLOW_MS[\s\S]*?\n\};/)[0]} getJson`, ctx);
   assert.equal((await getJson('status.json')).n, 2); // the page-start fetch
   assert.equal((await getJson('status.json')).n, 5); // asked again
   await getJson('board/recent.json');
   // A request lost as the app closes fails instead of hanging (N4): 15 s for status.json, 2 minutes for the MBs and for
   // what main reads only after its modules arrive.
-  assert.deepEqual(limits, { 'data/board/rows.json': 120_000, 'data/status.json': 15_000, 'data/index.json': 120_000,
-    'data/board/products.json': 120_000, 'data/board/recent.json': 120_000 });
+  assert.deepEqual(limits, { '/data/board/rows.json': 120_000, '/data/status.json': 15_000, '/data/index.json': 120_000,
+    '/data/board/products.json': 120_000, '/data/board/recent.json': 120_000 });
   assert.match(app.match(/async function main\(\)[\s\S]*?await first;/)[0], /getJson\('board\/products\.json'\)[\s\S]*window\.vrEarly = null;/);
   // The Board draws from the row views; without rows.json (rollout, a failed fetch) the full week, as before (owner, 11-10).
   assert.match(app.match(/async function main\(\)[\s\S]*?await first;/)[0], /getJson\('board\/rows\.json'\)\.catch\(\(\) => getJson\('board\/recent\.json'\)\)/);
@@ -123,7 +123,7 @@ async function liveChecks(extra = {}) {
   });
   const ctx = vm.createContext({ fetch, AbortController, withJapanese, lang: 'ko', setTimeout: (f, ms) => setTimeout(f, ms).unref(), clearTimeout, setInterval() {}, navigator: { onLine: true },
     window: {}, document: { hidden: false, addEventListener: listen }, addEventListener: listen, ...extra });
-  vm.runInContext(`const DATA_URL = 'data/'; let updated = 'u', loadError = null, fullWeek = null;
+  vm.runInContext(`const DATA_URL = '/data/'; let updated = 'u', loadError = null, fullWeek = null;
     ${app.match(/const SLOW_MS[\s\S]*?\n\};/)[0]} ${app.match(/const CHECK_MS[\s\S]*?addEventListener\('online', back\);/)[0]}`, ctx);
   const hide = () => { ctx.document.hidden = true; on.visibilitychange(); };
   const show = () => { ctx.document.hidden = false; on.visibilitychange(); };
@@ -168,7 +168,7 @@ test('whoever waited on a request aborted on return gets the fresh answer, with 
   show();
   await settle();
   assert.equal(asked[0].aborted, true);
-  asked.find((s) => s.url === 'data/board/recent.json' && !s.aborted).answer({ fresh: true });
+  asked.find((s) => s.url === '/data/board/recent.json' && !s.aborted).answer({ fresh: true });
   assert.deepEqual({ ...await week }, { fresh: true });
 });
 
@@ -203,12 +203,12 @@ test('a connection back while the tab is still hidden aborts nothing; the return
 
 test("an early first-load answer whose body never arrives is asked again on return, outside index.html's own limit (N4)", async () => {
   const stalled = Promise.resolve({ ok: true, text: () => new Promise(() => {}) });
-  const { asked, hide, show, run } = await liveChecks({ window: { vrEarly: { 'data/board/rows.json': stalled } } });
+  const { asked, hide, show, run } = await liveChecks({ window: { vrEarly: { '/data/board/rows.json': stalled } } });
   const rows = run("getJson('board/rows.json')");
   hide();
   show();
   await settle();
-  asked.find((s) => s.url === 'data/board/rows.json').answer({ fresh: true });
+  asked.find((s) => s.url === '/data/board/rows.json').answer({ fresh: true });
   assert.deepEqual({ ...await rows }, { fresh: true });
 });
 
@@ -306,4 +306,30 @@ test('the Highlights header says shown/total, spoken as a sentence, and one numb
   for (const [shown, total] of [[4, 4], [20, 20], [3, 3]]) {
     assert.deepEqual(Array.from(pinCount(shown, total), (x) => [x.cls, x.text, x.attrs['aria-hidden']]), [['n', String(shown), undefined]]);
   }
+});
+
+// Owner 11-28, Gemini review: / is the Korean Board and /en/ the English one for a visitor with no saved choice (a
+// search engine), a Japanese browser at / aside; a saved choice of the other address goes there, keeping the hash.
+test('the head script draws / in Korean and /en/ in English, and a saved choice goes to its own address', async () => {
+  const vm = await import('node:vm');
+  const html = read('web/index.html');
+  const script = html.match(/<script>([^<]*vrEarly[^<]*)<\/script>/)[1];
+  const run = (pathname, browser, saved) => {
+    const went = [];
+    const ctx = vm.createContext({ location: { hostname: 'patchticker.com', pathname, search: '', hash: '#i=CVE-2026-1', replace: (u) => went.push(u) },
+      fetch: () => Promise.resolve(), AbortSignal: {}, navigator: { language: browser },
+      localStorage: { getItem: (k) => (k === 'vr-lang' ? saved : null) },
+      document: { documentElement: { dataset: { collectedSince: '2026-11-09' }, classList: { add() {} }, style: { setProperty() {} } } } });
+    ctx.window = ctx;
+    vm.runInContext(script, ctx);
+    return [ctx.document.documentElement.lang, went[0] ?? null];
+  };
+  assert.deepEqual(run('/', 'en-US', null), ['ko', null]); // Googlebot renders / in Korean
+  assert.deepEqual(run('/en/', 'ko-KR', null), ['en', null]);
+  assert.deepEqual(run('/', 'ja-JP', null), ['ja', null]);
+  assert.deepEqual(run('/en/', 'ja-JP', null), ['en', null]);
+  assert.deepEqual(run('/', 'ko-KR', 'en'), ['en', '/en/#i=CVE-2026-1']);
+  assert.deepEqual(run('/en/', 'en-US', 'ko'), ['ko', '/#i=CVE-2026-1']);
+  assert.deepEqual(run('/en/', 'en-US', 'ja'), ['ja', '/#i=CVE-2026-1']);
+  assert.deepEqual(run('/i/x', 'en-US', 'en'), ['en', null]); // never from another address
 });

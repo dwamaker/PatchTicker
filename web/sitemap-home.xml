@@ -1,23 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<!-- the Board and the list pages, each in Korean and English (owner 11-28: the English Board at /en/) -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://patchticker.com/</loc>
     <changefreq>hourly</changefreq>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://patchticker.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://patchticker.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://patchticker.com/"/>
+  </url>
+  <url>
+    <loc>https://patchticker.com/en/</loc>
+    <changefreq>hourly</changefreq>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://patchticker.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://patchticker.com/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://patchticker.com/"/>
   </url>
   <url>
     <loc>https://patchticker.com/d/</loc>
     <changefreq>hourly</changefreq>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://patchticker.com/d/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://patchticker.com/en/d/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://patchticker.com/d/"/>
   </url>
   <url>
     <loc>https://patchticker.com/en/d/</loc>
     <changefreq>hourly</changefreq>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://patchticker.com/d/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://patchticker.com/en/d/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://patchticker.com/d/"/>
   </url>
   <url>
     <loc>https://patchticker.com/p/</loc>
     <changefreq>hourly</changefreq>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://patchticker.com/p/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://patchticker.com/en/p/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://patchticker.com/p/"/>
   </url>
   <url>
     <loc>https://patchticker.com/en/p/</loc>
     <changefreq>hourly</changefreq>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://patchticker.com/p/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://patchticker.com/en/p/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://patchticker.com/p/"/>
   </url>
 </urlset>
