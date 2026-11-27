@@ -58,7 +58,8 @@ def feed_entry(incident):
 
 def product_pages(docs):
     """The product pages worth a sitemap entry: the check documents' slugs with PRODUCT_PAGE_MIN Incidents or more, sorted."""
-    return sorted(slug for slug, doc in docs.items() if len(doc.get("incidents", ())) >= PRODUCT_PAGE_MIN)  # a redirect has none
+    # A redirect has no Incidents; a page another stands for (same_lists) is left to that one.
+    return sorted(slug for slug, doc in docs.items() if len(doc.get("incidents", ())) >= PRODUCT_PAGE_MIN and "canonical" not in doc)
 
 
 def name_aliases(incidents):
@@ -110,5 +111,28 @@ def check_docs(incidents, since, aliases=None):
                 mine.add(slug)
             for key in names_of(product | {"id": pid}, ko.get(pid, "")):
                 index.setdefault(key, set()).add(slug)
+    for slug, kept in same_lists(docs).items():
+        docs[slug]["canonical"] = kept
     docs |= moved_docs({**(aliases or {}), **folded}, docs)
     return docs, {key: sorted(index[key]) for key in sorted(index)}
+
+
+def same_lists(docs):
+    """{slug: the slug of the page that stands for it} among product pages with the very same Incidents (owner, 11-27:
+    one advisory naming 30 GL.iNet models made 30 equal pages): one page per list is offered to search engines, the
+    others name it canonical and stay for visitors. A well-known Product no other page of the list shares a label with
+    (collector/well_known.json: "macOS" beside "iOS") keeps its own page; the page standing for the rest is a labelled
+    one first, then the shortest name, then the slug."""
+    lists = {}
+    for slug in product_pages(docs):
+        lists.setdefault(tuple(e["id"] for e in docs[slug]["incidents"]), []).append(slug)
+    found = {}
+    for slugs in lists.values():
+        label = {s: known_product({"id": docs[s]["id"], "name": docs[s]["product"]}) for s in slugs}
+        alone = {s for s in slugs if label[s] and sum(label[o] == label[s] for o in slugs) == 1}
+        rest = [s for s in slugs if s not in alone]
+        if len(rest) < 2 and not (rest and alone):
+            continue
+        kept = min(slugs, key=lambda s: (label[s] is None, len(docs[s]["product"]), docs[s]["product"], s))
+        found |= {s: kept for s in rest if s != kept}
+    return found

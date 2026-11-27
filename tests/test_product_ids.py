@@ -91,5 +91,33 @@ class ProductPageIdsTest(unittest.TestCase):
         self.assertEqual(product_pages(docs), [kept])
 
 
+class SameListTest(unittest.TestCase):
+    @staticmethod
+    def docs(*products):
+        incidents = [held(f"CVE-2026-{n}", products=[rec(pid, name) for pid, name in products]) for n in range(1, 4)]
+        return check_docs(incidents, SINCE)[0]
+
+    def test_pages_with_the_very_same_incidents_offer_one_and_name_it_canonical(self):
+        docs = self.docs(("gl-inet:gl-a1300", "GL.iNet GL-A1300"), ("gl-inet:gl-e750", "GL.iNet GL-E750"),
+                         ("gl-inet:gl-ar300m16", "GL.iNet GL-AR300M16"))
+        kept = check_slug("gl-inet:gl-e750")  # the shortest name
+        self.assertEqual(product_pages(docs), [kept])
+        self.assertEqual({d["id"]: d.get("canonical") for d in docs.values()},
+                         {"gl-inet:gl-e750": None, "gl-inet:gl-a1300": kept, "gl-inet:gl-ar300m16": kept})
+
+    def test_a_well_known_product_alone_under_its_label_keeps_its_page(self):
+        docs = self.docs(("apple:macos", "macOS"), ("apple:iphone_os", "iOS"), ("apple:ipados", "iPadOS"), ("apple:tvos", "tvOS"))
+        # iOS and iPadOS share the iOS label: one page for both; macOS stands alone; tvOS has no label.
+        self.assertEqual(sorted(docs[s]["id"] for s in product_pages(docs)), ["apple:iphone_os", "apple:macos"])
+        self.assertEqual(docs[check_slug("apple:ipados")]["canonical"], check_slug("apple:iphone_os"))
+        self.assertEqual(docs[check_slug("apple:tvos")]["canonical"], check_slug("apple:iphone_os"))
+
+    def test_different_lists_are_left_alone(self):
+        incidents = [held(f"CVE-2026-{n}", products=[rec("a:x", "X")] + ([rec("a:y", "Y")] if n < 4 else [])) for n in range(1, 5)]
+        docs, _ = check_docs(incidents, SINCE)
+        self.assertEqual(len(product_pages(docs)), 2)
+        self.assertFalse(any("canonical" in d for d in docs.values()))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -109,3 +109,13 @@ test('a Product that turned out to be another one redirects its old address ther
   // A malformed or self target is no redirect: the page is missing.
   for (const moved of ['../x', OLD]) assert.equal((await render('en', OLD, { [`check/p/${OLD}.json`]: { moved } })).status, 404);
 });
+
+test('a page another stands for names that one canonical, in every language (collector/checks.py same_lists)', async () => {
+  const OTHER = 'bbbbbbbbbbbbbbbb';
+  const docs = { [`check/p/${SSH}.json`]: { ...DOC, canonical: OTHER } };
+  const ko = await (await render('ko', SSH, docs)).text();
+  assert.match(ko, new RegExp(`<link rel="canonical" href="https://patchticker.com/p/${OTHER}">`));
+  assert.doesNotMatch(ko, new RegExp(`hreflang="[^"]+" href="[^"]+${SSH}"`));
+  const bad = await (await render('en', SSH, { [`check/p/${SSH}.json`]: { ...DOC, canonical: '../x' } })).text();
+  assert.match(bad, new RegExp(`<link rel="canonical" href="https://patchticker.com/en/p/${SSH}">`));
+});

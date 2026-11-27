@@ -88,6 +88,8 @@ export function productHtml(doc, lang, slug) {
   const name = String(doc.product || '');
   const incidents = Array.isArray(doc.incidents) ? doc.incidents.filter((e) => e && typeof e.id === 'string') : [];
   const self = `${SITE}${t.path}${slug}`;
+  // Pages with the very same Incidents offer one of them to search engines (collector/checks.py same_lists).
+  const canon = typeof doc.canonical === 'string' && SLUG.test(doc.canonical) ? doc.canonical : slug;
   const feed = `${t.feed}?products=${encodeURIComponent(name)}`;
   const sum = tallies(incidents, t);
   const about = t.about(name, incidents.length, [...sum.risk, ...(sum.attacked ? [t.tally(t.kevReason, sum.attacked)] : [])].join(', '));
@@ -96,8 +98,8 @@ export function productHtml(doc, lang, slug) {
   const head = [`<title>${esc(t.heading(name))} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(about)}">`,
     ...(incidents.length < PRODUCT_PAGE_MIN ? ['<meta name="robots" content="noindex">'] : []),
-    `<link rel="canonical" href="${SITE}${TEXT[searchLang(lang)].path}${slug}">`,
-    ...alternates((l) => `${SITE}${TEXT[l].path}${slug}`),
+    `<link rel="canonical" href="${SITE}${TEXT[searchLang(lang)].path}${canon}">`,
+    ...alternates((l) => `${SITE}${TEXT[l].path}${canon}`),
     `<link rel="alternate" type="application/rss+xml" title="${esc(t.rss(name))}" href="${esc(feed)}">`,
     '<meta property="og:type" content="website">',
     '<meta property="og:site_name" content="Patch Ticker">',
