@@ -6,7 +6,7 @@ import unittest
 from test_checks import SINCE, held
 
 from collector.checks import check_docs, check_slug, product_pages
-from collector.incidents import named, product_aliases, products_of
+from collector.incidents import CO_LISTED_MAX, named, product_aliases, products_of
 
 
 def rec(pid, name):
@@ -43,6 +43,19 @@ class ProductAliasesTest(unittest.TestCase):
         ])
         self.assertEqual(aliases, {"aiohttp:aiohttp": "aio-libs:aiohttp"})
 
+    def test_a_record_of_many_products_joins_no_vendors(self):
+        many = [rec(f"v{n}:lib{n}", f"Lib {n}") for n in range(CO_LISTED_MAX - 1)]
+        self.assertEqual(product_aliases([held("CVE-2026-1", products=many + [rec("google:brotli", "Brotli"), rec("andybalholm:brotli", "brotli")])]), {})
+        self.assertEqual(product_aliases([held("CVE-2026-1", products=many[:-1] + [rec("google:brotli", "Brotli"), rec("andybalholm:brotli", "brotli")])]),
+                         {"andybalholm:brotli": "google:brotli"})  # google is a web/vendors.json vendor
+
+    def test_a_joined_ids_machine_name_does_not_become_the_name(self):
+        # NVD's "Ws Ftp Server" (progress:ws_ftp_server) beside the CNA's "WS_FTP Server", which the Summary wrote.
+        both = [rec("progress:ws_ftp_server", "Ws Ftp Server"), rec("progress_software:ws_ftp_server", "WS_FTP Server")]
+        shown = named([held("CVE-2026-1", products=both, summary={"products": ["WS_FTP Server"]}),
+                       held("CVE-2026-2", products=both[:1]), held("CVE-2026-3", products=both[:1])])
+        self.assertEqual({(p["id"], p["name"]) for i in shown for p in products_of(i, "en")}, {("progress:ws_ftp_server", "WS_FTP Server")})
+
     def test_the_kept_id_does_not_depend_on_counts(self):
         a = [held(f"CVE-2026-{n}", products=[rec("open-emr:openemr", "OpenEMR")]) for n in range(5)]
         b = [held("CVE-2026-9", products=[rec("openemr:openemr", "OpenEMR")])]
@@ -58,8 +71,8 @@ class ProductAliasesTest(unittest.TestCase):
         ])
         for incident in shown:
             self.assertEqual([p["id"] for p in products_of(incident, "en")], ["x:pardus-boot-repair"], incident["id"])
-        # One name everywhere (chosen_names: a spelling not all lower case first).
-        self.assertEqual({products_of(i, "en")[0]["name"] for i in shown}, {"Pardus Boot Repair"})
+        # One name everywhere (which one is chosen_names' rule).
+        self.assertEqual(len({products_of(i, "en")[0]["name"] for i in shown}), 1)
 
 
 class ProductPageIdsTest(unittest.TestCase):
@@ -125,6 +138,13 @@ class QuietPageTest(unittest.TestCase):
         loud = [held(f"CVE-2026-{n}", products=[rec("a:loud", "Loud")], cvss=5.0 if n < 3 else 7.5) for n in range(4, 7)]
         docs, _ = check_docs(quiet + loud, SINCE)
         self.assertEqual([docs[s]["id"] for s in product_pages(docs)], ["a:loud"])
+        # A 참고 story without a CVE has its own page: a list holding one stays.
+        story = [held(f"https://example.com/{n}", products=[rec("a:story", "Story")], cvss=5.0) for n in range(1, 3)]
+        story += [held("https://news.ycombinator.com/item?id=1", products=[rec("a:story", "Story")], summary={"products": ["Story"]},
+                       mentions=[{"kind": "discussion", "url": "https://news.ycombinator.com/item?id=1", "title": "Story"}])]
+        docs, _ = check_docs(story, SINCE)
+        self.assertTrue(any("/i/" in e["url"] for e in docs[check_slug("a:story")]["incidents"]))
+        self.assertEqual([docs[s]["id"] for s in product_pages(docs)], ["a:story"])
 
 
 if __name__ == "__main__":

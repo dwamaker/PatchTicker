@@ -89,8 +89,8 @@ export function productHtml(doc, lang, slug) {
   const incidents = Array.isArray(doc.incidents) ? doc.incidents.filter((e) => e && typeof e.id === 'string') : [];
   const self = `${SITE}${t.path}${slug}`;
   // Pages with the very same Incidents offer one of them to search engines (collector/checks.py same_lists).
-  // Only 참고 Incidents: no page of theirs is in search, nor is this one (collector/checks.py product_pages).
-  const quiet = incidents.every((e) => e.level === 'notice');
+  // Only 참고 Incidents without a page of their own: none is in search, nor is this list (collector/checks.py product_pages).
+  const quiet = incidents.every((e) => e.level === 'notice' && !String(e.url).startsWith(`${SITE}/i/`));
   const canon = typeof doc.canonical === 'string' && SLUG.test(doc.canonical) ? doc.canonical : slug;
   const feed = `${t.feed}?products=${encodeURIComponent(name)}`;
   const sum = tallies(incidents, t);

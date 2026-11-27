@@ -58,11 +58,12 @@ def feed_entry(incident):
 
 def product_pages(docs):
     """The product pages worth a sitemap entry, sorted: the check documents' slugs with PRODUCT_PAGE_MIN Incidents or
-    more, not all of them 참고 (owner, 11-27: a 참고 Incident with a CVE has no page in search already, so a list of only
-    those is not offered either; edge/product.mjs says noindex on it)."""
+    more, not all of them 참고 Incidents without a page of their own (owner, 11-27: a 참고 Incident with a CVE has no page in
+    search already, so a list of only those is not offered either; edge/product.mjs says noindex on it). A 참고 story
+    without a CVE has its page (Vim, the GNU C Library on 11-27): its list stays."""
     # A redirect has no Incidents; a page another stands for (same_lists) is left to that one.
     return sorted(slug for slug, doc in docs.items() if len(doc.get("incidents", ())) >= PRODUCT_PAGE_MIN and "canonical" not in doc
-                  and any(e["level"] != "notice" for e in doc["incidents"]))
+                  and any(e["level"] != "notice" or e["url"].startswith(f"{SITE}/i/") for e in doc["incidents"]))
 
 
 def name_aliases(incidents):

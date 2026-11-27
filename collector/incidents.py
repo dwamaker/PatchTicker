@@ -387,14 +387,16 @@ def name_form(pid, name):
     return low[len(vendor):]
 
 
-def chosen_names(incidents):
+def chosen_names(incidents, aliases=None):
     """{(Product id, lang): the one name every view shows for it} (owner's rule, 11-17), over the Board's Incidents: the
     name_form group most rows use (a tie: the group of the earliest first seen, then the longer name), and in it a
     spelling a Summary wrote before one taken from the record, then not all lower case, then the most used, then the
     longer. The record Product's own name beats that name plus further words, whatever the counts ("Grav" over "Grav
     Lightbox Gallery"; the parent session's decision, 11-17), and stands even when no row writes it alone. Operating
     systems are left out."""
-    seen, record = {}, {}
+    seen, record, members = {}, {}, {}
+    for old, kept in (aliases or {}).items():
+        members.setdefault(kept, [kept]).append(old)
     for i in incidents:
         if on_board(i):
             for lang in ("ko", "en"):
@@ -423,11 +425,14 @@ def chosen_names(incidents):
                 rows_of = groups.pop(f)
                 if plain(rows_of).endswith(f" {mine}"):
                     groups[base] += rows_of
-        group = min(groups.values(), key=lambda g: (-len(g), min(r[1] for r in g), -max(len(r[0]) for r in g)))
         # The record's machine name (nvd.display_name of the id) counts as derived even where a Summary copied it from the
-        # input's Products line (8 of the live month's "Openshift" rows did).
-        machine = nvd.display_name(pid.split(":", 1)[1]) if ":" in pid and not pid.startswith("name:") else None
-        count, wrote = Counter(r[0] for r in group), {r[0] for r in group if r[2] and r[0] != machine}
+        # input's Products line (8 of the live month's "Openshift" rows did). So does that of each id it stands for
+        # (product_aliases): there, a group of machine names only gives way to a spelled one ("WS_FTP Server", not
+        # NVD's "Ws Ftp Server" of the joined progress:ws_ftp_server); a single id keeps the rule above.
+        machine = {nvd.display_name(m.split(":", 1)[1]) for m in members.get(pid, [pid]) if ":" in m and not m.startswith("name:")}
+        derived = lambda g: pid in members and all(r[0] in machine for r in g)  # noqa: E731
+        group = min(groups.values(), key=lambda g: (derived(g), -len(g), min(r[1] for r in g), -max(len(r[0]) for r in g)))
+        count, wrote = Counter(r[0] for r in group), {r[0] for r in group if r[2] and r[0] not in machine}
         chosen[(pid, lang)] = min(count, key=lambda n: (n not in wrote, n == n.lower(), -count[n], -len(n), n))
     return chosen
 
@@ -441,7 +446,7 @@ def named(incidents):
     to another Product than product_slots picks: then the rest, or failing that all, go longest name first (11-17)."""
     aliases = product_aliases(incidents)
     incidents = [one_id(i, aliases) for i in incidents]
-    chosen = chosen_names(incidents)
+    chosen = chosen_names(incidents, aliases)
     return [with_names(i, chosen) for i in incidents]
 
 
@@ -449,6 +454,12 @@ def named(incidents):
 # Ryzen™ Embedded 5000 Series  Processors"). "#", "+" and "*" are kept: they tell products apart ("MongoDB C# Driver" and
 # "MongoDB C Driver").
 SPELLING = re.compile(r"[^\w#+*]|_")
+
+
+# A record that lists more Products than this lists a library with its ports and users ("google:brotli" beside
+# "andybalholm:brotli", a Go port, among 61 Products on 11-27): listed together there is no sign of one product. The
+# largest record of a true pair that day listed 17 (Dell PowerStore under "dell" and "dwll").
+CO_LISTED_MAX = 20
 
 
 def id_form(pid):
@@ -460,7 +471,7 @@ def product_aliases(incidents):
     """{record Product id: the id of the Product it is}, for ids that are one Product (owner, 11-27: "뼈대 잡혔으니 추천안대로
     진행해"; one product had two pages and split counts): ids spelled alike (id_form: "redhat:exploit_intelligence" and
     "red_hat:exploit_intelligence"), and ids of the same product under two vendors that one Incident's record lists
-    together (the CNA's "aio-libs:aiohttp" beside NVD's "aiohttp:aiohttp"). The same product name under two vendors
+    together, in a record of at most CO_LISTED_MAX Products (the CNA's "aio-libs:aiohttp" beside NVD's "aiohttp:aiohttp"). The same product name under two vendors
     without that is left apart: "automattic:mongoose" and "cesanta:mongoose" are two products. Of one group the id kept is
     the one on collector/well_known.json, then with a web/vendors.json vendor, then without a doubled space, then the
     first in order: never by counts, so a product page's address does not move from day to day."""
@@ -480,7 +491,7 @@ def product_aliases(incidents):
         for pid in ids:
             join(pid, by_form.setdefault(id_form(pid), pid))
         tails = {}
-        for pid in ids:
+        for pid in ids if len(ids) <= CO_LISTED_MAX else []:
             join(pid, tails.setdefault(id_form(pid).split(":", 1)[1], pid))
     groups = {}
     for pid in parent:
@@ -491,13 +502,19 @@ def product_aliases(incidents):
 
 
 def one_id(incident, aliases):
-    """The Incident with each record Product under its kept id (product_aliases), one entry per id, the record's order."""
+    """The Incident with each record Product under its kept id (product_aliases), one entry per id, the record's order.
+    Of two entries that become one, the one whose name a Summary product contains stays (product_slots matches by it:
+    "WS_FTP Server" over NVD's "Ws Ftp Server"), else the first."""
     records = incident.get("products") or []
     if not any(p["id"] in aliases for p in records):
         return incident
+    written = [n.lower() for n in (incident.get("summary") or {}).get("products") or []]
+    fits = lambda p: any(p["name"].lower() in n for n in written)  # noqa: E731
     seen = {}
     for p in records:
-        seen.setdefault(aliases.get(p["id"], p["id"]), {**p, "id": aliases.get(p["id"], p["id"])})
+        key = aliases.get(p["id"], p["id"])
+        if key not in seen or (fits(p) and not fits(seen[key])):
+            seen[key] = {**p, "id": key}
     return incident | {"products": list(seen.values())}
 
 

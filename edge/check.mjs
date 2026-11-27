@@ -111,7 +111,9 @@ async function answer(bucket, query, now, ai) {
   // One products or maybe entry; label is { alias } or { read_as }.
   const entry = async (asked, label, match) => {
     const slugs = match.slugs.filter((s) => docs.has(s) || (docs.size < MAX_DOCS && docs.set(s, readJson(bucket, `check/p/${s}.json`))));
-    const read = (await Promise.all(slugs.map((s) => docs.get(s)))).filter(Boolean); // a document deleted since the index: skipped
+    // A document deleted since the index, or a redirect ({moved}, collector/checks.py moved_docs) an index of the cycle
+    // before may still name for a moment: skipped.
+    const read = (await Promise.all(slugs.map((s) => docs.get(s)))).filter((d) => Array.isArray(d?.incidents));
     const seen = new Map();
     for (const doc of read) for (const i of doc.incidents) if (i.first_seen >= since && LEVELS.indexOf(i.level) >= least) seen.set(i.id, i);
     return { asked, ...label, matched: read.map((d) => d.product), ...(match.broad ? { broad: true } : {}),

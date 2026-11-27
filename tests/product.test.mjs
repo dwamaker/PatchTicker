@@ -121,8 +121,11 @@ test('a page another stands for names that one canonical, in every language (col
 });
 
 test('a product page of only 참고 Incidents says noindex (collector/checks.py product_pages leaves it out)', async () => {
-  const notice = (n) => entry(n, { level: 'notice', cvss: 4.3 });
+  const notice = (n) => entry(n, { level: 'notice', cvss: 4.3, url: `https://patchticker.com/#i=CVE-2026-${n}` }); // no page of its own
   const quiet = await (await render('ko', SSH, { [`check/p/${SSH}.json`]: { ...DOC, incidents: [notice(1), notice(2), notice(3)] } })).text();
   assert.match(quiet, /<meta name="robots" content="noindex">/);
+  // A 참고 story with its own page (no CVE) keeps the list in search.
+  const story = entry(4, { level: 'notice', cvss: null, url: 'https://patchticker.com/i/u-0123456789ab' });
+  assert.doesNotMatch(await (await render('ko', SSH, { [`check/p/${SSH}.json`]: { ...DOC, incidents: [notice(1), notice(2), story] } })).text(), /noindex/);
   assert.doesNotMatch(await (await render('ko')).text(), /noindex/);
 });
