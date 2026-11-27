@@ -341,6 +341,20 @@ what the page says that the Normal panel leaves to the Easy view (the command an
 A product page also says what its list holds as a whole (its Incidents by Risk, how many are attacked, the newest) and
 names each Incident's CVE IDs; no "newest fixed version" and no CVE total: `fixed` and `cve_count` are the Incident's
 own, on an Incident of several Products partly another Product's (136 of 651 product pages on 11-27).
+One Product has one id (owner, 11-27, "뼈대 잡혔으니 추천안대로 진행해"): `product_aliases` in `collector/incidents.py`
+joins record ids spelled alike (case, spaces, punctuation; `#`, `+` and `*` kept, so C, C# and C++ stay apart) and the
+same product under two vendors when one Incident's record lists both (the CNA's `aio-libs:aiohttp` beside NVD's
+`aiohttp:aiohttp`); `named()` shows the kept id, chosen by `well_known.json`, then a `vendors.json` vendor, then no
+doubled space, then order, never by counts, so an address does not move. `name_aliases` in `collector/checks.py` folds
+a `name:` Product into the one record Product of that very name (`name:chrome` into `google:chrome`) on the product
+pages and in `/api/check`; the Board's filter joins them already (`sameProduct`). An old id's `check/p/<slug>.json` is
+`{moved: <slug>}` and its page answers 301 there. Product pages with the very same Incidents (`same_lists`: one advisory
+naming 30 GL.iNet models) offer one page to the sitemap and the others name it canonical; a well-known Product alone
+under its label in such a list keeps its own page. A product page of only 참고 Incidents is out of the sitemap and
+`noindex`, as a 참고 Incident page with a CVE is. On the November file: 87 ids joined, 116 `name:` ids folded, 22
+sitemap product pages became redirects, and the sitemap went from 652 to 444 product pages. An Incident page's JSON-LD
+also states `image`, an `author` with its url, and `dateModified` from the `changed` stamp `write_pages` adds to the
+page document (outside its hash).
 Old page documents are not deleted by code: an R2 object lifecycle rule on the bucket deletes objects under the
 `pages/` prefix 100 days after their last write (set once by the owner at deploy, in the Cloudflare dashboard or with
 `wrangler r2 bucket lifecycle`). A page document is written on or after its Incident's first seen and a moved document
