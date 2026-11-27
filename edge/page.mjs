@@ -4,7 +4,7 @@
 // the Board's own, imported from web/board.mjs, and so are the shared words (WORDS); only the page's own words live here. Titles, Summaries and URLs come from the web and a model: every text is
 // escaped and only http(s) addresses become links.
 import { conditionIds, cveExploit, cveLines, distroTable, cveUrl, cvssRating, easyLine, exploitedCves, exploitReason, scoreCve, foldTags, isExploited, mentionGroups, MENTIONS_SHOWN, onBoard, nameLine, pendingWhy, productOthers, provisionalLevel, severityWord, productsOf, publicDay, reportUrl, riskLevel, scorePair, searchWorthy, tagFilters, tagHash, withinPageDays, WORDS, LANGS } from '../web/board.mjs';
-import { SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, strings, titleOf, ul, whatToDo } from './shared.mjs';
+import { SEARCH_LANGS, SITE, SLUG, checkSlug, escapeXml as esc, failClosed, host, http, p, readJson, searchLang, strings, titleOf, ul, whatToDo } from './shared.mjs';
 
 const NEW_TAB = ' target="_blank" rel="noopener noreferrer"';
 // The Board's logo symbol (index.html #home) and its 틀린 내용 알리기 icon (app.mjs reportLink).
@@ -321,8 +321,8 @@ export function langMenu(lang, path) {
   return `<details class="langs"><summary class="lang" aria-label="${esc(`${t.langMenu}: ${t.langName}`)}">${globe}`
     + `<span class="full">${esc(t.langName)}</span><span class="short">${esc(t.langShort)}</span></summary><ul>${items.join('')}</ul></details>`;
 }
-// Each language's address of one document, for hreflang: Korean is also the x-default.
-export const alternates = (url) => [...LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${url(l)}">`),
+// Each search language's address of one document, for hreflang (SEARCH_LANGS: no Japanese): Korean is also the x-default.
+export const alternates = (url) => [...SEARCH_LANGS.map((l) => `<link rel="alternate" hreflang="${l}" href="${url(l)}">`),
   `<link rel="alternate" hreflang="x-default" href="${url('ko')}">`];
 
 // other: the language menu for the header; the short notes have none. Also the product page's shell (edge/product.mjs).
@@ -366,7 +366,7 @@ export function pageHtml(i, lang, slug, others = null, pages = []) {
   const head = [`<title>${esc(title)} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(description)}">`,
     ...(searchWorthy(i) ? [] : ['<meta name="robots" content="noindex">']),
-    `<link rel="canonical" href="${self}">`,
+    `<link rel="canonical" href="${pageUrl(searchLang(lang), slug)}">`,
     ...alternates((l) => pageUrl(l, slug)),
     '<meta property="og:type" content="article">',
     '<meta property="og:site_name" content="Patch Ticker">',

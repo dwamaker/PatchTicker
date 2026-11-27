@@ -26,8 +26,9 @@ function assertWellFormed(text) {
   }
   assert.deepEqual(stack, []);
 }
-// One page's three addresses: Korean at the root, English and Japanese under their prefix.
-const all = (slug, kind = 'i') => ['', '/en', '/ja'].map((p) => `https://patchticker.com${p}/${kind}/${slug}`);
+// One page's two addresses, the search languages (edge/shared.mjs SEARCH_LANGS): Korean at the root, English under
+// /en. No /ja address (owner, 11-27): that page is the English text under Japanese labels.
+const all = (slug, kind = 'i') => ['', '/en'].map((p) => `https://patchticker.com${p}/${kind}/${slug}`);
 const locs = (text) => [...text.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
 
 test('each monthly sitemap lists that month\'s pages (by first seen) in every language', async () => {
@@ -37,15 +38,15 @@ test('each monthly sitemap lists that month\'s pages (by first seen) in every la
   assert.deepEqual(locs(await xml('incidents-3.xml')), all('CVE-2026-1005'));
 });
 
-test('every URL names its last change and every language as hreflang alternates, Korean as x-default', async () => {
+test('every URL names its last change and every search language as hreflang alternates, Korean as x-default, no Japanese', async () => {
   const text = await xml('incidents-1.xml');
   const urls = text.match(/<url>.*?<\/url>/gs);
-  assert.equal(urls.length, 3);
+  assert.equal(urls.length, 2);
   for (const url of urls) {
     assert.match(url, /<lastmod>2026-11-01T08:00:00Z<\/lastmod>/);
     assert.match(url, /<xhtml:link rel="alternate" hreflang="ko" href="https:\/\/patchticker.com\/i\/hn-77"\/>/);
     assert.match(url, /<xhtml:link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/i\/hn-77"\/>/);
-    assert.match(url, /<xhtml:link rel="alternate" hreflang="ja" href="https:\/\/patchticker.com\/ja\/i\/hn-77"\/>/);
+    assert.doesNotMatch(url, /hreflang="ja"|patchticker\.com\/ja\//);
     assert.match(url, /<xhtml:link rel="alternate" hreflang="x-default" href="https:\/\/patchticker.com\/i\/hn-77"\/>/);
   }
   assert.match(text, /^<\?xml version="1.0" encoding="UTF-8"\?>\n<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9" xmlns:xhtml="http:\/\/www.w3.org\/1999\/xhtml">/);
@@ -69,14 +70,14 @@ test('hostile entries cannot break the sitemap: odd slugs are dropped, an odd ti
 
 test('a month over the 50,000-URL limit of one sitemap file keeps its newest pages', async () => {
   const pages = {};
-  for (let n = 0; n <= 16666; n += 1) {
+  for (let n = 0; n <= 25000; n += 1) {
     const at = new Date(Date.parse('2026-11-01T00:00:00Z') + n * 1000).toISOString().replace('.000', '');
     pages[`CVE-2026-${100000 + n}`] = { first_seen: at, changed: at };
   }
   const found = locs(await xml('incidents-0.xml', { pages }));
-  assert.equal(found.length, 49998); // 16,666 pages in three languages
+  assert.equal(found.length, 50000); // 25,000 pages in two languages
   assert.ok(!found.includes('https://patchticker.com/i/CVE-2026-100000')); // the oldest page is the one left out
-  assert.ok(found.includes('https://patchticker.com/i/CVE-2026-116666'));
+  assert.ok(found.includes('https://patchticker.com/i/CVE-2026-125000'));
 });
 
 test('503, never an empty list, for a document without its pages', async () => {

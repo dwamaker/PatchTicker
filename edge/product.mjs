@@ -6,7 +6,7 @@
 import { tagHash, WORDS } from '../web/board.mjs';
 import { LEVELS } from './check.mjs';
 import { alternates, document, langMenu, LOCAL_TIME, note, PAGE_CSP, when } from './page.mjs';
-import { SITE, escapeXml as esc, failClosed, readJson } from './shared.mjs';
+import { SITE, escapeXml as esc, failClosed, readJson, searchLang } from './shared.mjs';
 
 export { checkSlug } from './shared.mjs';
 
@@ -69,7 +69,7 @@ export function productHtml(doc, lang, slug) {
   const head = [`<title>${esc(t.heading(name))} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(t.about(name, incidents.length))}">`,
     ...(incidents.length < PRODUCT_PAGE_MIN ? ['<meta name="robots" content="noindex">'] : []),
-    `<link rel="canonical" href="${self}">`,
+    `<link rel="canonical" href="${SITE}${TEXT[searchLang(lang)].path}${slug}">`,
     ...alternates((l) => `${SITE}${TEXT[l].path}${slug}`),
     `<link rel="alternate" type="application/rss+xml" title="${esc(t.rss(name))}" href="${esc(feed)}">`,
     '<meta property="og:type" content="website">',

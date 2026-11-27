@@ -311,6 +311,22 @@ def search_worthy(incident):
     return bool(incident.get("summary")) and on_board(incident) and (risk_level(incident) != "notice" or not incident["cves"])
 
 
+SITEMAP_SITES = 3
+
+
+def sitemap_worthy(incident):
+    """Listed in the sitemaps (owner, 2026-11-27): a search-worthy Incident that is also about a Product on
+    collector/well_known.json, attacked, a story without a CVE, or told by SITEMAP_SITES sites or more besides its CVE
+    records. On 11-26 Google held 293 of our pages in its index and had crawled 1,831 without indexing them; of the 3,561
+    pages listed then, 70% were about a Product on no list and 896 had a CVE record as their only source. Only the list
+    gets shorter (about 1,100 of those pages): every other page answers as before and stays search-worthy (no noindex;
+    the feeds and the check documents do not change)."""
+    if not search_worthy(incident):
+        return False
+    sites = {url_key(m["url"]).split("/", 1)[0] for m in incident["mentions"] if m["kind"] != "cve_record"}
+    return bool(known_label(incident) or is_exploited(incident) or not incident["cves"] or len(sites) >= SITEMAP_SITES)
+
+
 HN_ITEM = re.compile(r"https://news\.ycombinator\.com/item\?id=(\d+)", re.ASCII)  # \d as in JavaScript
 
 

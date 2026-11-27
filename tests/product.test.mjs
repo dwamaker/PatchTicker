@@ -44,7 +44,9 @@ test("a product page lists its Incidents of the last 90 days with level, title, 
   assert.match(ja, /<a class="pl-title" href="\/ja\/i\/CVE-2026-1">Flaw 1<\/a><p class="pl-sub">修正バージョン 9.9p2 · CVE 3件<\/p>/);
   assert.match(ja, /2026-11-16 09:30 JST/);
   assert.match(ja, /href="\/ja\/feed.xml\?products=OpenSSH"/);
-  assert.match(ja, /<link rel="alternate" hreflang="ja" href="https:\/\/patchticker.com\/ja\/p\/3e96ab9cc2cec1ca">/);
+  // Owner, 11-27: the Japanese page names the English one canonical and no page lists a Japanese alternate.
+  assert.match(ja, /<link rel="canonical" href="https:\/\/patchticker.com\/en\/p\/3e96ab9cc2cec1ca">/);
+  assert.doesNotMatch(ja, /<link rel="alternate" hreflang="ja"/);
 });
 
 test(`a product with fewer than ${PRODUCT_PAGE_MIN} Incidents is not offered to search engines (a thin page)`, async () => {

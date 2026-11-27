@@ -259,10 +259,13 @@ test('the header carries the logo home and the language switch; the links row ho
   assert.doesNotMatch(links, /hreflang/); // the language switch moved up
 });
 
-test('the Japanese page is the interface in Japanese with the English Summary, canonical to itself', async () => {
+test('the Japanese page is the interface in Japanese with the English Summary, and names the English page canonical', async () => {
   const html = await (await page(SSHOLE, 'ja')).text();
   assert.match(html, /<html lang="ja">/);
-  assert.match(html, /<link rel="canonical" href="https:\/\/patchticker.com\/ja\/i\/CVE-2026-123158">/);
+  // Owner, 11-27: its text is the English page's, so search engines get the English address and no Japanese alternate.
+  assert.match(html, /<link rel="canonical" href="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
+  assert.doesNotMatch(html, /<link rel="alternate" hreflang="ja"/);
+  assert.match(html, /<link rel="alternate" hreflang="en" href="https:\/\/patchticker.com\/en\/i\/CVE-2026-123158">/);
   assert.match(html, /<meta property="og:locale" content="ja_JP">/);
   assert.match(html, /<h1>OpenSSH sshd authentication bypass \(sshole\)<\/h1>/); // the English Summary
   assert.match(html, />緊急</);

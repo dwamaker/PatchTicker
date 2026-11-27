@@ -1,21 +1,21 @@
 // The Incident sitemaps (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision). The static
 // web/sitemap.xml indexes four of them, /sitemaps/incidents-<n>.xml: the search-worthy pages first seen n calendar
-// months ago (UTC) and within PAGE_DAYS, so 90 days fit and no index needs a deploy when the month turns. One
-// month is ~8,000 Incidents, ~24,000 URLs in three languages, well under a sitemap's 50,000. The Pages Function renders
+// months ago (UTC) and within PAGE_DAYS, so 90 days fit and no index needs a deploy when the month turns. Each page is
+// listed in the search languages (SEARCH_LANGS: Korean and English), well under a sitemap's 50,000. The Pages Function renders
 // them from the collector's sitemap.json ({pages: {slug: {first_seen, changed}}}) in R2.
-import { LANGS, langPrefix, withinPageDays } from '../web/board.mjs';
-import { SITE, SLUG, failClosed, readJson, unavailable } from './shared.mjs';
+import { langPrefix, withinPageDays } from '../web/board.mjs';
+import { SEARCH_LANGS, SITE, SLUG, failClosed, readJson, unavailable } from './shared.mjs';
 
 const DOC = 'sitemap.json';
-const MAX_PAGES = 16666; // one URL per language (three) each: one sitemap file holds at most 50,000
+const MAX_PAGES = Math.floor(50000 / SEARCH_LANGS.length); // one URL per search language each: one sitemap file holds at most 50,000
 const NAME = /^(?:incidents-([0-3])|(products))\.xml$/;
 const PRODUCT = /^[0-9a-f]{16}$/; // collector/checks.py check_slug
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/; // the collector's STAMP, a W3C datetime
 
 function urls(slug, changed, kind = 'i') {
-  const locs = LANGS.map((l) => `${SITE}${langPrefix(l)}/${kind}/${slug}`);
+  const locs = SEARCH_LANGS.map((l) => `${SITE}${langPrefix(l)}/${kind}/${slug}`);
   const lastmod = STAMP.test(changed) ? `<lastmod>${changed}</lastmod>` : '';
-  const alternates = LANGS.map((l, n) => `<xhtml:link rel="alternate" hreflang="${l}" href="${locs[n]}"/>`).join('')
+  const alternates = SEARCH_LANGS.map((l, n) => `<xhtml:link rel="alternate" hreflang="${l}" href="${locs[n]}"/>`).join('')
     + `<xhtml:link rel="alternate" hreflang="x-default" href="${locs[0]}"/>`;
   return locs.map((loc) => `<url><loc>${loc}</loc>${lastmod}${alternates}</url>`);
 }

@@ -307,8 +307,14 @@ description, dates, language and address as JSON-LD in a `<script type="applicat
 nothing (the CSP's `script-src` does not apply to it) and holds no `<`, `>` or `&` unescaped.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps
 `/sitemaps/incidents-<n>.xml` (`functions/sitemaps/[name].js`, renderer in `edge/sitemap.mjs`), each listing the
-search-worthy pages first seen n calendar months ago (UTC) and within 90 days, in both languages with `hreflang`
-alternates and the page's last change as `lastmod`, at most 25,000 pages (50,000 URLs) per file, newest first. They
+pages worth a listing first seen n calendar months ago (UTC) and within 90 days, in Korean and English with `hreflang`
+alternates and the page's last change as `lastmod`, at most 25,000 pages (50,000 URLs) per file, newest first.
+Since 2026-11-27 (owner, after Google crawled 1,831 pages without indexing them) the list is narrower than
+search-worthy: `sitemap_worthy` in `collector/incidents.py` keeps a page about a Product on
+`collector/well_known.json`, an attacked one, a story without a CVE, or one told by three sites besides its CVE
+records (1,271 of 3,414 search-worthy pages on that day); the other pages answer as before, without `noindex`.
+Japanese is no search language (`SEARCH_LANGS` in `edge/shared.mjs`): a `/ja/` page is the English text under
+Japanese labels, so it is in no sitemap and no `hreflang`, and names its `/en/` twin as canonical. They
 come from `sitemap.json`, which each cycle rewrites when it changed: `{pages: {slug: {first_seen, changed}}, products:
 [slug]}`, the last change taken from `page_hashes.json`. A fifth, `/sitemaps/products.xml`, lists the product pages in
 `products`, those with at least 3 Incidents (`product_pages` in `collector/checks.py`); a `sitemap.json` from before the

@@ -1,9 +1,15 @@
 // What every Pages Function uses (spec: .scratch/incident-pages/spec.md; ADR 0002, 2026-11-10 revision): the site
 // address, escaping, the store read that fails closed, the edge cache, and what to do (the page and the feed alike).
-import { easyAction, easyLine, firstProduct, fixTable, FIXES_SHOWN, isShellCommand, riskLevel, usableFixes, withJapanese, WORDS } from '../web/board.mjs';
+import { easyAction, easyLine, firstProduct, fixTable, FIXES_SHOWN, isShellCommand, riskLevel, usableFixes, withJapanese, WORDS, LANGS } from '../web/board.mjs';
 
 export const SITE = 'https://patchticker.com';
 export const SLUG = /^(CVE-\d{4}-\d{4,7}|hn-\d+|u-[0-9a-f]{12})$/; // what slug() in web/board.mjs makes; anything else never reads R2
+// Owner, 2026-11-27: the languages offered to search engines (sitemaps, hreflang, canonical). A /ja/ page is the English
+// text under Japanese labels (withJapanese): 75 to 82% the same page as its /en/ twin when measured, a third of the
+// sitemap, while Google had crawled 1,831 pages and kept them out of its index. It still answers a visitor, with the
+// English page as its canonical. Give Japanese back its place here once a page has Japanese text of its own.
+export const SEARCH_LANGS = LANGS.filter((l) => l !== 'ja');
+export const searchLang = (lang) => (SEARCH_LANGS.includes(lang) ? lang : 'en');
 
 // Only http(s) addresses become links; a link's name falls back to its host.
 export const http = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);

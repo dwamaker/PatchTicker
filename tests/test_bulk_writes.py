@@ -40,7 +40,8 @@ class BulkStore(WatchedStore):
 
 def rows(n):
     # Search-worthy (9.8), each with its own Product: n pages and n check documents.
-    return [row(k, cvss=9.8, products=[{"id": f"acme:p{k}", "name": f"P{k}"}]) for k in range(1, n + 1)]
+    # kev: attacked, so each page is also worth a sitemap listing (sitemap_worthy, 11-27), which the tests below read.
+    return [row(k, cvss=9.8, kev=True, products=[{"id": f"acme:p{k}", "name": f"P{k}"}]) for k in range(1, n + 1)]
 
 
 def cycle(store, rows=None, now=NOW, bounded=True):

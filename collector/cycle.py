@@ -14,7 +14,7 @@ from collector import (checks, curators, cve_lines, cvelist, discord, distros, g
 from collector.logfile import CycleLine
 from collector.incidents import (OTHERS_DAYS, PICKER_DAYS, STAMP, board_view, cite, enrich, group_releases, highlight_score, is_exploited, link, month_of,
                                  named as reader_named, on_board, page_keys, page_slug, product_counts, product_list, published_at, rejoin, risk_level, rows_view,
-                                 search_worthy, stamp_ago, summary_failures, unknown_vendors)
+                                 search_worthy, sitemap_worthy, stamp_ago, summary_failures, unknown_vendors)
 
 RECENT_DAYS = 7  # the Board opens on these days (board/recent.json); older months load on demand
 # The Distribution table (step 10). CVEs looked up a cycle: each costs about 4 s and 3 to 6 requests, and changes at
@@ -356,10 +356,11 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     pages = write_pages(store, shown_incidents, had_page, now, stamp, more := bulk_budget(clock))
     write_moves(store, incidents, had_page, now, stamp)
     product_docs = write_checks(store, shown_incidents, now, more)
-    # The sitemaps' document (edge/sitemap.mjs): {slug: {first_seen, changed}} of every search-worthy Incident page, and
+    # The sitemaps' document (edge/sitemap.mjs): {slug: {first_seen, changed}} of every Incident page worth a listing
+    # (sitemap_worthy: narrower than search-worthy since 11-27), and
     # the product pages with enough Incidents to be worth a search (owner, 11-17).
     sitemap = {"pages": {slug: {"first_seen": i["first_seen"], "changed": pages[slug]["changed"]} for i in incidents
-                         if (slug := page_slug(i["id"])) in pages and search_worthy(i)},
+                         if (slug := page_slug(i["id"])) in pages and sitemap_worthy(i)},
                "products": checks.product_pages(product_docs)}
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
