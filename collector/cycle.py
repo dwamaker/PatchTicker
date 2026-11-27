@@ -365,6 +365,7 @@ def steps(store, http_get, now, collector_id, sleep=time.sleep, nvd_api_key="", 
     if store.read("sitemap.json") != sitemap:
         store.write("sitemap.json", sitemap)
     write_lists(store, listed, product_docs, more)
+    write_cve_map(store, cve_map_docs(shown_incidents, pages), more)
     picker_since = stamp_ago(now, days=PICKER_DAYS)
     store.write("board/products.json", {"since": picker_since, "products": product_list(shown_incidents, picker_since)})
     # M1: one small document a cycle, read by the opened row and the Incident page; a count inside each page would
@@ -706,6 +707,48 @@ def write_lists(store, listed, product_docs, more=lambda: True):
             hashes[day] = known[day]
     if hashes != known:
         store.write("list_hashes.json", hashes)
+
+
+# Gemini review, 11-28 (P5; owner: anyone finds a CVE): /i/<CVE> of a CVE inside another Incident answered 404, so a
+# person or an agent that builds the address from a CVE ID met a dead end. These documents map such a CVE to its
+# Incident's page slug, for edge/page.mjs to answer 301; sharded by year and thousand (a Function has ~10 ms of CPU).
+CVE_MAP = "cve_map/{}/{}.json"
+CVE_PAGE = re.compile(r"CVE-(\d{4})-(\d{4,7})")
+
+
+def cve_map_docs(incidents, pages):
+    """{document name: {CVE slug: Incident page slug}} for every CVE of an Incident with a page (pages: write_pages'
+    index) whose own slug is not that page's."""
+    shards = {}
+    for incident in incidents:
+        slug = page_slug(incident["id"])
+        if slug not in pages:
+            continue
+        for cve in incident["cves"]:
+            own = page_slug(cve)
+            found = CVE_PAGE.fullmatch(own)
+            if found and own != slug:
+                shards.setdefault(CVE_MAP.format(found[1], int(found[2]) // 1000), {})[own] = slug
+    return {name: dict(sorted(doc.items())) for name, doc in sorted(shards.items())}
+
+
+def write_cve_map(store, docs, more=lambda: True):
+    """As write_lists: a shard is rewritten only when it changed (cve_map_hashes.json keeps {name: hash}), and one no
+    longer made is deleted; more() as in write_pages, a shard left unwritten keeps its old document and hash."""
+    known = store.read("cve_map_hashes.json") or {}
+    hashes = {name: known[name] for name in docs if name in known}
+    for name in sorted(d for d in docs if known.get(d) != digest_of(docs[d])):
+        if not more():
+            break
+        store.write(name, docs[name])
+        hashes[name] = digest_of(docs[name])
+    for name in known.keys() - docs.keys():
+        if more():
+            store.delete(name)
+        else:
+            hashes[name] = known[name]
+    if hashes != known:
+        store.write("cve_map_hashes.json", hashes)
 
 
 def write_moves(store, incidents, had_page, now, stamp):

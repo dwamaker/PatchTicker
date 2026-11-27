@@ -306,7 +306,10 @@ product's feed. A product with fewer than 3 Incidents (`PRODUCT_PAGE_MIN`, in `e
 be read. An Incident page links its products' pages (at most five, operating systems aside; a merged product's at its
 new address, read from its `{moved}` document, so no link answers 301), up to five other recent Incidents of its first
 product that have a page, and its day list `/d/<day>` when it is on it (`pageLinks` in `edge/page.mjs`, Gemini review
-2026-11-28: the page reads those check documents and the day's list document; anything unreadable is left out), and states its headline,
+2026-11-28: the page reads those check documents and the day's list document; anything unreadable is left out). The
+address of a CVE inside another Incident answers 301 to that Incident's page: each cycle writes `cve_map/<year>/<n // 1000>.json`
+(`cve_map_docs`, `write_cve_map` in `collector/cycle.py`; `cve_map_hashes.json` as `list_hashes.json`), which the page
+function reads only when no page document is found. An Incident page states its headline,
 description, dates, language and address as JSON-LD in a `<script type="application/ld+json">` block, which runs
 nothing (the CSP's `script-src` does not apply to it) and holds no `<`, `>` or `&` unescaped.
 The static `web/sitemap.xml` is a sitemap index: the home page's `sitemap-home.xml` and four Incident sitemaps

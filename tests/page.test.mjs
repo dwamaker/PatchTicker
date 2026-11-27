@@ -761,3 +761,22 @@ test('an Incident page links its product\'s recent Incidents, its day list, and 
   const bad = await (await pageResponse(bucket(evil), 'ko', 'CVE-2026-123158', NOW)).text();
   assert.doesNotMatch(bad, /"><script>|evil\.example|class="mentions related"/); // the page's own <script> aside
 });
+
+// Gemini review, 11-28 (P5): a CVE inside another Incident has no page; its address answers 301 to that Incident's page,
+// from the collector's map, which is read only when no page document is found.
+test('the address of a CVE inside another Incident answers 301 to that Incident\'s page', async () => {
+  const docs = { 'pages/CVE-2026-123158.json': SSHOLE, 'cve_map/2026/124.json': { 'CVE-2026-124001': 'CVE-2026-123158', 'CVE-2026-124002': '../x' } };
+  for (const [lang, to] of [['ko', 'https://patchticker.com/i/CVE-2026-123158'], ['en', 'https://patchticker.com/en/i/CVE-2026-123158']]) {
+    const res = await pageResponse(bucket(docs), lang, 'CVE-2026-124001', NOW);
+    assert.equal(res.status, 301);
+    assert.equal(res.headers.get('location'), to);
+  }
+  for (const slug of ['CVE-2026-124002', 'CVE-2026-124003', 'hn-12']) { // a bad target, no entry, not a CVE: 404
+    assert.equal((await pageResponse(bucket(docs), 'ko', slug, NOW)).status, 404, slug);
+  }
+  reads.length = 0;
+  await pageResponse(bucket(docs), 'ko', 'CVE-2026-123158', NOW);
+  assert.ok(!reads.some((k) => k.startsWith('cve_map/'))); // a page that exists never reads the map
+  const down = { get: async (key) => { if (key.startsWith('cve_map/')) throw new Error('R2 down'); return null; } };
+  assert.equal((await pageResponse(down, 'ko', 'CVE-2026-124001', NOW)).status, 404); // an unreadable map: as before
+});

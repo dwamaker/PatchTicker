@@ -492,6 +492,15 @@ export function note(lang, status, text, links) {
   return new Response(document(lang, head, body), { status, headers: { 'content-type': 'text/html; charset=utf-8', ...extra } });
 }
 
+// Gemini review, 11-28 (P5): a CVE inside another Incident has no page of its own; its address answers 301 to that
+// Incident's page, from the collector's small map (collector/cycle.py cve_map_docs), read only when no page is found.
+async function groupedIn(bucket, slug) {
+  const found = /^CVE-(\d{4})-(\d{4,7})$/.exec(slug);
+  if (!found) return null;
+  const map = await readJson(bucket, `cve_map/${found[1]}/${Math.floor(Number(found[2]) / 1000)}.json`).catch(() => null);
+  const page = map?.[slug];
+  return typeof page === 'string' && SLUG.test(page) && page !== slug ? page : null;
+}
 const redirect = (status, location) => new Response(null, { status, headers: { location, 'cache-control': CACHE } });
 
 // bucket: the R2 binding (anything with get(key) -> { text() } or null). now: for the 90-day check.
@@ -504,7 +513,10 @@ export async function pageResponse(bucket, lang, slug, now = Date.now()) {
   if (!SLUG.test(slug)) return note(lang, 404, t.missing, [home]);
   return failClosed(async () => {
     const doc = await readJson(bucket, `pages/${slug}.json`, lang);
-    if (!doc) return note(lang, 404, t.missing, [home]);
+    if (!doc) {
+      const page = await groupedIn(bucket, slug);
+      return page ? redirect(301, pageUrl(lang, page)) : note(lang, 404, t.missing, [home]);
+    }
     if (doc.moved_to) {
       // An absorbed Incident (ticket 04): its address moves to the survivor's page while both are within PAGE_DAYS,
       // and to the survivor's row on the Board while the survivor has no page yet (owner, 11-10).
