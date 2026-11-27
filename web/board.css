@@ -689,6 +689,7 @@ ol { list-style: none; margin: 0; padding: 0; }
 .nw { white-space: nowrap; } /* a CVE ID kept whole */
 .sev { display: flex; flex-direction: column; font-size: calc(var(--fs-meta) * var(--ts)); line-height: 1.35; color: var(--ink-2); white-space: nowrap; }
 .kev { color: var(--high); font-weight: 700; } /* also 공격 코드 공개됨 in the panel: red text, no sign (critique 14) */
+.frozen { color: var(--high); font-weight: 700; } /* a kept page past 90 days: no longer updated (owner 11-28: red) */
 .c-tags { grid-area: tags; display: flex; flex-wrap: wrap; gap: 0.25rem; min-width: 0; } /* Astryx's 4px between tokens */
 .ln-t { min-width: 0; overflow-wrap: anywhere; } /* a long Product name wraps inside its badge where all names are listed (the opened row, the picker) */
 /* Astryx Badge size: the risk sign's 24px height, 8px sides, 12px medium */
