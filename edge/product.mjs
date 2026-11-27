@@ -89,6 +89,8 @@ export function productHtml(doc, lang, slug) {
   const incidents = Array.isArray(doc.incidents) ? doc.incidents.filter((e) => e && typeof e.id === 'string') : [];
   const self = `${SITE}${t.path}${slug}`;
   // Pages with the very same Incidents offer one of them to search engines (collector/checks.py same_lists).
+  // Only 참고 Incidents: no page of theirs is in search, nor is this one (collector/checks.py product_pages).
+  const quiet = incidents.every((e) => e.level === 'notice');
   const canon = typeof doc.canonical === 'string' && SLUG.test(doc.canonical) ? doc.canonical : slug;
   const feed = `${t.feed}?products=${encodeURIComponent(name)}`;
   const sum = tallies(incidents, t);
@@ -97,7 +99,7 @@ export function productHtml(doc, lang, slug) {
     sum.newest ? [t.newest, when(sum.newest, lang)] : null].filter(Boolean);
   const head = [`<title>${esc(t.heading(name))} · Patch Ticker</title>`,
     `<meta name="description" content="${esc(about)}">`,
-    ...(incidents.length < PRODUCT_PAGE_MIN ? ['<meta name="robots" content="noindex">'] : []),
+    ...(incidents.length < PRODUCT_PAGE_MIN || quiet ? ['<meta name="robots" content="noindex">'] : []),
     `<link rel="canonical" href="${SITE}${TEXT[searchLang(lang)].path}${canon}">`,
     ...alternates((l) => `${SITE}${TEXT[l].path}${canon}`),
     `<link rel="alternate" type="application/rss+xml" title="${esc(t.rss(name))}" href="${esc(feed)}">`,

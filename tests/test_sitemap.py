@@ -51,7 +51,7 @@ class SitemapDocumentTest(unittest.TestCase):
         # owner, 11-17: a page per product (/p/<slug>, edge/product.mjs); one with fewer than PRODUCT_PAGE_MIN Incidents
         # in 90 days is thin: noindex there and left out here
         widget = [{"id": "acme:widget", "name": "Widget"}]
-        store = cycle(WatchedStore(), [row(n, products=widget) for n in range(1, 1 + PRODUCT_PAGE_MIN)]
+        store = cycle(WatchedStore(), [row(n, cvss=7.5, products=widget) for n in range(1, 1 + PRODUCT_PAGE_MIN)]
                       + [row(9, products=[{"id": "acme:gadget", "name": "Gadget"}])])
         self.assertEqual(store.read("sitemap.json")["products"], [check_slug("acme:widget")])
 

@@ -82,7 +82,7 @@ class ProductPageIdsTest(unittest.TestCase):
         self.assertNotIn("moved", docs[check_slug("name:connect")])
 
     def test_an_old_id_gets_a_redirect_and_no_sitemap_entry(self):
-        incidents = [held(f"CVE-2026-{n}", products=[rec("red_hat:quay" if n % 2 else "redhat:quay", "Quay")]) for n in range(1, 5)]
+        incidents = [held(f"CVE-2026-{n}", cvss=7.5, products=[rec("red_hat:quay" if n % 2 else "redhat:quay", "Quay")]) for n in range(1, 5)]
         aliases = product_aliases(incidents)
         docs, _ = check_docs(named(incidents), SINCE, aliases)
         kept, old = check_slug("red_hat:quay"), check_slug("redhat:quay")
@@ -94,7 +94,7 @@ class ProductPageIdsTest(unittest.TestCase):
 class SameListTest(unittest.TestCase):
     @staticmethod
     def docs(*products):
-        incidents = [held(f"CVE-2026-{n}", products=[rec(pid, name) for pid, name in products]) for n in range(1, 4)]
+        incidents = [held(f"CVE-2026-{n}", cvss=7.5, products=[rec(pid, name) for pid, name in products]) for n in range(1, 4)]
         return check_docs(incidents, SINCE)[0]
 
     def test_pages_with_the_very_same_incidents_offer_one_and_name_it_canonical(self):
@@ -113,10 +113,18 @@ class SameListTest(unittest.TestCase):
         self.assertEqual(docs[check_slug("apple:tvos")]["canonical"], check_slug("apple:iphone_os"))
 
     def test_different_lists_are_left_alone(self):
-        incidents = [held(f"CVE-2026-{n}", products=[rec("a:x", "X")] + ([rec("a:y", "Y")] if n < 4 else [])) for n in range(1, 5)]
+        incidents = [held(f"CVE-2026-{n}", cvss=7.5, products=[rec("a:x", "X")] + ([rec("a:y", "Y")] if n < 4 else [])) for n in range(1, 5)]
         docs, _ = check_docs(incidents, SINCE)
         self.assertEqual(len(product_pages(docs)), 2)
         self.assertFalse(any("canonical" in d for d in docs.values()))
+
+
+class QuietPageTest(unittest.TestCase):
+    def test_a_product_page_of_only_note_incidents_is_not_offered(self):
+        quiet = [held(f"CVE-2026-{n}", products=[rec("a:quiet", "Quiet")], cvss=5.0) for n in range(1, 4)]
+        loud = [held(f"CVE-2026-{n}", products=[rec("a:loud", "Loud")], cvss=5.0 if n < 3 else 7.5) for n in range(4, 7)]
+        docs, _ = check_docs(quiet + loud, SINCE)
+        self.assertEqual([docs[s]["id"] for s in product_pages(docs)], ["a:loud"])
 
 
 if __name__ == "__main__":

@@ -119,3 +119,10 @@ test('a page another stands for names that one canonical, in every language (col
   const bad = await (await render('en', SSH, { [`check/p/${SSH}.json`]: { ...DOC, canonical: '../x' } })).text();
   assert.match(bad, new RegExp(`<link rel="canonical" href="https://patchticker.com/en/p/${SSH}">`));
 });
+
+test('a product page of only 참고 Incidents says noindex (collector/checks.py product_pages leaves it out)', async () => {
+  const notice = (n) => entry(n, { level: 'notice', cvss: 4.3 });
+  const quiet = await (await render('ko', SSH, { [`check/p/${SSH}.json`]: { ...DOC, incidents: [notice(1), notice(2), notice(3)] } })).text();
+  assert.match(quiet, /<meta name="robots" content="noindex">/);
+  assert.doesNotMatch(await (await render('ko')).text(), /noindex/);
+});

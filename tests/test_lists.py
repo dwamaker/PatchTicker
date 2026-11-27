@@ -43,8 +43,8 @@ class ListDocumentsTest(unittest.TestCase):
     def test_the_index_names_each_product_page_of_the_sitemap_with_its_name_and_count_by_name(self):
         widget = [{"id": "acme:widget", "name": "widget"}]
         alpha = [{"id": "acme:alpha", "name": "Alpha"}]
-        store = cycle(WatchedStore(), [row(n, products=widget) for n in range(1, 1 + PRODUCT_PAGE_MIN)]
-                      + [row(n, products=alpha) for n in range(10, 11 + PRODUCT_PAGE_MIN)]
+        store = cycle(WatchedStore(), [row(n, cvss=7.5, products=widget) for n in range(1, 1 + PRODUCT_PAGE_MIN)]
+                      + [row(n, cvss=7.5, products=alpha) for n in range(10, 11 + PRODUCT_PAGE_MIN)]
                       + [row(9, products=[{"id": "acme:gadget", "name": "Gadget"}])])  # one Incident: no page in the sitemap
         products = store.read("lists/index.json")["products"]
         self.assertEqual(products, [{"slug": check_slug("acme:alpha"), "name": "Alpha", "count": PRODUCT_PAGE_MIN + 1},
